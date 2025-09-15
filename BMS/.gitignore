@@ -1,0 +1,10 @@
+build
+mx.scratch
+!.settings
+.osx.project
+
+#AI agents
+.claude
+CLAUDE.md
+GEMINI.md
+AGENTS.md

@@ -1,0 +1,3 @@
+[submodule "BMS/FEB_CAN_Library_SN4"]
+	path = BMS/FEB_CAN_Library_SN4
+	url = https://github.com/Formula-Electric-Berkeley/FEB_CAN_Library_SN4.git
