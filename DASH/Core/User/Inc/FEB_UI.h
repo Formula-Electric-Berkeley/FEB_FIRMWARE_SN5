@@ -7,7 +7,7 @@ extern "C"
 #endif
 
     void StartDisplayTask(void *argument);
-    void temp(void);
+    void StartBtnTxLoop(void *argument);
 
 #ifdef __cplusplus
 }

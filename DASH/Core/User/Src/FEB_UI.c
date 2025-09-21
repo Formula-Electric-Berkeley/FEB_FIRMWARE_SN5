@@ -1,15 +1,24 @@
+#include "cmsis_os.h"
+
+
 void StartDisplayTask(void *argument)
 {
-    /* USER CODE BEGIN StartDisplayTask */
-    /* Infinite loop */
+
     for (;;)
     {
         osDelay(1);
     }
-    /* USER CODE END StartDisplayTask */
 }
 
-void temp(void)
+void StartBtnTxLoop(void *argument)
 {
-    return;
+    for (;;)
+    {
+        osDelay(1);
+    }
+}
+
+void DrawSquareUI(void *argument)
+{
+
 }
