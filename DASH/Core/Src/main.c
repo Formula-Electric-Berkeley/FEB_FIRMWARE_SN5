@@ -1066,7 +1066,6 @@ __weak void StartDisplayTask(void *argument)
   /* Infinite loop */
   for (;;)
   {
-    temp();
     osDelay(1);
   }
   /* USER CODE END StartDisplayTask */
