@@ -45,17 +45,11 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
-    Core/User/Src/printf_redirect.c
-    # FEB CAN Library
-    FEB_CAN_Library_SN4/gen/feb_can.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
-    Core/User/Inc
-    # FEB CAN Library
-    FEB_CAN_Library_SN4/gen
 )
 
 # Add project symbols (macros)
