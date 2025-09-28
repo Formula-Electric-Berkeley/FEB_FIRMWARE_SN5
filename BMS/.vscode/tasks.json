@@ -1,299 +1,14 @@
 {
     "version": "2.0.0",
+    "windows": {
+        "options": {
+            "shell": {
+                "executable": "cmd.exe",
+                "args": ["/d", "/c"]
+            }
+        }
+    },
     "tasks": [
-        {
-            "label": "Clean Build Directories",
-            "type": "shell",
-            "windows": {
-                "command": "${workspaceFolder}/scripts/clean.bat"
-            },
-            "linux": {
-                "command": "${workspaceFolder}/scripts/clean.sh"
-            },
-            "osx": {
-                "command": "${workspaceFolder}/scripts/clean.sh"
-            },
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": true
-            },
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Build STM32 Firmware",
-            "type": "shell",
-            "windows": {
-                "command": "${workspaceFolder}/scripts/build.bat"
-            },
-            "linux": {
-                "command": "${workspaceFolder}/scripts/build.sh"
-            },
-            "osx": {
-                "command": "${workspaceFolder}/scripts/build.sh"
-            },
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": true
-            },
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "problemMatcher": [
-                "$gcc"
-            ]
-        },
-        {
-            "label": "Flash STM32 Device",
-            "type": "shell",
-            "windows": {
-                "command": "${workspaceFolder}/scripts/flash.bat"
-            },
-            "linux": {
-                "command": "${workspaceFolder}/scripts/flash.sh"
-            },
-            "osx": {
-                "command": "${workspaceFolder}/scripts/flash.sh"
-            },
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": true
-            },
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Run Unit Tests",
-            "type": "shell",
-            "windows": {
-                "command": "${workspaceFolder}/scripts/test.bat"
-            },
-            "linux": {
-                "command": "${workspaceFolder}/scripts/test.sh"
-            },
-            "osx": {
-                "command": "${workspaceFolder}/scripts/test.sh"
-            },
-            "group": "test",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": true
-            },
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "problemMatcher": [
-                "$gcc"
-            ]
-        },
-        {
-            "label": "Development Workflow",
-            "type": "shell",
-            "windows": {
-                "command": "${workspaceFolder}/scripts/dev.bat",
-                "args": ["--help"]
-            },
-            "linux": {
-                "command": "${workspaceFolder}/scripts/dev.sh",
-                "args": ["--help"]
-            },
-            "osx": {
-                "command": "${workspaceFolder}/scripts/dev.sh",
-                "args": ["--help"]
-            },
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": true
-            },
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Build and Run Tests",
-            "type": "shell",
-            "windows": {
-                "command": "${workspaceFolder}/scripts/run_tests.bat"
-            },
-            "linux": {
-                "command": "${workspaceFolder}/scripts/run_tests.sh"
-            },
-            "osx": {
-                "command": "${workspaceFolder}/scripts/run_tests.sh"
-            },
-            "group": {
-                "kind": "test",
-                "isDefault": true
-            },
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": true
-            },
-            "problemMatcher": [
-                "$gcc"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}"
-            }
-        },
-        {
-            "label": "Run Tests Only",
-            "type": "shell",
-            "windows": {
-                "command": "bms_tests.exe"
-            },
-            "linux": {
-                "command": "./bms_tests"
-            },
-            "osx": {
-                "command": "./bms_tests"
-            },
-            "group": "test",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": true
-            },
-            "options": {
-                "cwd": "${workspaceFolder}/test/build"
-            },
-            "dependsOn": "Build Tests Only",
-            "problemMatcher": {
-                "owner": "cpp",
-                "pattern": {
-                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
-                    "file": 1,
-                    "line": 2,
-                    "column": 3,
-                    "severity": 4,
-                    "message": 5
-                }
-            }
-        },
-        {
-            "label": "Run CTest",
-            "type": "shell",
-            "command": "ctest",
-            "args": [
-                "--test-dir", "${workspaceFolder}/test/build",
-                "--output-on-failure",
-                "-C", "Debug"
-            ],
-            "group": "test",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": true
-            },
-            "dependsOn": "Build Tests Only"
-        },
-        {
-            "label": "Build Tests Only",
-            "type": "shell",
-            "command": "cmake",
-            "args": ["--build", ".", "--target", "bms_tests"],
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "silent",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            },
-            "problemMatcher": [
-                "$gcc"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}/test/build"
-            }
-        },
-        {
-            "label": "Configure Tests",
-            "type": "shell",
-            "command": "cmake",
-            "args": ["..", "-DCMAKE_BUILD_TYPE=Debug"],
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "silent",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            },
-            "options": {
-                "cwd": "${workspaceFolder}/test/build"
-            }
-        },
-        {
-            "label": "Clean Test Build",
-            "type": "shell",
-            "windows": {
-                "command": "cmd",
-                "args": ["/c", "if exist build rmdir /s /q build && mkdir build"]
-            },
-            "linux": {
-                "command": "bash",
-                "args": ["-c", "rm -rf build && mkdir -p build"]
-            },
-            "osx": {
-                "command": "bash", 
-                "args": ["-c", "rm -rf build && mkdir -p build"]
-            },
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "silent",
-                "focus": false,
-                "panel": "shared"
-            },
-            "options": {
-                "cwd": "${workspaceFolder}/test"
-            }
-        },
         {
             "type": "shell",
             "label": "CubeProg: Flash project (SWD)",
@@ -303,9 +18,10 @@
                 "port=swd",
                 "--download",
                 "${command:cmake.launchTargetPath}",
-                "-hardRst",
-                "-rst",
-                "--start"
+                // Let CMake extension decide executable: "${command:cmake.launchTargetPath}",
+                "-hardRst", // Hardware reset - if rst pin is connected
+                "-rst", // Software reset (backup)
+                "--start" // Start execution
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
@@ -317,10 +33,10 @@
             "dependsOrder": "sequence",
             "dependsOn": [
                 "CMake: clean rebuild",
-                "CubeProg: Flash project (SWD)"
+                "CubeProg: Flash project (SWD)",
             ]
         },
-        {
+                {
             "type": "cmake",
             "label": "CMake: clean rebuild",
             "command": "cleanRebuild",
