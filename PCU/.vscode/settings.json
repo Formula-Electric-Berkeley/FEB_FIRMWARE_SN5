@@ -5,5 +5,8 @@
     ],
     "cmake.preferredGenerators": [
         "Ninja"
-    ]
+    ],
+    "files.associations": {
+        "feb_pinout.h": "c"
+    }
 }
