@@ -1,6 +1,7 @@
 #include "FEB_IO.h"
 #include "FEB_CAN.h"
 #include "ui.h"
+#include "FEB_i2c_protected.h"
 
 /* ------------------- External handles ------------------- */
 extern I2C_HandleTypeDef hi2c1;
@@ -40,7 +41,7 @@ bool is_r2d(void)     { return r2d == 1; }
 /* ------------------- Initialization ------------------- */
 void FEB_IO_Init(void) {
     uint8_t init_val = 0xF;
-    HAL_I2C_Master_Transmit(&hi2c1, IOEXP_ADDR << 1, &init_val, 1, HAL_MAX_DELAY);
+    FEB_I2C_Master_Transmit(&hi2c1, IOEXP_ADDR << 1, &init_val, 1, HAL_MAX_DELAY);
     bms_state = FEB_CAN_BMS_Get_State();
 }
 
@@ -93,7 +94,7 @@ void FEB_IO_HandleIMD(void)
 void FEB_IO_HandleRTDButton(void)
 {
     uint8_t received_data = 0x00;
-    HAL_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, &received_data, 1, HAL_MAX_DELAY);
+    FEB_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, &received_data, 1, HAL_MAX_DELAY);
 
     uint8_t brake_pressure = FEB_CAN_APPS_Get_Brake_Pos();
     uint8_t inv_enabled = FEB_CAN_APPS_Get_Enabled();
@@ -155,7 +156,7 @@ void FEB_IO_HandleRTDButton(void)
 void FEB_IO_HandleDataLoggerButton(void)
 {
     uint8_t received_data = 0x00;
-    HAL_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, &received_data, 1, HAL_MAX_DELAY);
+    FEB_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, &received_data, 1, HAL_MAX_DELAY);
 
     if (received_data & (1 << 2)) {
         if ((HAL_GetTick() - datalog_press_start_time) >= BTN_HOLD_TIME) {
@@ -183,7 +184,7 @@ void FEB_IO_HandleDataLoggerButton(void)
 void FEB_IO_HandleSwitch_CoolantPump(void)
 {
     uint8_t received_data = 0x00;
-    HAL_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, &received_data, 1, HAL_MAX_DELAY);
+    FEB_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, &received_data, 1, HAL_MAX_DELAY);
 
     if (received_data & (1 << 5)) {
         IO_state = set_n_bit(IO_state, 5, 1);
@@ -198,7 +199,7 @@ void FEB_IO_HandleSwitch_CoolantPump(void)
 void FEB_IO_HandleSwitch_RadiatorFan(void)
 {
     uint8_t received_data = 0x00;
-    HAL_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, &received_data, 1, HAL_MAX_DELAY);
+    FEB_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, &received_data, 1, HAL_MAX_DELAY);
 
     if (received_data & (1 << 6)) {
         IO_state = set_n_bit(IO_state, 6, 1);
@@ -213,7 +214,7 @@ void FEB_IO_HandleSwitch_RadiatorFan(void)
 void FEB_IO_HandleSwitch_AccumulatorFan(void)
 {
     uint8_t received_data = 0x00;
-    HAL_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, &received_data, 1, HAL_MAX_DELAY);
+    FEB_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, &received_data, 1, HAL_MAX_DELAY);
 
     if (received_data & (1 << 7)) {
         IO_state = set_n_bit(IO_state, 7, 1);
@@ -262,7 +263,7 @@ void FEB_IO_HandleBuzzer(void)
     }
 
     uint8_t transmit_rtd = (0b1111111 << 1) + set_rtd_buzzer;
-    HAL_I2C_Master_Transmit(&hi2c1, IOEXP_ADDR << 1, &transmit_rtd, 1, HAL_MAX_DELAY);
+    FEB_I2C_Master_Transmit(&hi2c1, IOEXP_ADDR << 1, &transmit_rtd, 1, HAL_MAX_DELAY);
 
     FEB_CAN_ICS_Transmit_Button_State(IO_state);
 }

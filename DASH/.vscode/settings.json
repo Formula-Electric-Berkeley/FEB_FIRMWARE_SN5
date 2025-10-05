@@ -1,6 +1,7 @@
 {
     "files.associations": {
-        "stm32f4xx_hal.h": "c"
+        "stm32f4xx_hal.h": "c",
+        "freertos.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

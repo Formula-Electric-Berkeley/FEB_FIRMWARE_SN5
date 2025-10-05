@@ -82,6 +82,11 @@ const osThreadAttr_t displayTask_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityHigh,
 };
+/* Definitions for FEB_I2C_Mutex */
+osMutexId_t FEB_I2C_MutexHandle;
+const osMutexAttr_t FEB_I2C_Mutex_attributes = {
+  .name = "FEB_I2C_Mutex"
+};
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -169,6 +174,9 @@ int main(void)
 
   /* Init scheduler */
   osKernelInitialize();
+  /* Create the mutex(es) */
+  /* creation of FEB_I2C_Mutex */
+  FEB_I2C_MutexHandle = osMutexNew(&FEB_I2C_Mutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
