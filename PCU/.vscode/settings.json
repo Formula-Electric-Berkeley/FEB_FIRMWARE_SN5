@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "feb_pinout.h": "c",
+        "stm32f4xx_hal.h": "c",
+        "feb_printf_redirect.h": "c",
+        "feb_adc.h": "c",
+        "feb_can_tx.h": "c"
+    }
+}
