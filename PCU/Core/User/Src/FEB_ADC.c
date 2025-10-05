@@ -524,26 +524,6 @@ ADC_StatusTypeDef FEB_ADC_GetBSPDData(BSPD_DataTypeDef* bspd_data) {
     return ADC_STATUS_OK;
 }
 
-ADC_StatusTypeDef FEB_ADC_GetPowerData(Power_DataTypeDef* power_data) {
-    if (!power_data) return ADC_STATUS_ERROR;
-    
-    /* Get current sensor reading */
-    float current_voltage_mv = FEB_ADC_GetCurrentSenseVoltage() * 1000.0f;
-    
-    /* Bidirectional current sensor - zero at 2.5V */
-    float current_offset_mv = current_voltage_mv - CURRENT_SENSOR_ZERO_MV;
-    power_data->current_amps = current_offset_mv / CURRENT_SENSOR_SENSITIVITY_MV_A;
-    
-    /* Get shutdown circuit voltage (compensate for voltage divider) */
-    power_data->shutdown_voltage = FEB_ADC_GetShutdownInVoltage() * SHUTDOWN_VOLTAGE_DIVIDER_RATIO;
-    
-    /* Get pre-timing trip status */
-    float pre_timing_voltage = FEB_ADC_GetPreTimingTripVoltage();
-    power_data->pre_timing_trip = (pre_timing_voltage > 2.5f);
-    
-    return ADC_STATUS_OK;
-}
-
 float FEB_ADC_GetBrakePressureBar(uint8_t sensor_num) {
     float voltage_mv;
     ADC_CalibrationTypeDef* cal;
@@ -564,12 +544,6 @@ float FEB_ADC_GetBrakePressureBar(uint8_t sensor_num) {
                            cal->max_voltage,
                            cal->min_physical,
                            cal->max_physical);
-}
-
-float FEB_ADC_GetCurrentAmps(void) {
-    float current_voltage_mv = FEB_ADC_GetCurrentSenseVoltage() * 1000.0f;
-    float current_offset_mv = current_voltage_mv - CURRENT_SENSOR_ZERO_MV;
-    return current_offset_mv / CURRENT_SENSOR_SENSITIVITY_MV_A;
 }
 
 float FEB_ADC_GetShutdownVoltage(void) {
@@ -711,18 +685,6 @@ ADC_StatusTypeDef FEB_ADC_SetCalibration(ADC_ChannelConfigTypeDef* config,
     return ADC_STATUS_OK;
 }
 
-ADC_StatusTypeDef FEB_ADC_LoadCalibration(void) {
-    /* Placeholder for loading calibration from EEPROM/Flash */
-    /* Would read calibration data from persistent storage */
-    return ADC_STATUS_OK;
-}
-
-ADC_StatusTypeDef FEB_ADC_SaveCalibration(void) {
-    /* Placeholder for saving calibration to EEPROM/Flash */
-    /* Would write calibration data to persistent storage */
-    return ADC_STATUS_OK;
-}
-
 /* Safety and Plausibility Checks --------------------------------------------*/
 
 bool FEB_ADC_CheckAPPSPlausibility(void) {
@@ -851,34 +813,6 @@ ADC_StatusTypeDef FEB_ADC_ConfigureFilter(ADC_ChannelConfigTypeDef* config,
     return ADC_STATUS_OK;
 }
 
-float FEB_ADC_MedianFilter(float* values, uint8_t count) {
-    if (!values || count == 0) return 0.0f;
-    if (count == 1) return values[0];
-    
-    /* Simple bubble sort for small arrays */
-    float sorted[16];  /* Max supported size */
-    if (count > 16) count = 16;
-    
-    memcpy(sorted, values, count * sizeof(float));
-    
-    for (uint8_t i = 0; i < count - 1; i++) {
-        for (uint8_t j = 0; j < count - i - 1; j++) {
-            if (sorted[j] > sorted[j + 1]) {
-                float temp = sorted[j];
-                sorted[j] = sorted[j + 1];
-                sorted[j + 1] = temp;
-            }
-        }
-    }
-    
-    /* Return median value */
-    if (count % 2 == 0) {
-        return (sorted[count/2 - 1] + sorted[count/2]) / 2.0f;
-    } else {
-        return sorted[count/2];
-    }
-}
-
 float FEB_ADC_LowPassFilter(float new_value, float old_value, float alpha) {
     if (alpha < 0.0f) alpha = 0.0f;
     if (alpha > 1.0f) alpha = 1.0f;
@@ -893,50 +827,21 @@ ADC_StatusTypeDef FEB_ADC_GetDiagnostics(char* buffer, size_t size) {
     
     APPS_DataTypeDef apps_data;
     Brake_DataTypeDef brake_data;
-    Power_DataTypeDef power_data;
     
     FEB_ADC_GetAPPSData(&apps_data);
     FEB_ADC_GetBrakeData(&brake_data);
-    FEB_ADC_GetPowerData(&power_data);
     
-    snprintf(buffer, size,
+    printf(buffer, size,
              "ADC Diagnostics:\n"
              "APPS1: %.1f%% | APPS2: %.1f%% | Plausible: %s\n"
              "Brake P1: %.1f bar | P2: %.1f bar | Pressed: %s\n"
-             "Current: %.1f A | Shutdown: %.1f V\n"
+             "Shutdown: %.1f V\n"
              "Active Faults: 0x%08lX | Errors: %lu\n",
              apps_data.position1, apps_data.position2, 
              apps_data.plausible ? "Yes" : "No",
              brake_data.pressure1_bar, brake_data.pressure2_bar,
              brake_data.brake_pressed ? "Yes" : "No",
-             power_data.current_amps, power_data.shutdown_voltage,
              active_faults, adc_runtime.error_count);
-    
-    return ADC_STATUS_OK;
-}
-
-ADC_StatusTypeDef FEB_ADC_SelfTest(void) {
-    /* Perform self-test by reading all channels */
-    uint16_t test_values[10];
-    
-    test_values[0] = FEB_ADC_GetBrakeInputRaw();
-    test_values[1] = FEB_ADC_GetBrakePressure1Raw();
-    test_values[2] = FEB_ADC_GetBrakePressure2Raw();
-    test_values[3] = FEB_ADC_GetAccelPedal1Raw();
-    test_values[4] = FEB_ADC_GetAccelPedal2Raw();
-    test_values[5] = FEB_ADC_GetCurrentSenseRaw();
-    test_values[6] = FEB_ADC_GetShutdownInRaw();
-    test_values[7] = FEB_ADC_GetPreTimingTripRaw();
-    test_values[8] = FEB_ADC_GetBSPDIndicatorRaw();
-    test_values[9] = FEB_ADC_GetBSPDResetRaw();
-    
-    /* Check if all values are within valid ADC range */
-    for (int i = 0; i < 10; i++) {
-        if (test_values[i] < ADC_WATCHDOG_LOW_THRESHOLD || 
-            test_values[i] > ADC_WATCHDOG_HIGH_THRESHOLD) {
-            return ADC_STATUS_OUT_OF_RANGE;
-        }
-    }
     
     return ADC_STATUS_OK;
 }

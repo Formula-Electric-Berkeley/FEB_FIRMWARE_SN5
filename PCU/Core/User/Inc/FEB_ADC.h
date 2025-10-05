@@ -125,15 +125,6 @@ typedef struct {
     uint32_t fault_time;             /* Time of fault detection */
 } BSPD_DataTypeDef;
 
-/**
- * @brief Power System Data
- */
-typedef struct {
-    float    current_amps;           /* Measured current in amps */
-    float    shutdown_voltage;       /* Shutdown circuit voltage */
-    bool     pre_timing_trip;        /* Pre-timing trip status */
-} Power_DataTypeDef;
-
 /* ========================================================================== */
 /*                      INITIALIZATION FUNCTIONS                              */
 /* ========================================================================== */
@@ -267,13 +258,6 @@ ADC_StatusTypeDef FEB_ADC_GetBrakeData(Brake_DataTypeDef* brake_data);
  * @retval ADC_StatusTypeDef: Operation status
  */
 ADC_StatusTypeDef FEB_ADC_GetBSPDData(BSPD_DataTypeDef* bspd_data);
-
-/**
- * @brief  Get power system measurements
- * @param  power_data: Pointer to power data structure
- * @retval ADC_StatusTypeDef: Operation status
- */
-ADC_StatusTypeDef FEB_ADC_GetPowerData(Power_DataTypeDef* power_data);
 
 /**
  * @brief  Get brake pressure in bar
