@@ -242,8 +242,8 @@ FEB_CAN_Status_t FEB_CAN_TX_Transmit(FEB_CAN_Instance_t instance, uint32_t can_i
     return FEB_CAN_OK;
 }
 
-FEB_CAN_Status_t FEB_CAN_TX_TransmitDefault(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type, const uint8_t *data, uint8_t length) {
-    return FEB_CAN_TX_Transmit(instance, can_id, id_type, data, length, FEB_CAN_TX_TIMEOUT_MS);
+FEB_CAN_Status_t FEB_CAN_TX_TransmitDefault(FEB_CAN_Instance_t instance, uint32_t can_id, const uint8_t *data, uint8_t length) {
+    return FEB_CAN_TX_Transmit(instance, can_id, FEB_CAN_ID_STD, data, length, FEB_CAN_TX_TIMEOUT_MS);
 }
 
 uint32_t FEB_CAN_TX_GetFreeMailboxes(FEB_CAN_Instance_t instance) {
