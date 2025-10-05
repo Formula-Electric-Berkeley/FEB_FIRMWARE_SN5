@@ -69,7 +69,7 @@ FEB_CAN_Status_t FEB_CAN_TX_Transmit(FEB_CAN_Instance_t instance, uint32_t can_i
  * @param length Length of data (0-8 bytes)
  * @return FEB_CAN_Status_t Operation status
  */
-FEB_CAN_Status_t FEB_CAN_TX_TransmitDefault(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type, const uint8_t *data, uint8_t length);
+FEB_CAN_Status_t FEB_CAN_TX_TransmitDefault(FEB_CAN_Instance_t instance, uint32_t can_id, const uint8_t *data, uint8_t length);
 
 /**
  * @brief Check if CAN TX mailboxes are available
