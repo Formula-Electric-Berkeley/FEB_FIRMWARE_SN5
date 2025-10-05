@@ -239,33 +239,18 @@ ADC_StatusTypeDef FEB_ADC_Stop(void) {
 uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef* hadc, uint32_t channel) {
     /* This function now reads from DMA buffer instead of polling */
     /* DMA continuously updates the buffers in the background */
-    
-    uint16_t value = 0;
-    uint32_t channel_idx = 0;
+
     uint16_t* buffer_ptr = NULL;
     
     /* Determine which buffer and index to read from based on ADC and channel */
     if (hadc == &hadc1) {
         buffer_ptr = adc1_dma_buffer;
-        if (channel == ADC_CHANNEL_0) channel_idx = ADC1_CH0_BRAKE_PRESSURE2_IDX;
-        else if (channel == ADC_CHANNEL_1) channel_idx = ADC1_CH1_BRAKE_PRESSURE1_IDX;
-        else if (channel == ADC_CHANNEL_14) channel_idx = ADC1_CH14_BRAKE_INPUT_IDX;
-        else return 0;
     }
     else if (hadc == &hadc2) {
         buffer_ptr = adc2_dma_buffer;
-        if (channel == ADC_CHANNEL_4) channel_idx = ADC2_CH4_CURRENT_SENSE_IDX;
-        else if (channel == ADC_CHANNEL_6) channel_idx = ADC2_CH6_SHUTDOWN_IN_IDX;
-        else if (channel == ADC_CHANNEL_7) channel_idx = ADC2_CH7_PRE_TIMING_IDX;
-        else return 0;
     }
     else if (hadc == &hadc3) {
         buffer_ptr = adc3_dma_buffer;
-        if (channel == ADC_CHANNEL_10) channel_idx = ADC3_CH10_BSPD_INDICATOR_IDX;
-        else if (channel == ADC_CHANNEL_11) channel_idx = ADC3_CH11_BSPD_RESET_IDX;
-        else if (channel == ADC_CHANNEL_12) channel_idx = ADC3_CH12_ACC_PEDAL2_IDX;
-        else if (channel == ADC_CHANNEL_13) channel_idx = ADC3_CH13_ACC_PEDAL1_IDX;
-        else return 0;
     }
     else {
         return 0;
@@ -273,7 +258,7 @@ uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef* hadc, uint32_t channel) {
     
     /* Read the latest value from DMA buffer */
     /* The buffer is organized as: [ch0_sample0, ch1_sample0, ch2_sample0, ch0_sample1, ...] */
-    value = buffer_ptr[channel_idx];
+    uint16_t value = buffer_ptr[channel];
     
     return value;
 }

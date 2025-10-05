@@ -24,7 +24,7 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
-#include "FEB_Pinout.h"
+#include "FEB_PINOUT.h"
 #include <stdbool.h>
 #include <stdint.h>
 
