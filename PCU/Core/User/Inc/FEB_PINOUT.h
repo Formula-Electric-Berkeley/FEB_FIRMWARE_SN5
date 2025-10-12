@@ -190,6 +190,8 @@ extern "C" {
 /* Digital Inputs */
 #define DRIVE_BUTTON_PIN                   GPIO_PIN_7
 #define DRIVE_BUTTON_PORT                  GPIOB
+#define BSPD_RESET_PIN                     GPIO_PIN_1
+#define BSPD_RESET_PORT                    GPIOC
 
 /* CAN Bus Pins */
 #define CAN1_RX_PIN                        GPIO_PIN_11

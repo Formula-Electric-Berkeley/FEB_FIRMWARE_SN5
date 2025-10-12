@@ -1,5 +1,10 @@
 {
     "files.associations": {
-        "FEB_ADBMS6830B.C": "cpp"
+        "FEB_ADBMS6830B.C": "cpp",
+        "feb_can_bms.h": "c",
+        "feb_can_rx.h": "c",
+        "locale": "c",
+        "feb_can_rms.h": "c",
+        "stm32f4xx_hal.h": "c"
     }
 }
