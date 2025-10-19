@@ -113,15 +113,17 @@ void MX_FREERTOS_Init(void) {
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
-  /* USER CODE BEGIN StartDefaultTask */
-  /* Infinite loop */
   for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartDefaultTask */
+{
+  ///HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin); //LED Pin test to check Rtos function///
+  osDelay(100);  // 100 ms = 10 Hz blink
 }
 
+  /* USER CODE BEGIN StartDefaultTask */
+  /* Infinite loop */
+
+  /* USER CODE END StartDefaultTask */
+}
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 
