@@ -380,13 +380,16 @@ void StartDisplayTask(void *argument)
 
     for (;;)
     {
+        HAL_GPIO_TogglePin(LED4_GPIO_Port, LED4_Pin);
         /* Update counter display */
         sprintf(buffer, "Count: %lu", counter++);
-        LCD_FillRectangle(10, 200, 150, 20, LCD_COLOR_BLACK);
+        LCD_FillRectangle(10, 200, 150, 20, LCD_COLOR_RED);
         LCD_DrawString(10, 200, buffer, LCD_COLOR_WHITE, LCD_COLOR_BLACK, 1);
 
         osDelay(1000);
     }
+
+
 }
 
 void DrawSquareUI(void *argument)
