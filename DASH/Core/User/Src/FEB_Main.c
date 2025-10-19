@@ -14,15 +14,13 @@ uint8_t buf_len; //stolen from Main_Setup (SN2)
 
 // **************************************** Functions ****************************************
 
-static void FEB_Variable_Init(void) {
+// static void FEB_Variable_Init(void) {
+    
+// }
 
-	
-}
-
-void FEB_Main_Setup(void) {
-    LCD_Init();
-	
-}
+// void FEB_Main_Setup(void) {
+    
+// }
 
 void FEB_Main_Loop(void) {
 

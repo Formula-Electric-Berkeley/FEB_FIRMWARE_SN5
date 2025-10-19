@@ -46,6 +46,7 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources 
     Core/User/Src/FEB_UI.c
+    Core/User/Src/FEB_Main.c
 )
 
 # Add include paths

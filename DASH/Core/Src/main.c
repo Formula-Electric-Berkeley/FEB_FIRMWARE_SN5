@@ -170,7 +170,7 @@ int main(void)
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
-  FEB_Main_Setup();
+  // FEB_Main_Setup();
 
   /* USER CODE END 2 */
 
