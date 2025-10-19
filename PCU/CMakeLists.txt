@@ -50,6 +50,10 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/User/Src/FEB_CAN_RX.c
     Core/User/Src/FEB_CAN_TX.c
     Core/User/Src/FEB_Printf_Redirect.c
+    Core/User/Src/FEB_BSPD.c
+    Core/User/Src/FEB_CAN_BMS.c
+    Core/User/Src/FEB_CAN_RMS.c
+    Core/User/Src/FEB_RMS.c
 )
 
 # Add include paths

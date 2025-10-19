@@ -6,13 +6,33 @@ void FEB_CAN_RMS_Init(void) {
 
 	RMS_MESSAGE.HV_Bus_Voltage = 0;
 	RMS_MESSAGE.Motor_Speed = 0;
+
+	for(int i = 0; i < 10; i++){
+		FEB_CAN_RMS_Transmit_ParamSafety();
+		HAL_Delay(10);
+	}
+
+	for(int i = 0; i < 10; i++){
+		FEB_CAN_RMS_Transmit_Disable_Undervolt();
+		HAL_Delay(10);
+	}
+
+
+	// send disable command to remove lockout
+	for (int i = 0; i < 10; i++) {
+		FEB_CAN_RMS_Transmit_CommDisable();
+		HAL_Delay(10);
+	}
+
+	// Select CAN msg to broadcast
+	FEB_CAN_RMS_Transmit_ParamBroadcast();
 }
 
 void FEB_CAN_RMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type, const uint8_t *data, uint8_t length) {
 	if (can_id == FEB_CAN_ID_RMS_VOLTAGE) {
 		memcpy(&(RMS_MESSAGE.HV_Bus_Voltage), data, 2);
 	} else if (can_id == FEB_CAN_ID_RMS_MOTOR) {
-		memcpy(&(RMS_MESSAGE.Motor_Speed), RxData+2, 2);
+		memcpy(&(RMS_MESSAGE.Motor_Speed), data+2, 2);
 	}
 }
 

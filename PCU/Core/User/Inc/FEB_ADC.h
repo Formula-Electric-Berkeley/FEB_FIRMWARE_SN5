@@ -96,7 +96,7 @@ typedef struct {
 typedef struct {
     float    position1;              /* APPS1 position (0-100%) */
     float    position2;              /* APPS2 position (0-100%) */
-    float    average;                /* Average position */
+    float    acceleration;                /* Average position */
     bool     plausible;              /* Plausibility check status */
     uint32_t implausibility_time;    /* Time of implausibility detection */
     bool     short_circuit;          /* Short circuit detected */

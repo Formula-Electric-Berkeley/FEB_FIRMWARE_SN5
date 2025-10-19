@@ -401,7 +401,7 @@ ADC_StatusTypeDef FEB_ADC_GetAPPSData(APPS_DataTypeDef* apps_data) {
     if (apps_data->short_circuit || apps_data->open_circuit) {
         apps_data->position1 = 0.0f;
         apps_data->position2 = 0.0f;
-        apps_data->average = 0.0f;
+        apps_data->acceleration = 0.0f;
         apps_data->plausible = false;
         return ADC_STATUS_OUT_OF_RANGE;
     }
@@ -425,11 +425,13 @@ ADC_StatusTypeDef FEB_ADC_GetAPPSData(APPS_DataTypeDef* apps_data) {
     apps_data->position2 = FEB_ADC_ApplyDeadzone(apps_data->position2, APPS_DEADZONE_PERCENT);
     
     /* Calculate average */
-    apps_data->average = (apps_data->position1 + apps_data->position2) / 2.0f;
+    apps_data->acceleration = (apps_data->position1 + apps_data->position2) / 2.0f;
     
     /* Check plausibility */
     float deviation = fabs(apps_data->position1 - apps_data->position2);
-    apps_data->plausible = (deviation <= APPS_PLAUSIBILITY_TOLERANCE);
+    if (deviation >= APPS_PLAUSIBILITY_TOLERANCE) {
+        apps_data->plausible = false;
+    }
     
     if (!apps_data->plausible) {
         if (apps_data->implausibility_time == 0) {
@@ -475,7 +477,10 @@ ADC_StatusTypeDef FEB_ADC_GetBrakeData(Brake_DataTypeDef* brake_data) {
     
     /* Check plausibility between pressure sensors */
     float pressure_diff = fabs(brake_data->pressure1_bar - brake_data->pressure2_bar);
-    brake_data->plausible = (pressure_diff < (BRAKE_PRESSURE_MAX_PHYSICAL_BAR * 0.2f));  /* 20% tolerance */
+    
+    if (pressure_diff > (BRAKE_PRESSURE_MAX_PHYSICAL_BAR * 0.2f)) {
+        brake_data->plausible = false;
+    }  /* 20% tolerance */
     
     /* Check BOTS */
     brake_data->bots_active = (brake_data->brake_position > BOTS_ACTIVATION_PERCENT);
@@ -714,7 +719,7 @@ bool FEB_ADC_CheckBrakePlausibility(void) {
     /* FSAE rule: If brake is pressed hard and throttle > 25%, cut throttle */
     bool brake_hard = (brake_data.pressure1_bar > BRAKE_PRESSURE_THRESHOLD_BAR) ||
                       (brake_data.pressure2_bar > BRAKE_PRESSURE_THRESHOLD_BAR);
-    bool throttle_high = (apps_data.average > 25.0f);
+    bool throttle_high = (apps_data.acceleration > 25.0f);
     
     if (brake_hard && throttle_high) {
         UpdateFaultTimer(&adc_runtime.brake_plausibility_timer, true, BRAKE_PLAUSIBILITY_TIME_MS);
