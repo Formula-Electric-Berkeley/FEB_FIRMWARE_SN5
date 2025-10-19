@@ -79,7 +79,7 @@ void LCD_Init(LTDC_HandleTypeDef *hltdc)
 {
     /* Configure LTDC Layer 1 */
     LTDC_LayerCfgTypeDef pLayerCfg = {0};
-    
+
     pLayerCfg.WindowX0 = 0;
     pLayerCfg.WindowX1 = LCD_WIDTH;
     pLayerCfg.WindowY0 = 0;
@@ -95,9 +95,9 @@ void LCD_Init(LTDC_HandleTypeDef *hltdc)
     pLayerCfg.Backcolor.Blue = 0;
     pLayerCfg.Backcolor.Green = 0;
     pLayerCfg.Backcolor.Red = 0;
-    
+
     HAL_LTDC_ConfigLayer(hltdc, &pLayerCfg, 0);
-    
+
     /* Clear display */
     LCD_Clear(LCD_COLOR_BLACK);
 }
@@ -106,7 +106,8 @@ void LCD_Init(LTDC_HandleTypeDef *hltdc)
 void LCD_Clear(uint16_t color)
 {
     uint32_t i;
-    for (i = 0; i < (LCD_WIDTH * LCD_HEIGHT); i++) {
+    for (i = 0; i < (LCD_WIDTH * LCD_HEIGHT); i++)
+    {
         frameBuffer[i] = color;
     }
 }
@@ -114,7 +115,8 @@ void LCD_Clear(uint16_t color)
 /* Draw a single pixel */
 void LCD_DrawPixel(uint16_t x, uint16_t y, uint16_t color)
 {
-    if (x >= LCD_WIDTH || y >= LCD_HEIGHT) {
+    if (x >= LCD_WIDTH || y >= LCD_HEIGHT)
+    {
         return;
     }
     frameBuffer[y * LCD_WIDTH + x] = color;
@@ -128,18 +130,22 @@ void LCD_DrawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t c
     int16_t sx = (x1 < x2) ? 1 : -1;
     int16_t sy = (y1 < y2) ? 1 : -1;
     int16_t err = dx - dy;
-    
-    while (1) {
+
+    while (1)
+    {
         LCD_DrawPixel(x1, y1, color);
-        
-        if (x1 == x2 && y1 == y2) break;
-        
+
+        if (x1 == x2 && y1 == y2)
+            break;
+
         int16_t e2 = 2 * err;
-        if (e2 > -dy) {
+        if (e2 > -dy)
+        {
             err -= dy;
             x1 += sx;
         }
-        if (e2 < dx) {
+        if (e2 < dx)
+        {
             err += dx;
             y1 += sy;
         }
@@ -159,8 +165,10 @@ void LCD_DrawRectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, 
 void LCD_FillRectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t color)
 {
     uint16_t i, j;
-    for (i = 0; i < height; i++) {
-        for (j = 0; j < width; j++) {
+    for (i = 0; i < height; i++)
+    {
+        for (j = 0; j < width; j++)
+        {
             LCD_DrawPixel(x + j, y + i, color);
         }
     }
@@ -172,8 +180,9 @@ void LCD_DrawCircle(uint16_t x0, uint16_t y0, uint16_t radius, uint16_t color)
     int16_t x = radius;
     int16_t y = 0;
     int16_t err = 0;
-    
-    while (x >= y) {
+
+    while (x >= y)
+    {
         LCD_DrawPixel(x0 + x, y0 + y, color);
         LCD_DrawPixel(x0 + y, y0 + x, color);
         LCD_DrawPixel(x0 - y, y0 + x, color);
@@ -182,12 +191,14 @@ void LCD_DrawCircle(uint16_t x0, uint16_t y0, uint16_t radius, uint16_t color)
         LCD_DrawPixel(x0 - y, y0 - x, color);
         LCD_DrawPixel(x0 + y, y0 - x, color);
         LCD_DrawPixel(x0 + x, y0 - y, color);
-        
-        if (err <= 0) {
+
+        if (err <= 0)
+        {
             y += 1;
             err += 2 * y + 1;
         }
-        if (err > 0) {
+        if (err > 0)
+        {
             x -= 1;
             err -= 2 * x + 1;
         }
@@ -200,18 +211,21 @@ void LCD_FillCircle(uint16_t x0, uint16_t y0, uint16_t radius, uint16_t color)
     int16_t x = radius;
     int16_t y = 0;
     int16_t err = 0;
-    
-    while (x >= y) {
+
+    while (x >= y)
+    {
         LCD_DrawLine(x0 - x, y0 + y, x0 + x, y0 + y, color);
         LCD_DrawLine(x0 - y, y0 + x, x0 + y, y0 + x, color);
         LCD_DrawLine(x0 - x, y0 - y, x0 + x, y0 - y, color);
         LCD_DrawLine(x0 - y, y0 - x, x0 + y, y0 - x, color);
-        
-        if (err <= 0) {
+
+        if (err <= 0)
+        {
             y += 1;
             err += 2 * y + 1;
         }
-        if (err > 0) {
+        if (err > 0)
+        {
             x -= 1;
             err -= 2 * x + 1;
         }
@@ -223,24 +237,36 @@ void LCD_DrawChar(uint16_t x, uint16_t y, char ch, uint16_t color, uint16_t bg_c
 {
     uint8_t i, j, line;
     uint16_t x0 = x, y0 = y;
-    
-    if (ch < 32 || ch > 126) {
+
+    if (ch < 32 || ch > 126)
+    {
         ch = '?';
     }
-    
-    for (i = 0; i < 5; i++) {
+
+    for (i = 0; i < 5; i++)
+    {
         line = font5x7[ch - 32][i];
-        for (j = 0; j < 7; j++) {
-            if (line & 0x01) {
-                if (font_size == 1) {
+        for (j = 0; j < 7; j++)
+        {
+            if (line & 0x01)
+            {
+                if (font_size == 1)
+                {
                     LCD_DrawPixel(x0, y0, color);
-                } else {
+                }
+                else
+                {
                     LCD_FillRectangle(x0, y0, font_size, font_size, color);
                 }
-            } else if (bg_color != LCD_COLOR_BLACK) {
-                if (font_size == 1) {
+            }
+            else if (bg_color != LCD_COLOR_BLACK)
+            {
+                if (font_size == 1)
+                {
                     LCD_DrawPixel(x0, y0, bg_color);
-                } else {
+                }
+                else
+                {
                     LCD_FillRectangle(x0, y0, font_size, font_size, bg_color);
                 }
             }
@@ -256,11 +282,15 @@ void LCD_DrawChar(uint16_t x, uint16_t y, char ch, uint16_t color, uint16_t bg_c
 void LCD_DrawString(uint16_t x, uint16_t y, const char *str, uint16_t color, uint16_t bg_color, uint8_t font_size)
 {
     uint16_t x0 = x;
-    while (*str) {
-        if (*str == '\n') {
+    while (*str)
+    {
+        if (*str == '\n')
+        {
             y += 7 * font_size + 2;
             x0 = x;
-        } else {
+        }
+        else
+        {
             LCD_DrawChar(x0, y, *str, color, bg_color, font_size);
             x0 += 6 * font_size;
         }
@@ -273,9 +303,11 @@ void LCD_DrawBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, con
 {
     uint16_t i, j;
     uint32_t index = 0;
-    
-    for (i = 0; i < height; i++) {
-        for (j = 0; j < width; j++) {
+
+    for (i = 0; i < height; i++)
+    {
+        for (j = 0; j < width; j++)
+        {
             LCD_DrawPixel(x + j, y + i, bitmap[index++]);
         }
     }
@@ -285,25 +317,29 @@ void LCD_DrawBitmap(uint16_t x, uint16_t y, uint16_t width, uint16_t height, con
 void LCD_ScrollVertical(int16_t pixels)
 {
     uint16_t *tempBuffer = (uint16_t *)malloc(LCD_WIDTH * abs(pixels) * sizeof(uint16_t));
-    if (tempBuffer == NULL) return;
-    
-    if (pixels > 0) {
+    if (tempBuffer == NULL)
+        return;
+
+    if (pixels > 0)
+    {
         /* Scroll up */
         memcpy(tempBuffer, frameBuffer, LCD_WIDTH * pixels * sizeof(uint16_t));
-        memmove(frameBuffer, &frameBuffer[LCD_WIDTH * pixels], 
+        memmove(frameBuffer, &frameBuffer[LCD_WIDTH * pixels],
                 LCD_WIDTH * (LCD_HEIGHT - pixels) * sizeof(uint16_t));
-        memcpy(&frameBuffer[LCD_WIDTH * (LCD_HEIGHT - pixels)], tempBuffer, 
+        memcpy(&frameBuffer[LCD_WIDTH * (LCD_HEIGHT - pixels)], tempBuffer,
                LCD_WIDTH * pixels * sizeof(uint16_t));
-    } else if (pixels < 0) {
+    }
+    else if (pixels < 0)
+    {
         /* Scroll down */
         pixels = -pixels;
-        memcpy(tempBuffer, &frameBuffer[LCD_WIDTH * (LCD_HEIGHT - pixels)], 
+        memcpy(tempBuffer, &frameBuffer[LCD_WIDTH * (LCD_HEIGHT - pixels)],
                LCD_WIDTH * pixels * sizeof(uint16_t));
-        memmove(&frameBuffer[LCD_WIDTH * pixels], frameBuffer, 
+        memmove(&frameBuffer[LCD_WIDTH * pixels], frameBuffer,
                 LCD_WIDTH * (LCD_HEIGHT - pixels) * sizeof(uint16_t));
         memcpy(frameBuffer, tempBuffer, LCD_WIDTH * pixels * sizeof(uint16_t));
     }
-    
+
     free(tempBuffer);
 }
 
@@ -324,31 +360,31 @@ void StartDisplayTask(void *argument)
 {
     /* Initialize LCD */
     LCD_Init(&hltdc);
-    
+
     /* Example: Draw welcome screen */
     LCD_Clear(LCD_COLOR_BLACK);
     LCD_DrawString(10, 10, "STM32 LCD Demo", LCD_COLOR_WHITE, LCD_COLOR_BLACK, 2);
     LCD_DrawRectangle(5, 5, LCD_WIDTH - 10, 40, LCD_COLOR_GREEN);
-    
+
     /* Draw some shapes */
     LCD_FillRectangle(20, 60, 60, 40, LCD_COLOR_RED);
     LCD_DrawCircle(120, 80, 30, LCD_COLOR_BLUE);
     LCD_FillCircle(200, 80, 20, LCD_COLOR_YELLOW);
-    
+
     /* Draw lines */
     LCD_DrawLine(10, 120, 230, 120, LCD_COLOR_CYAN);
     LCD_DrawLine(10, 130, 230, 150, LCD_COLOR_MAGENTA);
-    
+
     uint32_t counter = 0;
     char buffer[32];
-    
+
     for (;;)
     {
         /* Update counter display */
         sprintf(buffer, "Count: %lu", counter++);
         LCD_FillRectangle(10, 200, 150, 20, LCD_COLOR_BLACK);
         LCD_DrawString(10, 200, buffer, LCD_COLOR_WHITE, LCD_COLOR_BLACK, 1);
-        
+
         osDelay(1000);
     }
 }
@@ -357,30 +393,32 @@ void DrawSquareUI(void *argument)
 {
     /* Example: Draw a dashboard-style UI */
     LCD_Clear(LCD_COLOR_BLACK);
-    
+
     /* Draw grid of squares */
     uint16_t squareSize = 50;
     uint16_t spacing = 10;
     uint16_t startX = 20;
     uint16_t startY = 20;
-    
-    for (int row = 0; row < 3; row++) {
-        for (int col = 0; col < 4; col++) {
+
+    for (int row = 0; row < 3; row++)
+    {
+        for (int col = 0; col < 4; col++)
+        {
             uint16_t x = startX + col * (squareSize + spacing);
             uint16_t y = startY + row * (squareSize + spacing);
-            
+
             /* Draw square with different colors */
             uint16_t colors[] = {LCD_COLOR_RED, LCD_COLOR_GREEN, LCD_COLOR_BLUE, LCD_COLOR_YELLOW};
             LCD_FillRectangle(x, y, squareSize, squareSize, colors[(row * 4 + col) % 4]);
             LCD_DrawRectangle(x, y, squareSize, squareSize, LCD_COLOR_WHITE);
-            
+
             /* Add text labels */
             char label[16];
             sprintf(label, "S%d", row * 4 + col + 1);
             LCD_DrawString(x + 10, y + 20, label, LCD_COLOR_WHITE, colors[(row * 4 + col) % 4], 1);
         }
     }
-    
+
     /* Add title */
     LCD_DrawString(50, 200, "Dashboard UI", LCD_COLOR_WHITE, LCD_COLOR_BLACK, 2);
 }

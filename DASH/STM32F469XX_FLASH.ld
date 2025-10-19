@@ -58,6 +58,7 @@ MEMORY
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 320K
 CCMRAM (xrw)      : ORIGIN = 0x10000000, LENGTH = 64K
 FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 2048K
+SDRAM (rw)     : ORIGIN = 0xC0000000, LENGTH = 8M
 }
 
 /* Highest address of the user mode stack */
@@ -244,6 +245,16 @@ SECTIONS
 
   PROVIDE( __bss_start = __tbss_start );
   PROVIDE( __bss_size = __bss_end - __bss_start );
+
+  /* External SDRAM section */
+  .sdram (NOLOAD) :
+  {
+    . = ALIGN(4);
+    *(.sdram)
+    *(.sdram*)
+    . = ALIGN(4);
+  } >SDRAM
+
 
   /* User_heap_stack section, used to check that there is enough RAM left */
   ._user_heap_stack (NOLOAD) :
