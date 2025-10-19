@@ -323,34 +323,37 @@ void LCD_SetBacklight(uint8_t brightness)
 void StartDisplayTask(void *argument)
 {
     /* Initialize LCD */
-    LCD_Init(&hltdc);
+    // LCD_Init(&hltdc);
     
-    /* Example: Draw welcome screen */
-    LCD_Clear(LCD_COLOR_BLACK);
-    LCD_DrawString(10, 10, "STM32 LCD Demo", LCD_COLOR_WHITE, LCD_COLOR_BLACK, 2);
-    LCD_DrawRectangle(5, 5, LCD_WIDTH - 10, 40, LCD_COLOR_GREEN);
+    // /* Example: Draw welcome screen */
+    // LCD_Clear(LCD_COLOR_BLACK);
+    // LCD_DrawString(10, 10, "STM32 LCD Demo", LCD_COLOR_WHITE, LCD_COLOR_BLACK, 2);
+    // LCD_DrawRectangle(5, 5, LCD_WIDTH - 10, 40, LCD_COLOR_GREEN);
     
-    /* Draw some shapes */
-    LCD_FillRectangle(20, 60, 60, 40, LCD_COLOR_RED);
-    LCD_DrawCircle(120, 80, 30, LCD_COLOR_BLUE);
-    LCD_FillCircle(200, 80, 20, LCD_COLOR_YELLOW);
+    // /* Draw some shapes */
+    // LCD_FillRectangle(20, 60, 60, 40, LCD_COLOR_RED);
+    // LCD_DrawCircle(120, 80, 30, LCD_COLOR_BLUE);
+    // LCD_FillCircle(200, 80, 20, LCD_COLOR_YELLOW);
     
-    /* Draw lines */
-    LCD_DrawLine(10, 120, 230, 120, LCD_COLOR_CYAN);
-    LCD_DrawLine(10, 130, 230, 150, LCD_COLOR_MAGENTA);
+    // /* Draw lines */
+    // LCD_DrawLine(10, 120, 230, 120, LCD_COLOR_CYAN);
+    // LCD_DrawLine(10, 130, 230, 150, LCD_COLOR_MAGENTA);
     
-    uint32_t counter = 0;
-    char buffer[32];
+    // uint32_t counter = 0;
+    // char buffer[32];
     
-    for (;;)
-    {
-        /* Update counter display */
-        sprintf(buffer, "Count: %lu", counter++);
-        LCD_FillRectangle(10, 200, 150, 20, LCD_COLOR_BLACK);
-        LCD_DrawString(10, 200, buffer, LCD_COLOR_WHITE, LCD_COLOR_BLACK, 1);
+    // for (;;)
+    // {
+    //     /* Update counter display */
+    //     sprintf(buffer, "Count: %lu", counter++);
+    //     LCD_FillRectangle(10, 200, 150, 20, LCD_COLOR_BLACK);
+    //     LCD_DrawString(10, 200, buffer, LCD_COLOR_WHITE, LCD_COLOR_BLACK, 1);
         
-        osDelay(1000);
-    }
+    //     osDelay(1000);
+    // }
+
+    HAL_GPIO_TogglePin(LED4_GPIO_Port, LED4_Pin);
+    osDelay(1000);
 }
 
 void DrawSquareUI(void *argument)
