@@ -9,7 +9,8 @@
 extern LTDC_HandleTypeDef hltdc;
 
 /* Frame buffer - adjust size based on your display */
-static uint16_t frameBuffer[LCD_WIDTH * LCD_HEIGHT] __attribute__((section(".sdram")));
+// static uint16_t frameBuffer[LCD_WIDTH * LCD_HEIGHT] __attribute__((section(".sdram")));
+static uint16_t frameBuffer[LCD_WIDTH * LCD_HEIGHT];
 
 /* Basic 5x7 font data (ASCII 32-127) */
 static const uint8_t font5x7[][5] = {
