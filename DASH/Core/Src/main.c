@@ -23,7 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "FEB_UI.h"
+#include "FEB_Main.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -170,6 +170,8 @@ int main(void)
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
+  FEB_Main_Setup();
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -221,6 +223,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+    FEB_Main_Loop();
   }
   /* USER CODE END 3 */
 }
