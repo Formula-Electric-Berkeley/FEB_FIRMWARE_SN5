@@ -1,6 +1,5 @@
 #include "FEB_IO.h"
 #include "FEB_CAN.h"
-#include "ui.h"
 #include "FEB_i2c_protected.h"
 
 /* ------------------- External handles ------------------- */
