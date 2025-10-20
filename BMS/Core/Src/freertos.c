@@ -22,12 +22,14 @@
 #include "task.h"
 #include "main.h"
 #include "cmsis_os.h"
-
+#include "bms_tasks.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "bms_tasks.h"
 /* USER CODE END Includes */
-
+QueueHandle_t qCanRx;
+QueueHandle_t qCanTx;
+EventGroupHandle_t evBmsFlags;
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
@@ -87,7 +89,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+  qCanRx = xQueueCreate(64, sizeof(can_msg_t));
+  qCanTx = xQueueCreate(32, sizeof(can_msg_t));
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -95,11 +98,30 @@ void MX_FREERTOS_Init(void) {
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  osThreadAttr_t sensor_attr = {
+  .name = "SensorTask",
+  .stack_size = 512,
+  .priority = osPriorityAboveNormal
+};
+osThreadNew(SensorTask, NULL, &sensor_attr);
+
+osThreadAttr_t comm_attr = {
+  .name = "CommTask",
+  .stack_size = 512,
+  .priority = osPriorityNormal
+};
+osThreadNew(CommTask, NULL, &comm_attr);
+
+osThreadAttr_t prot_attr = {
+  .name = "ProtectionTask",
+  .stack_size = 512,
+  .priority = osPriorityHigh
+};
+osThreadNew(ProtectionTask, NULL, &prot_attr);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
-  /* add events, ... */
+  evBmsFlags = xEventGroupCreate();
   /* USER CODE END RTOS_EVENTS */
 
 }
