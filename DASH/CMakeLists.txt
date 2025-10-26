@@ -44,19 +44,37 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user sources 
+    # User code
     Core/User/Src/FEB_UI.c
+
+    # BSP Drivers for LCD and SDRAM
+    Drivers/BSP/STM32469I-Discovery/stm32469i_discovery.c
+    Drivers/BSP/STM32469I-Discovery/stm32469i_discovery_lcd.c
+    Drivers/BSP/STM32469I-Discovery/stm32469i_discovery_sdram.c
+
+    # Component Drivers
+    Drivers/BSP/Components/otm8009a/otm8009a.c
+
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined include paths
     Core/User/Inc
+
+    # BSP Drivers
+    Drivers/BSP/STM32469I-Discovery
+    Drivers/BSP/Components
+    Drivers/BSP/Components/otm8009a
+
+    # Fonts
+    Drivers/Utilities/Fonts
 )
 
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
+    USE_OTM8009A
+    DISABLE_NT35510
 )
 
 # Remove wrong libob.a library dependency when using cpp files

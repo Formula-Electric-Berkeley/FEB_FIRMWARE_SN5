@@ -23,6 +23,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "stm32469i_discovery.h"
+#include "stm32469i_discovery_lcd.h"
+#include "otm8009a.h"
+#include <stdio.h> 
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -168,6 +173,7 @@ int main(void)
   MX_USART6_UART_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -219,7 +225,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
- 
   }
   /* USER CODE END 3 */
 }

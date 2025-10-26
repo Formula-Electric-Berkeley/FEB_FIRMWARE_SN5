@@ -5,15 +5,31 @@
 extern "C" {
 #endif
 
+/* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
+#include "cmsis_os.h"
 #include "stm32469i_discovery.h"
 #include "stm32469i_discovery_lcd.h"
-#include "cmsis_os.h"
+#include "fonts.h"
+#include <stdio.h>
 #include <stdint.h>
 
-/* LCD framebuffer start address in SDRAM */
-#define LCD_FB_START_ADDRESS ((uint32_t)0xC0000000)
+/* Exported functions --------------------------------------------------------*/
 
-/* Public UI functions */
+/**
+ * @brief  Main display FreeRTOS task.
+ *         Initializes the LCD and renders the dashboard UI.
+ * @param  argument: FreeRTOS task argument (unused)
+ */
 void StartDisplayTask(void *argument);
-void DrawDashboardUI(voi
+
+/**
+ * @brief  Draws the static dashboard grid, boxes, and labels.
+ */
+void DrawDashboardUI(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __FEB_UI_H */
