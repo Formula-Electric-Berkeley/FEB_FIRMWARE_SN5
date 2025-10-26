@@ -75,3 +75,14 @@ void DrawDashboardUI(void)
     BSP_LCD_SetTextColor(LCD_COLOR_GREEN);
     BSP_LCD_DisplayStringAt(0, 230, (uint8_t *)"Dashboard Active", CENTER_MODE);
 }
+
+/* ===== Stub out unused NT35510 driver symbols ===== */
+uint8_t NT35510_Init(uint32_t ColorCoding, uint32_t orientation)
+{
+    return 0; // pretend success
+}
+
+uint16_t NT35510_ReadID(void)
+{
+    return 0; // dummy ID
+}
