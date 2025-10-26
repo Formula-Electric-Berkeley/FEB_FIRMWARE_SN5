@@ -8,9 +8,11 @@
 typedef struct BSPD_TYPE {
     int8_t state;
 } BSPD_TYPE;
-BSPD_TYPE BSPD;
+
+/* Global variable - defined in FEB_BSPD.c */
+extern BSPD_TYPE BSPD;
 
 void FEB_BSPD_CheckReset(void);
 void FEB_BSPD_CAN_Transmit(void);
 
-#endif /* INC_FEB_CAN_RMS_H_ */
+#endif /* INC_FEB_BSPD_H_ */

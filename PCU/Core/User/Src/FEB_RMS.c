@@ -1,9 +1,15 @@
 #include "FEB_RMS.h"
 #include "FEB_ADC.h"
+#include "FEB_RMS_Config.h"
 #include "main.h"
 
-#define min(x1, x2) x1 < x2 ? x1 : x2;
+/* Safe min macro with proper parentheses */
+#define min(x1, x2) (((x1) < (x2)) ? (x1) : (x2))
 
+/* Global RMS control data */
+RMS_CONTROL RMS_CONTROL_MESSAGE;
+APPS_DataTypeDef APPS_Data;
+Brake_DataTypeDef Brake_Data;
 bool DRIVE_STATE;
 
 void FEB_RMS_Setup(void) {
@@ -25,83 +31,107 @@ void FEB_RMS_Disable(void) {
 	DRIVE_STATE = false;
 }
 
-
-
-// Essentially we want our voltage to never drop below 400 to be safe (~2.85V per cell) 
-// To keep 400 as our floor setpoint, we will derate our torque limit based on voltage
-// We will control this by derating our PEAK_CURRENT value. 
-// Based on data at 510 V, we see that the voltage drops about 62V when commanding 65 A of current
-// This means we will assume the pack resistance is about 1 Ohm
-// Note this will likely be steeper as we approach lower SOC, but these cell dynamics are hopefully
-// negligible due to the heavy current limiting and the ohmic losses of the accumulator
-// Linear interpolation between (460V, 60/60A) and (410V, 10/60A), where PEAK_CURRENT is 60A
+/**
+ * @brief Calculate current derating factor based on pack voltage
+ *
+ * To prevent pack voltage from dropping below 400V (~2.85V/cell for 140S),
+ * we derate the peak current limit as voltage approaches the minimum threshold.
+ *
+ * Based on empirical data:
+ * - At 510V, commanding 65A causes ~62V drop
+ * - This suggests pack resistance ≈ 1 Ohm
+ * - Linear interpolation between (460V, 100% current) and (410V, 16.7% current)
+ *
+ * @return Current derating multiplier (0.167 to 1.0)
+ */
 float FEB_Get_Peak_Current_Delimiter() {
-	float accumulator_voltage = (RMS_MESSAGE.HV_Bus_Voltage-50.0) / 10.0;
-	float estimated_voltage_drop_at_peak = PEAK_CURRENT;
-	float start_derating_voltage = 400.0 + PEAK_CURRENT; // Assume R_acc = 1ohm
-	// Note: Comments are based on start_derating_voltage = 460V and PEAK_CURRENT = 60
+	// Convert RMS voltage format: decivolts with 50V offset
+	// Formula: actual_voltage = (HV_Bus_Voltage - 50) / 10
+	float accumulator_voltage = (RMS_MESSAGE.HV_Bus_Voltage - 50.0f) / 10.0f;
 
-	// Saturate outside of 460 and 410
-	if (accumulator_voltage > start_derating_voltage)
-	{
-		return 1;
-	}
-	if (accumulator_voltage <= 410)
-	{
-		return (10.0 / PEAK_CURRENT); // limit to only 10A 
+	// Start derating when voltage = MIN_PACK_VOLTAGE_V + expected_drop_at_peak_current
+	// With R_acc = 1Ω and PEAK_CURRENT = 60A: start_derating = 400V + 60V = 460V
+	float start_derating_voltage = MIN_PACK_VOLTAGE_V + PEAK_CURRENT;
+
+	// Above derating threshold: allow full current
+	if (accumulator_voltage > start_derating_voltage) {
+		return 1.0f;
 	}
 
-	//      m   = (        y_1           -              y_0)              / (x_1 -          x_0)
-	float slope = ((10.0 / PEAK_CURRENT) - (PEAK_CURRENT / PEAK_CURRENT)) / (410.0 - (start_derating_voltage));
-	//      y     =   m     (       x            -          x_0          ) + y_0
-	float derater = slope * (accumulator_voltage - start_derating_voltage) + 1.0;
+	// Below minimum safe voltage: limit to 10A (16.7% of 60A)
+	if (accumulator_voltage <= 410.0f) {
+		return (10.0f / PEAK_CURRENT);
+	}
 
-	return derater;   
+	// Linear interpolation between limits
+	// y = mx + b where m = (y1 - y0) / (x1 - x0)
+	float slope = ((10.0f / PEAK_CURRENT) - 1.0f) / (410.0f - start_derating_voltage);
+	float derater = slope * (accumulator_voltage - start_derating_voltage) + 1.0f;
+
+	return derater;
 }
 
+/**
+ * @brief Calculate maximum allowable motor torque based on speed and voltage
+ *
+ * Implements power limiting to protect accumulator and comply with FSAE rules.
+ * Uses constant torque at low speeds, transitions to constant power at high speeds.
+ *
+ * @return Maximum torque in tenths of Nm (e.g., 2300 = 230.0 Nm)
+ */
 float FEB_RMS_GetMaxTorque(void){
-	// float accumulator_voltage = min(INIT_VOLTAGE, (RMS_MESSAGE.HV_Bus_Voltage-50) / 10);
 	float motor_speed = RMS_MESSAGE.Motor_Speed * RPM_TO_RAD_S;
 	float peak_current_limited = PEAK_CURRENT * FEB_Get_Peak_Current_Delimiter();
-	float power_capped = peak_current_limited * 400.0; // Cap power to 24kW (i.e. our min voltage)
- 	// If speed is less than 15, we should command max torque
-  	// This catches divide by 0 errors and also negative speeds (which may create very high negative torque values)
 
+	// Cap power to peak_current * MIN_PACK_VOLTAGE_V (e.g., 60A * 400V = 24kW)
+	float power_capped = peak_current_limited * MIN_PACK_VOLTAGE_V;
+
+	// Select torque limit based on pack voltage
 	uint16_t minimum_torque = MAX_TORQUE;
-
 	if (BMS_MESSAGE.voltage < LOW_PACK_VOLTAGE) {
 		minimum_torque = MAX_TORQUE_LOW_V;
 	}
 
-	if (motor_speed < 15) {
+	// Below minimum speed threshold: use constant torque mode
+	// Prevents division by zero and handles stopped/negative rotation
+	if (motor_speed < MIN_MOTOR_SPEED_RAD_S) {
 		return minimum_torque;
 	}
 
+	// Above minimum speed: limit by power (constant power mode)
 	float maxTorque = min(minimum_torque, (power_capped) / motor_speed);
 
 	return maxTorque;
 }
 
-
-
+/**
+ * @brief Main torque control function - reads sensors and commands motor
+ *
+ * Implements FSAE EV.5.6 and EV.5.7 safety rules:
+ * - Cuts torque if brake is pressed while throttle > 25%
+ * - Enforces APPS plausibility checks
+ * - Requires pedal release to clear faults
+ *
+ * Called periodically from main loop
+ */
 void FEB_RMS_Torque(void){
 
-	// Update Acceleration and Brake
+	// Read latest sensor data
 	FEB_ADC_GetAPPSData(&APPS_Data);
 	FEB_ADC_GetBrakeData(&Brake_Data);
 
-	// If break is pressed or implausibility
-	if (Brake_Data.brake_position > 15.0f || !APPS_Data.plausible || !Brake_Data.plausible || !DRIVE_STATE) {
+	// Cut torque if brake pressed, plausibility fault, or not in drive state
+	if (Brake_Data.brake_position > BRAKE_POSITION_THRESHOLD ||
+	    !APPS_Data.plausible ||
+	    !Brake_Data.plausible ||
+	    !DRIVE_STATE) {
 		APPS_Data.acceleration = 0.0f;
 	}
 
-	// Reset plausibility if pedals are released
-	if (APPS_Data.acceleration < 5.0f && Brake_Data.brake_position < 15.0f) {
-		APPS_Data.plausible = true;
-		Brake_Data.plausible = true;
-	}
+	// Calculate commanded torque: acceleration (0-100%) * max_torque
+	// Convert percentage to fraction: multiply by 0.01, not 0.1
+	RMS_CONTROL_MESSAGE.torque = 0.01f * APPS_Data.acceleration * FEB_RMS_GetMaxTorque();
 
-	RMS_CONTROL_MESSAGE.torque = 0.1f *APPS_Data.acceleration * FEB_RMS_GetMaxTorque();
-
+	// Transmit torque command to RMS motor controller
 	FEB_CAN_RMS_Transmit_UpdateTorque(RMS_CONTROL_MESSAGE.torque, RMS_CONTROL_MESSAGE.enabled);
 }

@@ -1,4 +1,8 @@
 #include "FEB_CAN_BMS.h"
+#include "FEB_CAN_IDs.h"
+
+/* Global BMS message data */
+BMS_MESSAGE_TYPE BMS_MESSAGE;
 
 uint16_t FEB_CAN_BMS_getTemp(){
 	return BMS_MESSAGE.temperature;
@@ -25,7 +29,7 @@ void FEB_CAN_BMS_Init(void) {
 	BMS_MESSAGE.voltage = 0;
 }
 
-void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type, const uint8_t *data, uint8_t length) {
+void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type, uint8_t *data, uint8_t length) {
 	if (can_id == FEB_CAN_ID_BMS_ACCUMULATOR_TEMPERATURE) {
 
 		BMS_MESSAGE.temperature = data[2] << 8 | data[3];

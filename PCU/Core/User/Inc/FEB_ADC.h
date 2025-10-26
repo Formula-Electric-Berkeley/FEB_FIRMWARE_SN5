@@ -344,18 +344,6 @@ ADC_StatusTypeDef FEB_ADC_ResetCalibrationToDefaults(void);
 ADC_StatusTypeDef FEB_ADC_SetCalibration(ADC_ChannelConfigTypeDef* config, 
                                          ADC_CalibrationTypeDef* calibration);
 
-/**
- * @brief  Load calibration from non-volatile storage
- * @retval ADC_StatusTypeDef: Operation status
- */
-ADC_StatusTypeDef FEB_ADC_LoadCalibration(void);
-
-/**
- * @brief  Save calibration to non-volatile storage
- * @retval ADC_StatusTypeDef: Operation status
- */
-ADC_StatusTypeDef FEB_ADC_SaveCalibration(void);
-
 /* ========================================================================== */
 /*                     SAFETY AND PLAUSIBILITY CHECKS                        */
 /* ========================================================================== */

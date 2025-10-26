@@ -1,9 +1,12 @@
 #include "FEB_BSPD.h"
 #include "FEB_PINOUT.h"
+#include "FEB_CAN_IDs.h"
 
+/* Global BSPD data */
+BSPD_TYPE BSPD;
 
-//Reads the status of the BSPD if the BSPD reset is active.
-void FEB_BSPD_checkReset(){
+// Reads the status of the BSPD if the BSPD reset is active.
+void FEB_BSPD_CheckReset(){
 	if (HAL_GPIO_ReadPin(BSPD_RESET_PORT, BSPD_RESET_PIN)){
 		BSPD.state = 1; //BSPD reset is active
 	} else {

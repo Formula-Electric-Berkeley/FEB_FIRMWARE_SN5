@@ -185,10 +185,7 @@ ADC_StatusTypeDef FEB_ADC_Init(void) {
     /* Reset runtime data */
     memset(&adc_runtime, 0, sizeof(adc_runtime));
     adc_runtime.initialized = true;
-    
-    /* Load calibration from storage if available */
-    FEB_ADC_LoadCalibration();
-    
+
     return ADC_STATUS_OK;
 }
 
@@ -241,25 +238,40 @@ uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef* hadc, uint32_t channel) {
     /* DMA continuously updates the buffers in the background */
 
     uint16_t* buffer_ptr = NULL;
-    
-    /* Determine which buffer and index to read from based on ADC and channel */
+    uint32_t channel_idx = 0;
+
+    /* Map hardware channel number to DMA buffer index */
     if (hadc == &hadc1) {
         buffer_ptr = adc1_dma_buffer;
+        if (channel == ADC_CHANNEL_0) channel_idx = ADC1_CH0_BRAKE_PRESSURE2_IDX;
+        else if (channel == ADC_CHANNEL_1) channel_idx = ADC1_CH1_BRAKE_PRESSURE1_IDX;
+        else if (channel == ADC_CHANNEL_14) channel_idx = ADC1_CH14_BRAKE_INPUT_IDX;
+        else return 0;
     }
     else if (hadc == &hadc2) {
         buffer_ptr = adc2_dma_buffer;
+        if (channel == ADC_CHANNEL_4) channel_idx = ADC2_CH4_CURRENT_SENSE_IDX;
+        else if (channel == ADC_CHANNEL_6) channel_idx = ADC2_CH6_SHUTDOWN_IN_IDX;
+        else if (channel == ADC_CHANNEL_7) channel_idx = ADC2_CH7_PRE_TIMING_IDX;
+        else return 0;
     }
     else if (hadc == &hadc3) {
         buffer_ptr = adc3_dma_buffer;
+        if (channel == ADC_CHANNEL_10) channel_idx = ADC3_CH10_BSPD_INDICATOR_IDX;
+        else if (channel == ADC_CHANNEL_11) channel_idx = ADC3_CH11_BSPD_RESET_IDX;
+        else if (channel == ADC_CHANNEL_12) channel_idx = ADC3_CH12_ACC_PEDAL2_IDX;
+        else if (channel == ADC_CHANNEL_13) channel_idx = ADC3_CH13_ACC_PEDAL1_IDX;
+        else return 0;
     }
     else {
         return 0;
     }
-    
+
     /* Read the latest value from DMA buffer */
     /* The buffer is organized as: [ch0_sample0, ch1_sample0, ch2_sample0, ch0_sample1, ...] */
-    uint16_t value = buffer_ptr[channel];
-    
+    /* We read the most recent sample (first in the circular buffer) */
+    uint16_t value = buffer_ptr[channel_idx];
+
     return value;
 }
 
@@ -554,9 +566,8 @@ ADC_StatusTypeDef FEB_ADC_CalibrateAPPS(bool record_min, bool record_max) {
         apps1_calibration.max_voltage = FEB_ADC_GetAccelPedal1Voltage() * 1000.0f;
         apps2_calibration.max_voltage = FEB_ADC_GetAccelPedal2Voltage() * 1000.0f;
     }
-    
-    /* Save calibration to persistent storage */
-    return FEB_ADC_SaveCalibration();
+
+    return ADC_STATUS_OK;
 }
 
 ADC_StatusTypeDef FEB_ADC_CalibrateBrakePressure(uint8_t sensor_num, bool zero_pressure) {
@@ -577,8 +588,8 @@ ADC_StatusTypeDef FEB_ADC_CalibrateBrakePressure(uint8_t sensor_num, bool zero_p
         cal->min_voltage = voltage_mv;
         cal->offset = voltage_mv;  /* Store as offset for zero correction */
     }
-    
-    return FEB_ADC_SaveCalibration();
+
+    return ADC_STATUS_OK;
 }
 
 ADC_StatusTypeDef FEB_ADC_SetAPPSVoltageRange(uint8_t sensor_num, float min_mv, float max_mv) {
@@ -663,8 +674,8 @@ ADC_StatusTypeDef FEB_ADC_ResetCalibrationToDefaults(void) {
     brake_pressure1_calibration.gain = 1.0f;
     brake_pressure2_calibration.offset = 0.0f;
     brake_pressure2_calibration.gain = 1.0f;
-    
-    return FEB_ADC_SaveCalibration();
+
+    return ADC_STATUS_OK;
 }
 
 ADC_StatusTypeDef FEB_ADC_SetCalibration(ADC_ChannelConfigTypeDef* config, 
@@ -814,25 +825,28 @@ float FEB_ADC_LowPassFilter(float new_value, float old_value, float alpha) {
 
 ADC_StatusTypeDef FEB_ADC_GetDiagnostics(char* buffer, size_t size) {
     if (!buffer || size == 0) return ADC_STATUS_ERROR;
-    
+
     APPS_DataTypeDef apps_data;
     Brake_DataTypeDef brake_data;
-    
+
     FEB_ADC_GetAPPSData(&apps_data);
     FEB_ADC_GetBrakeData(&brake_data);
-    
-    printf(buffer, size,
+
+    float shutdown_voltage = FEB_ADC_GetShutdownVoltage();
+
+    snprintf(buffer, size,
              "ADC Diagnostics:\n"
              "APPS1: %.1f%% | APPS2: %.1f%% | Plausible: %s\n"
              "Brake P1: %.1f bar | P2: %.1f bar | Pressed: %s\n"
              "Shutdown: %.1f V\n"
              "Active Faults: 0x%08lX | Errors: %lu\n",
-             apps_data.position1, apps_data.position2, 
+             apps_data.position1, apps_data.position2,
              apps_data.plausible ? "Yes" : "No",
              brake_data.pressure1_bar, brake_data.pressure2_bar,
              brake_data.brake_pressed ? "Yes" : "No",
+             shutdown_voltage,
              active_faults, adc_runtime.error_count);
-    
+
     return ADC_STATUS_OK;
 }
 
@@ -903,15 +917,24 @@ float FEB_ADC_ApplyDeadzone(float value, float deadzone) {
 /* Private Functions ---------------------------------------------------------*/
 
 static uint16_t GetAveragedADCValue(ADC_HandleTypeDef* hadc, uint32_t channel, uint8_t samples) {
+    /* Input validation */
+    if (hadc == NULL) {
+        return 0;
+    }
+
+    if (samples == 0 || samples > ADC_DMA_BUFFER_SIZE) {
+        samples = ADC_DMA_BUFFER_SIZE;  // Use max if invalid
+    }
+
     /* Average multiple values from the DMA circular buffer */
     /* No delays needed as DMA continuously updates the buffer */
-    
+
     uint32_t sum = 0;
     uint32_t channel_idx = 0;
     uint16_t* buffer_ptr = NULL;
     uint32_t num_channels = 0;
     uint32_t buffer_size = 0;
-    
+
     /* Determine buffer parameters */
     if (hadc == &hadc1) {
         buffer_ptr = adc1_dma_buffer;

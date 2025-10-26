@@ -4,3 +4,6 @@
 #include "FEB_ADC.h"
 #include "FEB_RMS.h"
 #include "FEB_CAN_RMS.h"
+
+void FEB_Main_Setup(void);
+void FEB_Main_While(void);

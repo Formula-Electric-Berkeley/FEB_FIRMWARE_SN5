@@ -6,10 +6,11 @@ typedef struct {
   int16_t torque;
   uint8_t enabled;
 } RMS_CONTROL;
-RMS_CONTROL RMS_CONTROL_MESSAGE;
 
-APPS_DataTypeDef APPS_Data;
-Brake_DataTypeDef Brake_Data;
+/* Global variables - defined in FEB_RMS.c */
+extern RMS_CONTROL RMS_CONTROL_MESSAGE;
+extern APPS_DataTypeDef APPS_Data;
+extern Brake_DataTypeDef Brake_Data;
 
 void FEB_RMS_Setup(void);
 void FEB_RMS_Process(void);
