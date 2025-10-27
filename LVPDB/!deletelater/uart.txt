@@ -1,0 +1,19 @@
+In a seperate clone, I added a Uart transmission function that can grab the voltage 
+and display it in the serial monitor, however I haven't transferred it to the main core subdirectory  
+yet since I think it is best if I finish the migration to I2C readings first, and by "unhardcoding" adresses. 
+
+But if you were curious on the code, I have copy and pasted it from my other files: 
+
+/* 
+	UART Quality of Life Features
+	
+	static void uartPrinting(void) { 
+	char buffer[64]; 
+	while (1) { 
+		float read = lv_voltage; 
+		int bytes = snprintf(buffer, sizeof(buffer), "Current Voltage: %.2f V\r\n", read);
+		HAL_UART_Transmit(&huart2, (uint_t*)buffer, bytes, HAL_MAX_DELAY); 
+		HAL_Delay(1000); 
+		}
+	}
+*/
