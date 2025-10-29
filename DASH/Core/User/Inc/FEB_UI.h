@@ -1,35 +1,48 @@
-#ifndef __FEB_UI_H
-#define __FEB_UI_H
+#ifndef INC_FEB_UI_H_
+#define INC_FEB_UI_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+// **************************************** Includes ****************************************
 
-/* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx_hal.h"
-#include "cmsis_os.h"
-#include "stm32469i_discovery.h"
-#include "stm32469i_discovery_lcd.h"
-#include "fonts.h"
+//#include "FEB_CAN_ICS.h"
+//#include "FEB_CAN_BMS.h"
+
+#include <stdlib.h>
 #include <stdio.h>
-#include <stdint.h>
+#include <math.h>
 
-/* Exported functions --------------------------------------------------------*/
+#include "lvgl.h"
+#include "screen_driver.h"
+#include "touch_sensor_driver.h"
+#include "ui.h"
 
-/**
- * @brief  Main display FreeRTOS task.
- *         Initializes the LCD and renders the dashboard UI.
- * @param  argument: FreeRTOS task argument (unused)
- */
-void StartDisplayTask(void *argument);
+#include "stm32f4xx_hal.h"
 
-/**
- * @brief  Draws the static dashboard grid, boxes, and labels.
- */
-void DrawDashboardUI(void);
+typedef struct {
+	char * test_str;
+} Screen_Info_t;
 
-#ifdef __cplusplus
-}
-#endif
+// **************************************** Functions ****************************************
 
-#endif /* __FEB_UI_H */
+void FEB_UI_Init(void);
+
+void FEB_UI_Update(void);
+
+void UI_Demo_Mode(void);
+
+void FEB_UI_Set_Values(void);
+
+void BMS_State_Set(void);
+
+// char* get_bms_state_string(FEB_SM_ST_t state);
+
+void SOC_Set_Value(float ivt_voltage, float min_cell_voltage);
+
+uint8_t lookup_soc_from_voltage(float voltage);
+
+void TEMP_Set_Value(float acc_temp);
+
+void SPEED_Set_Value(float motor_speed_rpm);
+
+void LV_Set_Value(void);
+
+#endif /* INC_FEB_UI_H_ */

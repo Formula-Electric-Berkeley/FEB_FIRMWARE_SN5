@@ -42,18 +42,38 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
 )
 
+# Collect LVGL Core Sources
+file(GLOB_RECURSE LVGL_SOURCES
+    Drivers/lvgl/src/*.c
+)
+
+# Collect LVGL HAL Sources
+file(GLOB_RECURSE LVGL_HAL_SOURCES
+    Drivers/hal_stm_lvgl/*.c
+)
+
+# Collect SquareLine UI Sources
+file(GLOB_RECURSE SQUARELINE_SOURCES
+    Drivers/SquareLine_UI/*.c
+)
+
+
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    # User code
     Core/User/Src/FEB_UI.c
 
-    # BSP Drivers for LCD and SDRAM
+    # BSP
     Drivers/BSP/STM32469I-Discovery/stm32469i_discovery.c
     Drivers/BSP/STM32469I-Discovery/stm32469i_discovery_lcd.c
     Drivers/BSP/STM32469I-Discovery/stm32469i_discovery_sdram.c
-
-    # Component Drivers
     Drivers/BSP/Components/otm8009a/otm8009a.c
+    Drivers/BSP/Components/nt35510/nt35510.c
+    Drivers/BSP/Components/ft6x06/ft6x06.c
+
+    # LVGL + HAL + UI
+    ${LVGL_SOURCES}
+    ${LVGL_HAL_SOURCES}
+    ${SQUARELINE_SOURCES}
 
 )
 
@@ -65,16 +85,27 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     Drivers/BSP/STM32469I-Discovery
     Drivers/BSP/Components
     Drivers/BSP/Components/otm8009a
+    Drivers/BSP/Components/nt35510
+    Drivers/BSP/Components/Common
+    Drivers/BSP/Components/ft6x06
 
-    # Fonts
+    # LVGL + HAL
+    Drivers/lvgl
+    Drivers/hal_stm_lvgl
+
+    # SquareLine UI
+    Drivers/SquareLine_UI
+
+    # Fonts & Utilities
     Drivers/Utilities/Fonts
+
+    # LVGL config header location (directory, not file)
+    Drivers
 )
 
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
-    USE_OTM8009A
-    DISABLE_NT35510
 )
 
 # Remove wrong libob.a library dependency when using cpp files
