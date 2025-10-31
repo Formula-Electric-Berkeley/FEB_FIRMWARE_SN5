@@ -52,50 +52,41 @@ uint8_t iter;
 //     {0,  2.80}
 // };
 
-lv_obj_t * main_screen;
-lv_obj_t * label_hello;
-
 // **************************************** Functions ****************************************
 
-void FEB_UI_Init(void) {
-	lv_init();
-    screen_driver_init();
+static lv_obj_t *main_screen;
+static lv_obj_t *label_hello;
 
-    /* Create a new blank screen */
+void FEB_UI_Init(void) {
+    lv_init();              // LVGL core
+    screen_driver_init();   // LCD + Framebuffer
+
+    // Create a clean blank screen
     main_screen = lv_obj_create(NULL);
     lv_obj_clear_flag(main_screen, LV_OBJ_FLAG_SCROLLABLE);
 
-    /* Create a label */
+    // Create the text label
     label_hello = lv_label_create(main_screen);
     lv_label_set_text(label_hello, "HELLO FORMULA!");
     lv_obj_set_style_text_color(label_hello, lv_color_hex(0x00FF00), LV_PART_MAIN);
-    lv_obj_set_style_text_font(label_hello, &lv_font_montserrat_28, LV_PART_MAIN);
-    lv_obj_align(label_hello, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_align(label_hello, LV_ALIGN_CENTER, 0, 0); // Centered
 
-    /* Load this screen */
+    // Show this screen
     lv_disp_load_scr(main_screen);
 }
 
 void FEB_UI_Update(void) {
-	lv_task_handler();
-
-	//FEB_UI_Set_Values();
-	//BMS_State_Set();
-
+    lv_timer_handler(); // (lv_task_handler is deprecated)
 }
 
-/* Display Task Example */
 void StartDisplayTask(void *argument)
 {
-    /* Initialize the LCD */
     FEB_UI_Init();
 
-    for (;;)
-    {
-        HAL_GPIO_TogglePin(LED4_GPIO_Port, LED4_Pin);
-
-        /* Update counter text */
+    for (;;) {
+        HAL_GPIO_TogglePin(LED4_GPIO_Port, LED4_Pin); // Blink LED to show system runs
         FEB_UI_Update();
+        osDelay(5); // VERY IMPORTANT (lets LVGL run properly)
     }
 }
 

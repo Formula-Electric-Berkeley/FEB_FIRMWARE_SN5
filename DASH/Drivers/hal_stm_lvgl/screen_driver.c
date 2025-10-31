@@ -30,8 +30,8 @@ extern DMA2D_HandleTypeDef hdma2d;
  * Global variables
  */
 lv_disp_drv_t lv_display_driver;
-__attribute__((section(".sdram"))) lv_color_t framebuffer_1[FRAMEBUFFER_SIZE];
-__attribute__((section(".sdram"))) lv_color_t framebuffer_2[FRAMEBUFFER_SIZE];
+__attribute__((section(".framebuffer"))) lv_color_t framebuffer_1[FRAMEBUFFER_SIZE];
+__attribute__((section(".framebuffer"))) lv_color_t framebuffer_2[FRAMEBUFFER_SIZE];
 
 #define FRAMEBUFFER_ADDR ((uint32_t)0xC0000000)
 

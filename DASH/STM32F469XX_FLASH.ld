@@ -247,13 +247,17 @@ SECTIONS
   PROVIDE( __bss_size = __bss_end - __bss_start );
 
   /* External SDRAM section */
-  .sdram (NOLOAD) :
+  .sdram_bank1 (NOLOAD) :
   {
-    . = ALIGN(4);
-    *(.sdram)
-    *(.sdram*)
-    . = ALIGN(4);
-  } >SDRAM
+      _ssdram = .;
+      KEEP(*(.framebuffer))   /* Framebuffer MUST be first, at 0xC0000000 */
+      . = ALIGN(4);
+
+      *(.sdram)
+      *(.sdram*)
+      . = ALIGN(4);
+      _esdram = .;
+  } > SDRAM
 
 
   /* User_heap_stack section, used to check that there is enough RAM left */
