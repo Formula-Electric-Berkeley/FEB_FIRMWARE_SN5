@@ -95,8 +95,8 @@ void FEB_IO_HandleRTDButton(void)
     uint8_t received_data = 0x00;
     FEB_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, &received_data, 1, HAL_MAX_DELAY);
 
-    uint8_t brake_pressure = FEB_CAN_APPS_Get_Brake_Pos();
-    uint8_t inv_enabled = FEB_CAN_APPS_Get_Enabled();
+    uint8_t brake_pressure = FEB_CAN_PCU_Get_Brake_Pos();
+    uint8_t inv_enabled = FEB_CAN_PCU_Get_Enabled();
 
     prev_state = bms_state;
     bms_state = FEB_CAN_BMS_Get_State();
@@ -139,7 +139,7 @@ void FEB_IO_HandleRTDButton(void)
 
             // Send R2D over CAN
 	        IO_state = (uint8_t) set_n_bit(IO_state, 1, r2d);
-	        FEB_CAN_ICS_Transmit_Button_State(IO_state);
+	        FEB_CAN_DASH_Transmit_Button_State(IO_state);
 	        rtd_press_start_time = HAL_GetTick(); // reset timer
         } else {
             IO_state = set_n_bit(IO_state, 1, r2d);
@@ -229,7 +229,7 @@ void FEB_IO_HandleSwitch_AccumulatorFan(void)
 /* ------------------- Buzzer ------------------- */
 void FEB_IO_HandleBuzzer(void)
 {
-    uint8_t inv_enabled = FEB_CAN_APPS_Get_Enabled();
+    uint8_t inv_enabled = FEB_CAN_PCU_Get_Enabled();
 
     if (entered_drive && bms_state == FEB_SM_ST_DRIVE && inv_enabled) {
         if (rtd_buzzer_start_time == 0) {
@@ -264,5 +264,5 @@ void FEB_IO_HandleBuzzer(void)
     uint8_t transmit_rtd = (0b1111111 << 1) + set_rtd_buzzer;
     FEB_I2C_Master_Transmit(&hi2c1, IOEXP_ADDR << 1, &transmit_rtd, 1, HAL_MAX_DELAY);
 
-    FEB_CAN_ICS_Transmit_Button_State(IO_state);
+    FEB_CAN_DASH_Transmit_Button_State(IO_state);
 }

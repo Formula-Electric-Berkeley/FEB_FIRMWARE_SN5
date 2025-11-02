@@ -30,15 +30,6 @@ typedef struct {
 extern DASH_UI_Values_t DASH_UI_Values;
 extern int16_t lv_voltage;
 
-// PCU message structure (for brake and RMS data)
-typedef struct {
-	uint8_t brake_pedal;
-	float current;
-	uint8_t enabled;
-} FEB_CAN_PCU_Message_t;
-
-extern FEB_CAN_PCU_Message_t FEB_CAN_PCU_Message;
-
 // **************************************** Functions ****************************************
 
 void FEB_CAN_DASH_Init(void);
