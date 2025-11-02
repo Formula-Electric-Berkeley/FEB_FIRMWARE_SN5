@@ -1,0 +1,7 @@
+{
+  "board": "STM32F469I-DISCO",
+  "device": "STM32F469NIH6",
+  "core": "Cortex-M4",
+  "order": 0,
+  "toolchain": "GCC"
+}
