@@ -68,19 +68,7 @@ void FEB_UI_Init(void) {
     lv_init();              // LVGL core
     screen_driver_init();   // LCD + Framebuffer
 
-    // Create a clean blank screen
-    main_screen = lv_obj_create(NULL);
-    lv_obj_clear_flag(main_screen, LV_OBJ_FLAG_SCROLLABLE);
-
-    // Create the text label
-    label_hello = lv_label_create(main_screen);
-    HAL_UART_Transmit(&huart3, (unsigned char *)"HELLO FORMULA!\r\n", 16, 1000);
-    lv_label_set_text(label_hello, "HELLO FORMULA!");
-    lv_obj_set_style_text_color(label_hello, lv_color_hex(0x00FF00), LV_PART_MAIN);
-    lv_obj_align(label_hello, LV_ALIGN_CENTER, 0, 0); // Centered
-
-    // Show this screen
-    lv_disp_load_scr(main_screen);
+    ui_init()
 }
 
 void FEB_UI_Update(void) {

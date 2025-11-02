@@ -5,6 +5,7 @@
 
 #include "ui.h"
 #include "ui_helpers.h"
+#include "lvgl.h"
 
 ///////////////////// VARIABLES ////////////////////
 
@@ -26,15 +27,35 @@ lv_obj_t * ui____initial_actions0;
 ///////////////////// FUNCTIONS ////////////////////
 
 ///////////////////// SCREENS ////////////////////
+lv_obj_t * ui_Screen1;
+lv_obj_t * ui_LabelHello;
 
 void ui_init(void)
 {
     lv_disp_t * dispp = lv_disp_get_default();
-    lv_theme_t * theme = lv_theme_default_init(dispp, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_RED),
-                                               true, LV_FONT_DEFAULT);
+
+    /* Keep your same theme setup */
+    lv_theme_t * theme = lv_theme_default_init(
+        dispp,
+        lv_palette_main(LV_PALETTE_BLUE),
+        lv_palette_main(LV_PALETTE_RED),
+        true,
+        LV_FONT_DEFAULT
+    );
     lv_disp_set_theme(dispp, theme);
-    ui_Screen1_screen_init();
-    ui____initial_actions0 = lv_obj_create(NULL);
+
+    /* Create a new clean screen */
+    ui_Screen1 = lv_obj_create(NULL);
+    lv_obj_clear_flag(ui_Screen1, LV_OBJ_FLAG_SCROLLABLE);
+
+    /* Add the HELLO FORMULA label */
+    ui_LabelHello = lv_label_create(ui_Screen1);
+    lv_label_set_text(ui_LabelHello, "HELLO FORMULA!");
+    lv_obj_set_style_text_color(ui_LabelHello, lv_color_hex(0x00FF00), LV_PART_MAIN);
+    lv_obj_set_style_text_font(ui_LabelHello, &lv_font_montserrat_28, LV_PART_MAIN);
+    lv_obj_align(ui_LabelHello, LV_ALIGN_CENTER, 0, 0);
+
+    /* Load this screen */
     lv_disp_load_scr(ui_Screen1);
 }
 
