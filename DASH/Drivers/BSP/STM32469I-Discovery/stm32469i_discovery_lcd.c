@@ -505,8 +505,8 @@ void BSP_LCD_LayerDefaultInit(uint16_t LayerIndex, uint32_t FB_Address)
   Layercfg.WindowX0 = 0;
   Layercfg.WindowX1 = BSP_LCD_GetXSize();
   Layercfg.WindowY0 = 0;
-  Layercfg.WindowY1 = BSP_LCD_GetYSize(); 
-  Layercfg.PixelFormat = LTDC_PIXEL_FORMAT_ARGB8888;
+  Layercfg.WindowY1 = BSP_LCD_GetYSize();
+  Layercfg.PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
   Layercfg.FBStartAdress = FB_Address;
   Layercfg.Alpha = 255;
   Layercfg.Alpha0 = 0;

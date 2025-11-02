@@ -471,7 +471,7 @@ static void MX_DSIHOST_DSI_Init(void)
     Error_Handler();
   }
   VidCfg.VirtualChannelID = 0;
-  VidCfg.ColorCoding = DSI_RGB565;
+  VidCfg.ColorCoding = DSI_RGB888;
   VidCfg.LooselyPacked = DSI_LOOSELY_PACKED_DISABLE;
   VidCfg.Mode = DSI_VID_MODE_BURST;
   VidCfg.PacketSize = 800;
@@ -957,7 +957,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOH, GPIO_PIN_7, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LCD_BL_CTRL_GPIO_Port, LCD_BL_CTRL_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LCD_BL_CTRL_GPIO_Port, LCD_BL_CTRL_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : SPKR_HP_Pin AUDIO_RST_Pin */
   GPIO_InitStruct.Pin = SPKR_HP_Pin|AUDIO_RST_Pin;

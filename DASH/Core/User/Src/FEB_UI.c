@@ -3,13 +3,17 @@
 #include "FEB_UI.h"
 #include "cmsis_os.h"
 #include "main.h"
+#include "portmacro.h"
 #include "stm32469i_discovery.h"
 #include "stm32469i_discovery_lcd.h"
+#include "stm32f4xx_hal_uart.h"
 #include <stdio.h>
 
 // **************************************** Variables ****************************************
 
 Screen_Info_t screen_info;
+
+extern UART_HandleTypeDef huart3;
 
 // extern ICS_UI_Values_t ICS_UI_Values;
 // extern uint16_t lv_voltage;
@@ -58,6 +62,9 @@ static lv_obj_t *main_screen;
 static lv_obj_t *label_hello;
 
 void FEB_UI_Init(void) {
+    // Critical section only for initialization that truly requires it
+    // LVGL operations don't need critical sections - they're designed to be thread-safe
+
     lv_init();              // LVGL core
     screen_driver_init();   // LCD + Framebuffer
 
@@ -67,6 +74,7 @@ void FEB_UI_Init(void) {
 
     // Create the text label
     label_hello = lv_label_create(main_screen);
+    HAL_UART_Transmit(&huart3, (unsigned char *)"HELLO FORMULA!\r\n", 16, 1000);
     lv_label_set_text(label_hello, "HELLO FORMULA!");
     lv_obj_set_style_text_color(label_hello, lv_color_hex(0x00FF00), LV_PART_MAIN);
     lv_obj_align(label_hello, LV_ALIGN_CENTER, 0, 0); // Centered
@@ -84,8 +92,13 @@ void StartDisplayTask(void *argument)
     FEB_UI_Init();
 
     for (;;) {
+        // Toggle LED without critical section - GPIO operations are atomic
         HAL_GPIO_TogglePin(LED4_GPIO_Port, LED4_Pin); // Blink LED to show system runs
+
+        // LVGL timer handler should NOT be called in critical section
+        // It needs interrupts enabled for DMA2D and LTDC to work properly
         FEB_UI_Update();
+
         osDelay(5); // VERY IMPORTANT (lets LVGL run properly)
     }
 }

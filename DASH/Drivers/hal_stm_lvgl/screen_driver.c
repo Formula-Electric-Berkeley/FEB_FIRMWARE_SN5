@@ -13,8 +13,8 @@
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-#define LCD_SCREEN_WIDTH NT35510_480X800_HEIGHT
-#define LCD_SCREEN_HEIGHT NT35510_480X800_WIDTH
+#define LCD_SCREEN_WIDTH 800  // Actual screen width in landscape mode
+#define LCD_SCREEN_HEIGHT 480  // Actual screen height in landscape mode
 #define FRAMEBUFFER_SIZE (uint32_t)LCD_SCREEN_HEIGHT*LCD_SCREEN_WIDTH
 #define DMA_XFERS_NEEDED FRAMEBUFFER_SIZE/2 // We need half as many transfers because the buffer is an array of
 											// 16 bits but the transfers are 32 bits.
@@ -56,8 +56,8 @@ void screen_driver_init(){
 	lv_disp_drv_init(&lv_display_driver);
 	lv_display_driver.direct_mode = true;
 //	lv_display_driver.full_refresh = true;
-	lv_display_driver.hor_res = NT35510_480X800_HEIGHT;
-	lv_display_driver.ver_res = NT35510_480X800_WIDTH;
+	lv_display_driver.hor_res = LCD_SCREEN_WIDTH;
+	lv_display_driver.ver_res = LCD_SCREEN_HEIGHT;
 	lv_display_driver.flush_cb = stm32_flush_cb;
 //	lv_display_driver.flush_cb = my_stm32_flush_cb;
 	lv_display_driver.draw_buf = &draw_buf;
@@ -71,7 +71,7 @@ void my_stm32_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_
     uint16_t *framebuffer = (uint16_t *)FRAMEBUFFER_ADDR;
     for (int y = area->y1; y <= area->y2; y++) {
         for (int x = area->x1; x <= area->x2; x++) {
-            framebuffer[y * 480 + x] = color_p->full;
+            framebuffer[y * LCD_SCREEN_WIDTH + x] = color_p->full;
             color_p++;
         }
     }
