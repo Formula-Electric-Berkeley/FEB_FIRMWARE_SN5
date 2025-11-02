@@ -54,6 +54,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/User/Src/FEB_CAN_BMS.c
     Core/User/Src/FEB_CAN_RMS.c
     Core/User/Src/FEB_RMS.c
+    Core/User/Src/FEB_CAN_Diagnostics.c
 )
 
 # Add include paths
@@ -75,4 +76,11 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
 
     # Add user defined libraries
+)
+
+# Add linker options
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
+    # Enable floating-point printf/scanf support for newlib-nano
+    "LINKER:-u,_printf_float"
+    "LINKER:-u,_scanf_float"
 )

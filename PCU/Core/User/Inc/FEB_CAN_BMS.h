@@ -5,6 +5,8 @@
 
 #include "FEB_CAN_RX.h"
 #include "FEB_CAN_TX.h"
+#include "FEB_CAN_IDs.h"
+
 
 // BMS States
 typedef enum {

@@ -24,6 +24,7 @@ extern "C" {
 #endif
 
 #include "stm32f4xx_hal.h"
+#include <stdio.h>
 
 /**
  * @brief Initialize printf redirection to UART with DMA

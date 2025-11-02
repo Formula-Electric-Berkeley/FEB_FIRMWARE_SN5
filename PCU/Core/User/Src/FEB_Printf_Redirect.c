@@ -16,7 +16,6 @@
   */
 
 #include "FEB_Printf_Redirect.h"
-#include <stdio.h>
 
 /* Private variables */
 static UART_HandleTypeDef *printf_huart = NULL;

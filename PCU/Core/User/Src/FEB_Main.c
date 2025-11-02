@@ -45,9 +45,9 @@ void FEB_Main_While() {
 
     /* Update torque command based on pedal inputs and safety checks */
     FEB_RMS_Torque();
+    FEB_CAN_Diagnostics_TransmitBrakeData(); // Transmit brake position to dash/telemetry
 
     /* TODO: Implement additional CAN transmissions:
-     * - FEB_Normalized_CAN_sendBrake()    // Transmit brake position to dash/telemetry
      * - FEB_CAN_HEARTBEAT_Transmit()      // Already implemented in BMS callback
      * - FEB_CAN_ACC()                     // Transmit accelerator position
      * - FEB_CAN_TPS_Transmit()            // Transmit throttle position sensor data

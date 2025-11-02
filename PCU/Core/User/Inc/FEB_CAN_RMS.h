@@ -5,6 +5,7 @@
 
 #include "FEB_CAN_RX.h"
 #include "FEB_CAN_TX.h"
+#include "FEB_CAN_IDs.h"
 #include <string.h>
 
 #define FAULT_CLEAR_ADDR_UNDERVOLT 140

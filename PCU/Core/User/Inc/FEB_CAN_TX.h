@@ -5,6 +5,8 @@
 #include "FEB_CAN_RX.h"  // For shared status types
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
+
 
 #ifdef __cplusplus
 extern "C" {

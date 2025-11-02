@@ -13,9 +13,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "FEB_ADC.h"
-#include <string.h>
-#include <stdio.h>
-#include <math.h>
+
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct {
@@ -464,31 +462,34 @@ ADC_StatusTypeDef FEB_ADC_GetBrakeData(Brake_DataTypeDef* brake_data) {
     float pressure2_voltage = FEB_ADC_GetBrakePressure2Voltage() * 1000.0f;
     
     /* Convert voltage to pressure using runtime calibration */
-    brake_data->pressure1_bar = FEB_ADC_MapRange(pressure1_voltage,
-                                                 brake_pressure1_calibration.min_voltage,
-                                                 brake_pressure1_calibration.max_voltage,
-                                                 brake_pressure1_calibration.min_physical,
-                                                 brake_pressure1_calibration.max_physical);
-    brake_data->pressure2_bar = FEB_ADC_MapRange(pressure2_voltage,
-                                                 brake_pressure2_calibration.min_voltage,
-                                                 brake_pressure2_calibration.max_voltage,
-                                                 brake_pressure2_calibration.min_physical,
-                                                 brake_pressure2_calibration.max_physical);
-    
+
+
+    /* Convert voltage to pressure percentage (0-100%) */
+    brake_data->pressure1_percent = FEB_ADC_MapRange(pressure1_voltage,
+                                                brake_pressure1_calibration.min_voltage,
+                                                brake_pressure1_calibration.max_voltage,
+                                                0.0f,
+                                                100.0f);
+    brake_data->pressure2_percent = FEB_ADC_MapRange(pressure2_voltage,
+                                                brake_pressure2_calibration.min_voltage,
+                                                brake_pressure2_calibration.max_voltage,
+                                                0.0f,
+                                                100.0f);
+
+    brake_data->pressure1_percent = FEB_ADC_Constrain(brake_data->pressure1_percent, 0.0f, 100.0f);
+    brake_data->pressure2_percent = FEB_ADC_Constrain(brake_data->pressure2_percent, 0.0f, 100.0f);
+
+
     /* Get brake switch status */
     float brake_input_mv = FEB_ADC_GetBrakeInputVoltage() * 1000.0f;
     brake_data->brake_pressed = (brake_input_mv > BRAKE_INPUT_THRESHOLD_MV);
     
     /* Calculate brake position based on pressure */
-    float avg_pressure = (brake_data->pressure1_bar + brake_data->pressure2_bar) / 2.0f;
-    brake_data->brake_position = FEB_ADC_MapRange(avg_pressure,
-                                                  0.0f,
-                                                  BRAKE_PRESSURE_MAX_PHYSICAL_BAR,
-                                                  0.0f, 100.0f);
-    brake_data->brake_position = FEB_ADC_Constrain(brake_data->brake_position, 0.0f, 100.0f);
+    float avg_pressure = (brake_data->pressure1_percent + brake_data->pressure2_percent) / 2.0f;
+    brake_data->brake_position = avg_pressure;
     
     /* Check plausibility between pressure sensors */
-    float pressure_diff = fabs(brake_data->pressure1_bar - brake_data->pressure2_bar);
+    float pressure_diff = fabs(brake_data->pressure1_percent - brake_data->pressure2_percent);
     
     if (pressure_diff > (BRAKE_PRESSURE_MAX_PHYSICAL_BAR * 0.2f)) {
         brake_data->plausible = false;
@@ -728,8 +729,8 @@ bool FEB_ADC_CheckBrakePlausibility(void) {
     }
     
     /* FSAE rule: If brake is pressed hard and throttle > 25%, cut throttle */
-    bool brake_hard = (brake_data.pressure1_bar > BRAKE_PRESSURE_THRESHOLD_BAR) ||
-                      (brake_data.pressure2_bar > BRAKE_PRESSURE_THRESHOLD_BAR);
+    bool brake_hard = (brake_data.pressure1_percent > BRAKE_PRESSURE_THRESHOLD_PERCENT) ||
+                      (brake_data.pressure2_percent > BRAKE_PRESSURE_THRESHOLD_PERCENT);
     bool throttle_high = (apps_data.acceleration > 25.0f);
     
     if (brake_hard && throttle_high) {
@@ -837,12 +838,12 @@ ADC_StatusTypeDef FEB_ADC_GetDiagnostics(char* buffer, size_t size) {
     snprintf(buffer, size,
              "ADC Diagnostics:\n"
              "APPS1: %.1f%% | APPS2: %.1f%% | Plausible: %s\n"
-             "Brake P1: %.1f bar | P2: %.1f bar | Pressed: %s\n"
+             "Brake P1: %.1f %% | P2: %.1f %% | Pressed: %s\n"
              "Shutdown: %.1f V\n"
              "Active Faults: 0x%08lX | Errors: %lu\n",
              apps_data.position1, apps_data.position2,
              apps_data.plausible ? "Yes" : "No",
-             brake_data.pressure1_bar, brake_data.pressure2_bar,
+             brake_data.pressure1_percent, brake_data.pressure2_percent,
              brake_data.brake_pressed ? "Yes" : "No",
              shutdown_voltage,
              active_faults, adc_runtime.error_count);

@@ -4,6 +4,8 @@
 #include "stm32f4xx_hal.h"
 
 #include "FEB_CAN_TX.h"
+#include "FEB_PINOUT.h"
+#include "FEB_CAN_IDs.h"
 
 typedef struct BSPD_TYPE {
     int8_t state;

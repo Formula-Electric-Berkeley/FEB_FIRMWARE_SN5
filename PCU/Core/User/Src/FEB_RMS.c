@@ -9,7 +9,7 @@
 /* Global RMS control data */
 RMS_CONTROL RMS_CONTROL_MESSAGE;
 APPS_DataTypeDef APPS_Data;
-Brake_DataTypeDef Brake_Data;
+extern Brake_DataTypeDef Brake_Data;
 bool DRIVE_STATE;
 
 void FEB_RMS_Setup(void) {
@@ -126,6 +126,12 @@ void FEB_RMS_Torque(void){
 	    !Brake_Data.plausible ||
 	    !DRIVE_STATE) {
 		APPS_Data.acceleration = 0.0f;
+	}
+
+	// Reset plausibility if pedals are released
+	if (APPS_Data.acceleration < 5.0f && Brake_Data.brake_position < 15.0f) {
+		APPS_Data.plausible = true;
+		Brake_Data.plausible = true;
 	}
 
 	// Calculate commanded torque: acceleration (0-100%) * max_torque

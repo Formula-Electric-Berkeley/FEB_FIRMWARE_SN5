@@ -3,6 +3,7 @@
 
 #include "stm32f4xx_hal.h"
 #include <stdint.h>
+#include <string.h>
 #include <stdbool.h>
 
 #ifdef __cplusplus

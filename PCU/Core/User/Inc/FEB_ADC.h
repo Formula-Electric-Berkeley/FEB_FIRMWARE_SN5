@@ -27,6 +27,9 @@ extern "C" {
 #include "FEB_PINOUT.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
+#include <stdio.h>
+#include <math.h>
 
 /* ========================================================================== */
 /*                           TYPE DEFINITIONS                                 */
@@ -107,8 +110,8 @@ typedef struct {
  * @brief Brake System Data
  */
 typedef struct {
-    float    pressure1_bar;          /* Brake pressure sensor 1 (bar) */
-    float    pressure2_bar;          /* Brake pressure sensor 2 (bar) */
+    float    pressure1_percent;          /* Brake pressure sensor 1 (0-100%) */
+    float    pressure2_percent;          /* Brake pressure sensor 2 (0-100%) */
     float    brake_position;         /* Brake pedal position (0-100%) */
     bool     brake_pressed;          /* Brake switch/input status */
     bool     plausible;              /* Plausibility check status */

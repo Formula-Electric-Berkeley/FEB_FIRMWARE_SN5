@@ -1,5 +1,4 @@
 #include "FEB_CAN_RX.h"
-#include <string.h>
 
 /* Private defines -----------------------------------------------------------*/
 #define FEB_CAN_RX_MAX_HANDLES 32          // Increased capacity

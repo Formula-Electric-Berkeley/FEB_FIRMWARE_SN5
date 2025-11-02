@@ -144,6 +144,7 @@ extern "C" {
 #define BRAKE_PRESSURE_MIN_PHYSICAL_BAR    0.0f    /* Physical minimum: 0 bar */
 #define BRAKE_PRESSURE_MAX_PHYSICAL_BAR    200.0f  /* Physical maximum: 200 bar */
 #define BRAKE_PRESSURE_THRESHOLD_BAR       5       /* Brake activation threshold */
+#define BRAKE_PRESSURE_THRESHOLD_PERCENT   2.5f    /* Brake activation threshold in percent */
 
 /* Brake Input/Switch Calibration */
 #define BRAKE_INPUT_THRESHOLD_MV           1500    /* Threshold for brake switch activation */

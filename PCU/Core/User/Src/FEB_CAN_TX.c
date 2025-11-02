@@ -1,5 +1,4 @@
 #include "FEB_CAN_TX.h"
-#include <string.h>
 
 /* Private defines -----------------------------------------------------------*/
 #define FEB_CAN_MAX_STD_ID 0x7FF           // Maximum 11-bit standard CAN ID

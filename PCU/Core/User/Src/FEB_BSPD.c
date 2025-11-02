@@ -1,6 +1,4 @@
 #include "FEB_BSPD.h"
-#include "FEB_PINOUT.h"
-#include "FEB_CAN_IDs.h"
 
 /* Global BSPD data */
 BSPD_TYPE BSPD;
