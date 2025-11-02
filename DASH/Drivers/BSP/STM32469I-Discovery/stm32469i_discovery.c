@@ -45,10 +45,10 @@
   * @{
   */
 /**
- * @brief STM32469I Discovery BSP Driver version number
+ * @brief STM32469I Discovery BSP Driver version number V2.1.1
    */
 #define __STM32469I_DISCOVERY_BSP_VERSION_MAIN   (0x02) /*!< [31:24] main version */
-#define __STM32469I_DISCOVERY_BSP_VERSION_SUB1   (0x02) /*!< [23:16] sub1 version */
+#define __STM32469I_DISCOVERY_BSP_VERSION_SUB1   (0x01) /*!< [23:16] sub1 version */
 #define __STM32469I_DISCOVERY_BSP_VERSION_SUB2   (0x01) /*!< [15:8]  sub2 version */
 #define __STM32469I_DISCOVERY_BSP_VERSION_RC     (0x00) /*!< [7:0]  release candidate */
 #define __STM32469I_DISCOVERY_BSP_VERSION        ((__STM32469I_DISCOVERY_BSP_VERSION_MAIN << 24)\
@@ -385,7 +385,7 @@ static void I2C1_MspInit(void)
 
 #if defined(USE_STM32469I_DISCO_REVC)
   /* Perform 10 pulses on SCL to unlock I2C devices if previous I2C transaction aborted.*/
-  /* This configuration is needed with STM32F469I Disco RevC when using touch screen controller FT6336U */
+  /* This configuration is needed with STM32F469i Disco RevC when using touch screen controller FT6336U */
   gpio_init_structure.Pin = DISCO_I2C1_SCL_PIN;
   gpio_init_structure.Mode = GPIO_MODE_OUTPUT_OD;
   gpio_init_structure.Pull = GPIO_NOPULL;
@@ -602,7 +602,7 @@ static HAL_StatusTypeDef I2C1_ReadMultiple(uint8_t Addr,
   /* Check the communication status */
   if(status != HAL_OK)
   {
-    /* I2C error occurred */
+    /* I2C error occured */
     I2C1_Error(Addr);
   }
   return status;
@@ -627,7 +627,7 @@ static HAL_StatusTypeDef I2C2_ReadMultiple(uint8_t Addr,
   /* Check the communication status */
   if(status != HAL_OK)
   {
-    /* I2C2 error occurred */
+    /* I2C2 error occured */
     I2C2_Error(Addr);
   }
   return status;
@@ -710,19 +710,19 @@ static HAL_StatusTypeDef I2C1_IsDeviceReady(uint16_t DevAddress, uint32_t Trials
   */
 static void I2C1_Error(uint8_t Addr)
 {
-  /* De-initialize the I2C communication bus */
+  /* De-initialize the I2C comunication bus */
   HAL_I2C_DeInit(&heval_I2c1);
 
-  /* Re-Initiaize the I2C communication bus */
+  /* Re-Initiaize the I2C comunication bus */
   I2C1_Init();
 }
 
 static void I2C2_Error(uint8_t Addr)
 {
-  /* De-initialize the I2C2 communication bus */
+  /* De-initialize the I2C2 comunication bus */
   HAL_I2C_DeInit(&heval_I2c2);
 
-  /* Re-Initiaize the I2C2 communication bus */
+  /* Re-Initiaize the I2C2 comunication bus */
   I2C2_Init();
 }
 

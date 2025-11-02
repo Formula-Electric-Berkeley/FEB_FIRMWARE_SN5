@@ -8,12 +8,29 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2017 STMicroelectronics.
-  * All rights reserved.
+  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
   *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
+  * Redistribution and use in source and binary forms, with or without modification,
+  * are permitted provided that the following conditions are met:
+  *   1. Redistributions of source code must retain the above copyright notice,
+  *      this list of conditions and the following disclaimer.
+  *   2. Redistributions in binary form must reproduce the above copyright notice,
+  *      this list of conditions and the following disclaimer in the documentation
+  *      and/or other materials provided with the distribution.
+  *   3. Neither the name of STMicroelectronics nor the names of its contributors
+  *      may be used to endorse or promote products derived from this software
+  *      without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   *
   ******************************************************************************
   */
@@ -43,8 +60,7 @@
 /** @addtogroup OTM8009A_Exported_Variables
   * @{
   */
-/* OTM8009A ID */
-#define OTM8009A_ID                 0x40
+
 #if defined ( __GNUC__ ) || (defined (__ARMCC_VERSION) && (__ARMCC_VERSION >= 6010050)) /* GNU and ARM Compiler 6 compilers */
 #ifndef __weak
 #define __weak __attribute__((weak))
@@ -156,9 +172,6 @@
 #define  OTM8009A_CMD_WRCABC                0x55  /* Write Content Adaptive Brightness command */
 #define  OTM8009A_CMD_WRCABCMB              0x5E  /* Write CABC Minimum Brightness command     */
 
-#define  OTM8009A_CMD_ID1                   0xDA  /* Read ID1 command      */
-#define  OTM8009A_CMD_ID2                   0xDB  /* Read ID2 command      */
-#define  OTM8009A_CMD_ID3                   0xDC  /* Read ID3 command      */
 /**
   * @brief  OTM8009A_480X800 frequency divider
   */
@@ -184,10 +197,8 @@
   * @{
   */
 void DSI_IO_WriteCmd(uint32_t NbrParams, uint8_t *pParams);
-int32_t DSI_IO_ReadCmd(uint32_t Reg, uint8_t *pData, uint32_t Size);
 uint8_t OTM8009A_Init(uint32_t ColorCoding, uint32_t orientation);
 void OTM8009A_IO_Delay(uint32_t Delay);
-uint16_t OTM8009A_ReadID(void);
 /**
   * @}
   */
@@ -207,3 +218,5 @@ uint16_t OTM8009A_ReadID(void);
 /**
   * @}
   */
+
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -7,12 +7,13 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2020 STMicroelectronics.
-  * All rights reserved.
+  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+  * All rights reserved.</center></h2>
   *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
+  * This software component is licensed by ST under BSD 3-Clause license,
+  * the "License"; You may not use this file except in compliance with the
+  * License. You may obtain a copy of the License at:
+  *                        opensource.org/licenses/BSD-3-Clause
   *
   ******************************************************************************
   */
@@ -100,7 +101,7 @@ uint8_t NT35510_Init(uint32_t ColorCoding, uint32_t orientation)
   const uint8_t nt35510_reg16[] = {0x55, 0xAA, 0x52, 0x08, 0x00, 0xF0};
   const uint8_t nt35510_reg17[] = {0xFC, 0x00, 0xB1};
   const uint8_t nt35510_reg18[] = {0xB6, 0x03};
-  const uint8_t nt35510_reg19[] = {0xB5, 0x50};
+  const uint8_t nt35510_reg19[] = {0xB5, 0x51};
   const uint8_t nt35510_reg20[] = {0x00, 0x00, 0xB7};
   const uint8_t nt35510_reg21[] = {0x01, 0x02, 0x02, 0x02, 0xB8};
   const uint8_t nt35510_reg22[] = {0x00, 0x00, 0x00, 0xBC};
@@ -237,17 +238,6 @@ uint8_t NT35510_DeInit(void)
 }
 
 /**
-  * @brief  Read the component ID.
-  * @retval Component ID
-  */
-uint16_t NT35510_ReadID(void)
-{
-  uint8_t pData=0;
-  DSI_IO_ReadCmd(NT35510_CMD_RDID2, &pData, 1);
-  return pData;
-}
-
-/**
   * @}
   */
 
@@ -258,3 +248,5 @@ uint16_t NT35510_ReadID(void)
 /**
   * @}
   */
+
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
