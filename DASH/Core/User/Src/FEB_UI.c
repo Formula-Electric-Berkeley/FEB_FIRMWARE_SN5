@@ -58,8 +58,8 @@ uint8_t iter;
 
 // **************************************** Functions ****************************************
 
-static lv_obj_t *main_screen;
-static lv_obj_t *label_hello;
+// static lv_obj_t *main_screen;
+// static lv_obj_t *label_hello;
 
 void FEB_UI_Init(void) {
     // Critical section only for initialization that truly requires it
@@ -68,7 +68,7 @@ void FEB_UI_Init(void) {
     lv_init();              // LVGL core
     screen_driver_init();   // LCD + Framebuffer
 
-    ui_init()
+    ui_init();
 }
 
 void FEB_UI_Update(void) {

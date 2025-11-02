@@ -27,7 +27,7 @@ lv_obj_t * ui____initial_actions0;
 ///////////////////// FUNCTIONS ////////////////////
 
 ///////////////////// SCREENS ////////////////////
-lv_obj_t * ui_Screen1;
+// lv_obj_t * ui_Screen1;
 lv_obj_t * ui_LabelHello;
 
 void ui_init(void)
