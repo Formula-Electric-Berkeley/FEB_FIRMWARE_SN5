@@ -1,5 +1,13 @@
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
 #include "FEB_CAN_TPS.h"
 #include "FEB_CAN_Frame_IDs.h"
+
+// ============================================================================
+// EXTERNAL VARIABLES
+// ============================================================================
 
 extern CAN_HandleTypeDef hcan1;
 extern CAN_TxHeaderTypeDef FEB_CAN_Tx_Header;
@@ -8,9 +16,17 @@ extern uint32_t FEB_CAN_Tx_Mailbox;
 extern I2C_HandleTypeDef hi2c1;
 extern uint8_t tps2482_i2c_addresses[1];
 
+// ============================================================================
+// MACROS
+// ============================================================================
+
 #define FLOAT_TO_UINT16_T(n)		((uint16_t)(n * 1000)) // for voltage (mV)
 #define FLOAT_TO_INT16_T(n)			((int16_t)(n * 1000)) // for voltage (mV)
 #define SIGN_MAGNITUDE(n)			(int16_t)((((n >> 15) & 0x01) == 1) ? -(n & 0x7FFF) : (n & 0x7FFF)) // for current reg
+
+// ============================================================================
+// CAN TRANSMIT FUNCTIONS
+// ============================================================================
 
 void FEB_CAN_TPS_Transmit() {
     uint16_t voltage_raw;

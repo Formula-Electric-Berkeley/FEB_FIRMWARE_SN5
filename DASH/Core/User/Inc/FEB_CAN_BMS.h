@@ -4,6 +4,7 @@
 // ********************************** Includes **********************************
 
 #include "stm32f4xx_hal.h"
+#include "FEB_CAN_RX.h"
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -30,12 +31,12 @@ typedef enum {
 	FEB_SM_ST_DEFAULT
 } FEB_SM_ST_t;
 
-uint8_t FEB_CAN_BMS_Filter_Config(CAN_HandleTypeDef* hcan, uint8_t FIFO_assignment, uint8_t filter_bank);
-void FEB_CAN_BMS_Store_Msg(CAN_RxHeaderTypeDef* pHeader, uint8_t *RxData);
-FEB_SM_ST_t FEB_CAN_BMS_Get_State(); // Check if still in drivable state
-bool FEB_CAN_BMS_GET_FAULTS(); // Check for bms/imd faults
+void FEB_CAN_BMS_Init(void);
+void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type, const uint8_t *data, uint8_t length);
+FEB_SM_ST_t FEB_CAN_BMS_Get_State();
+bool FEB_CAN_BMS_GET_FAULTS();
 bool FEB_CAN_GET_IMD_FAULT();
-bool FEB_CAN_BMS_is_stale(); //Check if message is stale
+bool FEB_CAN_BMS_is_stale();
 
 
 

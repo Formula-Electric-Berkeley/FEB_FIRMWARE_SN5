@@ -16,13 +16,14 @@
 #define FEB_CAN_DASH_TPS_FRAME_ID 0x22
 
 // PCU (Pedal Control Unit) Frames
-#define FEB_CAN_BRAKE_FRAME_ID 0x30
+#define FEB_CAN_PCU_BRAKE_FRAME_ID 0x30
+#define FEB_CAN_PCU_RMS_COMMAND_FRAME_ID 0xC0
 
 // LVPDB (Low Voltage Power Distribution Board) Frames
 #define FEB_CAN_LVPDB_FLAGS_BUS_VOLTAGE_LV_CURRENT_FRAME_ID 0x40
 
 // RMS (Motor Controller) Frames
-#define FEB_CAN_RMS_COMMAND_FRAME_ID 0xC0
+#define FEB_CAN_RMS_MOTOR_SPEED_FRAME_ID 0xA5
 
 #endif /* INC_FEB_CAN_FRAME_IDS_H_ */
 

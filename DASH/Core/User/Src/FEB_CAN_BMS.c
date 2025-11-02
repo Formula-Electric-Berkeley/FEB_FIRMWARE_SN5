@@ -1,9 +1,15 @@
-// ********************************** Includes & External **********************************
+// ============================================================================
+// INCLUDES
+// ============================================================================
 
 #include "FEB_CAN_BMS.h"
 #include "FEB_CAN_Frame_IDs.h"
+#include "FEB_CAN_Heartbeat.h"
 
-// *********************************** Struct ************************************
+// ============================================================================
+// DATA STRUCTURES & ENUMS
+// ============================================================================
+
 typedef enum {
 	FEB_HB_NULL,
 	FEB_HB_DASH,
@@ -23,30 +29,18 @@ typedef struct BMS_MESSAGE_TYPE {
 	bool bms_fault;
 	bool imd_fault;
 } BMS_MESSAGE_TYPE;
-BMS_MESSAGE_TYPE bms_message;
 
-//
-//typedef struct {
-//	volatile uint32_t id;
-//	volatile uint32_t dlc;
-//	volatile uint8_t data[8];
-//} ICS_CAN_Rx_t;
-//
-//typedef struct {
-//	volatile uint8_t speed;
-//} FEB_CAN_ICS_Message_t;
-//
-//typedef struct {
-//	volatile uint8_t bms_state;
-//	volatile float ivt_voltage;
-//	volatile float acc_temp;
-//} ICS_UI_Values_t;
+// ============================================================================
+// GLOBAL VARIABLES
+// ============================================================================
+
+BMS_MESSAGE_TYPE bms_message;
 
 #define BMS_TIMEOUT 1200
 
-// **************************************** Functions ****************************************
-
-
+// ============================================================================
+// GETTER FUNCTIONS
+// ============================================================================
 
 FEB_SM_ST_t FEB_CAN_BMS_Get_State(){
 	return bms_message.state;
@@ -60,56 +54,57 @@ bool FEB_CAN_GET_IMD_FAULT(){
 	return bms_message.imd_fault;
 }
 
-// ***** CAN FUNCTIONS ****
+// ============================================================================
+// CAN INITIALIZATION
+// ============================================================================
 
-uint8_t FEB_CAN_BMS_Filter_Config(CAN_HandleTypeDef* hcan, uint8_t FIFO_assignment, uint8_t filter_bank) {
-	uint16_t ids[] = {FEB_CAN_BMS_STATE_FRAME_ID, FEB_CAN_ACCUMULATOR_FAULTS_FRAME_ID};
+/**
+ * @brief Initialize BMS CAN message reception
+ * 
+ * Registers callback for BMS state and fault messages.
+ * Following PCU's modular pattern: each subsystem registers its own callbacks.
+ */
+void FEB_CAN_BMS_Init(void) {
+	FEB_CAN_RX_Register(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_STATE_FRAME_ID, FEB_CAN_ID_STD, FEB_CAN_BMS_Callback);
+	FEB_CAN_RX_Register(FEB_CAN_INSTANCE_1, FEB_CAN_ACCUMULATOR_FAULTS_FRAME_ID, FEB_CAN_ID_STD, FEB_CAN_BMS_Callback);
+	
+	bms_message.state = FEB_SM_ST_BOOT;
+	bms_message.last_message_time = 0;
+}
 
-	for (uint8_t i = 0; i < 2; i++) {
-		CAN_FilterTypeDef filter_config;
+// ============================================================================
+// CAN CALLBACK (RUNS IN INTERRUPT CONTEXT)
+// ============================================================================
 
-	    // Standard CAN - 2.0A - 11 bit
-	    filter_config.FilterActivation = CAN_FILTER_ENABLE;
-		filter_config.FilterBank = filter_bank;
-		filter_config.FilterFIFOAssignment = FIFO_assignment;
-		filter_config.FilterIdHigh = ids[i] << 5;
-		filter_config.FilterIdLow = 0;
-		filter_config.FilterMaskIdHigh = 0xFFE0;
-		filter_config.FilterMaskIdLow = 0;
-		filter_config.FilterMode = CAN_FILTERMODE_IDMASK;
-		filter_config.FilterScale = CAN_FILTERSCALE_32BIT;
-		filter_config.SlaveStartFilterBank = 27;
-	    filter_bank++;
-
-		if (HAL_CAN_ConfigFilter(hcan, &filter_config) != HAL_OK) {
-			//Code Error - shutdown
+/**
+ * @brief CAN RX callback for BMS messages
+ * 
+ * Handles BMS state and fault messages. Runs in interrupt context.
+ * @param instance CAN instance (CAN1 or CAN2)
+ * @param can_id Received CAN message ID
+ * @param id_type Standard or Extended ID
+ * @param data Pointer to received data bytes
+ * @param length Number of data bytes received
+ */
+void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type, const uint8_t *data, uint8_t length) {
+	if (can_id == FEB_CAN_BMS_STATE_FRAME_ID) {
+		bms_message.state = data[0] & 0x1F;
+		bms_message.ping_ack = (data[0] & 0xE0) >> 5;
+		
+		if (bms_message.state == FEB_SM_ST_HEALTH_CHECK || bms_message.ping_ack == FEB_HB_DASH) {
+			FEB_CAN_HEARTBEAT_Transmit();
 		}
+		
+		bms_message.last_message_time = HAL_GetTick();
+	} else if (can_id == FEB_CAN_ACCUMULATOR_FAULTS_FRAME_ID) {
+		bms_message.bms_fault = (data[0] & 0x01) == 0x01;
+		bms_message.imd_fault = (data[0] & 0x02) == 0x02;
 	}
-
-	return filter_bank;
 }
 
-void FEB_CAN_BMS_Store_Msg(CAN_RxHeaderTypeDef* pHeader, uint8_t *RxData) {
-    switch (pHeader -> StdId){
-        case FEB_CAN_BMS_STATE_FRAME_ID:
-        	bms_message.state = RxData[0] & 0x1F;
-			bms_message.ping_ack = (RxData[0] & 0xE0) >> 5;
-
-			if ( bms_message.state == FEB_SM_ST_HEALTH_CHECK || bms_message.ping_ack == FEB_HB_DASH ) {
-				FEB_CAN_HEARTBEAT_Transmit();
-			}
-//        	if(is_r2d() && !(BMS_MESSAGE.state == FEB_SM_ST_DRIVE)){
-//        		disable_r2d();
-//        	} else if (BMS_MESSAGE.state == FEB_SM_ST_DRIVE){
-//        		enable_r2d();
-//        	}
-        	bms_message.last_message_time = HAL_GetTick();
-        	break;
-		case FEB_CAN_ACCUMULATOR_FAULTS_FRAME_ID:
-		        	bms_message.bms_fault = (RxData[0] & 0x01) == 0x01;
-		        	bms_message.imd_fault = (RxData[0] & 0x02) == 0x02;
-    }
-}
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
 
 bool FEB_CAN_BMS_is_stale(){
 	if(HAL_GetTick() - bms_message.last_message_time >= BMS_TIMEOUT ){
@@ -117,3 +112,6 @@ bool FEB_CAN_BMS_is_stale(){
 	}
 	return false;
 }
+
+
+

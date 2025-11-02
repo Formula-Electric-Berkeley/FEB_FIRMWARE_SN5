@@ -4,6 +4,7 @@
 // **************************************** Includes ****************************************
 
 #include "stm32f4xx_hal.h"
+#include "FEB_CAN_RX.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -29,16 +30,19 @@ typedef struct {
 extern DASH_UI_Values_t DASH_UI_Values;
 extern int16_t lv_voltage;
 
+// PCU message structure (for brake and RMS data)
+typedef struct {
+	uint8_t brake_pedal;
+	float current;
+	uint8_t enabled;
+} FEB_CAN_PCU_Message_t;
+
+extern FEB_CAN_PCU_Message_t FEB_CAN_PCU_Message;
+
 // **************************************** Functions ****************************************
 
-uint8_t FEB_CAN_DASH_Filter(CAN_HandleTypeDef* hcan, uint8_t FIFO_assignment, uint8_t filter_bank);
-
-void FEB_CAN_DASH_Rx_Handler(CAN_RxHeaderTypeDef *FEB_CAN_Rx_Header, uint8_t FEB_CAN_Rx_Data[]);
-
+void FEB_CAN_DASH_Init(void);
+void FEB_CAN_DASH_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type, const uint8_t *data, uint8_t length);
 void FEB_CAN_DASH_Transmit_Button_State(uint8_t transmit_button_state);
-
-void FEB_CAN_DASH_Transmit_Speed(void);
-
-uint8_t FEB_CAN_DASH_Get_Speed(void);
 
 #endif /* INC_FEB_CAN_DASH_H_ */

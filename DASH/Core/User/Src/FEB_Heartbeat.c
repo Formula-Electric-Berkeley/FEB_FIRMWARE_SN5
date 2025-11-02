@@ -1,23 +1,27 @@
-// ********************************** Includes & External **********************************
+// ============================================================================
+// INCLUDES
+// ============================================================================
+
 #include "FEB_CAN_Heartbeat.h"
 #include "FEB_CAN_Frame_IDs.h"
 
+// ============================================================================
+// EXTERNAL VARIABLES
+// ============================================================================
+
 extern CAN_TxHeaderTypeDef FEB_CAN_Tx_Header;
 extern uint32_t FEB_CAN_Tx_Mailbox;
-extern CAN_HandleTypeDef hcan1; 
+extern CAN_HandleTypeDef hcan1;
+
+// ============================================================================
+// PRIVATE VARIABLES
+// ============================================================================
+
 static uint8_t heartbeat[8];
 
-// *********************************** Struct ************************************
-
-// typedef struct BMS_MESSAGE_TYPE {
-//     uint16_t temp;
-//     FEB_SM_ST_t status;
-
-// } BMS_MESSAGE_TYPE;
-// BMS_MESSAGE_TYPE BMS_MESSAGE;
-
-
-// ***** CAN FUNCTIONS ****
+// ============================================================================
+// HEARTBEAT FUNCTIONS
+// ============================================================================
 /* i dont think we need to config
 uint8_t FEB_CAN_HEARTBEAT_Filter_Config(CAN_HandleTypeDef* hcan, uint8_t FIFO_assignment, uint8_t filter_bank) {
     uint16_t id = FEB_CAN_HEARTBEAT_ID; // Use the correct ID.
@@ -60,8 +64,11 @@ void FEB_CAN_HEARTBEAT_Transmit() {
     if (HAL_CAN_AddTxMessage(&hcan1, &FEB_CAN_Tx_Header, heartbeat, &FEB_CAN_Tx_Mailbox) != HAL_OK) {
 		// Code Error - Shutdown
 	}
-
 }
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
 
 void FEB_CAN_HEARTBEAT_Init() {
 	for ( int i = 0; i < 8; ++i ) {
