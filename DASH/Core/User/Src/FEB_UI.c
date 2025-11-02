@@ -87,7 +87,7 @@ void StartDisplayTask(void *argument)
         // It needs interrupts enabled for DMA2D and LTDC to work properly
         FEB_UI_Update();
 
-        osDelay(5); // VERY IMPORTANT (lets LVGL run properly)
+        osDelay(pdMS_TO_TICKS(1000)); // VERY IMPORTANT (lets LVGL run properly)
     }
 }
 
