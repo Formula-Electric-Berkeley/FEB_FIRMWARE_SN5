@@ -15,18 +15,14 @@ typedef struct {
   uint32_t ts;  
 } can_msg_t;
 
-extern QueueHandle_t qCanRx;
-extern QueueHandle_t qCanTx;
-extern EventGroupHandle_t evBmsFlags;
+extern osMutexId_t ADBMSMutexHandle;
 
 enum {
   EV_FAULT = (1u<<0),
   EV_PRECHARGE_OK = (1u<<1),
 };
 
-void SensorTask(void *arg);
-void CommTask(void *arg);
-void ProtectionTask(void *arg);
+void StartADBMSTask(void *arg);
 
 #endif
 

@@ -9,11 +9,26 @@
 // ********************************** Macros *************************************
 
 #define NUM_RX_BYT 8
+#define REG_DATA_SIZE 6
+#define REG_WITH_PEC_SIZE 8
+#define MAX_WRITE_BUFFER_SIZE 256
+#define ADC_POLL_TIMEOUT 200000
+#define ADC_POLL_INCREMENT 10
+
 #define CFGRA 0
 #define CFGRB 1
 #define CELL 2
 #define AUX 3
 #define STAT 4
+
+// Bit masks for configuration
+#define REFON_MASK 0x80
+#define REFON_CLEAR_MASK 0x7F
+#define DCC_LOW_MASK 0xFF
+#define DCC_HIGH_MASK 0xFF
+#define BYTE_MASK 0xFF
+#define NIBBLE_MASK 0x0F
+#define HALF_BYTE_SHIFT 4
 
 // ********************************** Structs ************************************
 
@@ -120,7 +135,7 @@ void ADBMS6830B_set_cfgr(uint8_t nIC, //!< Current IC
                       bool cth[3], //!< The CTH bits
                       bool gpio[10],//!< The GPIO bits
 					  uint16_t dcc,//!< The DCC bits
-					  bool dcto[4],//!< The Dcto bits
+					  bool dcto[6],//!< The Dcto bits
 					  uint16_t uv, //!< The UV value
 					  uint16_t ov  //!< The OV value
 					  );
@@ -167,7 +182,7 @@ void ADBMS6830B_set_cfgr_dis(uint8_t nIC, //!< Current IC
  */
 void ADBMS6830B_set_cfgr_dcto(uint8_t nIC,  //!< Current IC
 						   cell_asic *ic, //!< A two dimensional array that will store the data
-						   bool dcto[4] //!< The Dcto bits
+						   bool dcto[6] //!< The Dcto bits
 						   );
 
 /*!
@@ -300,12 +315,6 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
                     	  );
 
 // ******************************** Auxilary Functions ********************************
-/*!
- Wake the ADBMS6830B from the sleep state
- @return void
- */
-void wakeup_sleep(uint8_t total_ic); //!< Number of ICs in the daisy chain
-
 /*!
  Helper Function that counts overall PEC errors and register/IC PEC errors
  @return void

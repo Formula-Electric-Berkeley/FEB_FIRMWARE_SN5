@@ -45,11 +45,19 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
+    Core/User/Src/bms_tasks.c
+    Core/User/Src/FEB_HW.c
+    Core/User/Src/FEB_AD68xx_Interface.c
+    Core/User/Src/FEB_ADBMS6830B.c
+    Core/User/Src/FEB_ADBMS6830B_Driver.c
+    Core/User/Src/FEB_SM.c
+    Core/User/Src/FEB_CAN_IVT.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
+    Core/User/Inc
 )
 
 # Add project symbols (macros)
@@ -65,4 +73,11 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
 
     # Add user defined libraries
+)
+
+# Add linker options
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
+    # Enable floating-point printf/scanf support for newlib-nano
+    "LINKER:-u,_printf_float"
+    "LINKER:-u,_scanf_float"
 )

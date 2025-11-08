@@ -69,6 +69,8 @@ void Error_Handler(void);
 #define SPI1_CS_GPIO_Port GPIOC
 #define BUZZER_Pin GPIO_PIN_0
 #define BUZZER_GPIO_Port GPIOA
+#define IVM_VOLTAGE_Pin GPIO_PIN_4
+#define IVM_VOLTAGE_GPIO_Port GPIOA
 #define AIR_M_SENSE_Pin GPIO_PIN_4
 #define AIR_M_SENSE_GPIO_Port GPIOC
 #define AIR_P_SENSE_Pin GPIO_PIN_5
@@ -79,6 +81,12 @@ void Error_Handler(void);
 #define INTERRUPT_GPIO_Port GPIOB
 #define TSSI_IN_Pin GPIO_PIN_2
 #define TSSI_IN_GPIO_Port GPIOB
+#define SPI2_CS_Pin GPIO_PIN_6
+#define SPI2_CS_GPIO_Port GPIOC
+#define WAKE2_Pin GPIO_PIN_7
+#define WAKE2_GPIO_Port GPIOC
+#define INTERRUPT2_Pin GPIO_PIN_8
+#define INTERRUPT2_GPIO_Port GPIOC
 #define SHS_IMD_Pin GPIO_PIN_10
 #define SHS_IMD_GPIO_Port GPIOC
 #define SHS_TSMS_Pin GPIO_PIN_11
