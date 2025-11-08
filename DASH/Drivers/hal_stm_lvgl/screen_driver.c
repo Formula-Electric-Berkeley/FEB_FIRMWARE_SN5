@@ -15,7 +15,7 @@
 
 #define LCD_SCREEN_WIDTH 800  // Actual screen width in landscape mode
 #define LCD_SCREEN_HEIGHT 480  // Actual screen height in landscape mode
-#define FRAMEBUFFER_SIZE (uint32_t)LCD_SCREEN_HEIGHT*LCD_SCREEN_WIDTH
+#define FRAMEBUFFER_SIZE (uint32_t)(LCD_SCREEN_HEIGHT*LCD_SCREEN_WIDTH)
 #define DMA_XFERS_NEEDED FRAMEBUFFER_SIZE/2 // We need half as many transfers because the buffer is an array of
 											// 16 bits but the transfers are 32 bits.
 
@@ -46,36 +46,75 @@ void my_stm32_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_
  * Public functions definitions
  */
 
-void screen_driver_init(){
+void screen_driver_init(void)
+{
+    BSP_SDRAM_Init();
+    BSP_LCD_Init();
 
-    BSP_LCD_Init() ;
-  	BSP_LCD_LayerDefaultInit(0, (uint32_t)framebuffer_1);
+    /* Initialize framebuffer_1 as the LTDC layer */
+    BSP_LCD_LayerDefaultInit(0, (uint32_t)framebuffer_1);
+    BSP_LCD_SelectLayer(0);
+    BSP_LCD_DisplayOn();
 
-	static lv_disp_draw_buf_t draw_buf;
-	lv_disp_draw_buf_init(&draw_buf, framebuffer_1, framebuffer_2, FRAMEBUFFER_SIZE);
-	lv_disp_drv_init(&lv_display_driver);
-	lv_display_driver.direct_mode = true;
-//	lv_display_driver.full_refresh = true;
-	lv_display_driver.hor_res = LCD_SCREEN_WIDTH;
-	lv_display_driver.ver_res = LCD_SCREEN_HEIGHT;
-	lv_display_driver.flush_cb = stm32_flush_cb;
-//	lv_display_driver.flush_cb = my_stm32_flush_cb;
-	lv_display_driver.draw_buf = &draw_buf;
-//	lv_display_driver.sw_rotate = 1;
-//	lv_display_driver.rotated = 2;
+    /* --- FIX: Explicitly ensure the LTDC layer geometry is correct --- */
+    LTDC_LayerCfgTypeDef layer_cfg;
 
-	lv_disp_drv_register(&lv_display_driver);
+    layer_cfg.WindowX0 = 0;
+    layer_cfg.WindowY0 = 0;
+    layer_cfg.WindowX1 = LCD_SCREEN_WIDTH;   // 800
+    layer_cfg.WindowY1 = LCD_SCREEN_HEIGHT;  // 480
+
+    layer_cfg.PixelFormat    = LTDC_PIXEL_FORMAT_RGB565;
+    layer_cfg.FBStartAdress  = (uint32_t)framebuffer_1;
+
+    /* Stride defined implicitly by width and pixel format */
+    layer_cfg.Alpha = 255;
+    layer_cfg.Alpha0 = 0;
+    layer_cfg.BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
+    layer_cfg.BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
+
+    layer_cfg.ImageWidth  = LCD_SCREEN_WIDTH;
+    layer_cfg.ImageHeight = LCD_SCREEN_HEIGHT;
+
+    layer_cfg.Backcolor.Red   = 0;
+    layer_cfg.Backcolor.Green = 0;
+    layer_cfg.Backcolor.Blue  = 0;
+
+    HAL_LTDC_ConfigLayer(&hltdc, &layer_cfg, 0);
+    HAL_LTDC_Reload(&hltdc, LTDC_RELOAD_IMMEDIATE);
+
+    /* ---- LVGL init ---- */
+    static lv_disp_draw_buf_t draw_buf;
+    lv_disp_draw_buf_init(&draw_buf, framebuffer_1, framebuffer_2, FRAMEBUFFER_SIZE);
+
+    lv_disp_drv_init(&lv_display_driver);
+    lv_display_driver.hor_res = LCD_SCREEN_WIDTH;
+    lv_display_driver.ver_res = LCD_SCREEN_HEIGHT;
+    lv_display_driver.draw_buf = &draw_buf;
+    lv_display_driver.full_refresh = true;
+    lv_display_driver.flush_cb = my_stm32_flush_cb;
+    lv_disp_drv_register(&lv_display_driver);
 }
 
+
+
 void my_stm32_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p) {
-    uint16_t *framebuffer = (uint16_t *)FRAMEBUFFER_ADDR;
-    for (int y = area->y1; y <= area->y2; y++) {
-        for (int x = area->x1; x <= area->x2; x++) {
-            framebuffer[y * LCD_SCREEN_WIDTH + x] = color_p->full;
-            color_p++;
-        }
+    /* Use the active framebuffer that LTDC is displaying */
+    uint16_t *fb = (uint16_t *)framebuffer_1;
+
+    /* Copy the LVGL draw area into the framebuffer */
+    for(int y = area->y1; y <= area->y2; y++) {
+        uint32_t fb_index = y * LCD_SCREEN_WIDTH + area->x1;
+        uint32_t copy_pixels = (area->x2 - area->x1 + 1);
+        memcpy(&fb[fb_index], color_p, copy_pixels * sizeof(lv_color_t));
+        color_p += copy_pixels;
     }
+
+    /* Tell LVGL we're done */
     lv_disp_flush_ready(disp_drv);
+
+    /* Make LTDC refresh this buffer NOW */
+    HAL_LTDC_Reload(&hltdc, LTDC_RELOAD_IMMEDIATE);
 }
 
 /*

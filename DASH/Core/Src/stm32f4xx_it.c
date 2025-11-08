@@ -59,6 +59,7 @@ extern DMA2D_HandleTypeDef hdma2d;
 extern DSI_HandleTypeDef hdsi;
 extern LTDC_HandleTypeDef hltdc;
 extern TIM_HandleTypeDef htim6;
+#include "lvgl.h"
 
 /* USER CODE BEGIN EV */
 
@@ -172,7 +173,7 @@ void TIM6_DAC_IRQHandler(void)
   /* USER CODE END TIM6_DAC_IRQn 0 */
   HAL_TIM_IRQHandler(&htim6);
   /* USER CODE BEGIN TIM6_DAC_IRQn 1 */
-
+  lv_tick_inc(1);   // <<--- THIS FIXES THE UI
   /* USER CODE END TIM6_DAC_IRQn 1 */
 }
 

@@ -27,44 +27,45 @@ lv_obj_t * ui____initial_actions0;
 ///////////////////// FUNCTIONS ////////////////////
 
 ///////////////////// SCREENS ////////////////////
-// lv_obj_t * ui_Screen1;
+extern lv_obj_t * ui_Screen1;
 lv_obj_t * ui_LabelHello;
 
 void ui_init(void)
 {
-    // lv_disp_t * dispp = lv_disp_get_default();
-    // lv_theme_t * theme = lv_theme_default_init(dispp, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_RED),
-    //                                            true, LV_FONT_DEFAULT);
-    // lv_disp_set_theme(dispp, theme);
-    // ui_Screen1_screen_init();
-    // ui____initial_actions0 = lv_obj_create(NULL);
-    // lv_disp_load_scr(ui_Screen1);
-    lv_disp_t * dispp = lv_disp_get_default();
-
-    /* Keep your same theme setup */
-    lv_theme_t * theme = lv_theme_default_init(
-        dispp,
-        lv_palette_main(LV_PALETTE_BLUE),
-        lv_palette_main(LV_PALETTE_RED),
-        true,
-        LV_FONT_DEFAULT
-    );
-    lv_disp_set_theme(dispp, theme);
-
-    /* Create a new clean screen */
     ui_Screen1 = lv_obj_create(NULL);
-    lv_obj_clear_flag(ui_Screen1, LV_OBJ_FLAG_SCROLLABLE);
 
-    /* Add the HELLO FORMULA label */
+    /* Background: Formula Electric Deep Blue */
+    lv_obj_set_style_bg_color(ui_Screen1, lv_color_hex(0x4242FF), 0);
+    lv_obj_set_style_bg_opa(ui_Screen1, LV_OPA_COVER, 0);
+
+    /* Create HELLO label */
     ui_LabelHello = lv_label_create(ui_Screen1);
-    lv_label_set_text(ui_LabelHello, "HELLO FORMULA!");
-    lv_obj_set_style_text_color(ui_LabelHello, lv_color_hex(0x00FF00), LV_PART_MAIN);
-    lv_obj_set_style_text_font(ui_LabelHello, &lv_font_montserrat_28, LV_PART_MAIN);
-    lv_obj_align(ui_LabelHello, LV_ALIGN_CENTER, 0, 0);
+    lv_label_set_text(ui_LabelHello, "FORMULA ELECTRIC");
+    
+    /* Bold + Large Font */
+    lv_obj_set_style_text_font(ui_LabelHello, &lv_font_montserrat_48, 0);
+    
+    /* Bright Electric Green */
+    lv_obj_set_style_text_color(ui_LabelHello, lv_color_hex(0xFFCC12), 0);
+
+    /* Center on Screen */
+    lv_obj_center(ui_LabelHello);
 
     /* Load this screen */
     lv_disp_load_scr(ui_Screen1);
+
+    /* Soft Glow Animation (electric pulse) */
+    lv_anim_t pulse;
+    lv_anim_init(&pulse);
+    lv_anim_set_var(&pulse, ui_LabelHello);
+    lv_anim_set_values(&pulse, 180, 255);      // Fade from dim to bright
+    lv_anim_set_time(&pulse, 900);             // Pulse speed
+    lv_anim_set_repeat_count(&pulse, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_set_playback_time(&pulse, 900);
+    lv_anim_set_exec_cb(&pulse, (lv_anim_exec_xcb_t)lv_obj_set_style_opa);
+    lv_anim_start(&pulse);
 }
+
 
 void ui_destroy(void)
 {

@@ -78,16 +78,19 @@ void FEB_UI_Update(void) {
 void StartDisplayTask(void *argument)
 {
     FEB_UI_Init();
+    uint32_t last_blink = 0;
 
     for (;;) {
-        // Toggle LED without critical section - GPIO operations are atomic
-        HAL_GPIO_TogglePin(LED4_GPIO_Port, LED4_Pin); // Blink LED to show system runs
+        FEB_UI_Update();
 
         // LVGL timer handler should NOT be called in critical section
         // It needs interrupts enabled for DMA2D and LTDC to work properly
-        FEB_UI_Update();
+        if (lv_tick_get() - last_blink >= 1000) { // 1 second passed
+            HAL_GPIO_TogglePin(LED4_GPIO_Port, LED4_Pin);
+            last_blink = lv_tick_get();
+        }
 
-        osDelay(pdMS_TO_TICKS(1000)); // VERY IMPORTANT (lets LVGL run properly)
+        osDelay(pdMS_TO_TICKS(5)); // VERY IMPORTANT (lets LVGL run properly)
     }
 }
 
