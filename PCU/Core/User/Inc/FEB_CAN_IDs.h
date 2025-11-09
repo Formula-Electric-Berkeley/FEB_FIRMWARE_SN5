@@ -42,6 +42,7 @@ extern "C" {
 #define FEB_CAN_ID_PCU_HEARTBEAT                0x200  /* PCU heartbeat/status */
 #define FEB_CAN_ID_BSPD_STATUS                  0x201  /* BSPD status from PCU */
 #define FEB_CAN_ID_BRAKE_DATA                   0x202  /* Brake sensor data from PCU */
+#define FEB_CAN_ID_TPS_DATA                     0x203  /* TPS2482 voltage/current data */
 
 #ifdef __cplusplus
 }

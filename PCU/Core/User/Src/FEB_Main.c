@@ -50,7 +50,9 @@ void FEB_Main_While() {
     /* TODO: Implement additional CAN transmissions:
      * - FEB_CAN_HEARTBEAT_Transmit()      // Already implemented in BMS callback
      * - FEB_CAN_ACC()                     // Transmit accelerator position
-     * - FEB_CAN_TPS_Transmit()            // Transmit throttle position sensor data
+     */
+    FEB_CAN_TPS_Transmit();            // Transmit throttle position sensor data
+     /*
      * - FEB_HECS_update()                 // Update HECS (HV Enable Check System)
      */
 
