@@ -1,5 +1,6 @@
 {
-    "cmake.cmakePath": "cube-cmake",
+    "cmake.cmakePath": "cmake",
+    "cmake.configureOnOpen": true,
     "cmake.configureArgs": [
         "-DCMAKE_COMMAND=cube-cmake"
     ],

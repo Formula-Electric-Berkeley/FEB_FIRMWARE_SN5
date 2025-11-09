@@ -4,16 +4,16 @@
 // ********************************** ADBMS Configuration Constants **************
 
 // Number of ADBMS6830 ICs per bank
-#define FEB_NUM_ICPBANK 1
+#define FEB_NUM_ICPBANK 2
 
 // Number of banks in the system
-#define FEB_NBANKS 1
+#define FEB_NBANKS 6
 
 // Total number of ICs in the daisy chain
 #define FEB_NUM_IC (FEB_NUM_ICPBANK * FEB_NBANKS)
 
 // Number of cells per IC
-#define FEB_NUM_CELLS_PER_IC 18
+#define FEB_NUM_CELLS_PER_IC 10
 
 // Total number of cells per bank
 #define FEB_NUM_CELLS_PER_BANK (FEB_NUM_CELLS_PER_IC * FEB_NUM_ICPBANK)
@@ -51,7 +51,7 @@
 #define ISOSPI_MODE_SPI2_ONLY     2  // Use only SPI2 (backup channel)
 
 // *** SELECT MODE HERE ***
-#define ISOSPI_MODE  ISOSPI_MODE_REDUNDANT
+#define ISOSPI_MODE  ISOSPI_MODE_SPI1_ONLY
 
 // Redundant Mode Configuration (only used when ISOSPI_MODE == ISOSPI_MODE_REDUNDANT)
 #define ISOSPI_FAILOVER_PEC_THRESHOLD     5      // Number of PEC errors before failover
