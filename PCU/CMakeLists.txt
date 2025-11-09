@@ -57,6 +57,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/User/Src/FEB_CAN_Diagnostics.c
     Core/User/Src/FEB_TPS2482.c
     Core/User/Src/FEB_CAN_TPS.c
+    Core/User/Src/FEB_CAN_DASH.c
 )
 
 # Add include paths

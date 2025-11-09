@@ -53,7 +53,7 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+extern UART_HandleTypeDef huart2;
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -61,14 +61,14 @@ void Error_Handler(void);
 #define BSPD_Indicator_GPIO_Port GPIOC
 #define BSPD_Reset_Pin GPIO_PIN_1
 #define BSPD_Reset_GPIO_Port GPIOC
-#define ACC_Pedal_2_Pin GPIO_PIN_2
-#define ACC_Pedal_2_GPIO_Port GPIOC
-#define ACC_Pedal_1_Pin GPIO_PIN_3
-#define ACC_Pedal_1_GPIO_Port GPIOC
-#define Brake_Pressure_2_Pin GPIO_PIN_0
-#define Brake_Pressure_2_GPIO_Port GPIOA
-#define Brake_Pressure_1_Pin GPIO_PIN_1
-#define Brake_Pressure_1_GPIO_Port GPIOA
+#define Brake_Pressure_1_Pin GPIO_PIN_2
+#define Brake_Pressure_1_GPIO_Port GPIOC
+#define Brake_Pressure_2_Pin GPIO_PIN_3
+#define Brake_Pressure_2_GPIO_Port GPIOC
+#define Acc_Pedal_1_Pin GPIO_PIN_0
+#define Acc_Pedal_1_GPIO_Port GPIOA
+#define ACC_Pedal_2_Pin GPIO_PIN_1
+#define ACC_Pedal_2_GPIO_Port GPIOA
 #define Current_Sense_Pin GPIO_PIN_4
 #define Current_Sense_GPIO_Port GPIOA
 #define Shutdown_In_Pin GPIO_PIN_6

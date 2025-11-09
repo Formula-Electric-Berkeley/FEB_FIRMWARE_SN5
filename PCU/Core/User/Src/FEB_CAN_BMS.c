@@ -52,5 +52,5 @@ void FEB_CAN_HEARTBEAT_Transmit(void) {
 	uint8_t data[8];
     data[0] = 1;
 
-    FEB_CAN_TX_TransmitDefault(FEB_CAN_INSTANCE_1, FEB_CAN_ID_PCU_HEARTBEAT, data, 1);
+    FEB_CAN_TX_TransmitDefault(FEB_CAN_INSTANCE_1, FEB_CAN_PCU_HEARTBEAT_FRAME_ID, data, 1);
 }
