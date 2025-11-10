@@ -31,13 +31,13 @@ extern "C" {
 #define ADC1_BRAKE_INPUT_PIN                GPIO_PIN_4
 #define ADC1_BRAKE_INPUT_PORT               GPIOC
 
-#define ADC1_BRAKE_PRESSURE_1_CHANNEL      ADC_CHANNEL_1   /* PA1 - Brake Pressure Sensor 1 */
-#define ADC1_BRAKE_PRESSURE_1_PIN          GPIO_PIN_1
-#define ADC1_BRAKE_PRESSURE_1_PORT         GPIOA
+#define ADC1_ACCEL_PEDAL_1_CHANNEL         ADC_CHANNEL_0   /* PA0 - Accelerator Pedal Position 1 */
+#define ADC1_ACCEL_PEDAL_1_PIN             GPIO_PIN_0
+#define ADC1_ACCEL_PEDAL_1_PORT            GPIOA
 
-#define ADC1_BRAKE_PRESSURE_2_CHANNEL      ADC_CHANNEL_0   /* PA0 - Brake Pressure Sensor 2 */
-#define ADC1_BRAKE_PRESSURE_2_PIN          GPIO_PIN_0
-#define ADC1_BRAKE_PRESSURE_2_PORT         GPIOA
+#define ADC1_ACCEL_PEDAL_2_CHANNEL         ADC_CHANNEL_1   /* PA1 - Accelerator Pedal Position 2 */
+#define ADC1_ACCEL_PEDAL_2_PIN             GPIO_PIN_1
+#define ADC1_ACCEL_PEDAL_2_PORT            GPIOA
 
 /* -------------------------------------------------------------------------- */
 /*                            ADC2 CHANNELS                                  */
@@ -65,13 +65,13 @@ extern "C" {
 #define ADC3_BSPD_RESET_PIN                GPIO_PIN_1
 #define ADC3_BSPD_RESET_PORT               GPIOC
 
-#define ADC3_ACCEL_PEDAL_1_CHANNEL         ADC_CHANNEL_11  /* PC3 - Accelerator Pedal Position 1 */
-#define ADC3_ACCEL_PEDAL_1_PIN             GPIO_PIN_3
-#define ADC3_ACCEL_PEDAL_1_PORT            GPIOC
+#define ADC3_BRAKE_PRESSURE_1_CHANNEL      ADC_CHANNEL_12  /* PC2 - Brake Pressure Sensor 1 */
+#define ADC3_BRAKE_PRESSURE_1_PIN          GPIO_PIN_2
+#define ADC3_BRAKE_PRESSURE_1_PORT         GPIOC
 
-#define ADC3_ACCEL_PEDAL_2_CHANNEL         ADC_CHANNEL_10  /* PC2 - Accelerator Pedal Position 2 */
-#define ADC3_ACCEL_PEDAL_2_PIN             GPIO_PIN_2
-#define ADC3_ACCEL_PEDAL_2_PORT            GPIOC
+#define ADC3_BRAKE_PRESSURE_2_CHANNEL      ADC_CHANNEL_13  /* PC3 - Brake Pressure Sensor 2 */
+#define ADC3_BRAKE_PRESSURE_2_PIN          GPIO_PIN_3
+#define ADC3_BRAKE_PRESSURE_2_PORT         GPIOC
 
 /* ========================================================================== */
 /*                         ADC CONFIGURATION PARAMETERS                       */

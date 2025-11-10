@@ -133,30 +133,30 @@ ADC_StatusTypeDef FEB_ADC_Init(void) {
     brake_input_config.filter.samples = FILTER_BRAKE_INPUT_SAMPLES;
     brake_input_config.filter.alpha = FILTER_BRAKE_INPUT_ALPHA;
     
-    /* Brake Pressure Sensor 1 Configuration */
-    brake_pressure1_config.hadc = &hadc1;
-    brake_pressure1_config.channel = ADC1_BRAKE_PRESSURE_1_CHANNEL;
-    brake_pressure1_config.filter.enabled = FILTER_BRAKE_PRESSURE_ENABLED;
-    brake_pressure1_config.filter.samples = FILTER_BRAKE_PRESSURE_SAMPLES;
-    brake_pressure1_config.filter.alpha = FILTER_BRAKE_PRESSURE_ALPHA;
-    
-    /* Brake Pressure Sensor 2 Configuration */
-    brake_pressure2_config.hadc = &hadc1;
-    brake_pressure2_config.channel = ADC1_BRAKE_PRESSURE_2_CHANNEL;
-    brake_pressure2_config.filter.enabled = FILTER_BRAKE_PRESSURE_ENABLED;
-    brake_pressure2_config.filter.samples = FILTER_BRAKE_PRESSURE_SAMPLES;
-    brake_pressure2_config.filter.alpha = FILTER_BRAKE_PRESSURE_ALPHA;
-    
     /* Accelerator Pedal Sensor 1 Configuration */
-    accel_pedal1_config.hadc = &hadc3;
-    accel_pedal1_config.channel = ADC3_ACCEL_PEDAL_1_CHANNEL;
+    accel_pedal1_config.hadc = &hadc1;
+    accel_pedal1_config.channel = ADC1_ACCEL_PEDAL_1_CHANNEL;
     accel_pedal1_config.filter.enabled = FILTER_ACCEL_PEDAL_ENABLED;
     accel_pedal1_config.filter.samples = FILTER_ACCEL_PEDAL_SAMPLES;
     accel_pedal1_config.filter.alpha = FILTER_ACCEL_PEDAL_ALPHA;
     
     /* Accelerator Pedal Sensor 2 Configuration */
-    accel_pedal2_config.hadc = &hadc3;
-    accel_pedal2_config.channel = ADC3_ACCEL_PEDAL_2_CHANNEL;
+    accel_pedal2_config.hadc = &hadc1;
+    accel_pedal2_config.channel = ADC1_ACCEL_PEDAL_2_CHANNEL;
+    accel_pedal1_config.filter.enabled = FILTER_ACCEL_PEDAL_ENABLED;
+    accel_pedal1_config.filter.samples = FILTER_ACCEL_PEDAL_SAMPLES;
+    accel_pedal1_config.filter.alpha = FILTER_ACCEL_PEDAL_ALPHA;
+    
+    /* Brake Pressure Sensor 1 Configuration */
+    brake_pressure1_config.hadc = &hadc3;
+    brake_pressure1_config.channel = ADC3_BRAKE_PRESSURE_1_CHANNEL;
+    brake_pressure1_config.filter.enabled = FILTER_BRAKE_PRESSURE_ENABLED;
+    brake_pressure1_config.filter.samples = FILTER_BRAKE_PRESSURE_SAMPLES;
+    brake_pressure1_config.filter.alpha = FILTER_BRAKE_PRESSURE_ALPHA;
+    
+    /* Brake Pressure Sensor 2 Configuration */
+    brake_pressure2_config.hadc = &hadc3;
+    brake_pressure2_config.channel = ADC3_BRAKE_PRESSURE_2_CHANNEL;
     accel_pedal2_config.filter.enabled = FILTER_ACCEL_PEDAL_ENABLED;
     accel_pedal2_config.filter.samples = FILTER_ACCEL_PEDAL_SAMPLES;
     accel_pedal2_config.filter.alpha = FILTER_ACCEL_PEDAL_ALPHA;
@@ -294,20 +294,20 @@ uint16_t FEB_ADC_GetBrakeInputRaw(void) {
     return FEB_ADC_GetRawValue(&hadc1, ADC1_BRAKE_INPUT_CHANNEL);
 }
 
-uint16_t FEB_ADC_GetBrakePressure1Raw(void) {
-    return FEB_ADC_GetRawValue(&hadc1, ADC1_BRAKE_PRESSURE_1_CHANNEL);
-}
-
-uint16_t FEB_ADC_GetBrakePressure2Raw(void) {
-    return FEB_ADC_GetRawValue(&hadc1, ADC1_BRAKE_PRESSURE_2_CHANNEL);
-}
-
 uint16_t FEB_ADC_GetAccelPedal1Raw(void) {
-    return FEB_ADC_GetRawValue(&hadc3, ADC3_ACCEL_PEDAL_1_CHANNEL);
+    return FEB_ADC_GetRawValue(&hadc1, ADC1_ACCEL_PEDAL_1_CHANNEL);
 }
 
 uint16_t FEB_ADC_GetAccelPedal2Raw(void) {
-    return FEB_ADC_GetRawValue(&hadc3, ADC3_ACCEL_PEDAL_2_CHANNEL);
+    return FEB_ADC_GetRawValue(&hadc1, ADC1_ACCEL_PEDAL_2_CHANNEL);
+}
+
+uint16_t FEB_ADC_GetBrakePressure1Raw(void) {
+    return FEB_ADC_GetRawValue(&hadc3, ADC3_BRAKE_PRESSURE_1_CHANNEL);
+}
+
+uint16_t FEB_ADC_GetBrakePressure2Raw(void) {
+    return FEB_ADC_GetRawValue(&hadc3, ADC3_BRAKE_PRESSURE_2_CHANNEL);
 }
 
 uint16_t FEB_ADC_GetCurrentSenseRaw(void) {
@@ -339,30 +339,30 @@ float FEB_ADC_GetBrakeInputVoltage(void) {
     return FEB_ADC_RawToVoltage(raw);
 }
 
-float FEB_ADC_GetBrakePressure1Voltage(void) {
-    uint16_t raw = brake_pressure1_config.filter.enabled ?
-                   FEB_ADC_GetFilteredValue(&hadc1, ADC1_BRAKE_PRESSURE_1_CHANNEL, brake_pressure1_config.filter.samples) :
-                   FEB_ADC_GetBrakePressure1Raw();
-    return FEB_ADC_RawToVoltage(raw);
-}
-
-float FEB_ADC_GetBrakePressure2Voltage(void) {
-    uint16_t raw = brake_pressure2_config.filter.enabled ?
-                   FEB_ADC_GetFilteredValue(&hadc1, ADC1_BRAKE_PRESSURE_2_CHANNEL, brake_pressure2_config.filter.samples) :
-                   FEB_ADC_GetBrakePressure2Raw();
-    return FEB_ADC_RawToVoltage(raw);
-}
-
 float FEB_ADC_GetAccelPedal1Voltage(void) {
     uint16_t raw = accel_pedal1_config.filter.enabled ?
-                   FEB_ADC_GetFilteredValue(&hadc3, ADC3_ACCEL_PEDAL_1_CHANNEL, accel_pedal1_config.filter.samples) :
+                   FEB_ADC_GetFilteredValue(&hadc1, ADC1_ACCEL_PEDAL_1_CHANNEL, accel_pedal1_config.filter.samples) :
                    FEB_ADC_GetAccelPedal1Raw();
     return FEB_ADC_RawToVoltage(raw);
 }
 
 float FEB_ADC_GetAccelPedal2Voltage(void) {
     uint16_t raw = accel_pedal2_config.filter.enabled ?
-                   FEB_ADC_GetFilteredValue(&hadc3, ADC3_ACCEL_PEDAL_2_CHANNEL, accel_pedal2_config.filter.samples) :
+                   FEB_ADC_GetFilteredValue(&hadc1, ADC1_ACCEL_PEDAL_2_CHANNEL, accel_pedal2_config.filter.samples) :
+                   FEB_ADC_GetAccelPedal2Raw();
+    return FEB_ADC_RawToVoltage(raw);
+}
+
+float FEB_ADC_GetBrakePressure1Voltage(void) {
+    uint16_t raw = brake_pressure1_config.filter.enabled ?
+                   FEB_ADC_GetFilteredValue(&hadc3, ADC3_BRAKE_PRESSURE_1_CHANNEL, brake_pressure1_config.filter.samples) :
+                   FEB_ADC_GetBrakePressure1Raw();
+    return FEB_ADC_RawToVoltage(raw);
+}
+
+float FEB_ADC_GetBrakePressure2Voltage(void) {
+    uint16_t raw = brake_pressure2_config.filter.enabled ?
+                   FEB_ADC_GetFilteredValue(&hadc3, ADC3_BRAKE_PRESSURE_2_CHANNEL, brake_pressure2_config.filter.samples) :
                    FEB_ADC_GetAccelPedal2Raw();
     return FEB_ADC_RawToVoltage(raw);
 }
