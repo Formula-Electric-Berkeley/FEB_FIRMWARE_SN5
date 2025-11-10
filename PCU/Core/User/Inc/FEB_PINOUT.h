@@ -129,10 +129,10 @@ extern "C" {
 /* These are DEFAULTS only - actual values are stored in calibration structs */
 
 /* Accelerator Pedal Default Calibration (APPS) */
-#define APPS1_DEFAULT_MIN_VOLTAGE_MV       500     /* Default min voltage for APPS1 (0% position) */
-#define APPS1_DEFAULT_MAX_VOLTAGE_MV       4500    /* Default max voltage for APPS1 (100% position) */
-#define APPS2_DEFAULT_MIN_VOLTAGE_MV       250     /* Default min voltage for APPS2 (0% position) */
-#define APPS2_DEFAULT_MAX_VOLTAGE_MV       2250    /* Default max voltage for APPS2 (100% position) */
+#define APPS1_DEFAULT_MIN_VOLTAGE_MV       1530     /* Default min voltage for APPS1 (0% position) */
+#define APPS1_DEFAULT_MAX_VOLTAGE_MV       2065    /* Default max voltage for APPS1 (100% position) */
+#define APPS2_DEFAULT_MIN_VOLTAGE_MV       1530     /* Default min voltage for APPS2 (0% position) */
+#define APPS2_DEFAULT_MAX_VOLTAGE_MV       2065    /* Default max voltage for APPS2 (100% position) */
 #define APPS_MIN_PHYSICAL_PERCENT          0.0f    /* Physical minimum: 0% throttle */
 #define APPS_MAX_PHYSICAL_PERCENT          100.0f  /* Physical maximum: 100% throttle */
 #define APPS_DEADZONE_PERCENT              5       /* Deadzone at pedal extremes (%) */

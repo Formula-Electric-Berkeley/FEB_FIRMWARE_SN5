@@ -13,7 +13,10 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "FEB_ADC.h"
-
+extern UART_HandleTypeDef huart2;
+void FEB_UART_Transmit(const char* message) {
+    HAL_UART_Transmit(&huart2, (uint8_t*)message, strlen(message), HAL_MAX_DELAY);
+}
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct {
@@ -269,6 +272,15 @@ uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef* hadc, uint32_t channel) {
     /* The buffer is organized as: [ch0_sample0, ch1_sample0, ch2_sample0, ch0_sample1, ...] */
     /* We read the most recent sample (first in the circular buffer) */
     uint16_t value = buffer_ptr[channel_idx];
+
+     /* Format the message into a buffer first - FEB_UART_Transmit expects a C string
+         (not a printf-style variadic function). Use snprintf to avoid undefined
+         behavior from passing extra arguments to a non-variadic function. */
+     char adc_msg[64];
+     /* Print pointer/address for hadc->Instance and numeric channel/value */
+     snprintf(adc_msg, sizeof(adc_msg), "ADC: %p, Channel: %lu, value: %u\r\n",
+                 (void*)hadc->Instance, (unsigned long)channel, (unsigned int)value);
+     FEB_UART_Transmit(adc_msg);
 
     return value;
 }
@@ -846,7 +858,7 @@ ADC_StatusTypeDef FEB_ADC_GetDiagnostics(char* buffer, size_t size) {
              brake_data.pressure1_percent, brake_data.pressure2_percent,
              brake_data.brake_pressed ? "Yes" : "No",
              shutdown_voltage,
-             active_faults, adc_runtime.error_count);
+            (unsigned long)active_faults, (unsigned long)adc_runtime.error_count);
 
     return ADC_STATUS_OK;
 }

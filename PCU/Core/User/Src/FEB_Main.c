@@ -2,10 +2,6 @@
 #include <stdint.h>
 extern UART_HandleTypeDef huart2;
 
-void FEB_UART_Transmit(const char* message) {
-    HAL_UART_Transmit(&huart2, (uint8_t*)message, strlen(message), HAL_MAX_DELAY);
-}
-
 void FEB_Main_Setup(void) {
 
     // Initialize UART for debug printf
