@@ -1,4 +1,5 @@
 #include "FEB_CAN_RX.h"
+#include "FEB_Debug.h"
 
 /* Private defines -----------------------------------------------------------*/
 #define FEB_CAN_RX_MAX_HANDLES 32          // Increased capacity
@@ -40,35 +41,43 @@ FEB_CAN_Status_t FEB_CAN_RX_Init(void) {
     feb_can_rx_registered_count = 0;
     feb_can_rx_initialized = true;
     
+    LOG_I(TAG_CAN, "CAN RX system initialized");
+    
     return FEB_CAN_OK;
 }
 
 FEB_CAN_Status_t FEB_CAN_RX_Register(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type, FEB_CAN_RX_Callback_t callback) {
     // Input validation
     if (!feb_can_rx_initialized) {
+        LOG_E(TAG_CAN, "CAN RX not initialized");
         return FEB_CAN_ERROR;
     }
     
     if (!FEB_CAN_RX_ValidateCanId(can_id, id_type)) {
+        LOG_E(TAG_CAN, "Invalid CAN ID: 0x%08lX (type: %d)", can_id, id_type);
         return FEB_CAN_ERROR_INVALID_PARAM;
     }
     
     if (callback == NULL) {
+        LOG_E(TAG_CAN, "NULL callback provided");
         return FEB_CAN_ERROR_INVALID_PARAM;
     }
     
     if (instance >= FEB_CAN_NUM_INSTANCES) {
+        LOG_E(TAG_CAN, "Invalid CAN instance: %d", instance);
         return FEB_CAN_ERROR_INVALID_PARAM;
     }
     
     // Check if already registered
     if (FEB_CAN_RX_FindHandle(instance, can_id, id_type) >= 0) {
+        LOG_W(TAG_CAN, "CAN ID 0x%03lX already registered on CAN%d", can_id, instance + 1);
         return FEB_CAN_ERROR_ALREADY_EXISTS;
     }
     
     // Find free handle
     int32_t handle_index = FEB_CAN_RX_FindFreeHandle();
     if (handle_index < 0) {
+        LOG_E(TAG_CAN, "RX handle registry full");
         return FEB_CAN_ERROR_FULL;
     }
     
@@ -80,9 +89,14 @@ FEB_CAN_Status_t FEB_CAN_RX_Register(FEB_CAN_Instance_t instance, uint32_t can_i
     feb_can_rx_handles[handle_index].is_active = true;
     feb_can_rx_registered_count++;
     
+    LOG_I(TAG_CAN, "Registered RX callback: CAN%d, ID=0x%03lX (total: %lu)", instance + 1, can_id, feb_can_rx_registered_count);
+    
     // Update filters to include the new ID (declare function locally to avoid circular dependency)
     extern FEB_CAN_Status_t FEB_CAN_TX_UpdateFiltersForRegisteredIDs(FEB_CAN_Instance_t instance);
-    FEB_CAN_TX_UpdateFiltersForRegisteredIDs(instance);
+    FEB_CAN_Status_t filter_status = FEB_CAN_TX_UpdateFiltersForRegisteredIDs(instance);
+    if (filter_status != FEB_CAN_OK) {
+        LOG_W(TAG_CAN, "Failed to update filters after registration: %d", filter_status);
+    }
     
     return FEB_CAN_OK;
 }
@@ -159,6 +173,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
     
     FEB_CAN_Instance_t instance = FEB_CAN_RX_GetInstanceFromHandle(hcan);
     if (instance >= FEB_CAN_NUM_INSTANCES) {
+        LOG_W(TAG_CAN, "Invalid CAN instance in RX callback");
         return;
     }
     
@@ -175,6 +190,13 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
             id_type = FEB_CAN_ID_EXT;
         }
         
+        LOG_D(TAG_CAN, "RX CAN%d: ID=0x%03lX, Len=%lu, Data: %02X %02X %02X %02X %02X %02X %02X %02X",
+              instance + 1, can_id, feb_can_rx_header[instance].DLC,
+              feb_can_rx_data[instance][0], feb_can_rx_data[instance][1],
+              feb_can_rx_data[instance][2], feb_can_rx_data[instance][3],
+              feb_can_rx_data[instance][4], feb_can_rx_data[instance][5],
+              feb_can_rx_data[instance][6], feb_can_rx_data[instance][7]);
+        
         // Find matching callback
         int32_t handle_index = FEB_CAN_RX_FindHandle(instance, can_id, id_type);
         if (handle_index >= 0) {
@@ -185,7 +207,11 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
                 feb_can_rx_data[instance], 
                 feb_can_rx_header[instance].DLC
             );
+        } else {
+            LOG_W(TAG_CAN, "No callback registered for CAN%d, ID=0x%03lX", instance + 1, can_id);
         }
+    } else {
+        LOG_E(TAG_CAN, "Failed to get RX message from CAN%d", instance + 1);
     }
 }
 

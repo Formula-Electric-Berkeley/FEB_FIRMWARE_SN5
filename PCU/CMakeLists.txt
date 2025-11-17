@@ -55,7 +55,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/User/Src/FEB_CAN_RMS.c
     Core/User/Src/FEB_RMS.c
     Core/User/Src/FEB_CAN_Diagnostics.c
-    Core/User/Src/FEB_TPS2482.c
+    Core/User/Src/TPS2482.c
     Core/User/Src/FEB_CAN_TPS.c
 )
 
@@ -68,6 +68,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
+    DEBUG_ENABLE              # Enable debug logging macros
+    DEBUG_ENABLE_COLORS       # Enable ANSI color codes in logs
 )
 
 # Remove wrong libob.a library dependency when using cpp files

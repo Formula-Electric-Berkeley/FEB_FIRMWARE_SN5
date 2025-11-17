@@ -36,32 +36,34 @@ void FEB_Printf_Init(UART_HandleTypeDef *huart) {
 
 /**
  * @brief Override _write system call for printf redirection
- * @note This is the minimal implementation needed for printf to work
+ * @note DISABLED - Using __io_putchar() in syscalls.c instead for simpler blocking UART
  * @param file File descriptor (1 = stdout, 2 = stderr)
  * @param ptr Pointer to data to write
  * @param len Length of data
  * @return Number of bytes written or -1 on error
  */
+/*
 int _write(int file, char *ptr, int len) {
-    /* Check if UART is initialized and file is stdout/stderr */
+    // Check if UART is initialized and file is stdout/stderr
     if (printf_huart == NULL || (file != 1 && file != 2)) {
         return -1;
     }
-    
-    /* Transmit data using DMA */
+
+    // Transmit data using DMA
     HAL_StatusTypeDef status = HAL_UART_Transmit_DMA(printf_huart, (uint8_t*)ptr, len);
-    
+
     if (status != HAL_OK) {
         return -1;
     }
-    
-    /* Wait for DMA transfer to complete with timeout */
+
+    // Wait for DMA transfer to complete with timeout
     uint32_t tickstart = HAL_GetTick();
     while (HAL_UART_GetState(printf_huart) != HAL_UART_STATE_READY) {
         if ((HAL_GetTick() - tickstart) > PRINTF_DMA_TIMEOUT_MS) {
-            return -1;  /* Timeout */
+            return -1;  // Timeout
         }
     }
-    
+
     return len;
 }
+*/

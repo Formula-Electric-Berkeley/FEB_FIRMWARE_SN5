@@ -1,14 +1,31 @@
-#include "FEB_TPS2482.h"
+#include <TPS2482.h>
+
+/* ===== TPS2482 CONFIGURATION =====
+ *
+ * TPS2482_MAX_DEVICES: Maximum number of TPS2482 devices that can be handled in a single call
+ *   - Value: 8 devices
+ *   - Purpose: Prevents stack overflow by using fixed-size arrays instead of VLAs
+ *   - Trade-off: Uses more stack space (predictable) vs dynamic allocation (risky on embedded)
+ *   - Current typical usage: 1 device (see NUM_TPS_DEVICES in FEB_Main.c)
+ *   - If more devices needed, increase this value accordingly
+ */
+#define TPS2482_MAX_DEVICES 8
 
 void TPS2482_Init(I2C_HandleTypeDef *hi2c, uint8_t *addresses, TPS2482_Configuration *configurations, uint16_t *ids, bool *res, uint8_t messageCount) {
-	uint16_t configs[messageCount];
-	uint16_t cals[messageCount];
-	uint16_t masks[messageCount];
-	uint16_t alert_limits[messageCount];
-	uint16_t configs_res[messageCount];
-	uint16_t cals_res[messageCount];
-	uint16_t masks_res[messageCount];
-	uint16_t alert_limits_res[messageCount];
+	/* Fixed-size arrays to avoid VLA stack issues on embedded systems */
+	uint16_t configs[TPS2482_MAX_DEVICES];
+	uint16_t cals[TPS2482_MAX_DEVICES];
+	uint16_t masks[TPS2482_MAX_DEVICES];
+	uint16_t alert_limits[TPS2482_MAX_DEVICES];
+	uint16_t configs_res[TPS2482_MAX_DEVICES];
+	uint16_t cals_res[TPS2482_MAX_DEVICES];
+	uint16_t masks_res[TPS2482_MAX_DEVICES];
+	uint16_t alert_limits_res[TPS2482_MAX_DEVICES];
+
+	/* Bounds check to prevent buffer overflow */
+	if (messageCount > TPS2482_MAX_DEVICES) {
+		messageCount = TPS2482_MAX_DEVICES;
+	}
 
 	memset(res, true, messageCount * sizeof(bool));
 
@@ -50,7 +67,13 @@ void TPS2482_Init(I2C_HandleTypeDef *hi2c, uint8_t *addresses, TPS2482_Configura
 }
 
 void TPS2482_Get_Register(I2C_HandleTypeDef *hi2c, uint8_t *addresses, uint8_t reg, uint16_t *results, uint8_t messageCount) {
-	uint8_t res[2 * messageCount];
+	/* Fixed-size array to avoid VLA - each register is 2 bytes */
+	uint8_t res[2 * TPS2482_MAX_DEVICES];
+
+	/* Bounds check to prevent buffer overflow */
+	if (messageCount > TPS2482_MAX_DEVICES) {
+		messageCount = TPS2482_MAX_DEVICES;
+	}
 
 	for ( uint8_t i = 0; i < messageCount; i++ ) {
 		if ( HAL_I2C_Mem_Read(hi2c, addresses[i] << 1, reg, I2C_MEMADD_SIZE_8BIT, &res[2*i], sizeof(*results), HAL_MAX_DELAY) != HAL_OK ) {
@@ -99,7 +122,13 @@ void TPS2482_Get_ID(I2C_HandleTypeDef *hi2c, uint8_t *addresses, uint16_t *resul
 }
 
 void TPS2482_Write_Register(I2C_HandleTypeDef *hi2c, uint8_t *addresses, uint8_t reg, uint16_t *transmit, uint8_t messageCount) {
-	uint8_t trans[2 * messageCount];
+	/* Fixed-size array to avoid VLA - each register is 2 bytes */
+	uint8_t trans[2 * TPS2482_MAX_DEVICES];
+
+	/* Bounds check to prevent buffer overflow */
+	if (messageCount > TPS2482_MAX_DEVICES) {
+		messageCount = TPS2482_MAX_DEVICES;
+	}
 
 	for ( uint8_t i = 0; i < messageCount; i++ ) {
 		trans[2 * i] = (uint8_t)((transmit[i] >> 8) & 0xFF);
@@ -141,6 +170,8 @@ void TPS2482_GPIO_Read(GPIO_TypeDef **GPIOx, uint16_t *GPIO_Pin, GPIO_PinState *
 
 void TPS2482_Enable(GPIO_TypeDef **GPIOx, uint16_t *GPIO_Pin, uint8_t *en_dis, bool *result, uint8_t messageCount) {
 	TPS2482_GPIO_Write(GPIOx, GPIO_Pin, en_dis, messageCount);
+
+//	HAL_Delay(100);
 
 	TPS2482_GPIO_Read(GPIOx, GPIO_Pin, (GPIO_PinState *)result, messageCount);
 }

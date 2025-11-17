@@ -29,9 +29,11 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/times.h>
+#include "stm32f4xx_hal.h"
 
 
 /* Variables */
+extern UART_HandleTypeDef huart2;
 extern int __io_putchar(int ch) __attribute__((weak));
 extern int __io_getchar(void) __attribute__((weak));
 
@@ -173,6 +175,21 @@ int _execve(char *name, char **argv, char **env)
   (void)env;
   errno = ENOMEM;
   return -1;
+}
+
+/**
+ * @brief Redirect printf output to UART
+ * @param ch Character to transmit
+ * @retval int Character transmitted
+ */
+#ifdef __GNUC__
+int __io_putchar(int ch)
+#else
+int fputc(int ch, FILE *f)
+#endif
+{
+  HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+  return ch;
 }
 
 // --- Picolibc Specific Section ---

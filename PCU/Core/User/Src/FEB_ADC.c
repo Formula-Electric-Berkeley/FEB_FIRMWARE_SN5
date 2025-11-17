@@ -13,10 +13,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "FEB_ADC.h"
+#include "FEB_Debug.h"
 extern UART_HandleTypeDef huart2;
-void FEB_UART_Transmit(const char* message) {
-    HAL_UART_Transmit(&huart2, (uint8_t*)message, strlen(message), HAL_MAX_DELAY);
-}
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct {
@@ -52,18 +50,18 @@ static uint16_t adc2_dma_buffer[3 * ADC_DMA_BUFFER_SIZE];  /* 3 channels: PA4, P
 static uint16_t adc3_dma_buffer[4 * ADC_DMA_BUFFER_SIZE];  /* 4 channels: PC0, PC1, PC2, PC3 */
 
 /* Channel indices in DMA buffers */
-#define ADC1_CH0_BRAKE_PRESSURE2_IDX  0  /* PA0 - Channel 0 */
-#define ADC1_CH1_BRAKE_PRESSURE1_IDX  1  /* PA1 - Channel 1 */
+#define ADC1_CH0_ACCEL_PEDAL1_IDX     0  /* PA0 - Channel 0 - APPS1 */
+#define ADC1_CH1_ACCEL_PEDAL2_IDX     1  /* PA1 - Channel 1 - APPS2 */
 #define ADC1_CH14_BRAKE_INPUT_IDX     2  /* PC4 - Channel 14 */
 
 #define ADC2_CH4_CURRENT_SENSE_IDX    0  /* PA4 - Channel 4 */
 #define ADC2_CH6_SHUTDOWN_IN_IDX      1  /* PA6 - Channel 6 */
 #define ADC2_CH7_PRE_TIMING_IDX       2  /* PA7 - Channel 7 */
 
-#define ADC3_CH10_BSPD_INDICATOR_IDX  0  /* PC0 - Channel 10 */
-#define ADC3_CH11_BSPD_RESET_IDX      1  /* PC1 - Channel 11 */
-#define ADC3_CH12_ACC_PEDAL2_IDX      2  /* PC2 - Channel 12 */
-#define ADC3_CH13_ACC_PEDAL1_IDX      3  /* PC3 - Channel 13 */
+#define ADC3_CH8_BSPD_INDICATOR_IDX   0  /* PC0 - Channel 8 - BSPD Indicator */
+#define ADC3_CH9_BSPD_RESET_IDX       1  /* PC1 - Channel 9 - BSPD Reset */
+#define ADC3_CH12_BRAKE_PRESSURE1_IDX 2  /* PC2 - Channel 12 - Brake Pressure 1 */
+#define ADC3_CH13_BRAKE_PRESSURE2_IDX 3  /* PC3 - Channel 13 - Brake Pressure 2 */
 
 /* Channel configurations */
 static ADC_ChannelConfigTypeDef brake_input_config;
@@ -146,9 +144,9 @@ ADC_StatusTypeDef FEB_ADC_Init(void) {
     /* Accelerator Pedal Sensor 2 Configuration */
     accel_pedal2_config.hadc = &hadc1;
     accel_pedal2_config.channel = ADC1_ACCEL_PEDAL_2_CHANNEL;
-    accel_pedal1_config.filter.enabled = FILTER_ACCEL_PEDAL_ENABLED;
-    accel_pedal1_config.filter.samples = FILTER_ACCEL_PEDAL_SAMPLES;
-    accel_pedal1_config.filter.alpha = FILTER_ACCEL_PEDAL_ALPHA;
+    accel_pedal2_config.filter.enabled = FILTER_ACCEL_PEDAL_ENABLED;
+    accel_pedal2_config.filter.samples = FILTER_ACCEL_PEDAL_SAMPLES;
+    accel_pedal2_config.filter.alpha = FILTER_ACCEL_PEDAL_ALPHA;
     
     /* Brake Pressure Sensor 1 Configuration */
     brake_pressure1_config.hadc = &hadc3;
@@ -160,9 +158,9 @@ ADC_StatusTypeDef FEB_ADC_Init(void) {
     /* Brake Pressure Sensor 2 Configuration */
     brake_pressure2_config.hadc = &hadc3;
     brake_pressure2_config.channel = ADC3_BRAKE_PRESSURE_2_CHANNEL;
-    accel_pedal2_config.filter.enabled = FILTER_ACCEL_PEDAL_ENABLED;
-    accel_pedal2_config.filter.samples = FILTER_ACCEL_PEDAL_SAMPLES;
-    accel_pedal2_config.filter.alpha = FILTER_ACCEL_PEDAL_ALPHA;
+    brake_pressure2_config.filter.enabled = FILTER_BRAKE_PRESSURE_ENABLED;
+    brake_pressure2_config.filter.samples = FILTER_BRAKE_PRESSURE_SAMPLES;
+    brake_pressure2_config.filter.alpha = FILTER_BRAKE_PRESSURE_ALPHA;
     
     /* Current Sensor Configuration */
     current_sense_config.hadc = &hadc2;
@@ -244,8 +242,8 @@ uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef* hadc, uint32_t channel) {
     /* Map hardware channel number to DMA buffer index */
     if (hadc == &hadc1) {
         buffer_ptr = adc1_dma_buffer;
-        if (channel == ADC_CHANNEL_0) channel_idx = ADC1_CH0_BRAKE_PRESSURE2_IDX;
-        else if (channel == ADC_CHANNEL_1) channel_idx = ADC1_CH1_BRAKE_PRESSURE1_IDX;
+        if (channel == ADC_CHANNEL_0) channel_idx = ADC1_CH0_ACCEL_PEDAL1_IDX;
+        else if (channel == ADC_CHANNEL_1) channel_idx = ADC1_CH1_ACCEL_PEDAL2_IDX;
         else if (channel == ADC_CHANNEL_14) channel_idx = ADC1_CH14_BRAKE_INPUT_IDX;
         else return 0;
     }
@@ -258,10 +256,10 @@ uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef* hadc, uint32_t channel) {
     }
     else if (hadc == &hadc3) {
         buffer_ptr = adc3_dma_buffer;
-        if (channel == ADC_CHANNEL_10) channel_idx = ADC3_CH10_BSPD_INDICATOR_IDX;
-        else if (channel == ADC_CHANNEL_11) channel_idx = ADC3_CH11_BSPD_RESET_IDX;
-        else if (channel == ADC_CHANNEL_12) channel_idx = ADC3_CH12_ACC_PEDAL2_IDX;
-        else if (channel == ADC_CHANNEL_13) channel_idx = ADC3_CH13_ACC_PEDAL1_IDX;
+        if (channel == ADC_CHANNEL_8) channel_idx = ADC3_CH8_BSPD_INDICATOR_IDX;
+        else if (channel == ADC_CHANNEL_9) channel_idx = ADC3_CH9_BSPD_RESET_IDX;
+        else if (channel == ADC_CHANNEL_12) channel_idx = ADC3_CH12_BRAKE_PRESSURE1_IDX;
+        else if (channel == ADC_CHANNEL_13) channel_idx = ADC3_CH13_BRAKE_PRESSURE2_IDX;
         else return 0;
     }
     else {
@@ -272,15 +270,6 @@ uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef* hadc, uint32_t channel) {
     /* The buffer is organized as: [ch0_sample0, ch1_sample0, ch2_sample0, ch0_sample1, ...] */
     /* We read the most recent sample (first in the circular buffer) */
     uint16_t value = buffer_ptr[channel_idx];
-
-     /* Format the message into a buffer first - FEB_UART_Transmit expects a C string
-         (not a printf-style variadic function). Use snprintf to avoid undefined
-         behavior from passing extra arguments to a non-variadic function. */
-     char adc_msg[64];
-     /* Print pointer/address for hadc->Instance and numeric channel/value */
-     snprintf(adc_msg, sizeof(adc_msg), "ADC: %p, Channel: %lu, value: %u\r\n",
-                 (void*)hadc->Instance, (unsigned long)channel, (unsigned int)value);
-     FEB_UART_Transmit(adc_msg);
 
     return value;
 }
@@ -375,7 +364,7 @@ float FEB_ADC_GetBrakePressure1Voltage(void) {
 float FEB_ADC_GetBrakePressure2Voltage(void) {
     uint16_t raw = brake_pressure2_config.filter.enabled ?
                    FEB_ADC_GetFilteredValue(&hadc3, ADC3_BRAKE_PRESSURE_2_CHANNEL, brake_pressure2_config.filter.samples) :
-                   FEB_ADC_GetAccelPedal2Raw();
+                   FEB_ADC_GetBrakePressure2Raw();
     return FEB_ADC_RawToVoltage(raw);
 }
 
@@ -453,6 +442,8 @@ ADC_StatusTypeDef FEB_ADC_GetAPPSData(APPS_DataTypeDef* apps_data) {
     float deviation = fabs(apps_data->position1 - apps_data->position2);
     if (deviation >= APPS_PLAUSIBILITY_TOLERANCE) {
         apps_data->plausible = false;
+    } else {
+        apps_data->plausible = true;
     }
     
     if (!apps_data->plausible) {
@@ -953,8 +944,8 @@ static uint16_t GetAveragedADCValue(ADC_HandleTypeDef* hadc, uint32_t channel, u
         buffer_ptr = adc1_dma_buffer;
         num_channels = 3;
         buffer_size = 3 * ADC_DMA_BUFFER_SIZE;
-        if (channel == ADC_CHANNEL_0) channel_idx = ADC1_CH0_BRAKE_PRESSURE2_IDX;
-        else if (channel == ADC_CHANNEL_1) channel_idx = ADC1_CH1_BRAKE_PRESSURE1_IDX;
+        if (channel == ADC_CHANNEL_0) channel_idx = ADC1_CH0_ACCEL_PEDAL1_IDX;
+        else if (channel == ADC_CHANNEL_1) channel_idx = ADC1_CH1_ACCEL_PEDAL2_IDX;
         else if (channel == ADC_CHANNEL_14) channel_idx = ADC1_CH14_BRAKE_INPUT_IDX;
         else return 0;
     }
@@ -971,10 +962,10 @@ static uint16_t GetAveragedADCValue(ADC_HandleTypeDef* hadc, uint32_t channel, u
         buffer_ptr = adc3_dma_buffer;
         num_channels = 4;
         buffer_size = 4 * ADC_DMA_BUFFER_SIZE;
-        if (channel == ADC_CHANNEL_10) channel_idx = ADC3_CH10_BSPD_INDICATOR_IDX;
-        else if (channel == ADC_CHANNEL_11) channel_idx = ADC3_CH11_BSPD_RESET_IDX;
-        else if (channel == ADC_CHANNEL_12) channel_idx = ADC3_CH12_ACC_PEDAL2_IDX;
-        else if (channel == ADC_CHANNEL_13) channel_idx = ADC3_CH13_ACC_PEDAL1_IDX;
+        if (channel == ADC_CHANNEL_8) channel_idx = ADC3_CH8_BSPD_INDICATOR_IDX;
+        else if (channel == ADC_CHANNEL_9) channel_idx = ADC3_CH9_BSPD_RESET_IDX;
+        else if (channel == ADC_CHANNEL_12) channel_idx = ADC3_CH12_BRAKE_PRESSURE1_IDX;
+        else if (channel == ADC_CHANNEL_13) channel_idx = ADC3_CH13_BRAKE_PRESSURE2_IDX;
         else return 0;
     }
     else {

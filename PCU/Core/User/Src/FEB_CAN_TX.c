@@ -1,4 +1,5 @@
 #include "FEB_CAN_TX.h"
+#include "FEB_Debug.h"
 
 /* Private defines -----------------------------------------------------------*/
 #define FEB_CAN_MAX_STD_ID 0x7FF           // Maximum 11-bit standard CAN ID
@@ -25,9 +26,12 @@ static uint32_t FEB_CAN_TX_GetFilterBank(FEB_CAN_Instance_t instance, uint32_t f
 /* Public functions ----------------------------------------------------------*/
 
 FEB_CAN_Status_t FEB_CAN_TX_Init(void) {
+    LOG_I(TAG_CAN, "Initializing CAN TX system");
+    
     // Initialize RX system first
     FEB_CAN_Status_t rx_status = FEB_CAN_RX_Init();
     if (rx_status != FEB_CAN_OK) {
+        LOG_E(TAG_CAN, "Failed to initialize CAN RX: %d", rx_status);
         return rx_status;
     }
     
@@ -44,44 +48,53 @@ FEB_CAN_Status_t FEB_CAN_TX_Init(void) {
     // Initialize filters for both instances
     FEB_CAN_Status_t filter_status1 = FEB_CAN_TX_ConfigureFilter(FEB_CAN_INSTANCE_1, &reject_filter);
     if (filter_status1 != FEB_CAN_OK) {
+        LOG_E(TAG_CAN, "Failed to configure CAN1 filter: %d", filter_status1);
         return filter_status1;
     }
     
     FEB_CAN_Status_t filter_status2 = FEB_CAN_TX_ConfigureFilter(FEB_CAN_INSTANCE_2, &reject_filter);
     if (filter_status2 != FEB_CAN_OK) {
+        LOG_E(TAG_CAN, "Failed to configure CAN2 filter: %d", filter_status2);
         return filter_status2;
     }
 
     // Start CAN peripherals
     if (HAL_CAN_Start(&hcan1) != HAL_OK) {
+        LOG_E(TAG_CAN, "Failed to start CAN1");
         return FEB_CAN_ERROR_HAL;
     }
     
     if (HAL_CAN_Start(&hcan2) != HAL_OK) {
+        LOG_E(TAG_CAN, "Failed to start CAN2");
         return FEB_CAN_ERROR_HAL;
     }
 
     // Activate RX notifications for both instances
     if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
+        LOG_E(TAG_CAN, "Failed to activate CAN1 notifications");
         return FEB_CAN_ERROR_HAL;
     }
     
     if (HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
+        LOG_E(TAG_CAN, "Failed to activate CAN2 notifications");
         return FEB_CAN_ERROR_HAL;
     }
     
     feb_can_tx_initialized = true;
+    LOG_I(TAG_CAN, "CAN TX system initialized successfully");
     return FEB_CAN_OK;
 }
 
 FEB_CAN_Status_t FEB_CAN_TX_ConfigureFilter(FEB_CAN_Instance_t instance, const FEB_CAN_Filter_Config_t *filter_config) {
     // Input validation
     if (filter_config == NULL || instance >= FEB_CAN_NUM_INSTANCES) {
+        LOG_E(TAG_CAN, "Invalid filter config parameters");
         return FEB_CAN_ERROR_INVALID_PARAM;
     }
     
     CAN_HandleTypeDef *hcan = FEB_CAN_TX_GetHandle(instance);
     if (hcan == NULL) {
+        LOG_E(TAG_CAN, "Invalid CAN instance: %d", instance);
         return FEB_CAN_ERROR_INVALID_PARAM;
     }
     
@@ -99,8 +112,11 @@ FEB_CAN_Status_t FEB_CAN_TX_ConfigureFilter(FEB_CAN_Instance_t instance, const F
     can_filter.SlaveStartFilterBank = 14;
 
     if (HAL_CAN_ConfigFilter(hcan, &can_filter) != HAL_OK) {
+        LOG_E(TAG_CAN, "HAL filter configuration failed for instance %d", instance);
         return FEB_CAN_ERROR_HAL;
     }
+    
+    LOG_D(TAG_CAN, "Filter configured for CAN%d: ID=0x%03lX, Mask=0x%03lX", instance + 1, filter_config->filter_id, filter_config->filter_mask);
     
     return FEB_CAN_OK;
 }
@@ -182,34 +198,41 @@ FEB_CAN_Status_t FEB_CAN_TX_UpdateFiltersForRegisteredIDs(FEB_CAN_Instance_t ins
 FEB_CAN_Status_t FEB_CAN_TX_Transmit(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type, const uint8_t *data, uint8_t length, uint32_t timeout_ms) {
     // Input validation
     if (!feb_can_tx_initialized) {
+        LOG_E(TAG_CAN, "CAN TX not initialized");
         return FEB_CAN_ERROR;
     }
     
     if (instance >= FEB_CAN_NUM_INSTANCES) {
+        LOG_E(TAG_CAN, "Invalid CAN instance: %d", instance);
         return FEB_CAN_ERROR_INVALID_PARAM;
     }
     
     if (!FEB_CAN_TX_ValidateCanId(can_id, id_type)) {
+        LOG_E(TAG_CAN, "Invalid CAN ID: 0x%08lX (type: %d)", can_id, id_type);
         return FEB_CAN_ERROR_INVALID_PARAM;
     }
     
     if (!FEB_CAN_TX_ValidateDataLength(length)) {
+        LOG_E(TAG_CAN, "Invalid data length: %d", length);
         return FEB_CAN_ERROR_INVALID_PARAM;
     }
     
     if (data == NULL && length > 0) {
+        LOG_E(TAG_CAN, "NULL data pointer with non-zero length");
         return FEB_CAN_ERROR_INVALID_PARAM;
     }
     
     // Get CAN handle
     CAN_HandleTypeDef *hcan = FEB_CAN_TX_GetHandle(instance);
     if (hcan == NULL) {
+        LOG_E(TAG_CAN, "Failed to get CAN handle for instance %d", instance);
         return FEB_CAN_ERROR_INVALID_PARAM;
     }
     
     // Wait for available mailbox with timeout
     FEB_CAN_Status_t wait_status = FEB_CAN_TX_WaitForMailbox(instance, timeout_ms);
     if (wait_status != FEB_CAN_OK) {
+        LOG_W(TAG_CAN, "Mailbox timeout for CAN%d, ID: 0x%03lX", instance + 1, can_id);
         return wait_status;
     }
     
@@ -235,8 +258,14 @@ FEB_CAN_Status_t FEB_CAN_TX_Transmit(FEB_CAN_Instance_t instance, uint32_t can_i
     // Transmit message
     uint32_t tx_mailbox;
     if (HAL_CAN_AddTxMessage(hcan, &tx_header, tx_data, &tx_mailbox) != HAL_OK) {
+        LOG_E(TAG_CAN, "HAL transmit failed for CAN%d, ID: 0x%03lX", instance + 1, can_id);
         return FEB_CAN_ERROR_HAL;
     }
+    
+    LOG_D(TAG_CAN, "TX CAN%d: ID=0x%03lX, Len=%d, Mailbox=%lu, Data: %02X %02X %02X %02X %02X %02X %02X %02X",
+          instance + 1, can_id, length, tx_mailbox,
+          tx_data[0], tx_data[1], tx_data[2], tx_data[3],
+          tx_data[4], tx_data[5], tx_data[6], tx_data[7]);
     
     return FEB_CAN_OK;
 }
