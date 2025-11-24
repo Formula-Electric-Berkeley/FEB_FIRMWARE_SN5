@@ -75,6 +75,17 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ${LVGL_HAL_SOURCES}
     ${SQUARELINE_SOURCES}
 
+    Core/User/Src/FEB_CAN_Setup.c
+    Core/User/Src/FEB_CAN_RX.c
+    Core/User/Src/FEB_CAN_TX.c
+    Core/User/Src/FEB_CAN_BMS.c
+    Core/User/Src/FEB_CAN_DASH.c
+    Core/User/Src/FEB_CAN_PCU.c
+    Core/User/Src/FEB_CAN_TPS.c
+    Core/User/Src/FEB_Heartbeat.c
+    Core/User/Src/FEB_IO.c
+    Core/User/Src/FEB_i2c_protected.c
+    Core/User/Src/FEB_TPS2482.c
 )
 
 # Add include paths
