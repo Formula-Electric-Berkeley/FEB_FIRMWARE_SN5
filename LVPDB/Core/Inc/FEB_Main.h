@@ -15,26 +15,28 @@
 /*
  * The LVPDB has multiple TPS chips on the bus. These are the addresses of
  * each of the TPS chips. The naming conventions is as follows:
- * 		LV - Low voltage bus
- * 		CP - Coolant Pump
- * 		AF - Accumulator Fans
- * 		RF - Radiator Fans
- * 		SH - Shutdown Source
- * 		L - LIDAR
- * 		AS - Autonomous Steering
- * 		AB - Autonomous Braking
+ * 		LV - Low voltage bus (Microbasic) (SCL-SDA)
+ * 		CP - Coolant Pump  (CP+RF)(vs-scl)
+ * 		AF - Accumulator Fans (gnd-vs)
+ * 		RF - Radiator Fans (vs-scl)
+ * 		SH - Shutdown Source (sda-sda)
+ * 		L - LIDAR (scl-scl)
+ * 		AS - Autonomous Steering (gnd-sda)
+ * 		AB - Autonomous Braking (scl-scl)
  */
 
 #define NUM_TPS2482	8
 
-#define LV_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_GND,TPS2482_I2C_ADDR_GND) // A1:GND 	A0:GND
-#define CP_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_V_S,TPS2482_I2C_ADDR_V_S) // A1:Vs 	A0:Vs
-#define AF_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_V_S,TPS2482_I2C_ADDR_GND) // A1:Vs 	A0:GND
-#define RF_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_GND,TPS2482_I2C_ADDR_V_S) // A1:GND 	A0:Vs
+#define LV_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_SCL,TPS2482_I2C_ADDR_SDA) // A1:SCL 	A0:SDA
+#define CP_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_V_S,TPS2482_I2C_ADDR_SCL) // A1:Vs 	A0:Vs
+#define AF_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_GND,TPS2482_I2C_ADDR_V_S) // A1:Vs 	A0:GND
+#define RF_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_V_S,TPS2482_I2C_ADDR_V_S) // A1:GND 	A0:Vs
 #define SH_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_SDA,TPS2482_I2C_ADDR_SDA) // A1:SDA 	A0:SDA
-#define L_ADDR 	TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_V_S,TPS2482_I2C_ADDR_SDA) // A1:Vs 	A0:SDA
-#define AS_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_SDA,TPS2482_I2C_ADDR_GND) // A1:SDA	A0:GND
-#define AB_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_GND,TPS2482_I2C_ADDR_SDA) // A1:GND	A0:SDA
+#define L_ADDR 	TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_SCL,TPS2482_I2C_ADDR_SCL) // A1:Vs 	A0:SDA
+#define AS_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_GND,TPS2482_I2C_ADDR_SDA) // A1:SDA	A0:GND
+#define AB_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_GND,TPS2482_I2C_ADDR_GND) // A1:SDA	A0:GND
+
+// #define AB_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_GND,TPS2482_I2C_ADDR_SDA) // A1:GND	A0:SDA
 
 // All TPS2482 implementation share the same WSR52L000FEA .002 ohm shunt resistor
 #define R_SHUNT	(double)(.002) 	// Ohm
