@@ -50,8 +50,8 @@ static uint16_t adc2_dma_buffer[3 * ADC_DMA_BUFFER_SIZE];  /* 3 channels: PA4, P
 static uint16_t adc3_dma_buffer[4 * ADC_DMA_BUFFER_SIZE];  /* 4 channels: PC0, PC1, PC2, PC3 */
 
 /* Channel indices in DMA buffers */
-#define ADC1_CH0_ACCEL_PEDAL1_IDX     0  /* PA0 - Channel 0 - APPS1 */
-#define ADC1_CH1_ACCEL_PEDAL2_IDX     1  /* PA1 - Channel 1 - APPS2 */
+#define ADC1_CH0_BRAKE_PRESSURE1_IDX  0  /* PA0 - Channel 0 - Brake Pressure 1 */
+#define ADC1_CH1_BRAKE_PRESSURE2_IDX  1  /* PA1 - Channel 1 - Brake Pressure 2 */
 #define ADC1_CH14_BRAKE_INPUT_IDX     2  /* PC4 - Channel 14 */
 
 #define ADC2_CH4_CURRENT_SENSE_IDX    0  /* PA4 - Channel 4 */
@@ -60,8 +60,8 @@ static uint16_t adc3_dma_buffer[4 * ADC_DMA_BUFFER_SIZE];  /* 4 channels: PC0, P
 
 #define ADC3_CH8_BSPD_INDICATOR_IDX   0  /* PC0 - Channel 8 - BSPD Indicator */
 #define ADC3_CH9_BSPD_RESET_IDX       1  /* PC1 - Channel 9 - BSPD Reset */
-#define ADC3_CH12_BRAKE_PRESSURE1_IDX 2  /* PC2 - Channel 12 - Brake Pressure 1 */
-#define ADC3_CH13_BRAKE_PRESSURE2_IDX 3  /* PC3 - Channel 13 - Brake Pressure 2 */
+#define ADC3_CH12_ACCEL_PEDAL1_IDX    2  /* PC2 - Channel 12 - APPS1 */
+#define ADC3_CH13_ACCEL_PEDAL2_IDX    3  /* PC3 - Channel 13 - APPS2 */
 
 /* Channel configurations */
 static ADC_ChannelConfigTypeDef brake_input_config;
@@ -135,29 +135,29 @@ ADC_StatusTypeDef FEB_ADC_Init(void) {
     brake_input_config.filter.alpha = FILTER_BRAKE_INPUT_ALPHA;
     
     /* Accelerator Pedal Sensor 1 Configuration */
-    accel_pedal1_config.hadc = &hadc1;
-    accel_pedal1_config.channel = ADC1_ACCEL_PEDAL_1_CHANNEL;
+    accel_pedal1_config.hadc = &hadc3;
+    accel_pedal1_config.channel = ADC3_ACCEL_PEDAL_1_CHANNEL;
     accel_pedal1_config.filter.enabled = FILTER_ACCEL_PEDAL_ENABLED;
     accel_pedal1_config.filter.samples = FILTER_ACCEL_PEDAL_SAMPLES;
     accel_pedal1_config.filter.alpha = FILTER_ACCEL_PEDAL_ALPHA;
     
     /* Accelerator Pedal Sensor 2 Configuration */
-    accel_pedal2_config.hadc = &hadc1;
-    accel_pedal2_config.channel = ADC1_ACCEL_PEDAL_2_CHANNEL;
+    accel_pedal2_config.hadc = &hadc3;
+    accel_pedal2_config.channel = ADC3_ACCEL_PEDAL_2_CHANNEL;
     accel_pedal2_config.filter.enabled = FILTER_ACCEL_PEDAL_ENABLED;
     accel_pedal2_config.filter.samples = FILTER_ACCEL_PEDAL_SAMPLES;
     accel_pedal2_config.filter.alpha = FILTER_ACCEL_PEDAL_ALPHA;
     
     /* Brake Pressure Sensor 1 Configuration */
-    brake_pressure1_config.hadc = &hadc3;
-    brake_pressure1_config.channel = ADC3_BRAKE_PRESSURE_1_CHANNEL;
+    brake_pressure1_config.hadc = &hadc1;
+    brake_pressure1_config.channel = ADC1_BRAKE_PRESSURE_1_CHANNEL;
     brake_pressure1_config.filter.enabled = FILTER_BRAKE_PRESSURE_ENABLED;
     brake_pressure1_config.filter.samples = FILTER_BRAKE_PRESSURE_SAMPLES;
     brake_pressure1_config.filter.alpha = FILTER_BRAKE_PRESSURE_ALPHA;
     
     /* Brake Pressure Sensor 2 Configuration */
-    brake_pressure2_config.hadc = &hadc3;
-    brake_pressure2_config.channel = ADC3_BRAKE_PRESSURE_2_CHANNEL;
+    brake_pressure2_config.hadc = &hadc1;
+    brake_pressure2_config.channel = ADC1_BRAKE_PRESSURE_2_CHANNEL;
     brake_pressure2_config.filter.enabled = FILTER_BRAKE_PRESSURE_ENABLED;
     brake_pressure2_config.filter.samples = FILTER_BRAKE_PRESSURE_SAMPLES;
     brake_pressure2_config.filter.alpha = FILTER_BRAKE_PRESSURE_ALPHA;
@@ -242,8 +242,8 @@ uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef* hadc, uint32_t channel) {
     /* Map hardware channel number to DMA buffer index */
     if (hadc == &hadc1) {
         buffer_ptr = adc1_dma_buffer;
-        if (channel == ADC_CHANNEL_0) channel_idx = ADC1_CH0_ACCEL_PEDAL1_IDX;
-        else if (channel == ADC_CHANNEL_1) channel_idx = ADC1_CH1_ACCEL_PEDAL2_IDX;
+        if (channel == ADC_CHANNEL_0) channel_idx = ADC1_CH0_BRAKE_PRESSURE1_IDX;
+        else if (channel == ADC_CHANNEL_1) channel_idx = ADC1_CH1_BRAKE_PRESSURE2_IDX;
         else if (channel == ADC_CHANNEL_14) channel_idx = ADC1_CH14_BRAKE_INPUT_IDX;
         else return 0;
     }
@@ -258,8 +258,8 @@ uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef* hadc, uint32_t channel) {
         buffer_ptr = adc3_dma_buffer;
         if (channel == ADC_CHANNEL_8) channel_idx = ADC3_CH8_BSPD_INDICATOR_IDX;
         else if (channel == ADC_CHANNEL_9) channel_idx = ADC3_CH9_BSPD_RESET_IDX;
-        else if (channel == ADC_CHANNEL_12) channel_idx = ADC3_CH12_BRAKE_PRESSURE1_IDX;
-        else if (channel == ADC_CHANNEL_13) channel_idx = ADC3_CH13_BRAKE_PRESSURE2_IDX;
+        else if (channel == ADC_CHANNEL_12) channel_idx = ADC3_CH12_ACCEL_PEDAL1_IDX;
+        else if (channel == ADC_CHANNEL_13) channel_idx = ADC3_CH13_ACCEL_PEDAL2_IDX;
         else return 0;
     }
     else {
@@ -296,19 +296,19 @@ uint16_t FEB_ADC_GetBrakeInputRaw(void) {
 }
 
 uint16_t FEB_ADC_GetAccelPedal1Raw(void) {
-    return FEB_ADC_GetRawValue(&hadc1, ADC1_ACCEL_PEDAL_1_CHANNEL);
+    return FEB_ADC_GetRawValue(&hadc3, ADC3_ACCEL_PEDAL_1_CHANNEL);
 }
 
 uint16_t FEB_ADC_GetAccelPedal2Raw(void) {
-    return FEB_ADC_GetRawValue(&hadc1, ADC1_ACCEL_PEDAL_2_CHANNEL);
+    return FEB_ADC_GetRawValue(&hadc3, ADC3_ACCEL_PEDAL_2_CHANNEL);
 }
 
 uint16_t FEB_ADC_GetBrakePressure1Raw(void) {
-    return FEB_ADC_GetRawValue(&hadc3, ADC3_BRAKE_PRESSURE_1_CHANNEL);
+    return FEB_ADC_GetRawValue(&hadc1, ADC1_BRAKE_PRESSURE_1_CHANNEL);
 }
 
 uint16_t FEB_ADC_GetBrakePressure2Raw(void) {
-    return FEB_ADC_GetRawValue(&hadc3, ADC3_BRAKE_PRESSURE_2_CHANNEL);
+    return FEB_ADC_GetRawValue(&hadc1, ADC1_BRAKE_PRESSURE_2_CHANNEL);
 }
 
 uint16_t FEB_ADC_GetCurrentSenseRaw(void) {
@@ -342,28 +342,28 @@ float FEB_ADC_GetBrakeInputVoltage(void) {
 
 float FEB_ADC_GetAccelPedal1Voltage(void) {
     uint16_t raw = accel_pedal1_config.filter.enabled ?
-                   FEB_ADC_GetFilteredValue(&hadc1, ADC1_ACCEL_PEDAL_1_CHANNEL, accel_pedal1_config.filter.samples) :
+                   FEB_ADC_GetFilteredValue(&hadc3, ADC3_ACCEL_PEDAL_1_CHANNEL, accel_pedal1_config.filter.samples) :
                    FEB_ADC_GetAccelPedal1Raw();
     return FEB_ADC_RawToVoltage(raw);
 }
 
 float FEB_ADC_GetAccelPedal2Voltage(void) {
     uint16_t raw = accel_pedal2_config.filter.enabled ?
-                   FEB_ADC_GetFilteredValue(&hadc1, ADC1_ACCEL_PEDAL_2_CHANNEL, accel_pedal2_config.filter.samples) :
+                   FEB_ADC_GetFilteredValue(&hadc3, ADC3_ACCEL_PEDAL_2_CHANNEL, accel_pedal2_config.filter.samples) :
                    FEB_ADC_GetAccelPedal2Raw();
     return FEB_ADC_RawToVoltage(raw);
 }
 
 float FEB_ADC_GetBrakePressure1Voltage(void) {
     uint16_t raw = brake_pressure1_config.filter.enabled ?
-                   FEB_ADC_GetFilteredValue(&hadc3, ADC3_BRAKE_PRESSURE_1_CHANNEL, brake_pressure1_config.filter.samples) :
+                   FEB_ADC_GetFilteredValue(&hadc1, ADC1_BRAKE_PRESSURE_1_CHANNEL, brake_pressure1_config.filter.samples) :
                    FEB_ADC_GetBrakePressure1Raw();
     return FEB_ADC_RawToVoltage(raw);
 }
 
 float FEB_ADC_GetBrakePressure2Voltage(void) {
     uint16_t raw = brake_pressure2_config.filter.enabled ?
-                   FEB_ADC_GetFilteredValue(&hadc3, ADC3_BRAKE_PRESSURE_2_CHANNEL, brake_pressure2_config.filter.samples) :
+                   FEB_ADC_GetFilteredValue(&hadc1, ADC1_BRAKE_PRESSURE_2_CHANNEL, brake_pressure2_config.filter.samples) :
                    FEB_ADC_GetBrakePressure2Raw();
     return FEB_ADC_RawToVoltage(raw);
 }
@@ -944,8 +944,8 @@ static uint16_t GetAveragedADCValue(ADC_HandleTypeDef* hadc, uint32_t channel, u
         buffer_ptr = adc1_dma_buffer;
         num_channels = 3;
         buffer_size = 3 * ADC_DMA_BUFFER_SIZE;
-        if (channel == ADC_CHANNEL_0) channel_idx = ADC1_CH0_ACCEL_PEDAL1_IDX;
-        else if (channel == ADC_CHANNEL_1) channel_idx = ADC1_CH1_ACCEL_PEDAL2_IDX;
+        if (channel == ADC_CHANNEL_0) channel_idx = ADC1_CH0_BRAKE_PRESSURE1_IDX;
+        else if (channel == ADC_CHANNEL_1) channel_idx = ADC1_CH1_BRAKE_PRESSURE2_IDX;
         else if (channel == ADC_CHANNEL_14) channel_idx = ADC1_CH14_BRAKE_INPUT_IDX;
         else return 0;
     }
@@ -964,8 +964,8 @@ static uint16_t GetAveragedADCValue(ADC_HandleTypeDef* hadc, uint32_t channel, u
         buffer_size = 4 * ADC_DMA_BUFFER_SIZE;
         if (channel == ADC_CHANNEL_8) channel_idx = ADC3_CH8_BSPD_INDICATOR_IDX;
         else if (channel == ADC_CHANNEL_9) channel_idx = ADC3_CH9_BSPD_RESET_IDX;
-        else if (channel == ADC_CHANNEL_12) channel_idx = ADC3_CH12_BRAKE_PRESSURE1_IDX;
-        else if (channel == ADC_CHANNEL_13) channel_idx = ADC3_CH13_BRAKE_PRESSURE2_IDX;
+        else if (channel == ADC_CHANNEL_12) channel_idx = ADC3_CH12_ACCEL_PEDAL1_IDX;
+        else if (channel == ADC_CHANNEL_13) channel_idx = ADC3_CH13_ACCEL_PEDAL2_IDX;
         else return 0;
     }
     else {
