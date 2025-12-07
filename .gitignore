@@ -28,8 +28,6 @@ agents.md
 # STM32CubeMX backup files
 *.bak
 .dep/
-Drivers/
-Middlewares/
 *_BACKUP_*.txt
 *_BASE_*.txt
 *_LOCAL_*.txt
