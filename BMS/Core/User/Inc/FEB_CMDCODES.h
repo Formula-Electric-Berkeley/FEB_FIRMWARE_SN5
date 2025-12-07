@@ -69,6 +69,10 @@
 #define AD_DCP                  0x0010  // Discharge permitted bit
 #define OWVR                    0x0003  // Open wire voltage reading mode
 
+// ****************** Serial ID Register Commands ******************
+#define CMD_READ_SERIAL_ID                        0x002C
+#define RDSID                                     CMD_READ_SERIAL_ID
+
 // ****************** Legacy Compatibility Aliases ******************
 // Short names for backward compatibility with existing code
 #define WAKEUP_IDLE             CMD_WAKEUP_FROM_IDLE

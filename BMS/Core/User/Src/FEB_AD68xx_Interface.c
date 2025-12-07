@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 // ******************************** CRC TABLES ********************************
 const uint16_t crc15Table[256] = {0x0, 0xc599, 0xceab, 0xb32, 0xd8cf, 0x1d56, 0x1664, 0xd3fd, 0xf407, 0x319e, 0x3aac, // precomputed CRC15 Table
@@ -183,49 +184,65 @@ void cmd_68_r(uint8_t tx_cmd[2], uint8_t *data, uint8_t len) { // The command to
 	FEB_cs_low();
 	FEB_spi_write_read(cmd, 4, data, len);
 	FEB_cs_high();
+
+	// Debug: print raw received bytes
+	printf("[SPI] TX: %02X %02X, RX:", tx_cmd[0], tx_cmd[1]);
+	for (int i = 0; i < len && i < 16; i++) printf(" %02X", data[i]);
+	printf("\r\n");
 }
 /*
 Generic function to write 68xx commands and write payload data.
 Function calculates PEC for tx_cmd data and the data to be transmitted.
 */
-void write_68(uint8_t total_ic, // Number of ICs to be written to
-	      uint8_t tx_cmd[2], // The command to be transmitted
-	      uint8_t data[] // Payload Data
-	      ) {
-	uint8_t BYTES_IN_REG = 6;
-	uint8_t CMD_LEN = 4 + (8 * total_ic);
-	uint16_t data_pec, cmd_pec;
-	uint8_t *cmd, copyArray[6], src_address = 0;
-	uint8_t cmd_index;
-	cmd = (uint8_t *)calloc(CMD_LEN, sizeof(uint8_t));
-	cmd[0] = tx_cmd[0];
-	cmd[1] = tx_cmd[1];
-	cmd_pec = pec15_calc(2, cmd);
-	cmd[2] = (uint8_t)(cmd_pec >> 8);
-	cmd[3] = (uint8_t)(cmd_pec);
-	cmd_index = 4;
-	/* executes for each LTC68xx, this loops starts with the last IC on the stack */
-	for (uint8_t current_ic = total_ic; current_ic > 0; current_ic--) {
-		src_address = ((current_ic - 1) * 6);
-		/* The first configuration written is received by the last IC in the daisy chain */
-		for (uint8_t current_byte = 0; current_byte < BYTES_IN_REG; current_byte++) {
-			cmd[cmd_index] = data[((current_ic - 1) * 6) + current_byte];
-			cmd_index = cmd_index + 1;
-		}
-		/* Copy each ic correspond data + pec value for calculate data pec */
-		memcpy(&copyArray[0], &data[src_address], 6); /* dst, src, size */
-		/* calculating the PEC for each Ics configuration register data */
-		data_pec = (uint16_t)Pec10_calc(false, BYTES_IN_REG, &copyArray[0]);
-		cmd[cmd_index] = (uint8_t)(data_pec >> 8);
-		cmd_index = cmd_index + 1;
-		cmd[cmd_index] = (uint8_t)data_pec;
-		cmd_index = cmd_index + 1;
-	}
-	wakeup_sleep(FEB_NUM_IC);
-	FEB_cs_low();
-	FEB_spi_write_array(CMD_LEN, &cmd[0]);
-	FEB_cs_high();
-	free(cmd);
+void write_68(
+    uint8_t total_ic,      // Number of ICs to be written to
+    uint8_t tx_cmd[2],     // The command to be transmitted
+    uint8_t data[]         // Payload Data
+) {
+    const uint8_t BYTES_IN_REG = 6;
+    const uint8_t BYTES_PER_IC = BYTES_IN_REG + 2; // data + 2 bytes PEC
+    uint8_t CMD_LEN = 4 + (BYTES_PER_IC * total_ic); // 4 bytes for cmd + data for all ICs
+    uint8_t *cmd = (uint8_t *)pvPortMalloc(CMD_LEN * sizeof(uint8_t));
+    if (cmd == NULL) {
+        // Could print error here if needed
+        return;
+    }
+
+    // Fill the 2-byte command
+    cmd[0] = tx_cmd[0];
+    cmd[1] = tx_cmd[1];
+
+    // Calculate and append the PEC for the command
+    uint16_t cmd_pec = pec15_calc(2, cmd);
+    cmd[2] = (uint8_t)(cmd_pec >> 8);
+    cmd[3] = (uint8_t)(cmd_pec);
+
+    uint8_t cmd_index = 4;
+
+    // For each IC, starting from last in chain to first
+    for (uint8_t ic = total_ic; ic > 0; ic--) {
+        uint8_t src_offset = (ic - 1) * BYTES_IN_REG;
+
+        // Copy data bytes for this IC
+        for (uint8_t byte = 0; byte < BYTES_IN_REG; byte++) {
+            cmd[cmd_index++] = data[src_offset + byte];
+        }
+
+        // Calculate and append PEC for this IC's data
+        uint16_t data_pec = (uint16_t)Pec10_calc(false, BYTES_IN_REG, &data[src_offset]);
+        cmd[cmd_index++] = (uint8_t)(data_pec >> 8);
+        cmd[cmd_index++] = (uint8_t) data_pec;
+    }
+
+    // Send command and payload
+	// taskENTER_CRITICAL();
+    wakeup_sleep(FEB_NUM_IC);
+    FEB_cs_low();
+    FEB_spi_write_array(CMD_LEN, cmd);
+    FEB_cs_high();
+	// taskEXIT_CRITICAL();
+
+    vPortFree(cmd);
 }
 
 //****************** CMD Translation ****************************

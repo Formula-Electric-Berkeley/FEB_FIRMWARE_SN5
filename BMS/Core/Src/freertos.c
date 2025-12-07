@@ -58,7 +58,7 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t ADBMSTaskHandle;
 const osThreadAttr_t ADBMSTask_attributes = {
   .name = "ADBMSTask",
-  .stack_size = 512 * 4,
+  .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityRealtime,
 };
 /* Definitions for ADBMSMutex */
@@ -134,7 +134,9 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
   /* Infinite loop */
-
+  for (;;) {
+    
+  }
   /* USER CODE END StartDefaultTask */
 }
 
@@ -151,7 +153,7 @@ __weak void StartADBMSTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    osDelay(pdMS_TO_TICKS(1));
   }
   /* USER CODE END StartADBMSTask */
 }
