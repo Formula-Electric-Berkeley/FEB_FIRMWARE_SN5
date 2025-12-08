@@ -24,7 +24,8 @@ extern RMS_MESSAGE_TYPE RMS_MESSAGE;
  */
 float FEB_Regen_GetElecMaxRegenTorque(void) {
     // Get accumulator voltage (convert from RMS format: decivolts with 50V offset)
-    float accumulator_voltage = MIN(INIT_VOLTAGE, (RMS_MESSAGE.HV_Bus_Voltage - 50) / 10.0f);
+    // INIT_VOLTAGE is in decivolts (5100 = 510V), so divide by 10 for volts
+    float accumulator_voltage = MIN(INIT_VOLTAGE / 10.0f, (RMS_MESSAGE.HV_Bus_Voltage - 50) / 10.0f);
     
     // Convert motor speed from RPM to rad/s
     float motor_speed_rads = RMS_MESSAGE.Motor_Speed * RPM_TO_RAD_S;

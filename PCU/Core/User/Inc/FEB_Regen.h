@@ -17,6 +17,7 @@ extern "C" {
 #include "FEB_ADC.h"
 #include "FEB_CAN_RMS.h"
 #include "FEB_CAN_BMS.h"
+#include "FEB_RMS_Config.h"
 #include <stdbool.h>
 #include <math.h>
 
@@ -42,9 +43,6 @@ extern "C" {
 /* User and Brake Settings */
 #define USER_REGEN_FILTER      1.0f     /* User preference multiplier (0.0-1.0) */
 #define REGEN_BRAKE_POS_THRESH 0.20f    /* 20% brake position to activate regen */
-
-/* Voltage Constants */
-#define INIT_VOLTAGE           500      /* Initial voltage assumption (V) */
 
 /* Conversion Factors */
 #define RPM_TO_RAD_S           0.10472f /* RPM to rad/s conversion (2π/60) */
