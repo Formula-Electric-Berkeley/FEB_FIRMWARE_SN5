@@ -2,10 +2,16 @@
 #include "FEB_ADC.h"
 #include "FEB_RMS_Config.h"
 #include "FEB_Debug.h"
+#include "FEB_Regen.h"
 #include "main.h"
 
 /* Safe min macro with proper parentheses */
 #define min(x1, x2) (((x1) < (x2)) ? (x1) : (x2))
+
+/* Regen brake position threshold (from FEB_Regen.h) */
+#ifndef REGEN_BRAKE_POS_THRESH
+#define REGEN_BRAKE_POS_THRESH 0.20f  /* 20% brake position to activate regen */
+#endif
 
 /* Global RMS control data */
 RMS_CONTROL RMS_CONTROL_MESSAGE;
@@ -131,11 +137,11 @@ void FEB_RMS_Torque(void){
 	FEB_ADC_GetAPPSData(&APPS_Data);
 	FEB_ADC_GetBrakeData(&Brake_Data);
 
-	// Cut torque if brake pressed, plausibility fault, or not in drive state
-	if (Brake_Data.brake_position > BRAKE_POSITION_THRESHOLD ||
-	    !APPS_Data.plausible ||
-	    !Brake_Data.plausible ||
-	    !DRIVE_STATE) {
+	// Check plausibility and safety conditions
+	bool sensors_plausible = APPS_Data.plausible && Brake_Data.plausible && DRIVE_STATE;
+	
+	// Log any safety violations
+	if (!sensors_plausible) {
 		if (Brake_Data.brake_position > BRAKE_POSITION_THRESHOLD) {
 			LOG_W(TAG_RMS, "Brake pressed (%.1f%%), cutting torque", Brake_Data.brake_position);
 		}
@@ -148,7 +154,6 @@ void FEB_RMS_Torque(void){
 		if (!DRIVE_STATE) {
 			LOG_W(TAG_RMS, "Not in drive state, cutting torque");
 		}
-		APPS_Data.acceleration = 0.0f;
 	}
 
 	// Reset plausibility if pedals are released
@@ -160,12 +165,30 @@ void FEB_RMS_Torque(void){
 		Brake_Data.plausible = true;
 	}
 
-	// Calculate commanded torque: acceleration (0-100%) * max_torque
-	// Convert percentage to fraction: multiply by 0.01, not 0.1
-	RMS_CONTROL_MESSAGE.torque = 0.01f * APPS_Data.acceleration * FEB_RMS_GetMaxTorque();
-
-	LOG_D(TAG_RMS, "Torque command: %.1f Nm (APPS: %.1f%%, Enabled: %d)", 
-	      RMS_CONTROL_MESSAGE.torque / 10.0f, APPS_Data.acceleration, RMS_CONTROL_MESSAGE.enabled);
+	// Determine operating mode: regen braking vs acceleration
+	if (Brake_Data.brake_position > REGEN_BRAKE_POS_THRESH && sensors_plausible) {
+		// REGEN MODE: Brake is pressed and sensors are plausible
+		float filtered_regen = FEB_Regen_GetFilteredTorque();
+		
+		// Apply brake position scaling and negative sign (SN3 style)
+		// torque_command = -1 * 10 * brake% * filtered_regen / 100
+		RMS_CONTROL_MESSAGE.torque = (int16_t)(-10.0f * Brake_Data.brake_position * filtered_regen / 100.0f);
+		
+		LOG_D(TAG_RMS, "Regen torque: %.1f Nm (Brake: %.1f%%, Max: %.1f Nm)", 
+		      RMS_CONTROL_MESSAGE.torque / 10.0f, Brake_Data.brake_position, filtered_regen);
+	} 
+	else if (Brake_Data.brake_position < BRAKE_POSITION_THRESHOLD && sensors_plausible) {
+		// ACCELERATION MODE: No brake and sensors are plausible
+		// Calculate commanded torque: acceleration (0-100%) * max_torque
+		RMS_CONTROL_MESSAGE.torque = (int16_t)(0.01f * APPS_Data.acceleration * FEB_RMS_GetMaxTorque());
+		
+		LOG_D(TAG_RMS, "Accel torque: %.1f Nm (APPS: %.1f%%, Enabled: %d)", 
+		      RMS_CONTROL_MESSAGE.torque / 10.0f, APPS_Data.acceleration, RMS_CONTROL_MESSAGE.enabled);
+	}
+	else {
+		// SAFETY MODE: Sensors not plausible or not in drive state - zero torque
+		RMS_CONTROL_MESSAGE.torque = 0;
+	}
 
 	// Transmit torque command to RMS motor controller
 	FEB_CAN_RMS_Transmit_UpdateTorque(RMS_CONTROL_MESSAGE.torque, RMS_CONTROL_MESSAGE.enabled);
