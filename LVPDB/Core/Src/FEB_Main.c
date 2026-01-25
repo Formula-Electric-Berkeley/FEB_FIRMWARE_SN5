@@ -100,7 +100,7 @@ void FEB_Main_Setup(void) {
 	bool tps2482_pg_success = false;
 	maxiter = 0; // Safety in case of infinite while
 
-	uint8_t start_en[NUM_TPS2482 - 1] = {0, 0, 0, 0, 0, 0};
+	uint8_t start_en[NUM_TPS2482 - 1] = {1, 1, 1, 1, 1, 1};
 
 	while ( !tps2482_en_success || !tps2482_pg_success ) {
 		if ( maxiter > 100 ) {
