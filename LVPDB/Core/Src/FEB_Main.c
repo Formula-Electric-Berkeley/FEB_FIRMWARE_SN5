@@ -2,7 +2,6 @@
 #include "main.h"
 #include <stdio.h>
 
-
 static CAN_TxHeaderTypeDef FEB_CAN_Tx_Header;
 
 static uint32_t FEB_CAN_Tx_Mailbox;

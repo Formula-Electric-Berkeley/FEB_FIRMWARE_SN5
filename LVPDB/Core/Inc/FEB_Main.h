@@ -10,12 +10,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifdef __GNUC__
-#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
-#else
-#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
-#endif
-
 /*
  * The LVPDB has multiple TPS chips on the bus. These are the addresses of
  * each of the TPS chips. The naming conventions is as follows:
