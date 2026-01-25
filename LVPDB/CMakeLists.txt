@@ -45,6 +45,10 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
+    Core/Src/FEB_Main.c
+    Core/Src/FEB_CAN.c
+    Core/Src/FEB_Heartbeat.c
+    Core/Src/TPS2482.c
 )
 
 # Add include paths
