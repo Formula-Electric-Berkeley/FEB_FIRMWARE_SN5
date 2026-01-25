@@ -54,6 +54,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/User/Src/FEB_CAN_BMS.c
     Core/User/Src/FEB_CAN_RMS.c
     Core/User/Src/FEB_RMS.c
+    Core/User/Src/FEB_Regen.c
     Core/User/Src/FEB_CAN_Diagnostics.c
     Core/User/Src/TPS2482.c
     Core/User/Src/FEB_CAN_TPS.c
