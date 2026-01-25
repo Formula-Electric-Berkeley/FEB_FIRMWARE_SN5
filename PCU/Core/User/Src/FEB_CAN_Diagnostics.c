@@ -25,7 +25,7 @@ void FEB_CAN_Diagnostics_TransmitBrakeData(void) {
     data[6] = (Brake_Data.plausible ? 0x01 : 0x00) |  // Bit 0
           (Brake_Data.brake_pressed ? 0x02 : 0x00) |  // Bit 1
           (Brake_Data.bots_active ? 0x04 : 0x00);     // Bit 2    
-    data[7] = 0;
+    data[7] = Brake_Data.brake_switch ? 0x02 : 0x01;
     
     // Transmit CAN message
     FEB_CAN_TX_TransmitDefault(FEB_CAN_INSTANCE_1, FEB_CAN_ID_BRAKE_DATA, 

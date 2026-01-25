@@ -110,9 +110,10 @@ typedef struct {
  * @brief Brake System Data
  */
 typedef struct {
-    float    pressure1_percent;          /* Brake pressure sensor 1 (0-100%) */
-    float    pressure2_percent;          /* Brake pressure sensor 2 (0-100%) */
-    float    brake_position;         /* Brake pedal position (0-100%) */
+    float    pressure1_percent;      /* Brake pressure sensor 1 (0-100%) */
+    float    pressure2_percent;      /* Brake pressure sensor 2 (0-100%) */
+    float    brake_position;         /* Either Brake Pressure 1 or 2, based on the switch */
+    bool     brake_switch;           /* False if brake pressure 1 is selected, True if brake pressure 2 is selected */
     bool     brake_pressed;          /* Brake switch/input status */
     bool     plausible;              /* Plausibility check status */
     bool     bots_active;            /* Brake Over-Travel Switch status */

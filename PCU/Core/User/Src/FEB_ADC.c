@@ -113,6 +113,8 @@ static ADC_CalibrationTypeDef brake_pressure2_calibration = {
     .inverted = false
 };
 
+#define VOLTAGE_DIVIDER_RATIO (5.0f/3.3f)
+
 /* Private function prototypes -----------------------------------------------*/
 static uint16_t GetAveragedADCValue(ADC_HandleTypeDef* hadc, uint32_t channel, uint8_t samples);
 static void UpdateFaultTimer(uint32_t* timer, bool fault_condition, uint32_t threshold);
@@ -344,46 +346,46 @@ float FEB_ADC_GetAccelPedal1Voltage(void) {
     uint16_t raw = accel_pedal1_config.filter.enabled ?
                    FEB_ADC_GetFilteredValue(&hadc3, ADC3_ACCEL_PEDAL_1_CHANNEL, accel_pedal1_config.filter.samples) :
                    FEB_ADC_GetAccelPedal1Raw();
-    return FEB_ADC_RawToVoltage(raw);
+    return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO;
 }
 
 float FEB_ADC_GetAccelPedal2Voltage(void) {
     uint16_t raw = accel_pedal2_config.filter.enabled ?
                    FEB_ADC_GetFilteredValue(&hadc3, ADC3_ACCEL_PEDAL_2_CHANNEL, accel_pedal2_config.filter.samples) :
                    FEB_ADC_GetAccelPedal2Raw();
-    return FEB_ADC_RawToVoltage(raw);
+    return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO;
 }
 
 float FEB_ADC_GetBrakePressure1Voltage(void) {
     uint16_t raw = brake_pressure1_config.filter.enabled ?
                    FEB_ADC_GetFilteredValue(&hadc1, ADC1_BRAKE_PRESSURE_1_CHANNEL, brake_pressure1_config.filter.samples) :
                    FEB_ADC_GetBrakePressure1Raw();
-    return FEB_ADC_RawToVoltage(raw);
+    return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO;
 }
 
 float FEB_ADC_GetBrakePressure2Voltage(void) {
     uint16_t raw = brake_pressure2_config.filter.enabled ?
                    FEB_ADC_GetFilteredValue(&hadc1, ADC1_BRAKE_PRESSURE_2_CHANNEL, brake_pressure2_config.filter.samples) :
                    FEB_ADC_GetBrakePressure2Raw();
-    return FEB_ADC_RawToVoltage(raw);
+    return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO;
 }
 
 float FEB_ADC_GetCurrentSenseVoltage(void) {
     uint16_t raw = current_sense_config.filter.enabled ?
                    FEB_ADC_GetFilteredValue(&hadc2, ADC2_CURRENT_SENSE_CHANNEL, current_sense_config.filter.samples) :
                    FEB_ADC_GetCurrentSenseRaw();
-    return FEB_ADC_RawToVoltage(raw);
+    return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO;
 }
 
 float FEB_ADC_GetShutdownInVoltage(void) {
     uint16_t raw = shutdown_in_config.filter.enabled ?
                    FEB_ADC_GetFilteredValue(&hadc2, ADC2_SHUTDOWN_IN_CHANNEL, shutdown_in_config.filter.samples) :
                    FEB_ADC_GetShutdownInRaw();
-    return FEB_ADC_RawToVoltage(raw);
+    return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO;
 }
 
 float FEB_ADC_GetPreTimingTripVoltage(void) {
-    return FEB_ADC_RawToVoltage(FEB_ADC_GetPreTimingTripRaw());
+    return FEB_ADC_RawToVoltage(FEB_ADC_GetPreTimingTripRaw()) * VOLTAGE_DIVIDER_RATIO;
 }
 
 float FEB_ADC_GetBSPDIndicatorVoltage(void) {
@@ -463,6 +465,16 @@ ADC_StatusTypeDef FEB_ADC_GetBrakeData(Brake_DataTypeDef* brake_data) {
     /* Get brake pressure readings */
     float pressure1_voltage = FEB_ADC_GetBrakePressure1Voltage() * 1000.0f;  /* mV */
     float pressure2_voltage = FEB_ADC_GetBrakePressure2Voltage() * 1000.0f;
+    float brake_input_mv = FEB_ADC_GetBrakeInputVoltage() * 1000.0f;
+
+    // Check which sensor is shorted to the brake input
+    float pressure1_diff = fabs(pressure1_voltage - brake_input_mv);
+    float pressure2_diff = fabs(pressure2_voltage - brake_input_mv);
+    if (pressure1_diff < pressure2_diff) {
+        brake_data->brake_switch = false;
+    } else {
+        brake_data->brake_switch = true;
+    }
     
     /* Convert voltage to pressure using runtime calibration */
 
@@ -484,12 +496,11 @@ ADC_StatusTypeDef FEB_ADC_GetBrakeData(Brake_DataTypeDef* brake_data) {
 
 
     /* Get brake switch status */
-    float brake_input_mv = FEB_ADC_GetBrakeInputVoltage() * 1000.0f;
     brake_data->brake_pressed = (brake_input_mv > BRAKE_INPUT_THRESHOLD_MV);
     
     /* Calculate brake position based on pressure */
-    float avg_pressure = (brake_data->pressure1_percent + brake_data->pressure2_percent) / 2.0f;
-    brake_data->brake_position = avg_pressure;
+    // float avg_pressure = (brake_data->pressure1_percent + brake_data->pressure2_percent) / 2.0f;
+    brake_data->brake_position = brake_data->brake_switch ? brake_data->pressure2_percent : brake_data->pressure1_percent;
     
     /* Check plausibility between pressure sensors */
     float pressure_diff = fabs(brake_data->pressure1_percent - brake_data->pressure2_percent);

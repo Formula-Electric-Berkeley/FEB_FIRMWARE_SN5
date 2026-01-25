@@ -6,6 +6,8 @@
 extern UART_HandleTypeDef huart2;
 extern I2C_HandleTypeDef hi2c1;
 
+uint8_t counter = 0;
+
 /* ===== TPS2482 I2C CONFIGURATION =====
  *
  * Hardware Setup:
@@ -111,8 +113,6 @@ void FEB_Main_Setup(void) {
  * Runs at ~100Hz (10ms cycle time) in a delay-based superloop
  */
 void FEB_Main_While() {
-    APPS_DataTypeDef apps_data;
-    Brake_DataTypeDef brake_data;
 
     /* Check BMS state and enable/disable RMS accordingly */
     // FEB_SM_ST_t bms_state = FEB_CAN_BMS_getState();
@@ -125,7 +125,7 @@ void FEB_Main_While() {
     // }
     /* Enable motor only in DRIVE state */
     // else if (bms_state == FEB_SM_ST_DRIVE) {
-    // FEB_RMS_Process();
+    //     FEB_RMS_Process();
     // } else {
     //     FEB_RMS_Disable();
     // }
@@ -146,6 +146,13 @@ void FEB_Main_While() {
      */
 
     /* Debug output every 100 loops (1 second at 100Hz) */
+    counter++;
+    if (counter >= 1) {
+        counter = 0;
+
+        APPS_DataTypeDef apps_data;
+        Brake_DataTypeDef brake_data;
+
         FEB_ADC_GetAPPSData(&apps_data);
         FEB_ADC_GetBrakeData(&brake_data);
 
@@ -160,7 +167,7 @@ void FEB_Main_While() {
                apps_data.acceleration,
                apps_data.plausible ? "PLAUS" : "IMPLAUS");
 
-        LOG_D(TAG_MAIN, "Brake1: %4d ADC (%.2fV / %.1f%%) | Brake2: %4d ADC (%.2fV / %.1f%%) | Avg: %.1f%% | %s",
+        LOG_D(TAG_MAIN, "Brake1: %4d ADC (%.2fV / %.1f%%) | Brake2: %4d ADC (%.2fV / %.1f%%) | Brake Input: %.1f%% | %s",
                FEB_ADC_GetBrakePressure1Raw(),
                FEB_ADC_GetBrakePressure1Voltage(),
                brake_data.pressure1_percent,
@@ -169,8 +176,10 @@ void FEB_Main_While() {
                brake_data.pressure2_percent,
                brake_data.brake_position,
                brake_data.brake_pressed ? "PRESSED" : "RELEASED");
+    }
+
     
 
     /* Main loop timing: 10ms cycle (100Hz) */
-	HAL_Delay(100);
+	HAL_Delay(1000);
 }
