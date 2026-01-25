@@ -1,70 +1,15 @@
 #include "FEB_Main.h"
 #include "main.h"
 
-#define TESTBENCH 0
-#define BMS_TESTING 0
-
-#if TESTBENCH
-
-#if BMS_TESTING
-
-#define BMS_ID FEB_CAN_BMS_STATE_FRAME_ID
-#define DASH_ID FEB_CAN_DASH_MESSAGE_FRAME_ID
-
-// *********************** States ***********************
-typedef enum {
-	FEB_SM_ST_BOOT,
-	FEB_SM_ST_LV,
-	FEB_SM_ST_ESC,
-	FEB_SM_ST_PRECHARGE,
-	FEB_SM_ST_ENERGIZED,
-	FEB_SM_ST_DRIVE,
-	FEB_SM_ST_FREE,
-	FEB_SM_ST_CHARGING,
-	FEB_SM_ST_BALANCE,
-	FEB_SM_ST_FAULT_BMS,
-	FEB_SM_ST_FAULT_BSPD,
-	FEB_SM_ST_FAULT_IMD,
-	FEB_SM_ST_FAULT_CHARGING,
-	FEB_SM_ST_DEFAULT
-} FEB_SM_ST_t;
-
-static uint64_t ten_sec_timer = 0;
-
-static FEB_SM_ST_t bms_state = FEB_SM_ST_PRECHARGE;
-
-#else
-
-#define BOARD 4
-
-#if BOARD == 1
-#define THIS_ID FEB_CAN_FEB_PING_PONG_COUNTER1_FRAME_ID
-#define OTHER_ID FEB_CAN_FEB_PING_PONG_COUNTER2_FRAME_ID
-#elif BOARD == 2
-#define THIS_ID FEB_CAN_FEB_PING_PONG_COUNTER2_FRAME_ID
-#define OTHER_ID FEB_CAN_FEB_PING_PONG_COUNTER1_FRAME_ID
-#elif BOARD == 3
-#define THIS_ID FEB_CAN_FEB_PING_PONG_COUNTER3_FRAME_ID
-#define OTHER_ID FEB_CAN_FEB_PING_PONG_COUNTER4_FRAME_ID
-#elif BOARD == 4
-#define THIS_ID FEB_CAN_FEB_PING_PONG_COUNTER4_FRAME_ID
-#define OTHER_ID FEB_CAN_FEB_PING_PONG_COUNTER3_FRAME_ID
-#endif
-
-static uint64_t rx_tx_data = (BOARD > 2) ? 0xFFFFFFFF : 0;
-
-#endif
 
 static CAN_TxHeaderTypeDef FEB_CAN_Tx_Header;
 
 static uint32_t FEB_CAN_Tx_Mailbox;
 
-#endif
-
-extern I2C_HandleTypeDef hi2c1;
 extern CAN_HandleTypeDef hcan1;
+extern CAN_HandleTypeDef hcan2;
+extern I2C_HandleTypeDef hi2c1;
 extern UART_HandleTypeDef huart2;
-extern TIM_HandleTypeDef htim1;
 
 extern FEB_CAN_APPS_Message_t FEB_CAN_APPS_Message;
 
