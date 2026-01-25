@@ -3,11 +3,9 @@
 
 // **************************************** Includes ****************************************
 
-
-#include "FEB_CAN_APPS.h"
-#include "FEB_CAN_ICS.h"
 #include "stm32f4xx_hal.h"
 #include <stdio.h>
+#include <string.h>
 #include <FEB_CAN_Library_SN4/gen/feb_can.h>
 
 typedef struct __attribute__((packed)) {
@@ -41,7 +39,7 @@ typedef struct __attribute__((packed)) {
 
 void FEB_CAN_Init(void (*CAN_Callback)(CAN_RxHeaderTypeDef *, void *));
 void FEB_CAN_Filter_Config(void);
-uint8_t FEB_CAN_Filter(CAN_HandleTypeDef* hcan, unsigned char FIFO_assignment, uint8_t filter_bank);
+uint8_t FEB_CAN_LVPDB_Filter(CAN_HandleTypeDef* hcan, unsigned char FIFO_assignment, uint8_t filter_bank);
 //void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef* hcan);
 void FEB_CAN_Transmit(CAN_HandleTypeDef *hcan, FEB_LVPDB_CAN_Data *can_data);
 #endif /* INC_FEB_CAN_H_ */

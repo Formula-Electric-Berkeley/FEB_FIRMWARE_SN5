@@ -10,7 +10,6 @@
 
 // TPS2482 Datasheet: https://www.ti.com/lit/ds/symlink/tps2482.pdf
 
-
 /*
  * 	Using:
  * 	I2C Device Address (Table 8.)
