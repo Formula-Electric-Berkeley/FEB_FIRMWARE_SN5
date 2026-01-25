@@ -68,6 +68,8 @@ bool bus_voltage_healthy = true;
 // MARK: Main Loop
 
 void FEB_Main_Setup(void) {
+	printf("Beginning Setup");
+
 	FEB_Variable_Init();
 	// FEB_CAN_HEARTBEAT_Init();
 
@@ -79,6 +81,8 @@ void FEB_Main_Setup(void) {
 		if ( maxiter > 100 ) {
 			break; // Todo add failure case
 		}
+
+		printf("Initializing... %d. Status: %d", maxiter, tps2482_init_success);
 
 		// Assume successful init
 		bool b = 0x01;
