@@ -14,8 +14,6 @@ extern I2C_HandleTypeDef hi2c1;
 extern TIM_HandleTypeDef htim1;
 extern UART_HandleTypeDef huart2;
 
-extern FEB_CAN_APPS_Message_t FEB_CAN_APPS_Message;
-
 static void FEB_Compose_CAN_Data(void);
 static void FEB_Variable_Conversion(void);
 static void FEB_Variable_Init(void);
