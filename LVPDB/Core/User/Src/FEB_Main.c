@@ -191,7 +191,8 @@ void FEB_1ms_Callback(void)
 
 void FEB_CAN1_Rx_Callback(CAN_RxHeaderTypeDef *rx_header, void *data)
 {
-  data = (char *)data;
+  (void)rx_header;
+  (void)data;
 
   // if ( rx_header->StdId == FEB_CAN_BRAKE_FRAME_ID ) {
   // 	uint8_t brake_pressure = *((uint8_t *)data);

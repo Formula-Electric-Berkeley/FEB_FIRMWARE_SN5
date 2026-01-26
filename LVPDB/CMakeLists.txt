@@ -46,16 +46,15 @@ set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES})
 
 set(BASE_INCLUDES
     Core/Inc
-    Core/Inc/FEB_CAN_Library_SN4/gen
     Drivers/STM32F4xx_HAL_Driver/Inc
     Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
     Drivers/CMSIS/Device/ST/STM32F4xx/Include
     Drivers/CMSIS/Include
 )
 
-# Auto-discover Core/User/Inc if it exists
+# Auto-discover Core/User/Inc if it exists (before gen/ to avoid case-insensitive collisions)
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
-    list(APPEND BASE_INCLUDES Core/User/Inc)
+    list(APPEND BASE_INCLUDES Core/User/Inc Core/User/Inc/FEB_CAN_Library_SN4/gen)
 endif()
 
 # ══════════════════════════════════════════════════════════════════════

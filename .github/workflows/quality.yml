@@ -18,10 +18,10 @@ jobs:
       - name: Install clang-format
         run: sudo apt-get install -y clang-format
 
-      - name: Check formatting (Core/ directories)
+      - name: Check formatting (user code)
         run: |
-          # Check all source files under Core/ (CubeMX-generated + user-written)
-          FILES=$(find . -path "*/Core/*" \( -name "*.c" -o -name "*.h" \) 2>/dev/null)
+          # Check user-written source files under Core/User/ (excludes CubeMX-generated code)
+          FILES=$(find . -path "*/Core/User/*" \( -name "*.c" -o -name "*.h" \) 2>/dev/null)
           if [ -z "$FILES" ]; then
             echo "No user source files found to check."
             exit 0
