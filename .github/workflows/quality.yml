@@ -2,7 +2,7 @@ name: Code Quality
 
 on:
   push:
-    branches: [main, "sa/*", "dev/*"]
+    branches: [main]
   pull_request:
     branches: [main]
 
