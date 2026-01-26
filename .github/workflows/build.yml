@@ -1,0 +1,60 @@
+name: Build All Projects
+
+on:
+  push:
+    branches: [main, "sa/*", "dev/*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes]
+
+    name: Build ${{ matrix.project }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check buildability
+        id: check
+        run: |
+          if [ ! -f "${{ matrix.project }}/CMakeLists.txt" ] || [ ! -d "${{ matrix.project }}/Core" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::${{ matrix.project }} skipped -- missing CMakeLists.txt or Core/ directory. Run CubeMX to generate."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install ARM GCC Toolchain
+        if: steps.check.outputs.skip != 'true'
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: latest
+
+      - name: Install Ninja
+        if: steps.check.outputs.skip != 'true'
+        run: sudo apt-get install -y ninja-build
+
+      - name: Configure CMake
+        if: steps.check.outputs.skip != 'true'
+        run: >
+          cmake -S . -B build/${{ matrix.project }}
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-arm-none-eabi.cmake
+
+      - name: Build
+        if: steps.check.outputs.skip != 'true'
+        run: cmake --build build/${{ matrix.project }} --target ${{ matrix.project }}
+
+      - name: Upload ELF artifact
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.project }}-firmware
+          path: build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}.elf

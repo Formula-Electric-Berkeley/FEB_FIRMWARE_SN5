@@ -1,0 +1,13 @@
+{
+    "configurations": [
+        {
+            "name": "STM32",
+            "compileCommands": "${workspaceFolder}/build/Debug/compile_commands.json",
+            "intelliSenseMode": "gcc-arm",
+            "cStandard": "c11",
+            "cppStandard": "c++14",
+            "compilerPath": "${env:CUBE_BUNDLE_PATH}/GNU-tools-for-STM32/bin/arm-none-eabi-gcc"
+        }
+    ],
+    "version": 4
+}
