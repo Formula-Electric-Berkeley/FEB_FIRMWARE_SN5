@@ -81,13 +81,13 @@ void FEB_Main_Setup(void) {
 		if ( maxiter > 100 ) {
 			break; // Todo add failure case
 		}
-
-		printf("Initializing... %d. Status: %d\r\n", maxiter, tps2482_init_success);
-
+		
 		// Assume successful init
 		bool b = 0x01;
-
+		
 		TPS2482_Init(&hi2c1, tps2482_i2c_addresses, tps2482_configurations, tps2482_ids, tps2482_init_res, NUM_TPS2482);
+		
+		printf("[SETUP] Initializing... [%d] Status:\tSH: %d,\tLT: %d,\tBM_L: %d,\tSM: %d,\tAF1_AF2: %d,\tCP_RF: %d\r\n", maxiter, tps2482_init_res[0], tps2482_init_res[1], tps2482_init_res[2], tps2482_init_res[3], tps2482_init_res[4], tps2482_init_res[5]);
 
 		for ( uint8_t i = 0; i < NUM_TPS2482; i++ ) {
 			// If any don't enable properly b will be false and thus loop continues
@@ -98,7 +98,7 @@ void FEB_Main_Setup(void) {
 		maxiter += 1;
 	}
 
-	printf("tps2482_init_success: %d\r\n", tps2482_init_success);
+	// printf("[SETUP] tps2482_init_success: %d\r\n", tps2482_init_success);
 
 	bool tps2482_en_res[NUM_TPS2482 - 1]; // LVPDB is always enabled so num TPS - 1
 	bool tps2482_en_success = false;
@@ -119,8 +119,8 @@ void FEB_Main_Setup(void) {
 		TPS2482_Enable(tps2482_en_ports, tps2482_en_pins, start_en, tps2482_en_res, NUM_TPS2482 - 1);
 		TPS2482_GPIO_Read(tps2482_pg_ports, tps2482_pg_pins, tps2482_pg_res, NUM_TPS2482);
 
-		printf("%d tps2482_en_res: %d, %d, %d, %d, %d, %d\r\n", maxiter, tps2482_en_res[0], tps2482_en_res[1], tps2482_en_res[2], tps2482_en_res[3], tps2482_en_res[4], tps2482_en_res[5]);
-		printf("%d tps2482_pg_res: %d, %d, %d, %d, %d, %d, %d\r\n", maxiter, tps2482_pg_res[0], tps2482_pg_res[1], tps2482_pg_res[2], tps2482_pg_res[3], tps2482_pg_res[4], tps2482_pg_res[5], tps2482_pg_res[6]);
+		printf("[SETUP] Powering... [%d] tps2482_en_res: \tSH: %d, \tLT: %d, \tBM_L: %d, \tSM: %d, \tAF1_AF2: %d, CP_RF: %d\r\n", maxiter, tps2482_en_res[0], tps2482_en_res[1], tps2482_en_res[2], tps2482_en_res[3], tps2482_en_res[4], tps2482_en_res[5]);
+		printf("[SETUP] Validating... [%d] tps2482_pg_res: \tSH: %d,\tLV: %d, \tLT: %d, \tBM_L: %d, \tSM: %d, \tAF1_AF2: %d, \tCP_RF: %d\r\n", maxiter, tps2482_pg_res[0], tps2482_pg_res[1], tps2482_pg_res[2], tps2482_pg_res[3], tps2482_pg_res[4], tps2482_pg_res[5], tps2482_pg_res[6]);
 
 		for ( uint8_t i = 0; i < NUM_TPS2482 - 1; i++ ) {
 			// If any don't enable properly b will be false and thus loop continues
