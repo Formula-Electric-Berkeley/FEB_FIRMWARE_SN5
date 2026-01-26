@@ -2,11 +2,11 @@
 #define INC_TPS2482_H_
 
 #include "stm32f4xx_hal.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "stdint.h"
-#include "stdbool.h"
-#include "string.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
 
 // TPS2482 Datasheet: https://www.ti.com/lit/ds/symlink/tps2482.pdf
 

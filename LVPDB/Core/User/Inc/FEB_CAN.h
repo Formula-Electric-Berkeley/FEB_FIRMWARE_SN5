@@ -6,7 +6,7 @@
 #include "stm32f4xx_hal.h"
 #include <stdio.h>
 #include <string.h>
-#include <FEB_CAN_Library_SN4/gen/feb_can.h>
+#include "FEB_CAN_Library_SN4/gen/feb_can.h"
 
 typedef struct __attribute__((packed))
 {
