@@ -26,5 +26,13 @@
     ],
     "cmake.configureArgs": [
         "-DCMAKE_COMMAND=cube-cmake"
-    ]
+    ],
+    "[c]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools",
+        "editor.formatOnSave": true
+    },
+    "[cpp]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools",
+        "editor.formatOnSave": true
+    }
 }
