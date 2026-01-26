@@ -41,8 +41,16 @@ __pycache__/
 .idea/
 
 # OS files
-.DS_Store
-Thumbs.db
+**/.DS_Store
+**/Thumbs.db
+
+# Editor swap/temp files
+*.swp
+*.swo
+*~
+
+# Environment secrets
+.env
 
 # Claude
 .claude/
