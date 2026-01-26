@@ -45,25 +45,28 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { project: BMS,          buildable: true }
-          - { project: PCU,          buildable: true }
-          - { project: DASH,         buildable: true }
-          - { project: LVPDB,        buildable: true }
-          - { project: DART,         buildable: false }
-          - { project: DCU,          buildable: false }
-          - { project: Sensor_Nodes, buildable: false }
+        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check if project has source code
+        id: check
+        run: |
+          if [ ! -d "${{ matrix.project }}/Core" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::${{ matrix.project }} has no Core/ directory, skipping cppcheck."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install cppcheck
-        if: matrix.buildable
+        if: steps.check.outputs.skip != 'true'
         run: sudo apt-get install -y cppcheck
 
       - name: Run cppcheck
-        if: matrix.buildable
+        if: steps.check.outputs.skip != 'true'
         working-directory: ${{ matrix.project }}
         run: |
           cppcheck \

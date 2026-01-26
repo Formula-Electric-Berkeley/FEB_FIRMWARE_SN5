@@ -12,14 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { project: BMS,          buildable: true }
-          - { project: PCU,          buildable: true }
-          - { project: DASH,         buildable: true }
-          - { project: LVPDB,        buildable: true }
-          - { project: DART,         buildable: false }
-          - { project: DCU,          buildable: false }
-          - { project: Sensor_Nodes, buildable: false }
+        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes]
 
     name: Build ${{ matrix.project }}
 
@@ -27,37 +20,42 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check buildability
+        id: check
+        run: |
+          if [ ! -f "${{ matrix.project }}/CMakeLists.txt" ] || [ ! -d "${{ matrix.project }}/Core" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::${{ matrix.project }} skipped -- missing CMakeLists.txt or Core/ directory. Run CubeMX to generate."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install ARM GCC Toolchain
+        if: steps.check.outputs.skip != 'true'
         uses: carlosperate/arm-none-eabi-gcc-action@v1
         with:
           release: latest
 
       - name: Install Ninja
+        if: steps.check.outputs.skip != 'true'
         run: sudo apt-get install -y ninja-build
-
-      - name: Check buildability
-        id: check
-        run: |
-          if [ "${{ matrix.buildable }}" = "false" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::${{ matrix.project }} skipped -- Drivers/ not populated. Run CubeMX to generate."
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Configure CMake
         if: steps.check.outputs.skip != 'true'
-        working-directory: ${{ matrix.project }}
-        run: cmake --preset Debug
+        run: >
+          cmake -S . -B build/${{ matrix.project }}
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-arm-none-eabi.cmake
+          -DBUILD_${{ matrix.project }}=ON
 
       - name: Build
         if: steps.check.outputs.skip != 'true'
-        working-directory: ${{ matrix.project }}
-        run: cmake --build --preset Debug
+        run: cmake --build build/${{ matrix.project }}
 
       - name: Upload ELF artifact
         if: steps.check.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.project }}-firmware
-          path: ${{ matrix.project }}/build/Debug/${{ matrix.project }}.elf
+          path: build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}.elf
