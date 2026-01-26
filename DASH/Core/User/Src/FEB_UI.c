@@ -18,8 +18,8 @@ extern UART_HandleTypeDef huart3;
 // extern ICS_UI_Values_t ICS_UI_Values;
 // extern uint16_t lv_voltage;
 
-//const char* BMS_STATE_LABELS[] = {"PRECHARGE", "CHARGE", "BALANCE", "DRIVE", "SHUTDOWN", "NULL"};
-//const int BMS_STATE_COLORS[] = {0xFAFF00, 0x33FF00, 0x00F0FF, 0xFA00FF, 0xFF0000, 0xC2C2C2};
+// const char* BMS_STATE_LABELS[] = {"PRECHARGE", "CHARGE", "BALANCE", "DRIVE", "SHUTDOWN", "NULL"};
+// const int BMS_STATE_COLORS[] = {0xFAFF00, 0x33FF00, 0x00F0FF, 0xFA00FF, 0xFF0000, 0xC2C2C2};
 
 // const char* HV_STATUS_LABELS[] = {"HV OFF", "HV ON"};
 // const int HV_STATUS_COLORS[] = {0xFF0000, 0xFF8A00};
@@ -61,45 +61,47 @@ uint8_t iter;
 // static lv_obj_t *main_screen;
 // static lv_obj_t *label_hello;
 
-void FEB_UI_Init(void) {
-    // Critical section only for initialization that truly requires it
-    // LVGL operations don't need critical sections - they're designed to be thread-safe
+void FEB_UI_Init(void)
+{
+  // Critical section only for initialization that truly requires it
+  // LVGL operations don't need critical sections - they're designed to be thread-safe
 
-    lv_init();              // LVGL core
-    screen_driver_init();   // LCD + Framebuffer
+  lv_init();            // LVGL core
+  screen_driver_init(); // LCD + Framebuffer
 
-    ui_init();
+  ui_init();
 }
 
-void FEB_UI_Update(void) {
-    lv_timer_handler(); // (lv_task_handler is deprecated)
+void FEB_UI_Update(void)
+{
+  lv_timer_handler(); // (lv_task_handler is deprecated)
 }
 
 void StartDisplayTask(void *argument)
 {
-    FEB_UI_Init();
-    uint32_t last_blink = 0;
+  FEB_UI_Init();
+  uint32_t last_blink = 0;
 
-    for (;;) {
-        FEB_UI_Update();
+  for (;;)
+  {
+    FEB_UI_Update();
 
-        // LVGL timer handler should NOT be called in critical section
-        // It needs interrupts enabled for DMA2D and LTDC to work properly
-        if (lv_tick_get() - last_blink >= 1000) { // 1 second passed
-            HAL_GPIO_TogglePin(LED4_GPIO_Port, LED4_Pin);
-            last_blink = lv_tick_get();
-        }
-
-        osDelay(pdMS_TO_TICKS(5)); // VERY IMPORTANT (lets LVGL run properly)
+    // LVGL timer handler should NOT be called in critical section
+    // It needs interrupts enabled for DMA2D and LTDC to work properly
+    if (lv_tick_get() - last_blink >= 1000)
+    { // 1 second passed
+      HAL_GPIO_TogglePin(LED4_GPIO_Port, LED4_Pin);
+      last_blink = lv_tick_get();
     }
-}
 
+    osDelay(pdMS_TO_TICKS(5)); // VERY IMPORTANT (lets LVGL run properly)
+  }
+}
 
 // void FEB_UI_Set_Values(void) {
 
 // 	BMS_State_Set();
 
-	
 //     LV_Set_Value();
 // 	SOC_Set_Value(ICS_UI_Values.pack_voltage, ICS_UI_Values.min_voltage);
 // 	TEMP_Set_Value(ICS_UI_Values.max_acc_temp);
@@ -238,7 +240,6 @@ void StartDisplayTask(void *argument)
 
 //     float soc_value = (avg_voltage - min_voltage) / (max_voltage - min_voltage);
 //     uint8_t soc_percent = (uint8_t)(soc_value * 100.0f + 0.5f);
-    
 
 // //    uint8_t soc_value = lookup_soc_from_voltage(avg_cell_voltage);
 
@@ -304,6 +305,3 @@ void StartDisplayTask(void *argument)
 //     sprintf(speed_str, "%d", (int)(mph + 0.5f));  // Round to nearest int
 //     lv_label_set_text(ui_speedNumerical, speed_str);
 // }
-
-
-

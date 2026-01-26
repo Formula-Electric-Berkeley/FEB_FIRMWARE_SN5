@@ -17,7 +17,7 @@
 // // uint8_t heartbeat[8];
 // void FEB_CAN_HEARTBEAT_Transmit();
 // void FEB_CAN_HEARTBEAT_Init();
- 
+
 // typedef enum {
 // 	FEB_HB_NULL,
 // 	FEB_HB_DASH,
@@ -47,4 +47,3 @@
 // } FEB_SM_ST_t;
 
 //  #endif /* INC_FEB_CAN_HEARTBEAT_H_ */
- 

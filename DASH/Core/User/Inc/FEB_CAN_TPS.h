@@ -11,5 +11,4 @@
 
 void FEB_CAN_TPS_Transmit();
 
-
 #endif /* INC_FEB_CAN_ICS_H_ */

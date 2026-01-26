@@ -33,7 +33,8 @@
 #define FEB_CAN_H
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #include <stdint.h>
@@ -41,7 +42,7 @@ extern "C" {
 #include <stddef.h>
 
 #ifndef EINVAL
-#    define EINVAL 22
+#define EINVAL 22
 #endif
 
 /* Frame ids. */
@@ -181,9 +182,7 @@ extern "C" {
 
 /* Frame cycle times in milliseconds. */
 
-
 /* Signal choices. */
-
 
 /* Frame Names. */
 #define FEB_CAN_RES_STATE_NAME "res_state"
@@ -724,30 +723,32 @@ extern "C" {
 #define FEB_CAN_EBS_PRESSURE_STATUS_EBS_PRESSURE_3_NAME "ebs_pressure_3"
 #define FEB_CAN_EBS_PRESSURE_STATUS_EBS_PRESSURE_4_NAME "ebs_pressure_4"
 
-/**
- * Signals in message res_state.
- *
- * RES message for RES state.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_res_state_t {
+  /**
+   * Signals in message res_state.
+   *
+   * RES message for RES state.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_res_state_t
+  {
     /**
      * Range: -
      * Scale: 1
      * Offset: 0
      */
     uint8_t res_state;
-};
+  };
 
-/**
- * Signals in message bms_state.
- *
- * BMS message for BMS state.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_bms_state_t {
+  /**
+   * Signals in message bms_state.
+   *
+   * BMS message for BMS state.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_bms_state_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -775,16 +776,17 @@ struct feb_can_bms_state_t {
      * Offset: 0
      */
     uint8_t gpio_sense;
-};
+  };
 
-/**
- * Signals in message bms_cell_data.
- *
- * BMS message for cell data.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_bms_cell_data_t {
+  /**
+   * Signals in message bms_cell_data.
+   *
+   * BMS message for cell data.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_bms_cell_data_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -826,16 +828,17 @@ struct feb_can_bms_cell_data_t {
      * Offset: 0
      */
     uint16_t bms_send_time;
-};
+  };
 
-/**
- * Signals in message bms_accumulator_voltage.
- *
- * BMS message for accumulator voltage.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_bms_accumulator_voltage_t {
+  /**
+   * Signals in message bms_accumulator_voltage.
+   *
+   * BMS message for accumulator voltage.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_bms_accumulator_voltage_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -863,16 +866,17 @@ struct feb_can_bms_accumulator_voltage_t {
      * Offset: 0
      */
     uint16_t send_time;
-};
+  };
 
-/**
- * Signals in message bms_accumulator_temperature.
- *
- * BMS message for accumulator temperature.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_bms_accumulator_temperature_t {
+  /**
+   * Signals in message bms_accumulator_temperature.
+   *
+   * BMS message for accumulator temperature.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_bms_accumulator_temperature_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -900,16 +904,17 @@ struct feb_can_bms_accumulator_temperature_t {
      * Offset: 0
      */
     uint16_t send_time;
-};
+  };
 
-/**
- * Signals in message accumulator_faults.
- *
- * Accumulator Faults
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_accumulator_faults_t {
+  /**
+   * Signals in message accumulator_faults.
+   *
+   * Accumulator Faults
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_accumulator_faults_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -923,16 +928,17 @@ struct feb_can_accumulator_faults_t {
      * Offset: 0
      */
     uint8_t imd_fault;
-};
+  };
 
-/**
- * Signals in message brake.
- *
- * PCU brake message
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_brake_t {
+  /**
+   * Signals in message brake.
+   *
+   * PCU brake message
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_brake_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -953,32 +959,34 @@ struct feb_can_brake_t {
      * Offset: 0
      */
     uint16_t brake2_psi;
-};
+  };
 
-/**
- * Signals in message bspd_state.
- *
- * BSPD message.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_bspd_state_t {
+  /**
+   * Signals in message bspd_state.
+   *
+   * BSPD message.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_bspd_state_t
+  {
     /**
      * Range: -
      * Scale: 1
      * Offset: 0
      */
     uint8_t bspd_state;
-};
+  };
 
-/**
- * Signals in message dash_io.
- *
- * Dash button and switch message
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_dash_io_t {
+  /**
+   * Signals in message dash_io.
+   *
+   * Dash button and switch message
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_dash_io_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1034,16 +1042,17 @@ struct feb_can_dash_io_t {
      * Offset: 0
      */
     uint8_t s3_accumulator_fan;
-};
+  };
 
-/**
- * Signals in message lvpdb_flags_bus_voltage_lv_current.
- *
- * LVPDB message for flags, bus voltage, and LV current.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_lvpdb_flags_bus_voltage_lv_current_t {
+  /**
+   * Signals in message lvpdb_flags_bus_voltage_lv_current.
+   *
+   * LVPDB message for flags, bus voltage, and LV current.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_lvpdb_flags_bus_voltage_lv_current_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1064,16 +1073,17 @@ struct feb_can_lvpdb_flags_bus_voltage_lv_current_t {
      * Offset: 0
      */
     uint16_t lv_current;
-};
+  };
 
-/**
- * Signals in message lvpdb_coolant_fans_shutdown.
- *
- * LVPDB message for Coolant Pump, Accumulator Fans, Radiator Fans, Shutdown.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_lvpdb_coolant_fans_shutdown_t {
+  /**
+   * Signals in message lvpdb_coolant_fans_shutdown.
+   *
+   * LVPDB message for Coolant Pump, Accumulator Fans, Radiator Fans, Shutdown.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_lvpdb_coolant_fans_shutdown_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1101,16 +1111,17 @@ struct feb_can_lvpdb_coolant_fans_shutdown_t {
      * Offset: 0
      */
     uint16_t shutdown_voltage;
-};
+  };
 
-/**
- * Signals in message lvpdb_autonomous.
- *
- * LVPDB message for autonomous systems.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_lvpdb_autonomous_t {
+  /**
+   * Signals in message lvpdb_autonomous.
+   *
+   * LVPDB message for autonomous systems.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_lvpdb_autonomous_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1131,16 +1142,17 @@ struct feb_can_lvpdb_autonomous_t {
      * Offset: 0
      */
     uint16_t auto_breaking_voltage;
-};
+  };
 
-/**
- * Signals in message FEB_Steering_data.
- *
- * Message for steering data.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_feb_steering_data_t {
+  /**
+   * Signals in message FEB_Steering_data.
+   *
+   * Message for steering data.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_feb_steering_data_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1161,16 +1173,17 @@ struct feb_can_feb_steering_data_t {
      * Offset: 0
      */
     uint16_t angle;
-};
+  };
 
-/**
- * Signals in message rear_left_tire_temp.
- *
- * Message for rear left tire temp data.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_rear_left_tire_temp_t {
+  /**
+   * Signals in message rear_left_tire_temp.
+   *
+   * Message for rear left tire temp data.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_rear_left_tire_temp_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1198,16 +1211,17 @@ struct feb_can_rear_left_tire_temp_t {
      * Offset: 0
      */
     uint16_t rightmost_temp_rl;
-};
+  };
 
-/**
- * Signals in message rear_right_tire_temp.
- *
- * Message for rear right tire temp data.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_rear_right_tire_temp_t {
+  /**
+   * Signals in message rear_right_tire_temp.
+   *
+   * Message for rear right tire temp data.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_rear_right_tire_temp_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1235,16 +1249,17 @@ struct feb_can_rear_right_tire_temp_t {
      * Offset: 0
      */
     uint16_t rightmost_temp_rr;
-};
+  };
 
-/**
- * Signals in message front_left_tire_temp.
- *
- * Message for front left tire temp data.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_front_left_tire_temp_t {
+  /**
+   * Signals in message front_left_tire_temp.
+   *
+   * Message for front left tire temp data.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_front_left_tire_temp_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1272,16 +1287,17 @@ struct feb_can_front_left_tire_temp_t {
      * Offset: 0
      */
     uint16_t rightmost_temp_fl;
-};
+  };
 
-/**
- * Signals in message front_right_tire_temp.
- *
- * Message for front right tire temp data.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_front_right_tire_temp_t {
+  /**
+   * Signals in message front_right_tire_temp.
+   *
+   * Message for front right tire temp data.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_front_right_tire_temp_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1309,16 +1325,17 @@ struct feb_can_front_right_tire_temp_t {
      * Offset: 0
      */
     uint16_t rightmost_temp_fr;
-};
+  };
 
-/**
- * Signals in message FEB_imu_data.
- *
- * Message for imu data.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_feb_imu_data_t {
+  /**
+   * Signals in message FEB_imu_data.
+   *
+   * Message for imu data.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_feb_imu_data_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1339,16 +1356,17 @@ struct feb_can_feb_imu_data_t {
      * Offset: 0
      */
     int16_t acceleration_z;
-};
+  };
 
-/**
- * Signals in message wss_front_data.
- *
- * Wheel speed sensor data for left and right front wheels.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_wss_front_data_t {
+  /**
+   * Signals in message wss_front_data.
+   *
+   * Wheel speed sensor data for left and right front wheels.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_wss_front_data_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1362,16 +1380,17 @@ struct feb_can_wss_front_data_t {
      * Offset: 0
      */
     uint8_t wss_left_front;
-};
+  };
 
-/**
- * Signals in message wss_rear_data.
- *
- * Wheel speed sensor data for left and right rear wheels.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_wss_rear_data_t {
+  /**
+   * Signals in message wss_rear_data.
+   *
+   * Wheel speed sensor data for left and right rear wheels.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_wss_rear_data_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1385,16 +1404,17 @@ struct feb_can_wss_rear_data_t {
      * Offset: 0
      */
     uint8_t wss_left_rear;
-};
+  };
 
-/**
- * Signals in message linear_potentiometer_front.
- *
- * Linear Potentiometer Front.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_linear_potentiometer_front_t {
+  /**
+   * Signals in message linear_potentiometer_front.
+   *
+   * Linear Potentiometer Front.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_linear_potentiometer_front_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1408,16 +1428,17 @@ struct feb_can_linear_potentiometer_front_t {
      * Offset: 0
      */
     uint16_t linear_potentiometer_2_front;
-};
+  };
 
-/**
- * Signals in message linear_potentiometer_rear.
- *
- * Linear Potentiometer Rear.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_linear_potentiometer_rear_t {
+  /**
+   * Signals in message linear_potentiometer_rear.
+   *
+   * Linear Potentiometer Rear.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_linear_potentiometer_rear_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1431,16 +1452,17 @@ struct feb_can_linear_potentiometer_rear_t {
      * Offset: 0
      */
     uint16_t linear_potentiometer_2_rear;
-};
+  };
 
-/**
- * Signals in message coolant_pressure.
- *
- * Coolant Pressure
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_coolant_pressure_t {
+  /**
+   * Signals in message coolant_pressure.
+   *
+   * Coolant Pressure
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_coolant_pressure_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1454,16 +1476,17 @@ struct feb_can_coolant_pressure_t {
      * Offset: 0
      */
     uint16_t coolant_pressure_2;
-};
+  };
 
-/**
- * Signals in message DART_TACH_measurements_1234.
- *
- * DART message for Tachometer measurements first 4 fan speeds.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_dart_tach_measurements_1234_t {
+  /**
+   * Signals in message DART_TACH_measurements_1234.
+   *
+   * DART message for Tachometer measurements first 4 fan speeds.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_dart_tach_measurements_1234_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1491,32 +1514,34 @@ struct feb_can_dart_tach_measurements_1234_t {
      * Offset: 0
      */
     uint16_t fan4_speed;
-};
+  };
 
-/**
- * Signals in message DART_TACH_measurements_5.
- *
- * DART message for Tachometer measurements 5th fan speed.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_dart_tach_measurements_5_t {
+  /**
+   * Signals in message DART_TACH_measurements_5.
+   *
+   * DART message for Tachometer measurements 5th fan speed.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_dart_tach_measurements_5_t
+  {
     /**
      * Range: -
      * Scale: 1
      * Offset: 0
      */
     uint16_t fan5_speed;
-};
+  };
 
-/**
- * Signals in message bbb_tps.
- *
- * BBB TPS Chip
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_bbb_tps_t {
+  /**
+   * Signals in message bbb_tps.
+   *
+   * BBB TPS Chip
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_bbb_tps_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1530,16 +1555,17 @@ struct feb_can_bbb_tps_t {
      * Offset: 0
      */
     uint16_t current;
-};
+  };
 
-/**
- * Signals in message pcu_tps.
- *
- * PCU TPS Chip
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_pcu_tps_t {
+  /**
+   * Signals in message pcu_tps.
+   *
+   * PCU TPS Chip
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_pcu_tps_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1553,16 +1579,17 @@ struct feb_can_pcu_tps_t {
      * Offset: 0
      */
     uint16_t current;
-};
+  };
 
-/**
- * Signals in message dash_tps.
- *
- * Dash TPS Chip
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_dash_tps_t {
+  /**
+   * Signals in message dash_tps.
+   *
+   * Dash TPS Chip
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_dash_tps_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1576,16 +1603,17 @@ struct feb_can_dash_tps_t {
      * Offset: 0
      */
     uint16_t current;
-};
+  };
 
-/**
- * Signals in message dcu_tps.
- *
- * DCU TPS Chip
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_dcu_tps_t {
+  /**
+   * Signals in message dcu_tps.
+   *
+   * DCU TPS Chip
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_dcu_tps_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1599,16 +1627,17 @@ struct feb_can_dcu_tps_t {
      * Offset: 0
      */
     uint16_t current;
-};
+  };
 
-/**
- * Signals in message rms_command.
- *
- * RMS command message.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_rms_command_t {
+  /**
+   * Signals in message rms_command.
+   *
+   * RMS command message.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_rms_command_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1657,16 +1686,17 @@ struct feb_can_rms_command_t {
      * Offset: 0
      */
     uint16_t command_torque_limited;
-};
+  };
 
-/**
- * Signals in message rms_param.
- *
- * RMS parameter message.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_rms_param_t {
+  /**
+   * Signals in message rms_param.
+   *
+   * RMS parameter message.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_rms_param_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -1687,16 +1717,17 @@ struct feb_can_rms_param_t {
      * Offset: 0
      */
     uint16_t data;
-};
+  };
 
-/**
- * Signals in message pcu_heartbeat.
- *
- * PCU heartbeat
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_pcu_heartbeat_t {
+  /**
+   * Signals in message pcu_heartbeat.
+   *
+   * PCU heartbeat
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_pcu_heartbeat_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -2144,16 +2175,17 @@ struct feb_can_pcu_heartbeat_t {
      * Offset: 0
      */
     uint8_t error63;
-};
+  };
 
-/**
- * Signals in message dash_heartbeat.
- *
- * Dash Heartbeat
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_dash_heartbeat_t {
+  /**
+   * Signals in message dash_heartbeat.
+   *
+   * Dash Heartbeat
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_dash_heartbeat_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -2601,16 +2633,17 @@ struct feb_can_dash_heartbeat_t {
      * Offset: 0
      */
     uint8_t error63;
-};
+  };
 
-/**
- * Signals in message lvpdb_heartbeat.
- *
- * LVPDB Heartbeat
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_lvpdb_heartbeat_t {
+  /**
+   * Signals in message lvpdb_heartbeat.
+   *
+   * LVPDB Heartbeat
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_lvpdb_heartbeat_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -3058,16 +3091,17 @@ struct feb_can_lvpdb_heartbeat_t {
      * Offset: 0
      */
     uint8_t error63;
-};
+  };
 
-/**
- * Signals in message dcu_heartbeat.
- *
- * DCU Heartbeat
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_dcu_heartbeat_t {
+  /**
+   * Signals in message dcu_heartbeat.
+   *
+   * DCU Heartbeat
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_dcu_heartbeat_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -3515,16 +3549,17 @@ struct feb_can_dcu_heartbeat_t {
      * Offset: 0
      */
     uint8_t error63;
-};
+  };
 
-/**
- * Signals in message front_sensor_heartbeat_message.
- *
- * Front Sensor Heartbeat
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_front_sensor_heartbeat_message_t {
+  /**
+   * Signals in message front_sensor_heartbeat_message.
+   *
+   * Front Sensor Heartbeat
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_front_sensor_heartbeat_message_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -3972,16 +4007,17 @@ struct feb_can_front_sensor_heartbeat_message_t {
      * Offset: 0
      */
     uint8_t error63;
-};
+  };
 
-/**
- * Signals in message rear_sensor_heartbeat_message.
- *
- * Rear Sensor Heartbeat
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_rear_sensor_heartbeat_message_t {
+  /**
+   * Signals in message rear_sensor_heartbeat_message.
+   *
+   * Rear Sensor Heartbeat
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_rear_sensor_heartbeat_message_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -4429,80 +4465,85 @@ struct feb_can_rear_sensor_heartbeat_message_t {
      * Offset: 0
      */
     uint8_t error63;
-};
+  };
 
-/**
- * Signals in message FEB_PING_PONG_counter1.
- *
- * PING PONG counter1.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_feb_ping_pong_counter1_t {
+  /**
+   * Signals in message FEB_PING_PONG_counter1.
+   *
+   * PING PONG counter1.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_feb_ping_pong_counter1_t
+  {
     /**
      * Range: -
      * Scale: 1
      * Offset: 0
      */
     int32_t counter;
-};
+  };
 
-/**
- * Signals in message FEB_PING_PONG_counter2.
- *
- * PING PONG counter2.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_feb_ping_pong_counter2_t {
+  /**
+   * Signals in message FEB_PING_PONG_counter2.
+   *
+   * PING PONG counter2.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_feb_ping_pong_counter2_t
+  {
     /**
      * Range: -
      * Scale: 1
      * Offset: 0
      */
     int32_t counter;
-};
+  };
 
-/**
- * Signals in message FEB_PING_PONG_counter3.
- *
- * PING PONG counter3.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_feb_ping_pong_counter3_t {
+  /**
+   * Signals in message FEB_PING_PONG_counter3.
+   *
+   * PING PONG counter3.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_feb_ping_pong_counter3_t
+  {
     /**
      * Range: -
      * Scale: 1
      * Offset: 0
      */
     int32_t counter;
-};
+  };
 
-/**
- * Signals in message FEB_PING_PONG_counter4.
- *
- * PING PONG counter4.
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_feb_ping_pong_counter4_t {
+  /**
+   * Signals in message FEB_PING_PONG_counter4.
+   *
+   * PING PONG counter4.
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_feb_ping_pong_counter4_t
+  {
     /**
      * Range: -
      * Scale: 1
      * Offset: 0
      */
     int32_t counter;
-};
+  };
 
-/**
- * Signals in message pcu_raw_acc.
- *
- * PCU RAW ACC ADC
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_pcu_raw_acc_t {
+  /**
+   * Signals in message pcu_raw_acc.
+   *
+   * PCU RAW ACC ADC
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_pcu_raw_acc_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -4516,16 +4557,17 @@ struct feb_can_pcu_raw_acc_t {
      * Offset: 0
      */
     uint16_t acc1;
-};
+  };
 
-/**
- * Signals in message ebs_pressure_status.
- *
- * EBS Pressure Status - 4 pressure sensors (scale: 1/16, unit: bar)
- *
- * All signal values are as on the CAN bus.
- */
-struct feb_can_ebs_pressure_status_t {
+  /**
+   * Signals in message ebs_pressure_status.
+   *
+   * EBS Pressure Status - 4 pressure sensors (scale: 1/16, unit: bar)
+   *
+   * All signal values are as on the CAN bus.
+   */
+  struct feb_can_ebs_pressure_status_t
+  {
     /**
      * Range: -
      * Scale: 1
@@ -4553,14883 +4595,14663 @@ struct feb_can_ebs_pressure_status_t {
      * Offset: 0
      */
     int16_t ebs_pressure_4;
-};
-
-/**
- * Pack message res_state.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_res_state_pack(
-    uint8_t *dst_p,
-    const struct feb_can_res_state_t *src_p,
-    size_t size);
-
-/**
- * Unpack message res_state.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_res_state_unpack(
-    struct feb_can_res_state_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from res_state.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_res_state_init(struct feb_can_res_state_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_res_state_res_state_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_res_state_res_state_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_res_state_res_state_is_in_range(uint8_t value);
-
-/**
- * Pack message bms_state.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_bms_state_pack(
-    uint8_t *dst_p,
-    const struct feb_can_bms_state_t *src_p,
-    size_t size);
-
-/**
- * Unpack message bms_state.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_bms_state_unpack(
-    struct feb_can_bms_state_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from bms_state.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_bms_state_init(struct feb_can_bms_state_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_bms_state_bms_state_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_state_bms_state_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_state_bms_state_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_bms_state_ping_lv_nodes_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_state_ping_lv_nodes_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_state_ping_lv_nodes_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_bms_state_relay_state_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_state_relay_state_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_state_relay_state_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_bms_state_gpio_sense_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_state_gpio_sense_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_state_gpio_sense_is_in_range(uint8_t value);
-
-/**
- * Pack message bms_cell_data.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_bms_cell_data_pack(
-    uint8_t *dst_p,
-    const struct feb_can_bms_cell_data_t *src_p,
-    size_t size);
-
-/**
- * Unpack message bms_cell_data.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_bms_cell_data_unpack(
-    struct feb_can_bms_cell_data_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from bms_cell_data.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_bms_cell_data_init(struct feb_can_bms_cell_data_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_bms_cell_data_bms_flags_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_cell_data_bms_flags_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_cell_data_bms_flags_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_bms_cell_data_bms_cell_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_cell_data_bms_cell_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_cell_data_bms_cell_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_bms_cell_data_bms_bank_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_cell_data_bms_bank_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_cell_data_bms_bank_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_bms_cell_data_bms_voltage_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_cell_data_bms_voltage_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_cell_data_bms_voltage_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-int16_t feb_can_bms_cell_data_bms_temperature_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_cell_data_bms_temperature_decode(int16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_cell_data_bms_temperature_is_in_range(int16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_bms_cell_data_bms_send_time_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_cell_data_bms_send_time_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_cell_data_bms_send_time_is_in_range(uint16_t value);
-
-/**
- * Pack message bms_accumulator_voltage.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_bms_accumulator_voltage_pack(
-    uint8_t *dst_p,
-    const struct feb_can_bms_accumulator_voltage_t *src_p,
-    size_t size);
-
-/**
- * Unpack message bms_accumulator_voltage.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_bms_accumulator_voltage_unpack(
-    struct feb_can_bms_accumulator_voltage_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from bms_accumulator_voltage.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_bms_accumulator_voltage_init(struct feb_can_bms_accumulator_voltage_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_bms_accumulator_voltage_total_pack_voltage_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_accumulator_voltage_total_pack_voltage_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_accumulator_voltage_total_pack_voltage_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_bms_accumulator_voltage_min_cell_voltage_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_accumulator_voltage_min_cell_voltage_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_accumulator_voltage_min_cell_voltage_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_bms_accumulator_voltage_max_cell_voltage_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_accumulator_voltage_max_cell_voltage_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_accumulator_voltage_max_cell_voltage_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_bms_accumulator_voltage_send_time_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_accumulator_voltage_send_time_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_accumulator_voltage_send_time_is_in_range(uint16_t value);
-
-/**
- * Pack message bms_accumulator_temperature.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_bms_accumulator_temperature_pack(
-    uint8_t *dst_p,
-    const struct feb_can_bms_accumulator_temperature_t *src_p,
-    size_t size);
-
-/**
- * Unpack message bms_accumulator_temperature.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_bms_accumulator_temperature_unpack(
-    struct feb_can_bms_accumulator_temperature_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from bms_accumulator_temperature.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_bms_accumulator_temperature_init(struct feb_can_bms_accumulator_temperature_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-int16_t feb_can_bms_accumulator_temperature_average_pack_temperature_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_accumulator_temperature_average_pack_temperature_decode(int16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_accumulator_temperature_average_pack_temperature_is_in_range(int16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-int16_t feb_can_bms_accumulator_temperature_min_cell_temperature_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_accumulator_temperature_min_cell_temperature_decode(int16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_accumulator_temperature_min_cell_temperature_is_in_range(int16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-int16_t feb_can_bms_accumulator_temperature_max_cell_temperature_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_accumulator_temperature_max_cell_temperature_decode(int16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_accumulator_temperature_max_cell_temperature_is_in_range(int16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_bms_accumulator_temperature_send_time_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bms_accumulator_temperature_send_time_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bms_accumulator_temperature_send_time_is_in_range(uint16_t value);
-
-/**
- * Pack message accumulator_faults.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_accumulator_faults_pack(
-    uint8_t *dst_p,
-    const struct feb_can_accumulator_faults_t *src_p,
-    size_t size);
-
-/**
- * Unpack message accumulator_faults.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_accumulator_faults_unpack(
-    struct feb_can_accumulator_faults_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from accumulator_faults.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_accumulator_faults_init(struct feb_can_accumulator_faults_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_accumulator_faults_bms_fault_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_accumulator_faults_bms_fault_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_accumulator_faults_bms_fault_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_accumulator_faults_imd_fault_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_accumulator_faults_imd_fault_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_accumulator_faults_imd_fault_is_in_range(uint8_t value);
-
-/**
- * Pack message brake.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_brake_pack(
-    uint8_t *dst_p,
-    const struct feb_can_brake_t *src_p,
-    size_t size);
-
-/**
- * Unpack message brake.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_brake_unpack(
-    struct feb_can_brake_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from brake.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_brake_init(struct feb_can_brake_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_brake_brake_percent_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_brake_brake_percent_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_brake_brake_percent_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_brake_brake1_psi_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_brake_brake1_psi_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_brake_brake1_psi_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_brake_brake2_psi_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_brake_brake2_psi_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_brake_brake2_psi_is_in_range(uint16_t value);
-
-/**
- * Pack message bspd_state.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_bspd_state_pack(
-    uint8_t *dst_p,
-    const struct feb_can_bspd_state_t *src_p,
-    size_t size);
-
-/**
- * Unpack message bspd_state.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_bspd_state_unpack(
-    struct feb_can_bspd_state_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from bspd_state.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_bspd_state_init(struct feb_can_bspd_state_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_bspd_state_bspd_state_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bspd_state_bspd_state_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bspd_state_bspd_state_is_in_range(uint8_t value);
-
-/**
- * Pack message dash_io.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_dash_io_pack(
-    uint8_t *dst_p,
-    const struct feb_can_dash_io_t *src_p,
-    size_t size);
-
-/**
- * Unpack message dash_io.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_dash_io_unpack(
-    struct feb_can_dash_io_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from dash_io.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_dash_io_init(struct feb_can_dash_io_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_io_buzzer_state_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_io_buzzer_state_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_io_buzzer_state_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_io_b1_ready_to_drive_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_io_b1_ready_to_drive_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_io_b1_ready_to_drive_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_io_b2_data_logging_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_io_b2_data_logging_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_io_b2_data_logging_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_io_b3_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_io_b3_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_io_b3_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_io_b4_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_io_b4_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_io_b4_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_io_s1_coolant_pump_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_io_s1_coolant_pump_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_io_s1_coolant_pump_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_io_s2_radiator_fan_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_io_s2_radiator_fan_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_io_s2_radiator_fan_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_io_s3_accumulator_fan_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_io_s3_accumulator_fan_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_io_s3_accumulator_fan_is_in_range(uint8_t value);
-
-/**
- * Pack message lvpdb_flags_bus_voltage_lv_current.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_lvpdb_flags_bus_voltage_lv_current_pack(
-    uint8_t *dst_p,
-    const struct feb_can_lvpdb_flags_bus_voltage_lv_current_t *src_p,
-    size_t size);
-
-/**
- * Unpack message lvpdb_flags_bus_voltage_lv_current.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_lvpdb_flags_bus_voltage_lv_current_unpack(
-    struct feb_can_lvpdb_flags_bus_voltage_lv_current_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from lvpdb_flags_bus_voltage_lv_current.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_lvpdb_flags_bus_voltage_lv_current_init(struct feb_can_lvpdb_flags_bus_voltage_lv_current_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint32_t feb_can_lvpdb_flags_bus_voltage_lv_current_flags_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_flags_bus_voltage_lv_current_flags_decode(uint32_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_flags_bus_voltage_lv_current_flags_is_in_range(uint32_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_lvpdb_flags_bus_voltage_lv_current_bus_voltage_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_flags_bus_voltage_lv_current_bus_voltage_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_flags_bus_voltage_lv_current_bus_voltage_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_lvpdb_flags_bus_voltage_lv_current_lv_current_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_flags_bus_voltage_lv_current_lv_current_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_flags_bus_voltage_lv_current_lv_current_is_in_range(uint16_t value);
-
-/**
- * Pack message lvpdb_coolant_fans_shutdown.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_lvpdb_coolant_fans_shutdown_pack(
-    uint8_t *dst_p,
-    const struct feb_can_lvpdb_coolant_fans_shutdown_t *src_p,
-    size_t size);
-
-/**
- * Unpack message lvpdb_coolant_fans_shutdown.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_lvpdb_coolant_fans_shutdown_unpack(
-    struct feb_can_lvpdb_coolant_fans_shutdown_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from lvpdb_coolant_fans_shutdown.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_lvpdb_coolant_fans_shutdown_init(struct feb_can_lvpdb_coolant_fans_shutdown_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_lvpdb_coolant_fans_shutdown_coolant_pump_current_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_coolant_fans_shutdown_coolant_pump_current_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_coolant_fans_shutdown_coolant_pump_current_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_lvpdb_coolant_fans_shutdown_accumulator_fans_current_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_coolant_fans_shutdown_accumulator_fans_current_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_coolant_fans_shutdown_accumulator_fans_current_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_lvpdb_coolant_fans_shutdown_radiator_fans_current_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_coolant_fans_shutdown_radiator_fans_current_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_coolant_fans_shutdown_radiator_fans_current_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_lvpdb_coolant_fans_shutdown_shutdown_voltage_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_coolant_fans_shutdown_shutdown_voltage_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_coolant_fans_shutdown_shutdown_voltage_is_in_range(uint16_t value);
-
-/**
- * Pack message lvpdb_autonomous.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_lvpdb_autonomous_pack(
-    uint8_t *dst_p,
-    const struct feb_can_lvpdb_autonomous_t *src_p,
-    size_t size);
-
-/**
- * Unpack message lvpdb_autonomous.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_lvpdb_autonomous_unpack(
-    struct feb_can_lvpdb_autonomous_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from lvpdb_autonomous.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_lvpdb_autonomous_init(struct feb_can_lvpdb_autonomous_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_lvpdb_autonomous_lidar_current_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_autonomous_lidar_current_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_autonomous_lidar_current_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_lvpdb_autonomous_auto_steering_voltage_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_autonomous_auto_steering_voltage_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_autonomous_auto_steering_voltage_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_lvpdb_autonomous_auto_breaking_voltage_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_autonomous_auto_breaking_voltage_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_autonomous_auto_breaking_voltage_is_in_range(uint16_t value);
-
-/**
- * Pack message FEB_Steering_data.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_feb_steering_data_pack(
-    uint8_t *dst_p,
-    const struct feb_can_feb_steering_data_t *src_p,
-    size_t size);
-
-/**
- * Unpack message FEB_Steering_data.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_feb_steering_data_unpack(
-    struct feb_can_feb_steering_data_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from FEB_Steering_data.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_feb_steering_data_init(struct feb_can_feb_steering_data_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint32_t feb_can_feb_steering_data_can_counter_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_feb_steering_data_can_counter_decode(uint32_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_feb_steering_data_can_counter_is_in_range(uint32_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_feb_steering_data_flags_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_feb_steering_data_flags_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_feb_steering_data_flags_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_feb_steering_data_angle_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_feb_steering_data_angle_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_feb_steering_data_angle_is_in_range(uint16_t value);
-
-/**
- * Pack message rear_left_tire_temp.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_rear_left_tire_temp_pack(
-    uint8_t *dst_p,
-    const struct feb_can_rear_left_tire_temp_t *src_p,
-    size_t size);
-
-/**
- * Unpack message rear_left_tire_temp.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_rear_left_tire_temp_unpack(
-    struct feb_can_rear_left_tire_temp_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from rear_left_tire_temp.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_rear_left_tire_temp_init(struct feb_can_rear_left_tire_temp_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_rear_left_tire_temp_leftmost_temp_rl_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_left_tire_temp_leftmost_temp_rl_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_left_tire_temp_leftmost_temp_rl_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_rear_left_tire_temp_center_left_temp_rl_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_left_tire_temp_center_left_temp_rl_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_left_tire_temp_center_left_temp_rl_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_rear_left_tire_temp_center_right_temp_rl_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_left_tire_temp_center_right_temp_rl_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_left_tire_temp_center_right_temp_rl_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_rear_left_tire_temp_rightmost_temp_rl_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_left_tire_temp_rightmost_temp_rl_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_left_tire_temp_rightmost_temp_rl_is_in_range(uint16_t value);
-
-/**
- * Pack message rear_right_tire_temp.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_rear_right_tire_temp_pack(
-    uint8_t *dst_p,
-    const struct feb_can_rear_right_tire_temp_t *src_p,
-    size_t size);
-
-/**
- * Unpack message rear_right_tire_temp.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_rear_right_tire_temp_unpack(
-    struct feb_can_rear_right_tire_temp_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from rear_right_tire_temp.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_rear_right_tire_temp_init(struct feb_can_rear_right_tire_temp_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_rear_right_tire_temp_leftmost_temp_rr_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_right_tire_temp_leftmost_temp_rr_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_right_tire_temp_leftmost_temp_rr_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_rear_right_tire_temp_center_left_temp_rr_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_right_tire_temp_center_left_temp_rr_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_right_tire_temp_center_left_temp_rr_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_rear_right_tire_temp_center_right_temp_rr_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_right_tire_temp_center_right_temp_rr_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_right_tire_temp_center_right_temp_rr_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_rear_right_tire_temp_rightmost_temp_rr_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_right_tire_temp_rightmost_temp_rr_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_right_tire_temp_rightmost_temp_rr_is_in_range(uint16_t value);
-
-/**
- * Pack message front_left_tire_temp.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_front_left_tire_temp_pack(
-    uint8_t *dst_p,
-    const struct feb_can_front_left_tire_temp_t *src_p,
-    size_t size);
-
-/**
- * Unpack message front_left_tire_temp.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_front_left_tire_temp_unpack(
-    struct feb_can_front_left_tire_temp_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from front_left_tire_temp.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_front_left_tire_temp_init(struct feb_can_front_left_tire_temp_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_front_left_tire_temp_leftmost_temp_fl_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_left_tire_temp_leftmost_temp_fl_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_left_tire_temp_leftmost_temp_fl_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_front_left_tire_temp_center_left_temp_fl_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_left_tire_temp_center_left_temp_fl_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_left_tire_temp_center_left_temp_fl_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_front_left_tire_temp_center_right_temp_fl_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_left_tire_temp_center_right_temp_fl_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_left_tire_temp_center_right_temp_fl_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_front_left_tire_temp_rightmost_temp_fl_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_left_tire_temp_rightmost_temp_fl_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_left_tire_temp_rightmost_temp_fl_is_in_range(uint16_t value);
-
-/**
- * Pack message front_right_tire_temp.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_front_right_tire_temp_pack(
-    uint8_t *dst_p,
-    const struct feb_can_front_right_tire_temp_t *src_p,
-    size_t size);
-
-/**
- * Unpack message front_right_tire_temp.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_front_right_tire_temp_unpack(
-    struct feb_can_front_right_tire_temp_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from front_right_tire_temp.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_front_right_tire_temp_init(struct feb_can_front_right_tire_temp_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_front_right_tire_temp_leftmost_temp_fr_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_right_tire_temp_leftmost_temp_fr_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_right_tire_temp_leftmost_temp_fr_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_front_right_tire_temp_center_left_temp_fr_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_right_tire_temp_center_left_temp_fr_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_right_tire_temp_center_left_temp_fr_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_front_right_tire_temp_center_right_temp_fr_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_right_tire_temp_center_right_temp_fr_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_right_tire_temp_center_right_temp_fr_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_front_right_tire_temp_rightmost_temp_fr_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_right_tire_temp_rightmost_temp_fr_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_right_tire_temp_rightmost_temp_fr_is_in_range(uint16_t value);
-
-/**
- * Pack message FEB_imu_data.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_feb_imu_data_pack(
-    uint8_t *dst_p,
-    const struct feb_can_feb_imu_data_t *src_p,
-    size_t size);
-
-/**
- * Unpack message FEB_imu_data.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_feb_imu_data_unpack(
-    struct feb_can_feb_imu_data_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from FEB_imu_data.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_feb_imu_data_init(struct feb_can_feb_imu_data_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-int16_t feb_can_feb_imu_data_acceleration_x_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_feb_imu_data_acceleration_x_decode(int16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_feb_imu_data_acceleration_x_is_in_range(int16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-int16_t feb_can_feb_imu_data_acceleration_y_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_feb_imu_data_acceleration_y_decode(int16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_feb_imu_data_acceleration_y_is_in_range(int16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-int16_t feb_can_feb_imu_data_acceleration_z_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_feb_imu_data_acceleration_z_decode(int16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_feb_imu_data_acceleration_z_is_in_range(int16_t value);
-
-/**
- * Pack message wss_front_data.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_wss_front_data_pack(
-    uint8_t *dst_p,
-    const struct feb_can_wss_front_data_t *src_p,
-    size_t size);
-
-/**
- * Unpack message wss_front_data.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_wss_front_data_unpack(
-    struct feb_can_wss_front_data_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from wss_front_data.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_wss_front_data_init(struct feb_can_wss_front_data_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_wss_front_data_wss_right_front_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_wss_front_data_wss_right_front_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_wss_front_data_wss_right_front_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_wss_front_data_wss_left_front_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_wss_front_data_wss_left_front_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_wss_front_data_wss_left_front_is_in_range(uint8_t value);
-
-/**
- * Pack message wss_rear_data.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_wss_rear_data_pack(
-    uint8_t *dst_p,
-    const struct feb_can_wss_rear_data_t *src_p,
-    size_t size);
-
-/**
- * Unpack message wss_rear_data.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_wss_rear_data_unpack(
-    struct feb_can_wss_rear_data_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from wss_rear_data.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_wss_rear_data_init(struct feb_can_wss_rear_data_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_wss_rear_data_wss_right_rear_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_wss_rear_data_wss_right_rear_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_wss_rear_data_wss_right_rear_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_wss_rear_data_wss_left_rear_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_wss_rear_data_wss_left_rear_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_wss_rear_data_wss_left_rear_is_in_range(uint8_t value);
-
-/**
- * Pack message linear_potentiometer_front.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_linear_potentiometer_front_pack(
-    uint8_t *dst_p,
-    const struct feb_can_linear_potentiometer_front_t *src_p,
-    size_t size);
-
-/**
- * Unpack message linear_potentiometer_front.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_linear_potentiometer_front_unpack(
-    struct feb_can_linear_potentiometer_front_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from linear_potentiometer_front.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_linear_potentiometer_front_init(struct feb_can_linear_potentiometer_front_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_linear_potentiometer_front_linear_potentiometer_1_front_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_linear_potentiometer_front_linear_potentiometer_1_front_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_linear_potentiometer_front_linear_potentiometer_1_front_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_linear_potentiometer_front_linear_potentiometer_2_front_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_linear_potentiometer_front_linear_potentiometer_2_front_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_linear_potentiometer_front_linear_potentiometer_2_front_is_in_range(uint16_t value);
-
-/**
- * Pack message linear_potentiometer_rear.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_linear_potentiometer_rear_pack(
-    uint8_t *dst_p,
-    const struct feb_can_linear_potentiometer_rear_t *src_p,
-    size_t size);
-
-/**
- * Unpack message linear_potentiometer_rear.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_linear_potentiometer_rear_unpack(
-    struct feb_can_linear_potentiometer_rear_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from linear_potentiometer_rear.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_linear_potentiometer_rear_init(struct feb_can_linear_potentiometer_rear_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_linear_potentiometer_rear_linear_potentiometer_1_rear_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_linear_potentiometer_rear_linear_potentiometer_1_rear_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_linear_potentiometer_rear_linear_potentiometer_1_rear_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_linear_potentiometer_rear_linear_potentiometer_2_rear_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_linear_potentiometer_rear_linear_potentiometer_2_rear_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_linear_potentiometer_rear_linear_potentiometer_2_rear_is_in_range(uint16_t value);
-
-/**
- * Pack message coolant_pressure.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_coolant_pressure_pack(
-    uint8_t *dst_p,
-    const struct feb_can_coolant_pressure_t *src_p,
-    size_t size);
-
-/**
- * Unpack message coolant_pressure.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_coolant_pressure_unpack(
-    struct feb_can_coolant_pressure_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from coolant_pressure.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_coolant_pressure_init(struct feb_can_coolant_pressure_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_coolant_pressure_coolant_pressure_1_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_coolant_pressure_coolant_pressure_1_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_coolant_pressure_coolant_pressure_1_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_coolant_pressure_coolant_pressure_2_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_coolant_pressure_coolant_pressure_2_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_coolant_pressure_coolant_pressure_2_is_in_range(uint16_t value);
-
-/**
- * Pack message DART_TACH_measurements_1234.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_dart_tach_measurements_1234_pack(
-    uint8_t *dst_p,
-    const struct feb_can_dart_tach_measurements_1234_t *src_p,
-    size_t size);
-
-/**
- * Unpack message DART_TACH_measurements_1234.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_dart_tach_measurements_1234_unpack(
-    struct feb_can_dart_tach_measurements_1234_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from DART_TACH_measurements_1234.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_dart_tach_measurements_1234_init(struct feb_can_dart_tach_measurements_1234_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_dart_tach_measurements_1234_fan1_speed_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dart_tach_measurements_1234_fan1_speed_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dart_tach_measurements_1234_fan1_speed_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_dart_tach_measurements_1234_fan2_speed_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dart_tach_measurements_1234_fan2_speed_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dart_tach_measurements_1234_fan2_speed_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_dart_tach_measurements_1234_fan3_speed_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dart_tach_measurements_1234_fan3_speed_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dart_tach_measurements_1234_fan3_speed_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_dart_tach_measurements_1234_fan4_speed_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dart_tach_measurements_1234_fan4_speed_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dart_tach_measurements_1234_fan4_speed_is_in_range(uint16_t value);
-
-/**
- * Pack message DART_TACH_measurements_5.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_dart_tach_measurements_5_pack(
-    uint8_t *dst_p,
-    const struct feb_can_dart_tach_measurements_5_t *src_p,
-    size_t size);
-
-/**
- * Unpack message DART_TACH_measurements_5.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_dart_tach_measurements_5_unpack(
-    struct feb_can_dart_tach_measurements_5_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from DART_TACH_measurements_5.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_dart_tach_measurements_5_init(struct feb_can_dart_tach_measurements_5_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_dart_tach_measurements_5_fan5_speed_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dart_tach_measurements_5_fan5_speed_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dart_tach_measurements_5_fan5_speed_is_in_range(uint16_t value);
-
-/**
- * Pack message bbb_tps.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_bbb_tps_pack(
-    uint8_t *dst_p,
-    const struct feb_can_bbb_tps_t *src_p,
-    size_t size);
-
-/**
- * Unpack message bbb_tps.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_bbb_tps_unpack(
-    struct feb_can_bbb_tps_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from bbb_tps.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_bbb_tps_init(struct feb_can_bbb_tps_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_bbb_tps_voltage_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bbb_tps_voltage_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bbb_tps_voltage_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_bbb_tps_current_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_bbb_tps_current_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_bbb_tps_current_is_in_range(uint16_t value);
-
-/**
- * Pack message pcu_tps.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_pcu_tps_pack(
-    uint8_t *dst_p,
-    const struct feb_can_pcu_tps_t *src_p,
-    size_t size);
-
-/**
- * Unpack message pcu_tps.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_pcu_tps_unpack(
-    struct feb_can_pcu_tps_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from pcu_tps.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_pcu_tps_init(struct feb_can_pcu_tps_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_pcu_tps_voltage_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_tps_voltage_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_tps_voltage_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_pcu_tps_current_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_tps_current_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_tps_current_is_in_range(uint16_t value);
-
-/**
- * Pack message dash_tps.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_dash_tps_pack(
-    uint8_t *dst_p,
-    const struct feb_can_dash_tps_t *src_p,
-    size_t size);
-
-/**
- * Unpack message dash_tps.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_dash_tps_unpack(
-    struct feb_can_dash_tps_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from dash_tps.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_dash_tps_init(struct feb_can_dash_tps_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_dash_tps_voltage_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_tps_voltage_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_tps_voltage_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_dash_tps_current_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_tps_current_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_tps_current_is_in_range(uint16_t value);
-
-/**
- * Pack message dcu_tps.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_dcu_tps_pack(
-    uint8_t *dst_p,
-    const struct feb_can_dcu_tps_t *src_p,
-    size_t size);
-
-/**
- * Unpack message dcu_tps.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_dcu_tps_unpack(
-    struct feb_can_dcu_tps_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from dcu_tps.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_dcu_tps_init(struct feb_can_dcu_tps_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_dcu_tps_voltage_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_tps_voltage_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_tps_voltage_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_dcu_tps_current_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_tps_current_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_tps_current_is_in_range(uint16_t value);
-
-/**
- * Pack message rms_command.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_rms_command_pack(
-    uint8_t *dst_p,
-    const struct feb_can_rms_command_t *src_p,
-    size_t size);
-
-/**
- * Unpack message rms_command.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_rms_command_unpack(
-    struct feb_can_rms_command_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from rms_command.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_rms_command_init(struct feb_can_rms_command_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_rms_command_torque_signal_small_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rms_command_torque_signal_small_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rms_command_torque_signal_small_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_rms_command_speed_signal_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rms_command_speed_signal_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rms_command_speed_signal_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rms_command_direction_value_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rms_command_direction_value_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rms_command_direction_value_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rms_command_inverter_enable_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rms_command_inverter_enable_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rms_command_inverter_enable_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rms_command_inverter_dicharge_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rms_command_inverter_dicharge_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rms_command_inverter_dicharge_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rms_command_speed_mode_enabled_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rms_command_speed_mode_enabled_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rms_command_speed_mode_enabled_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_rms_command_command_torque_limited_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rms_command_command_torque_limited_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rms_command_command_torque_limited_is_in_range(uint16_t value);
-
-/**
- * Pack message rms_param.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_rms_param_pack(
-    uint8_t *dst_p,
-    const struct feb_can_rms_param_t *src_p,
-    size_t size);
-
-/**
- * Unpack message rms_param.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_rms_param_unpack(
-    struct feb_can_rms_param_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from rms_param.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_rms_param_init(struct feb_can_rms_param_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rms_param_address_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rms_param_address_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rms_param_address_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rms_param_read_write_command_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rms_param_read_write_command_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rms_param_read_write_command_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_rms_param_data_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rms_param_data_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rms_param_data_is_in_range(uint16_t value);
-
-/**
- * Pack message pcu_heartbeat.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_pcu_heartbeat_pack(
-    uint8_t *dst_p,
-    const struct feb_can_pcu_heartbeat_t *src_p,
-    size_t size);
-
-/**
- * Unpack message pcu_heartbeat.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_pcu_heartbeat_unpack(
-    struct feb_can_pcu_heartbeat_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from pcu_heartbeat.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_pcu_heartbeat_init(struct feb_can_pcu_heartbeat_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error0_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error0_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error0_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error1_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error1_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error1_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error2_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error2_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error2_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error3_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error3_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error3_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error4_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error4_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error4_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error5_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error5_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error5_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error6_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error6_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error6_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error7_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error7_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error7_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error8_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error8_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error8_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error9_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error9_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error9_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error10_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error10_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error10_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error11_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error11_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error11_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error12_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error12_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error12_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error13_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error13_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error13_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error14_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error14_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error14_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error15_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error15_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error15_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error16_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error16_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error16_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error17_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error17_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error17_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error18_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error18_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error18_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error19_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error19_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error19_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error20_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error20_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error20_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error21_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error21_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error21_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error22_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error22_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error22_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error23_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error23_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error23_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error24_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error24_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error24_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error25_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error25_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error25_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error26_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error26_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error26_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error27_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error27_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error27_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error28_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error28_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error28_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error29_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error29_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error29_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error30_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error30_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error30_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error31_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error31_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error31_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error32_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error32_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error32_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error33_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error33_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error33_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error34_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error34_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error34_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error35_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error35_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error35_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error36_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error36_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error36_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error37_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error37_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error37_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error38_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error38_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error38_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error39_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error39_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error39_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error40_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error40_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error40_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error41_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error41_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error41_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error42_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error42_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error42_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error43_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error43_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error43_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error44_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error44_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error44_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error45_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error45_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error45_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error46_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error46_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error46_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error47_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error47_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error47_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error48_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error48_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error48_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error49_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error49_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error49_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error50_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error50_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error50_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error51_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error51_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error51_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error52_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error52_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error52_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error53_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error53_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error53_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error54_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error54_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error54_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error55_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error55_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error55_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error56_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error56_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error56_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error57_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error57_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error57_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error58_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error58_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error58_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error59_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error59_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error59_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error60_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error60_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error60_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error61_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error61_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error61_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error62_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error62_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error62_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_pcu_heartbeat_error63_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_heartbeat_error63_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_heartbeat_error63_is_in_range(uint8_t value);
-
-/**
- * Pack message dash_heartbeat.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_dash_heartbeat_pack(
-    uint8_t *dst_p,
-    const struct feb_can_dash_heartbeat_t *src_p,
-    size_t size);
-
-/**
- * Unpack message dash_heartbeat.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_dash_heartbeat_unpack(
-    struct feb_can_dash_heartbeat_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from dash_heartbeat.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_dash_heartbeat_init(struct feb_can_dash_heartbeat_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error0_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error0_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error0_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error1_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error1_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error1_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error2_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error2_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error2_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error3_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error3_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error3_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error4_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error4_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error4_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error5_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error5_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error5_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error6_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error6_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error6_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error7_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error7_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error7_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error8_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error8_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error8_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error9_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error9_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error9_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error10_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error10_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error10_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error11_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error11_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error11_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error12_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error12_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error12_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error13_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error13_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error13_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error14_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error14_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error14_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error15_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error15_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error15_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error16_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error16_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error16_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error17_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error17_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error17_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error18_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error18_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error18_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error19_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error19_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error19_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error20_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error20_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error20_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error21_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error21_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error21_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error22_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error22_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error22_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error23_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error23_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error23_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error24_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error24_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error24_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error25_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error25_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error25_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error26_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error26_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error26_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error27_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error27_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error27_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error28_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error28_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error28_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error29_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error29_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error29_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error30_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error30_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error30_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error31_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error31_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error31_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error32_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error32_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error32_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error33_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error33_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error33_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error34_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error34_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error34_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error35_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error35_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error35_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error36_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error36_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error36_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error37_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error37_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error37_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error38_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error38_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error38_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error39_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error39_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error39_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error40_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error40_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error40_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error41_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error41_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error41_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error42_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error42_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error42_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error43_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error43_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error43_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error44_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error44_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error44_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error45_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error45_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error45_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error46_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error46_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error46_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error47_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error47_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error47_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error48_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error48_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error48_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error49_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error49_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error49_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error50_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error50_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error50_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error51_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error51_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error51_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error52_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error52_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error52_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error53_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error53_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error53_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error54_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error54_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error54_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error55_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error55_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error55_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error56_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error56_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error56_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error57_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error57_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error57_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error58_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error58_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error58_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error59_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error59_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error59_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error60_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error60_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error60_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error61_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error61_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error61_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error62_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error62_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error62_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dash_heartbeat_error63_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dash_heartbeat_error63_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dash_heartbeat_error63_is_in_range(uint8_t value);
-
-/**
- * Pack message lvpdb_heartbeat.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_lvpdb_heartbeat_pack(
-    uint8_t *dst_p,
-    const struct feb_can_lvpdb_heartbeat_t *src_p,
-    size_t size);
-
-/**
- * Unpack message lvpdb_heartbeat.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_lvpdb_heartbeat_unpack(
-    struct feb_can_lvpdb_heartbeat_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from lvpdb_heartbeat.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_lvpdb_heartbeat_init(struct feb_can_lvpdb_heartbeat_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error0_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error0_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error0_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error1_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error1_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error1_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error2_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error2_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error2_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error3_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error3_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error3_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error4_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error4_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error4_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error5_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error5_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error5_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error6_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error6_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error6_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error7_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error7_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error7_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error8_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error8_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error8_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error9_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error9_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error9_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error10_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error10_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error10_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error11_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error11_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error11_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error12_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error12_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error12_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error13_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error13_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error13_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error14_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error14_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error14_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error15_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error15_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error15_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error16_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error16_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error16_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error17_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error17_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error17_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error18_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error18_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error18_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error19_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error19_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error19_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error20_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error20_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error20_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error21_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error21_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error21_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error22_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error22_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error22_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error23_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error23_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error23_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error24_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error24_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error24_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error25_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error25_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error25_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error26_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error26_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error26_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error27_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error27_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error27_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error28_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error28_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error28_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error29_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error29_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error29_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error30_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error30_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error30_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error31_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error31_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error31_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error32_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error32_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error32_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error33_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error33_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error33_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error34_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error34_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error34_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error35_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error35_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error35_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error36_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error36_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error36_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error37_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error37_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error37_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error38_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error38_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error38_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error39_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error39_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error39_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error40_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error40_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error40_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error41_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error41_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error41_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error42_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error42_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error42_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error43_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error43_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error43_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error44_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error44_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error44_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error45_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error45_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error45_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error46_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error46_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error46_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error47_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error47_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error47_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error48_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error48_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error48_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error49_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error49_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error49_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error50_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error50_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error50_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error51_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error51_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error51_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error52_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error52_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error52_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error53_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error53_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error53_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error54_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error54_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error54_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error55_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error55_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error55_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error56_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error56_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error56_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error57_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error57_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error57_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error58_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error58_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error58_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error59_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error59_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error59_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error60_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error60_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error60_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error61_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error61_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error61_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error62_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error62_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error62_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_lvpdb_heartbeat_error63_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_lvpdb_heartbeat_error63_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_lvpdb_heartbeat_error63_is_in_range(uint8_t value);
-
-/**
- * Pack message dcu_heartbeat.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_dcu_heartbeat_pack(
-    uint8_t *dst_p,
-    const struct feb_can_dcu_heartbeat_t *src_p,
-    size_t size);
-
-/**
- * Unpack message dcu_heartbeat.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_dcu_heartbeat_unpack(
-    struct feb_can_dcu_heartbeat_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from dcu_heartbeat.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_dcu_heartbeat_init(struct feb_can_dcu_heartbeat_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error0_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error0_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error0_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error1_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error1_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error1_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error2_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error2_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error2_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error3_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error3_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error3_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error4_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error4_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error4_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error5_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error5_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error5_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error6_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error6_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error6_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error7_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error7_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error7_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error8_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error8_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error8_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error9_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error9_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error9_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error10_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error10_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error10_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error11_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error11_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error11_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error12_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error12_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error12_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error13_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error13_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error13_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error14_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error14_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error14_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error15_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error15_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error15_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error16_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error16_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error16_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error17_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error17_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error17_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error18_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error18_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error18_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error19_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error19_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error19_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error20_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error20_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error20_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error21_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error21_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error21_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error22_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error22_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error22_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error23_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error23_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error23_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error24_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error24_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error24_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error25_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error25_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error25_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error26_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error26_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error26_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error27_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error27_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error27_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error28_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error28_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error28_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error29_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error29_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error29_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error30_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error30_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error30_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error31_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error31_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error31_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error32_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error32_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error32_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error33_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error33_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error33_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error34_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error34_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error34_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error35_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error35_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error35_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error36_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error36_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error36_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error37_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error37_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error37_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error38_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error38_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error38_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error39_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error39_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error39_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error40_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error40_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error40_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error41_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error41_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error41_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error42_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error42_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error42_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error43_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error43_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error43_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error44_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error44_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error44_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error45_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error45_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error45_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error46_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error46_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error46_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error47_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error47_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error47_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error48_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error48_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error48_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error49_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error49_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error49_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error50_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error50_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error50_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error51_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error51_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error51_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error52_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error52_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error52_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error53_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error53_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error53_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error54_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error54_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error54_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error55_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error55_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error55_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error56_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error56_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error56_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error57_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error57_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error57_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error58_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error58_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error58_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error59_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error59_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error59_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error60_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error60_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error60_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error61_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error61_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error61_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error62_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error62_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error62_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_dcu_heartbeat_error63_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_dcu_heartbeat_error63_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_dcu_heartbeat_error63_is_in_range(uint8_t value);
-
-/**
- * Pack message front_sensor_heartbeat_message.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_front_sensor_heartbeat_message_pack(
-    uint8_t *dst_p,
-    const struct feb_can_front_sensor_heartbeat_message_t *src_p,
-    size_t size);
-
-/**
- * Unpack message front_sensor_heartbeat_message.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_front_sensor_heartbeat_message_unpack(
-    struct feb_can_front_sensor_heartbeat_message_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from front_sensor_heartbeat_message.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_front_sensor_heartbeat_message_init(struct feb_can_front_sensor_heartbeat_message_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error0_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error0_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error0_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error1_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error1_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error1_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error2_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error2_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error2_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error3_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error3_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error3_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error4_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error4_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error4_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error5_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error5_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error5_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error6_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error6_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error6_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error7_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error7_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error7_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error8_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error8_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error8_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error9_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error9_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error9_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error10_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error10_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error10_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error11_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error11_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error11_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error12_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error12_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error12_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error13_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error13_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error13_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error14_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error14_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error14_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error15_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error15_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error15_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error16_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error16_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error16_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error17_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error17_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error17_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error18_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error18_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error18_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error19_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error19_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error19_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error20_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error20_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error20_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error21_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error21_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error21_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error22_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error22_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error22_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error23_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error23_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error23_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error24_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error24_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error24_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error25_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error25_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error25_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error26_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error26_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error26_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error27_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error27_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error27_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error28_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error28_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error28_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error29_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error29_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error29_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error30_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error30_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error30_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error31_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error31_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error31_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error32_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error32_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error32_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error33_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error33_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error33_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error34_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error34_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error34_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error35_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error35_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error35_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error36_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error36_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error36_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error37_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error37_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error37_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error38_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error38_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error38_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error39_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error39_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error39_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error40_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error40_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error40_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error41_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error41_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error41_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error42_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error42_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error42_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error43_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error43_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error43_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error44_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error44_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error44_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error45_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error45_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error45_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error46_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error46_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error46_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error47_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error47_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error47_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error48_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error48_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error48_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error49_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error49_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error49_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error50_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error50_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error50_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error51_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error51_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error51_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error52_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error52_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error52_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error53_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error53_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error53_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error54_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error54_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error54_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error55_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error55_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error55_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error56_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error56_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error56_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error57_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error57_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error57_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error58_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error58_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error58_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error59_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error59_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error59_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error60_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error60_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error60_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error61_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error61_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error61_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error62_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error62_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error62_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_front_sensor_heartbeat_message_error63_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_front_sensor_heartbeat_message_error63_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_front_sensor_heartbeat_message_error63_is_in_range(uint8_t value);
-
-/**
- * Pack message rear_sensor_heartbeat_message.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_rear_sensor_heartbeat_message_pack(
-    uint8_t *dst_p,
-    const struct feb_can_rear_sensor_heartbeat_message_t *src_p,
-    size_t size);
-
-/**
- * Unpack message rear_sensor_heartbeat_message.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_rear_sensor_heartbeat_message_unpack(
-    struct feb_can_rear_sensor_heartbeat_message_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from rear_sensor_heartbeat_message.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_rear_sensor_heartbeat_message_init(struct feb_can_rear_sensor_heartbeat_message_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error0_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error0_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error0_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error1_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error1_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error1_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error2_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error2_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error2_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error3_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error3_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error3_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error4_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error4_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error4_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error5_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error5_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error5_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error6_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error6_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error6_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error7_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error7_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error7_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error8_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error8_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error8_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error9_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error9_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error9_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error10_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error10_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error10_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error11_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error11_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error11_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error12_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error12_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error12_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error13_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error13_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error13_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error14_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error14_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error14_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error15_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error15_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error15_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error16_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error16_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error16_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error17_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error17_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error17_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error18_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error18_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error18_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error19_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error19_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error19_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error20_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error20_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error20_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error21_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error21_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error21_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error22_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error22_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error22_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error23_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error23_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error23_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error24_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error24_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error24_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error25_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error25_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error25_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error26_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error26_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error26_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error27_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error27_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error27_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error28_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error28_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error28_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error29_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error29_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error29_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error30_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error30_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error30_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error31_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error31_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error31_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error32_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error32_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error32_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error33_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error33_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error33_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error34_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error34_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error34_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error35_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error35_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error35_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error36_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error36_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error36_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error37_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error37_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error37_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error38_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error38_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error38_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error39_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error39_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error39_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error40_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error40_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error40_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error41_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error41_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error41_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error42_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error42_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error42_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error43_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error43_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error43_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error44_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error44_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error44_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error45_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error45_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error45_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error46_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error46_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error46_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error47_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error47_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error47_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error48_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error48_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error48_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error49_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error49_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error49_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error50_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error50_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error50_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error51_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error51_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error51_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error52_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error52_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error52_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error53_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error53_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error53_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error54_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error54_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error54_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error55_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error55_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error55_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error56_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error56_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error56_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error57_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error57_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error57_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error58_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error58_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error58_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error59_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error59_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error59_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error60_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error60_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error60_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error61_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error61_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error61_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error62_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error62_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error62_is_in_range(uint8_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint8_t feb_can_rear_sensor_heartbeat_message_error63_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_rear_sensor_heartbeat_message_error63_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_rear_sensor_heartbeat_message_error63_is_in_range(uint8_t value);
-
-/**
- * Pack message FEB_PING_PONG_counter1.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_feb_ping_pong_counter1_pack(
-    uint8_t *dst_p,
-    const struct feb_can_feb_ping_pong_counter1_t *src_p,
-    size_t size);
-
-/**
- * Unpack message FEB_PING_PONG_counter1.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_feb_ping_pong_counter1_unpack(
-    struct feb_can_feb_ping_pong_counter1_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from FEB_PING_PONG_counter1.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_feb_ping_pong_counter1_init(struct feb_can_feb_ping_pong_counter1_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-int32_t feb_can_feb_ping_pong_counter1_counter_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_feb_ping_pong_counter1_counter_decode(int32_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_feb_ping_pong_counter1_counter_is_in_range(int32_t value);
-
-/**
- * Pack message FEB_PING_PONG_counter2.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_feb_ping_pong_counter2_pack(
-    uint8_t *dst_p,
-    const struct feb_can_feb_ping_pong_counter2_t *src_p,
-    size_t size);
-
-/**
- * Unpack message FEB_PING_PONG_counter2.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_feb_ping_pong_counter2_unpack(
-    struct feb_can_feb_ping_pong_counter2_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from FEB_PING_PONG_counter2.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_feb_ping_pong_counter2_init(struct feb_can_feb_ping_pong_counter2_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-int32_t feb_can_feb_ping_pong_counter2_counter_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_feb_ping_pong_counter2_counter_decode(int32_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_feb_ping_pong_counter2_counter_is_in_range(int32_t value);
-
-/**
- * Pack message FEB_PING_PONG_counter3.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_feb_ping_pong_counter3_pack(
-    uint8_t *dst_p,
-    const struct feb_can_feb_ping_pong_counter3_t *src_p,
-    size_t size);
-
-/**
- * Unpack message FEB_PING_PONG_counter3.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_feb_ping_pong_counter3_unpack(
-    struct feb_can_feb_ping_pong_counter3_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from FEB_PING_PONG_counter3.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_feb_ping_pong_counter3_init(struct feb_can_feb_ping_pong_counter3_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-int32_t feb_can_feb_ping_pong_counter3_counter_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_feb_ping_pong_counter3_counter_decode(int32_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_feb_ping_pong_counter3_counter_is_in_range(int32_t value);
-
-/**
- * Pack message FEB_PING_PONG_counter4.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_feb_ping_pong_counter4_pack(
-    uint8_t *dst_p,
-    const struct feb_can_feb_ping_pong_counter4_t *src_p,
-    size_t size);
-
-/**
- * Unpack message FEB_PING_PONG_counter4.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_feb_ping_pong_counter4_unpack(
-    struct feb_can_feb_ping_pong_counter4_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from FEB_PING_PONG_counter4.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_feb_ping_pong_counter4_init(struct feb_can_feb_ping_pong_counter4_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-int32_t feb_can_feb_ping_pong_counter4_counter_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_feb_ping_pong_counter4_counter_decode(int32_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_feb_ping_pong_counter4_counter_is_in_range(int32_t value);
-
-/**
- * Pack message pcu_raw_acc.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_pcu_raw_acc_pack(
-    uint8_t *dst_p,
-    const struct feb_can_pcu_raw_acc_t *src_p,
-    size_t size);
-
-/**
- * Unpack message pcu_raw_acc.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_pcu_raw_acc_unpack(
-    struct feb_can_pcu_raw_acc_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from pcu_raw_acc.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_pcu_raw_acc_init(struct feb_can_pcu_raw_acc_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_pcu_raw_acc_acc0_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_raw_acc_acc0_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_raw_acc_acc0_is_in_range(uint16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-uint16_t feb_can_pcu_raw_acc_acc1_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_pcu_raw_acc_acc1_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_pcu_raw_acc_acc1_is_in_range(uint16_t value);
-
-/**
- * Pack message ebs_pressure_status.
- *
- * @param[out] dst_p Buffer to pack the message into.
- * @param[in] src_p Data to pack.
- * @param[in] size Size of dst_p.
- *
- * @return Size of packed data, or negative error code.
- */
-int feb_can_ebs_pressure_status_pack(
-    uint8_t *dst_p,
-    const struct feb_can_ebs_pressure_status_t *src_p,
-    size_t size);
-
-/**
- * Unpack message ebs_pressure_status.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int feb_can_ebs_pressure_status_unpack(
-    struct feb_can_ebs_pressure_status_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from ebs_pressure_status.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int feb_can_ebs_pressure_status_init(struct feb_can_ebs_pressure_status_t *msg_p);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-int16_t feb_can_ebs_pressure_status_ebs_pressure_1_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_ebs_pressure_status_ebs_pressure_1_decode(int16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_ebs_pressure_status_ebs_pressure_1_is_in_range(int16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-int16_t feb_can_ebs_pressure_status_ebs_pressure_2_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_ebs_pressure_status_ebs_pressure_2_decode(int16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_ebs_pressure_status_ebs_pressure_2_is_in_range(int16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-int16_t feb_can_ebs_pressure_status_ebs_pressure_3_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_ebs_pressure_status_ebs_pressure_3_decode(int16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_ebs_pressure_status_ebs_pressure_3_is_in_range(int16_t value);
-
-/**
- * Encode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to encode.
- *
- * @return Encoded signal.
- */
-int16_t feb_can_ebs_pressure_status_ebs_pressure_4_encode(double value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-double feb_can_ebs_pressure_status_ebs_pressure_4_decode(int16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool feb_can_ebs_pressure_status_ebs_pressure_4_is_in_range(int16_t value);
-
+  };
+
+  /**
+   * Pack message res_state.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_res_state_pack(uint8_t *dst_p, const struct feb_can_res_state_t *src_p, size_t size);
+
+  /**
+   * Unpack message res_state.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_res_state_unpack(struct feb_can_res_state_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from res_state.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_res_state_init(struct feb_can_res_state_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_res_state_res_state_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_res_state_res_state_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_res_state_res_state_is_in_range(uint8_t value);
+
+  /**
+   * Pack message bms_state.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_bms_state_pack(uint8_t *dst_p, const struct feb_can_bms_state_t *src_p, size_t size);
+
+  /**
+   * Unpack message bms_state.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_bms_state_unpack(struct feb_can_bms_state_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from bms_state.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_bms_state_init(struct feb_can_bms_state_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_bms_state_bms_state_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_state_bms_state_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_state_bms_state_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_bms_state_ping_lv_nodes_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_state_ping_lv_nodes_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_state_ping_lv_nodes_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_bms_state_relay_state_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_state_relay_state_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_state_relay_state_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_bms_state_gpio_sense_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_state_gpio_sense_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_state_gpio_sense_is_in_range(uint8_t value);
+
+  /**
+   * Pack message bms_cell_data.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_bms_cell_data_pack(uint8_t *dst_p, const struct feb_can_bms_cell_data_t *src_p, size_t size);
+
+  /**
+   * Unpack message bms_cell_data.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_bms_cell_data_unpack(struct feb_can_bms_cell_data_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from bms_cell_data.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_bms_cell_data_init(struct feb_can_bms_cell_data_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_bms_cell_data_bms_flags_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_cell_data_bms_flags_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_cell_data_bms_flags_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_bms_cell_data_bms_cell_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_cell_data_bms_cell_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_cell_data_bms_cell_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_bms_cell_data_bms_bank_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_cell_data_bms_bank_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_cell_data_bms_bank_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_bms_cell_data_bms_voltage_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_cell_data_bms_voltage_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_cell_data_bms_voltage_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  int16_t feb_can_bms_cell_data_bms_temperature_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_cell_data_bms_temperature_decode(int16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_cell_data_bms_temperature_is_in_range(int16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_bms_cell_data_bms_send_time_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_cell_data_bms_send_time_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_cell_data_bms_send_time_is_in_range(uint16_t value);
+
+  /**
+   * Pack message bms_accumulator_voltage.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_bms_accumulator_voltage_pack(uint8_t *dst_p, const struct feb_can_bms_accumulator_voltage_t *src_p,
+                                           size_t size);
+
+  /**
+   * Unpack message bms_accumulator_voltage.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_bms_accumulator_voltage_unpack(struct feb_can_bms_accumulator_voltage_t *dst_p, const uint8_t *src_p,
+                                             size_t size);
+
+  /**
+   * Init message fields to default values from bms_accumulator_voltage.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_bms_accumulator_voltage_init(struct feb_can_bms_accumulator_voltage_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_bms_accumulator_voltage_total_pack_voltage_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_accumulator_voltage_total_pack_voltage_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_accumulator_voltage_total_pack_voltage_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_bms_accumulator_voltage_min_cell_voltage_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_accumulator_voltage_min_cell_voltage_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_accumulator_voltage_min_cell_voltage_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_bms_accumulator_voltage_max_cell_voltage_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_accumulator_voltage_max_cell_voltage_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_accumulator_voltage_max_cell_voltage_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_bms_accumulator_voltage_send_time_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_accumulator_voltage_send_time_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_accumulator_voltage_send_time_is_in_range(uint16_t value);
+
+  /**
+   * Pack message bms_accumulator_temperature.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_bms_accumulator_temperature_pack(uint8_t *dst_p,
+                                               const struct feb_can_bms_accumulator_temperature_t *src_p, size_t size);
+
+  /**
+   * Unpack message bms_accumulator_temperature.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_bms_accumulator_temperature_unpack(struct feb_can_bms_accumulator_temperature_t *dst_p,
+                                                 const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from bms_accumulator_temperature.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_bms_accumulator_temperature_init(struct feb_can_bms_accumulator_temperature_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  int16_t feb_can_bms_accumulator_temperature_average_pack_temperature_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_accumulator_temperature_average_pack_temperature_decode(int16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_accumulator_temperature_average_pack_temperature_is_in_range(int16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  int16_t feb_can_bms_accumulator_temperature_min_cell_temperature_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_accumulator_temperature_min_cell_temperature_decode(int16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_accumulator_temperature_min_cell_temperature_is_in_range(int16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  int16_t feb_can_bms_accumulator_temperature_max_cell_temperature_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_accumulator_temperature_max_cell_temperature_decode(int16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_accumulator_temperature_max_cell_temperature_is_in_range(int16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_bms_accumulator_temperature_send_time_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bms_accumulator_temperature_send_time_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bms_accumulator_temperature_send_time_is_in_range(uint16_t value);
+
+  /**
+   * Pack message accumulator_faults.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_accumulator_faults_pack(uint8_t *dst_p, const struct feb_can_accumulator_faults_t *src_p, size_t size);
+
+  /**
+   * Unpack message accumulator_faults.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_accumulator_faults_unpack(struct feb_can_accumulator_faults_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from accumulator_faults.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_accumulator_faults_init(struct feb_can_accumulator_faults_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_accumulator_faults_bms_fault_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_accumulator_faults_bms_fault_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_accumulator_faults_bms_fault_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_accumulator_faults_imd_fault_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_accumulator_faults_imd_fault_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_accumulator_faults_imd_fault_is_in_range(uint8_t value);
+
+  /**
+   * Pack message brake.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_brake_pack(uint8_t *dst_p, const struct feb_can_brake_t *src_p, size_t size);
+
+  /**
+   * Unpack message brake.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_brake_unpack(struct feb_can_brake_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from brake.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_brake_init(struct feb_can_brake_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_brake_brake_percent_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_brake_brake_percent_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_brake_brake_percent_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_brake_brake1_psi_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_brake_brake1_psi_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_brake_brake1_psi_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_brake_brake2_psi_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_brake_brake2_psi_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_brake_brake2_psi_is_in_range(uint16_t value);
+
+  /**
+   * Pack message bspd_state.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_bspd_state_pack(uint8_t *dst_p, const struct feb_can_bspd_state_t *src_p, size_t size);
+
+  /**
+   * Unpack message bspd_state.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_bspd_state_unpack(struct feb_can_bspd_state_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from bspd_state.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_bspd_state_init(struct feb_can_bspd_state_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_bspd_state_bspd_state_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bspd_state_bspd_state_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bspd_state_bspd_state_is_in_range(uint8_t value);
+
+  /**
+   * Pack message dash_io.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_dash_io_pack(uint8_t *dst_p, const struct feb_can_dash_io_t *src_p, size_t size);
+
+  /**
+   * Unpack message dash_io.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_dash_io_unpack(struct feb_can_dash_io_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from dash_io.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_dash_io_init(struct feb_can_dash_io_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_io_buzzer_state_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_io_buzzer_state_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_io_buzzer_state_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_io_b1_ready_to_drive_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_io_b1_ready_to_drive_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_io_b1_ready_to_drive_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_io_b2_data_logging_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_io_b2_data_logging_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_io_b2_data_logging_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_io_b3_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_io_b3_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_io_b3_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_io_b4_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_io_b4_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_io_b4_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_io_s1_coolant_pump_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_io_s1_coolant_pump_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_io_s1_coolant_pump_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_io_s2_radiator_fan_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_io_s2_radiator_fan_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_io_s2_radiator_fan_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_io_s3_accumulator_fan_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_io_s3_accumulator_fan_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_io_s3_accumulator_fan_is_in_range(uint8_t value);
+
+  /**
+   * Pack message lvpdb_flags_bus_voltage_lv_current.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_lvpdb_flags_bus_voltage_lv_current_pack(uint8_t *dst_p,
+                                                      const struct feb_can_lvpdb_flags_bus_voltage_lv_current_t *src_p,
+                                                      size_t size);
+
+  /**
+   * Unpack message lvpdb_flags_bus_voltage_lv_current.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_lvpdb_flags_bus_voltage_lv_current_unpack(struct feb_can_lvpdb_flags_bus_voltage_lv_current_t *dst_p,
+                                                        const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from lvpdb_flags_bus_voltage_lv_current.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_lvpdb_flags_bus_voltage_lv_current_init(struct feb_can_lvpdb_flags_bus_voltage_lv_current_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint32_t feb_can_lvpdb_flags_bus_voltage_lv_current_flags_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_flags_bus_voltage_lv_current_flags_decode(uint32_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_flags_bus_voltage_lv_current_flags_is_in_range(uint32_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_lvpdb_flags_bus_voltage_lv_current_bus_voltage_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_flags_bus_voltage_lv_current_bus_voltage_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_flags_bus_voltage_lv_current_bus_voltage_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_lvpdb_flags_bus_voltage_lv_current_lv_current_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_flags_bus_voltage_lv_current_lv_current_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_flags_bus_voltage_lv_current_lv_current_is_in_range(uint16_t value);
+
+  /**
+   * Pack message lvpdb_coolant_fans_shutdown.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_lvpdb_coolant_fans_shutdown_pack(uint8_t *dst_p,
+                                               const struct feb_can_lvpdb_coolant_fans_shutdown_t *src_p, size_t size);
+
+  /**
+   * Unpack message lvpdb_coolant_fans_shutdown.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_lvpdb_coolant_fans_shutdown_unpack(struct feb_can_lvpdb_coolant_fans_shutdown_t *dst_p,
+                                                 const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from lvpdb_coolant_fans_shutdown.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_lvpdb_coolant_fans_shutdown_init(struct feb_can_lvpdb_coolant_fans_shutdown_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_lvpdb_coolant_fans_shutdown_coolant_pump_current_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_coolant_fans_shutdown_coolant_pump_current_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_coolant_fans_shutdown_coolant_pump_current_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_lvpdb_coolant_fans_shutdown_accumulator_fans_current_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_coolant_fans_shutdown_accumulator_fans_current_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_coolant_fans_shutdown_accumulator_fans_current_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_lvpdb_coolant_fans_shutdown_radiator_fans_current_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_coolant_fans_shutdown_radiator_fans_current_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_coolant_fans_shutdown_radiator_fans_current_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_lvpdb_coolant_fans_shutdown_shutdown_voltage_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_coolant_fans_shutdown_shutdown_voltage_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_coolant_fans_shutdown_shutdown_voltage_is_in_range(uint16_t value);
+
+  /**
+   * Pack message lvpdb_autonomous.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_lvpdb_autonomous_pack(uint8_t *dst_p, const struct feb_can_lvpdb_autonomous_t *src_p, size_t size);
+
+  /**
+   * Unpack message lvpdb_autonomous.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_lvpdb_autonomous_unpack(struct feb_can_lvpdb_autonomous_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from lvpdb_autonomous.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_lvpdb_autonomous_init(struct feb_can_lvpdb_autonomous_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_lvpdb_autonomous_lidar_current_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_autonomous_lidar_current_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_autonomous_lidar_current_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_lvpdb_autonomous_auto_steering_voltage_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_autonomous_auto_steering_voltage_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_autonomous_auto_steering_voltage_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_lvpdb_autonomous_auto_breaking_voltage_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_autonomous_auto_breaking_voltage_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_autonomous_auto_breaking_voltage_is_in_range(uint16_t value);
+
+  /**
+   * Pack message FEB_Steering_data.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_feb_steering_data_pack(uint8_t *dst_p, const struct feb_can_feb_steering_data_t *src_p, size_t size);
+
+  /**
+   * Unpack message FEB_Steering_data.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_feb_steering_data_unpack(struct feb_can_feb_steering_data_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from FEB_Steering_data.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_feb_steering_data_init(struct feb_can_feb_steering_data_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint32_t feb_can_feb_steering_data_can_counter_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_feb_steering_data_can_counter_decode(uint32_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_feb_steering_data_can_counter_is_in_range(uint32_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_feb_steering_data_flags_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_feb_steering_data_flags_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_feb_steering_data_flags_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_feb_steering_data_angle_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_feb_steering_data_angle_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_feb_steering_data_angle_is_in_range(uint16_t value);
+
+  /**
+   * Pack message rear_left_tire_temp.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_rear_left_tire_temp_pack(uint8_t *dst_p, const struct feb_can_rear_left_tire_temp_t *src_p, size_t size);
+
+  /**
+   * Unpack message rear_left_tire_temp.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_rear_left_tire_temp_unpack(struct feb_can_rear_left_tire_temp_t *dst_p, const uint8_t *src_p,
+                                         size_t size);
+
+  /**
+   * Init message fields to default values from rear_left_tire_temp.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_rear_left_tire_temp_init(struct feb_can_rear_left_tire_temp_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_rear_left_tire_temp_leftmost_temp_rl_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_left_tire_temp_leftmost_temp_rl_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_left_tire_temp_leftmost_temp_rl_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_rear_left_tire_temp_center_left_temp_rl_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_left_tire_temp_center_left_temp_rl_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_left_tire_temp_center_left_temp_rl_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_rear_left_tire_temp_center_right_temp_rl_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_left_tire_temp_center_right_temp_rl_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_left_tire_temp_center_right_temp_rl_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_rear_left_tire_temp_rightmost_temp_rl_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_left_tire_temp_rightmost_temp_rl_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_left_tire_temp_rightmost_temp_rl_is_in_range(uint16_t value);
+
+  /**
+   * Pack message rear_right_tire_temp.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_rear_right_tire_temp_pack(uint8_t *dst_p, const struct feb_can_rear_right_tire_temp_t *src_p,
+                                        size_t size);
+
+  /**
+   * Unpack message rear_right_tire_temp.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_rear_right_tire_temp_unpack(struct feb_can_rear_right_tire_temp_t *dst_p, const uint8_t *src_p,
+                                          size_t size);
+
+  /**
+   * Init message fields to default values from rear_right_tire_temp.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_rear_right_tire_temp_init(struct feb_can_rear_right_tire_temp_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_rear_right_tire_temp_leftmost_temp_rr_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_right_tire_temp_leftmost_temp_rr_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_right_tire_temp_leftmost_temp_rr_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_rear_right_tire_temp_center_left_temp_rr_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_right_tire_temp_center_left_temp_rr_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_right_tire_temp_center_left_temp_rr_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_rear_right_tire_temp_center_right_temp_rr_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_right_tire_temp_center_right_temp_rr_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_right_tire_temp_center_right_temp_rr_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_rear_right_tire_temp_rightmost_temp_rr_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_right_tire_temp_rightmost_temp_rr_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_right_tire_temp_rightmost_temp_rr_is_in_range(uint16_t value);
+
+  /**
+   * Pack message front_left_tire_temp.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_front_left_tire_temp_pack(uint8_t *dst_p, const struct feb_can_front_left_tire_temp_t *src_p,
+                                        size_t size);
+
+  /**
+   * Unpack message front_left_tire_temp.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_front_left_tire_temp_unpack(struct feb_can_front_left_tire_temp_t *dst_p, const uint8_t *src_p,
+                                          size_t size);
+
+  /**
+   * Init message fields to default values from front_left_tire_temp.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_front_left_tire_temp_init(struct feb_can_front_left_tire_temp_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_front_left_tire_temp_leftmost_temp_fl_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_left_tire_temp_leftmost_temp_fl_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_left_tire_temp_leftmost_temp_fl_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_front_left_tire_temp_center_left_temp_fl_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_left_tire_temp_center_left_temp_fl_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_left_tire_temp_center_left_temp_fl_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_front_left_tire_temp_center_right_temp_fl_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_left_tire_temp_center_right_temp_fl_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_left_tire_temp_center_right_temp_fl_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_front_left_tire_temp_rightmost_temp_fl_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_left_tire_temp_rightmost_temp_fl_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_left_tire_temp_rightmost_temp_fl_is_in_range(uint16_t value);
+
+  /**
+   * Pack message front_right_tire_temp.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_front_right_tire_temp_pack(uint8_t *dst_p, const struct feb_can_front_right_tire_temp_t *src_p,
+                                         size_t size);
+
+  /**
+   * Unpack message front_right_tire_temp.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_front_right_tire_temp_unpack(struct feb_can_front_right_tire_temp_t *dst_p, const uint8_t *src_p,
+                                           size_t size);
+
+  /**
+   * Init message fields to default values from front_right_tire_temp.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_front_right_tire_temp_init(struct feb_can_front_right_tire_temp_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_front_right_tire_temp_leftmost_temp_fr_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_right_tire_temp_leftmost_temp_fr_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_right_tire_temp_leftmost_temp_fr_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_front_right_tire_temp_center_left_temp_fr_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_right_tire_temp_center_left_temp_fr_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_right_tire_temp_center_left_temp_fr_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_front_right_tire_temp_center_right_temp_fr_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_right_tire_temp_center_right_temp_fr_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_right_tire_temp_center_right_temp_fr_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_front_right_tire_temp_rightmost_temp_fr_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_right_tire_temp_rightmost_temp_fr_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_right_tire_temp_rightmost_temp_fr_is_in_range(uint16_t value);
+
+  /**
+   * Pack message FEB_imu_data.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_feb_imu_data_pack(uint8_t *dst_p, const struct feb_can_feb_imu_data_t *src_p, size_t size);
+
+  /**
+   * Unpack message FEB_imu_data.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_feb_imu_data_unpack(struct feb_can_feb_imu_data_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from FEB_imu_data.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_feb_imu_data_init(struct feb_can_feb_imu_data_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  int16_t feb_can_feb_imu_data_acceleration_x_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_feb_imu_data_acceleration_x_decode(int16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_feb_imu_data_acceleration_x_is_in_range(int16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  int16_t feb_can_feb_imu_data_acceleration_y_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_feb_imu_data_acceleration_y_decode(int16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_feb_imu_data_acceleration_y_is_in_range(int16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  int16_t feb_can_feb_imu_data_acceleration_z_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_feb_imu_data_acceleration_z_decode(int16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_feb_imu_data_acceleration_z_is_in_range(int16_t value);
+
+  /**
+   * Pack message wss_front_data.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_wss_front_data_pack(uint8_t *dst_p, const struct feb_can_wss_front_data_t *src_p, size_t size);
+
+  /**
+   * Unpack message wss_front_data.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_wss_front_data_unpack(struct feb_can_wss_front_data_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from wss_front_data.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_wss_front_data_init(struct feb_can_wss_front_data_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_wss_front_data_wss_right_front_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_wss_front_data_wss_right_front_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_wss_front_data_wss_right_front_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_wss_front_data_wss_left_front_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_wss_front_data_wss_left_front_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_wss_front_data_wss_left_front_is_in_range(uint8_t value);
+
+  /**
+   * Pack message wss_rear_data.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_wss_rear_data_pack(uint8_t *dst_p, const struct feb_can_wss_rear_data_t *src_p, size_t size);
+
+  /**
+   * Unpack message wss_rear_data.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_wss_rear_data_unpack(struct feb_can_wss_rear_data_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from wss_rear_data.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_wss_rear_data_init(struct feb_can_wss_rear_data_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_wss_rear_data_wss_right_rear_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_wss_rear_data_wss_right_rear_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_wss_rear_data_wss_right_rear_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_wss_rear_data_wss_left_rear_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_wss_rear_data_wss_left_rear_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_wss_rear_data_wss_left_rear_is_in_range(uint8_t value);
+
+  /**
+   * Pack message linear_potentiometer_front.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_linear_potentiometer_front_pack(uint8_t *dst_p, const struct feb_can_linear_potentiometer_front_t *src_p,
+                                              size_t size);
+
+  /**
+   * Unpack message linear_potentiometer_front.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_linear_potentiometer_front_unpack(struct feb_can_linear_potentiometer_front_t *dst_p,
+                                                const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from linear_potentiometer_front.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_linear_potentiometer_front_init(struct feb_can_linear_potentiometer_front_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_linear_potentiometer_front_linear_potentiometer_1_front_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_linear_potentiometer_front_linear_potentiometer_1_front_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_linear_potentiometer_front_linear_potentiometer_1_front_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_linear_potentiometer_front_linear_potentiometer_2_front_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_linear_potentiometer_front_linear_potentiometer_2_front_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_linear_potentiometer_front_linear_potentiometer_2_front_is_in_range(uint16_t value);
+
+  /**
+   * Pack message linear_potentiometer_rear.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_linear_potentiometer_rear_pack(uint8_t *dst_p, const struct feb_can_linear_potentiometer_rear_t *src_p,
+                                             size_t size);
+
+  /**
+   * Unpack message linear_potentiometer_rear.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_linear_potentiometer_rear_unpack(struct feb_can_linear_potentiometer_rear_t *dst_p, const uint8_t *src_p,
+                                               size_t size);
+
+  /**
+   * Init message fields to default values from linear_potentiometer_rear.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_linear_potentiometer_rear_init(struct feb_can_linear_potentiometer_rear_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_linear_potentiometer_rear_linear_potentiometer_1_rear_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_linear_potentiometer_rear_linear_potentiometer_1_rear_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_linear_potentiometer_rear_linear_potentiometer_1_rear_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_linear_potentiometer_rear_linear_potentiometer_2_rear_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_linear_potentiometer_rear_linear_potentiometer_2_rear_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_linear_potentiometer_rear_linear_potentiometer_2_rear_is_in_range(uint16_t value);
+
+  /**
+   * Pack message coolant_pressure.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_coolant_pressure_pack(uint8_t *dst_p, const struct feb_can_coolant_pressure_t *src_p, size_t size);
+
+  /**
+   * Unpack message coolant_pressure.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_coolant_pressure_unpack(struct feb_can_coolant_pressure_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from coolant_pressure.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_coolant_pressure_init(struct feb_can_coolant_pressure_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_coolant_pressure_coolant_pressure_1_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_coolant_pressure_coolant_pressure_1_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_coolant_pressure_coolant_pressure_1_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_coolant_pressure_coolant_pressure_2_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_coolant_pressure_coolant_pressure_2_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_coolant_pressure_coolant_pressure_2_is_in_range(uint16_t value);
+
+  /**
+   * Pack message DART_TACH_measurements_1234.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_dart_tach_measurements_1234_pack(uint8_t *dst_p,
+                                               const struct feb_can_dart_tach_measurements_1234_t *src_p, size_t size);
+
+  /**
+   * Unpack message DART_TACH_measurements_1234.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_dart_tach_measurements_1234_unpack(struct feb_can_dart_tach_measurements_1234_t *dst_p,
+                                                 const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from DART_TACH_measurements_1234.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_dart_tach_measurements_1234_init(struct feb_can_dart_tach_measurements_1234_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_dart_tach_measurements_1234_fan1_speed_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dart_tach_measurements_1234_fan1_speed_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dart_tach_measurements_1234_fan1_speed_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_dart_tach_measurements_1234_fan2_speed_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dart_tach_measurements_1234_fan2_speed_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dart_tach_measurements_1234_fan2_speed_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_dart_tach_measurements_1234_fan3_speed_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dart_tach_measurements_1234_fan3_speed_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dart_tach_measurements_1234_fan3_speed_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_dart_tach_measurements_1234_fan4_speed_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dart_tach_measurements_1234_fan4_speed_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dart_tach_measurements_1234_fan4_speed_is_in_range(uint16_t value);
+
+  /**
+   * Pack message DART_TACH_measurements_5.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_dart_tach_measurements_5_pack(uint8_t *dst_p, const struct feb_can_dart_tach_measurements_5_t *src_p,
+                                            size_t size);
+
+  /**
+   * Unpack message DART_TACH_measurements_5.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_dart_tach_measurements_5_unpack(struct feb_can_dart_tach_measurements_5_t *dst_p, const uint8_t *src_p,
+                                              size_t size);
+
+  /**
+   * Init message fields to default values from DART_TACH_measurements_5.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_dart_tach_measurements_5_init(struct feb_can_dart_tach_measurements_5_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_dart_tach_measurements_5_fan5_speed_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dart_tach_measurements_5_fan5_speed_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dart_tach_measurements_5_fan5_speed_is_in_range(uint16_t value);
+
+  /**
+   * Pack message bbb_tps.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_bbb_tps_pack(uint8_t *dst_p, const struct feb_can_bbb_tps_t *src_p, size_t size);
+
+  /**
+   * Unpack message bbb_tps.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_bbb_tps_unpack(struct feb_can_bbb_tps_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from bbb_tps.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_bbb_tps_init(struct feb_can_bbb_tps_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_bbb_tps_voltage_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bbb_tps_voltage_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bbb_tps_voltage_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_bbb_tps_current_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_bbb_tps_current_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_bbb_tps_current_is_in_range(uint16_t value);
+
+  /**
+   * Pack message pcu_tps.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_pcu_tps_pack(uint8_t *dst_p, const struct feb_can_pcu_tps_t *src_p, size_t size);
+
+  /**
+   * Unpack message pcu_tps.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_pcu_tps_unpack(struct feb_can_pcu_tps_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from pcu_tps.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_pcu_tps_init(struct feb_can_pcu_tps_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_pcu_tps_voltage_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_tps_voltage_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_tps_voltage_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_pcu_tps_current_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_tps_current_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_tps_current_is_in_range(uint16_t value);
+
+  /**
+   * Pack message dash_tps.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_dash_tps_pack(uint8_t *dst_p, const struct feb_can_dash_tps_t *src_p, size_t size);
+
+  /**
+   * Unpack message dash_tps.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_dash_tps_unpack(struct feb_can_dash_tps_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from dash_tps.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_dash_tps_init(struct feb_can_dash_tps_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_dash_tps_voltage_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_tps_voltage_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_tps_voltage_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_dash_tps_current_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_tps_current_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_tps_current_is_in_range(uint16_t value);
+
+  /**
+   * Pack message dcu_tps.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_dcu_tps_pack(uint8_t *dst_p, const struct feb_can_dcu_tps_t *src_p, size_t size);
+
+  /**
+   * Unpack message dcu_tps.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_dcu_tps_unpack(struct feb_can_dcu_tps_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from dcu_tps.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_dcu_tps_init(struct feb_can_dcu_tps_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_dcu_tps_voltage_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_tps_voltage_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_tps_voltage_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_dcu_tps_current_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_tps_current_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_tps_current_is_in_range(uint16_t value);
+
+  /**
+   * Pack message rms_command.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_rms_command_pack(uint8_t *dst_p, const struct feb_can_rms_command_t *src_p, size_t size);
+
+  /**
+   * Unpack message rms_command.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_rms_command_unpack(struct feb_can_rms_command_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from rms_command.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_rms_command_init(struct feb_can_rms_command_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_rms_command_torque_signal_small_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rms_command_torque_signal_small_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rms_command_torque_signal_small_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_rms_command_speed_signal_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rms_command_speed_signal_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rms_command_speed_signal_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rms_command_direction_value_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rms_command_direction_value_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rms_command_direction_value_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rms_command_inverter_enable_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rms_command_inverter_enable_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rms_command_inverter_enable_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rms_command_inverter_dicharge_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rms_command_inverter_dicharge_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rms_command_inverter_dicharge_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rms_command_speed_mode_enabled_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rms_command_speed_mode_enabled_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rms_command_speed_mode_enabled_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_rms_command_command_torque_limited_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rms_command_command_torque_limited_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rms_command_command_torque_limited_is_in_range(uint16_t value);
+
+  /**
+   * Pack message rms_param.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_rms_param_pack(uint8_t *dst_p, const struct feb_can_rms_param_t *src_p, size_t size);
+
+  /**
+   * Unpack message rms_param.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_rms_param_unpack(struct feb_can_rms_param_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from rms_param.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_rms_param_init(struct feb_can_rms_param_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rms_param_address_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rms_param_address_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rms_param_address_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rms_param_read_write_command_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rms_param_read_write_command_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rms_param_read_write_command_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_rms_param_data_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rms_param_data_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rms_param_data_is_in_range(uint16_t value);
+
+  /**
+   * Pack message pcu_heartbeat.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_pcu_heartbeat_pack(uint8_t *dst_p, const struct feb_can_pcu_heartbeat_t *src_p, size_t size);
+
+  /**
+   * Unpack message pcu_heartbeat.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_pcu_heartbeat_unpack(struct feb_can_pcu_heartbeat_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from pcu_heartbeat.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_pcu_heartbeat_init(struct feb_can_pcu_heartbeat_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error0_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error0_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error0_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error1_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error1_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error1_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error2_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error2_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error2_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error3_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error3_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error3_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error4_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error4_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error4_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error5_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error5_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error5_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error6_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error6_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error6_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error7_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error7_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error7_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error8_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error8_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error8_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error9_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error9_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error9_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error10_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error10_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error10_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error11_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error11_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error11_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error12_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error12_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error12_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error13_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error13_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error13_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error14_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error14_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error14_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error15_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error15_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error15_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error16_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error16_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error16_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error17_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error17_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error17_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error18_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error18_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error18_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error19_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error19_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error19_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error20_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error20_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error20_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error21_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error21_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error21_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error22_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error22_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error22_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error23_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error23_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error23_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error24_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error24_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error24_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error25_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error25_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error25_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error26_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error26_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error26_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error27_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error27_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error27_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error28_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error28_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error28_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error29_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error29_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error29_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error30_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error30_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error30_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error31_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error31_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error31_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error32_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error32_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error32_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error33_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error33_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error33_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error34_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error34_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error34_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error35_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error35_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error35_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error36_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error36_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error36_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error37_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error37_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error37_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error38_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error38_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error38_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error39_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error39_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error39_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error40_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error40_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error40_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error41_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error41_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error41_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error42_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error42_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error42_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error43_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error43_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error43_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error44_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error44_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error44_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error45_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error45_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error45_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error46_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error46_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error46_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error47_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error47_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error47_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error48_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error48_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error48_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error49_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error49_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error49_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error50_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error50_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error50_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error51_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error51_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error51_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error52_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error52_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error52_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error53_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error53_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error53_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error54_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error54_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error54_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error55_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error55_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error55_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error56_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error56_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error56_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error57_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error57_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error57_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error58_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error58_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error58_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error59_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error59_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error59_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error60_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error60_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error60_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error61_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error61_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error61_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error62_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error62_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error62_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_pcu_heartbeat_error63_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_heartbeat_error63_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_heartbeat_error63_is_in_range(uint8_t value);
+
+  /**
+   * Pack message dash_heartbeat.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_dash_heartbeat_pack(uint8_t *dst_p, const struct feb_can_dash_heartbeat_t *src_p, size_t size);
+
+  /**
+   * Unpack message dash_heartbeat.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_dash_heartbeat_unpack(struct feb_can_dash_heartbeat_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from dash_heartbeat.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_dash_heartbeat_init(struct feb_can_dash_heartbeat_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error0_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error0_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error0_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error1_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error1_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error1_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error2_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error2_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error2_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error3_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error3_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error3_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error4_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error4_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error4_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error5_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error5_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error5_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error6_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error6_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error6_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error7_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error7_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error7_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error8_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error8_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error8_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error9_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error9_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error9_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error10_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error10_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error10_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error11_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error11_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error11_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error12_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error12_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error12_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error13_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error13_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error13_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error14_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error14_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error14_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error15_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error15_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error15_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error16_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error16_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error16_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error17_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error17_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error17_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error18_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error18_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error18_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error19_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error19_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error19_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error20_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error20_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error20_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error21_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error21_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error21_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error22_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error22_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error22_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error23_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error23_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error23_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error24_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error24_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error24_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error25_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error25_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error25_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error26_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error26_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error26_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error27_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error27_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error27_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error28_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error28_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error28_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error29_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error29_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error29_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error30_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error30_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error30_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error31_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error31_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error31_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error32_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error32_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error32_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error33_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error33_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error33_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error34_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error34_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error34_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error35_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error35_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error35_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error36_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error36_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error36_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error37_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error37_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error37_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error38_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error38_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error38_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error39_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error39_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error39_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error40_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error40_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error40_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error41_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error41_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error41_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error42_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error42_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error42_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error43_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error43_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error43_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error44_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error44_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error44_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error45_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error45_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error45_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error46_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error46_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error46_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error47_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error47_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error47_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error48_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error48_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error48_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error49_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error49_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error49_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error50_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error50_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error50_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error51_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error51_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error51_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error52_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error52_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error52_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error53_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error53_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error53_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error54_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error54_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error54_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error55_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error55_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error55_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error56_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error56_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error56_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error57_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error57_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error57_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error58_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error58_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error58_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error59_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error59_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error59_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error60_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error60_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error60_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error61_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error61_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error61_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error62_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error62_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error62_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dash_heartbeat_error63_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dash_heartbeat_error63_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dash_heartbeat_error63_is_in_range(uint8_t value);
+
+  /**
+   * Pack message lvpdb_heartbeat.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_lvpdb_heartbeat_pack(uint8_t *dst_p, const struct feb_can_lvpdb_heartbeat_t *src_p, size_t size);
+
+  /**
+   * Unpack message lvpdb_heartbeat.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_lvpdb_heartbeat_unpack(struct feb_can_lvpdb_heartbeat_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from lvpdb_heartbeat.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_lvpdb_heartbeat_init(struct feb_can_lvpdb_heartbeat_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error0_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error0_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error0_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error1_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error1_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error1_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error2_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error2_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error2_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error3_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error3_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error3_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error4_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error4_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error4_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error5_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error5_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error5_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error6_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error6_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error6_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error7_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error7_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error7_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error8_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error8_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error8_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error9_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error9_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error9_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error10_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error10_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error10_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error11_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error11_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error11_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error12_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error12_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error12_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error13_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error13_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error13_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error14_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error14_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error14_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error15_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error15_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error15_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error16_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error16_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error16_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error17_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error17_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error17_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error18_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error18_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error18_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error19_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error19_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error19_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error20_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error20_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error20_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error21_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error21_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error21_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error22_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error22_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error22_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error23_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error23_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error23_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error24_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error24_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error24_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error25_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error25_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error25_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error26_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error26_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error26_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error27_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error27_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error27_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error28_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error28_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error28_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error29_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error29_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error29_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error30_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error30_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error30_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error31_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error31_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error31_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error32_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error32_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error32_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error33_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error33_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error33_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error34_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error34_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error34_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error35_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error35_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error35_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error36_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error36_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error36_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error37_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error37_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error37_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error38_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error38_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error38_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error39_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error39_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error39_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error40_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error40_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error40_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error41_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error41_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error41_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error42_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error42_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error42_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error43_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error43_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error43_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error44_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error44_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error44_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error45_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error45_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error45_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error46_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error46_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error46_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error47_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error47_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error47_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error48_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error48_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error48_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error49_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error49_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error49_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error50_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error50_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error50_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error51_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error51_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error51_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error52_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error52_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error52_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error53_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error53_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error53_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error54_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error54_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error54_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error55_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error55_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error55_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error56_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error56_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error56_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error57_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error57_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error57_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error58_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error58_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error58_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error59_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error59_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error59_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error60_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error60_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error60_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error61_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error61_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error61_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error62_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error62_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error62_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_lvpdb_heartbeat_error63_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_lvpdb_heartbeat_error63_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_lvpdb_heartbeat_error63_is_in_range(uint8_t value);
+
+  /**
+   * Pack message dcu_heartbeat.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_dcu_heartbeat_pack(uint8_t *dst_p, const struct feb_can_dcu_heartbeat_t *src_p, size_t size);
+
+  /**
+   * Unpack message dcu_heartbeat.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_dcu_heartbeat_unpack(struct feb_can_dcu_heartbeat_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from dcu_heartbeat.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_dcu_heartbeat_init(struct feb_can_dcu_heartbeat_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error0_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error0_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error0_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error1_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error1_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error1_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error2_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error2_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error2_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error3_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error3_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error3_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error4_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error4_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error4_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error5_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error5_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error5_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error6_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error6_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error6_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error7_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error7_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error7_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error8_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error8_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error8_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error9_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error9_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error9_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error10_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error10_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error10_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error11_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error11_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error11_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error12_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error12_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error12_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error13_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error13_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error13_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error14_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error14_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error14_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error15_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error15_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error15_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error16_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error16_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error16_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error17_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error17_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error17_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error18_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error18_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error18_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error19_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error19_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error19_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error20_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error20_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error20_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error21_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error21_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error21_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error22_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error22_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error22_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error23_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error23_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error23_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error24_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error24_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error24_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error25_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error25_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error25_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error26_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error26_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error26_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error27_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error27_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error27_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error28_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error28_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error28_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error29_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error29_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error29_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error30_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error30_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error30_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error31_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error31_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error31_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error32_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error32_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error32_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error33_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error33_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error33_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error34_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error34_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error34_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error35_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error35_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error35_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error36_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error36_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error36_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error37_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error37_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error37_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error38_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error38_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error38_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error39_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error39_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error39_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error40_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error40_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error40_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error41_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error41_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error41_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error42_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error42_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error42_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error43_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error43_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error43_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error44_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error44_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error44_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error45_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error45_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error45_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error46_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error46_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error46_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error47_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error47_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error47_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error48_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error48_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error48_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error49_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error49_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error49_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error50_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error50_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error50_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error51_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error51_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error51_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error52_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error52_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error52_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error53_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error53_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error53_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error54_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error54_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error54_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error55_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error55_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error55_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error56_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error56_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error56_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error57_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error57_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error57_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error58_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error58_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error58_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error59_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error59_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error59_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error60_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error60_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error60_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error61_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error61_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error61_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error62_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error62_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error62_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_dcu_heartbeat_error63_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_dcu_heartbeat_error63_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_dcu_heartbeat_error63_is_in_range(uint8_t value);
+
+  /**
+   * Pack message front_sensor_heartbeat_message.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_front_sensor_heartbeat_message_pack(uint8_t *dst_p,
+                                                  const struct feb_can_front_sensor_heartbeat_message_t *src_p,
+                                                  size_t size);
+
+  /**
+   * Unpack message front_sensor_heartbeat_message.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_front_sensor_heartbeat_message_unpack(struct feb_can_front_sensor_heartbeat_message_t *dst_p,
+                                                    const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from front_sensor_heartbeat_message.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_front_sensor_heartbeat_message_init(struct feb_can_front_sensor_heartbeat_message_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error0_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error0_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error0_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error1_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error1_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error1_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error2_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error2_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error2_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error3_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error3_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error3_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error4_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error4_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error4_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error5_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error5_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error5_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error6_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error6_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error6_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error7_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error7_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error7_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error8_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error8_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error8_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error9_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error9_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error9_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error10_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error10_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error10_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error11_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error11_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error11_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error12_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error12_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error12_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error13_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error13_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error13_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error14_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error14_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error14_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error15_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error15_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error15_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error16_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error16_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error16_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error17_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error17_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error17_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error18_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error18_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error18_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error19_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error19_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error19_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error20_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error20_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error20_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error21_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error21_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error21_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error22_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error22_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error22_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error23_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error23_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error23_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error24_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error24_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error24_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error25_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error25_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error25_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error26_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error26_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error26_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error27_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error27_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error27_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error28_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error28_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error28_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error29_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error29_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error29_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error30_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error30_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error30_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error31_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error31_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error31_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error32_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error32_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error32_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error33_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error33_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error33_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error34_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error34_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error34_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error35_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error35_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error35_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error36_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error36_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error36_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error37_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error37_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error37_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error38_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error38_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error38_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error39_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error39_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error39_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error40_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error40_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error40_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error41_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error41_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error41_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error42_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error42_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error42_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error43_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error43_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error43_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error44_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error44_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error44_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error45_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error45_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error45_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error46_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error46_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error46_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error47_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error47_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error47_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error48_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error48_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error48_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error49_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error49_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error49_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error50_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error50_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error50_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error51_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error51_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error51_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error52_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error52_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error52_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error53_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error53_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error53_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error54_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error54_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error54_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error55_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error55_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error55_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error56_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error56_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error56_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error57_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error57_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error57_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error58_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error58_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error58_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error59_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error59_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error59_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error60_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error60_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error60_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error61_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error61_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error61_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error62_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error62_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error62_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_front_sensor_heartbeat_message_error63_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_front_sensor_heartbeat_message_error63_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_front_sensor_heartbeat_message_error63_is_in_range(uint8_t value);
+
+  /**
+   * Pack message rear_sensor_heartbeat_message.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_rear_sensor_heartbeat_message_pack(uint8_t *dst_p,
+                                                 const struct feb_can_rear_sensor_heartbeat_message_t *src_p,
+                                                 size_t size);
+
+  /**
+   * Unpack message rear_sensor_heartbeat_message.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_rear_sensor_heartbeat_message_unpack(struct feb_can_rear_sensor_heartbeat_message_t *dst_p,
+                                                   const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from rear_sensor_heartbeat_message.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_rear_sensor_heartbeat_message_init(struct feb_can_rear_sensor_heartbeat_message_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error0_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error0_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error0_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error1_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error1_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error1_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error2_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error2_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error2_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error3_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error3_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error3_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error4_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error4_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error4_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error5_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error5_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error5_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error6_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error6_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error6_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error7_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error7_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error7_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error8_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error8_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error8_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error9_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error9_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error9_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error10_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error10_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error10_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error11_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error11_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error11_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error12_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error12_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error12_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error13_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error13_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error13_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error14_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error14_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error14_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error15_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error15_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error15_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error16_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error16_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error16_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error17_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error17_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error17_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error18_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error18_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error18_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error19_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error19_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error19_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error20_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error20_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error20_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error21_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error21_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error21_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error22_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error22_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error22_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error23_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error23_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error23_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error24_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error24_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error24_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error25_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error25_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error25_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error26_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error26_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error26_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error27_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error27_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error27_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error28_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error28_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error28_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error29_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error29_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error29_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error30_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error30_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error30_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error31_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error31_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error31_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error32_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error32_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error32_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error33_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error33_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error33_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error34_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error34_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error34_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error35_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error35_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error35_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error36_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error36_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error36_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error37_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error37_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error37_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error38_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error38_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error38_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error39_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error39_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error39_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error40_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error40_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error40_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error41_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error41_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error41_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error42_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error42_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error42_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error43_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error43_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error43_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error44_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error44_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error44_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error45_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error45_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error45_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error46_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error46_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error46_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error47_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error47_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error47_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error48_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error48_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error48_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error49_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error49_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error49_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error50_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error50_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error50_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error51_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error51_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error51_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error52_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error52_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error52_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error53_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error53_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error53_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error54_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error54_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error54_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error55_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error55_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error55_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error56_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error56_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error56_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error57_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error57_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error57_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error58_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error58_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error58_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error59_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error59_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error59_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error60_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error60_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error60_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error61_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error61_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error61_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error62_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error62_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error62_is_in_range(uint8_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint8_t feb_can_rear_sensor_heartbeat_message_error63_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_rear_sensor_heartbeat_message_error63_decode(uint8_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_rear_sensor_heartbeat_message_error63_is_in_range(uint8_t value);
+
+  /**
+   * Pack message FEB_PING_PONG_counter1.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_feb_ping_pong_counter1_pack(uint8_t *dst_p, const struct feb_can_feb_ping_pong_counter1_t *src_p,
+                                          size_t size);
+
+  /**
+   * Unpack message FEB_PING_PONG_counter1.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_feb_ping_pong_counter1_unpack(struct feb_can_feb_ping_pong_counter1_t *dst_p, const uint8_t *src_p,
+                                            size_t size);
+
+  /**
+   * Init message fields to default values from FEB_PING_PONG_counter1.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_feb_ping_pong_counter1_init(struct feb_can_feb_ping_pong_counter1_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  int32_t feb_can_feb_ping_pong_counter1_counter_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_feb_ping_pong_counter1_counter_decode(int32_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_feb_ping_pong_counter1_counter_is_in_range(int32_t value);
+
+  /**
+   * Pack message FEB_PING_PONG_counter2.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_feb_ping_pong_counter2_pack(uint8_t *dst_p, const struct feb_can_feb_ping_pong_counter2_t *src_p,
+                                          size_t size);
+
+  /**
+   * Unpack message FEB_PING_PONG_counter2.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_feb_ping_pong_counter2_unpack(struct feb_can_feb_ping_pong_counter2_t *dst_p, const uint8_t *src_p,
+                                            size_t size);
+
+  /**
+   * Init message fields to default values from FEB_PING_PONG_counter2.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_feb_ping_pong_counter2_init(struct feb_can_feb_ping_pong_counter2_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  int32_t feb_can_feb_ping_pong_counter2_counter_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_feb_ping_pong_counter2_counter_decode(int32_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_feb_ping_pong_counter2_counter_is_in_range(int32_t value);
+
+  /**
+   * Pack message FEB_PING_PONG_counter3.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_feb_ping_pong_counter3_pack(uint8_t *dst_p, const struct feb_can_feb_ping_pong_counter3_t *src_p,
+                                          size_t size);
+
+  /**
+   * Unpack message FEB_PING_PONG_counter3.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_feb_ping_pong_counter3_unpack(struct feb_can_feb_ping_pong_counter3_t *dst_p, const uint8_t *src_p,
+                                            size_t size);
+
+  /**
+   * Init message fields to default values from FEB_PING_PONG_counter3.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_feb_ping_pong_counter3_init(struct feb_can_feb_ping_pong_counter3_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  int32_t feb_can_feb_ping_pong_counter3_counter_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_feb_ping_pong_counter3_counter_decode(int32_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_feb_ping_pong_counter3_counter_is_in_range(int32_t value);
+
+  /**
+   * Pack message FEB_PING_PONG_counter4.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_feb_ping_pong_counter4_pack(uint8_t *dst_p, const struct feb_can_feb_ping_pong_counter4_t *src_p,
+                                          size_t size);
+
+  /**
+   * Unpack message FEB_PING_PONG_counter4.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_feb_ping_pong_counter4_unpack(struct feb_can_feb_ping_pong_counter4_t *dst_p, const uint8_t *src_p,
+                                            size_t size);
+
+  /**
+   * Init message fields to default values from FEB_PING_PONG_counter4.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_feb_ping_pong_counter4_init(struct feb_can_feb_ping_pong_counter4_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  int32_t feb_can_feb_ping_pong_counter4_counter_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_feb_ping_pong_counter4_counter_decode(int32_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_feb_ping_pong_counter4_counter_is_in_range(int32_t value);
+
+  /**
+   * Pack message pcu_raw_acc.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_pcu_raw_acc_pack(uint8_t *dst_p, const struct feb_can_pcu_raw_acc_t *src_p, size_t size);
+
+  /**
+   * Unpack message pcu_raw_acc.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_pcu_raw_acc_unpack(struct feb_can_pcu_raw_acc_t *dst_p, const uint8_t *src_p, size_t size);
+
+  /**
+   * Init message fields to default values from pcu_raw_acc.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_pcu_raw_acc_init(struct feb_can_pcu_raw_acc_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_pcu_raw_acc_acc0_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_raw_acc_acc0_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_raw_acc_acc0_is_in_range(uint16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  uint16_t feb_can_pcu_raw_acc_acc1_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_pcu_raw_acc_acc1_decode(uint16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_pcu_raw_acc_acc1_is_in_range(uint16_t value);
+
+  /**
+   * Pack message ebs_pressure_status.
+   *
+   * @param[out] dst_p Buffer to pack the message into.
+   * @param[in] src_p Data to pack.
+   * @param[in] size Size of dst_p.
+   *
+   * @return Size of packed data, or negative error code.
+   */
+  int feb_can_ebs_pressure_status_pack(uint8_t *dst_p, const struct feb_can_ebs_pressure_status_t *src_p, size_t size);
+
+  /**
+   * Unpack message ebs_pressure_status.
+   *
+   * @param[out] dst_p Object to unpack the message into.
+   * @param[in] src_p Message to unpack.
+   * @param[in] size Size of src_p.
+   *
+   * @return zero(0) or negative error code.
+   */
+  int feb_can_ebs_pressure_status_unpack(struct feb_can_ebs_pressure_status_t *dst_p, const uint8_t *src_p,
+                                         size_t size);
+
+  /**
+   * Init message fields to default values from ebs_pressure_status.
+   *
+   * @param[in] msg_p Message to init.
+   *
+   * @return zero(0) on success or (-1) in case of nullptr argument.
+   */
+  int feb_can_ebs_pressure_status_init(struct feb_can_ebs_pressure_status_t *msg_p);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  int16_t feb_can_ebs_pressure_status_ebs_pressure_1_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_ebs_pressure_status_ebs_pressure_1_decode(int16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_ebs_pressure_status_ebs_pressure_1_is_in_range(int16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  int16_t feb_can_ebs_pressure_status_ebs_pressure_2_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_ebs_pressure_status_ebs_pressure_2_decode(int16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_ebs_pressure_status_ebs_pressure_2_is_in_range(int16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  int16_t feb_can_ebs_pressure_status_ebs_pressure_3_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_ebs_pressure_status_ebs_pressure_3_decode(int16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_ebs_pressure_status_ebs_pressure_3_is_in_range(int16_t value);
+
+  /**
+   * Encode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to encode.
+   *
+   * @return Encoded signal.
+   */
+  int16_t feb_can_ebs_pressure_status_ebs_pressure_4_encode(double value);
+
+  /**
+   * Decode given signal by applying scaling and offset.
+   *
+   * @param[in] value Signal to decode.
+   *
+   * @return Decoded signal.
+   */
+  double feb_can_ebs_pressure_status_ebs_pressure_4_decode(int16_t value);
+
+  /**
+   * Check that given signal is in allowed range.
+   *
+   * @param[in] value Signal to check.
+   *
+   * @return true if in range, false otherwise.
+   */
+  bool feb_can_ebs_pressure_status_ebs_pressure_4_is_in_range(int16_t value);
 
 #ifdef __cplusplus
 }

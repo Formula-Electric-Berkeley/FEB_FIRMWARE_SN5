@@ -12,15 +12,15 @@
 #define PARAM_BROADCAST_ADDR 148
 uint8_t PARAM_BROADCAST_DATA[2] = {0b10100000, 0b00010101}
 
-
-
-typedef struct RMS_MESSAGE_TYPE {
-    int16_t HV_Bus_Voltage;
-    int16_t Motor_Speed;
+typedef struct RMS_MESSAGE_TYPE
+{
+  int16_t HV_Bus_Voltage;
+  int16_t Motor_Speed;
 } RMS_MESSAGE_TYPE;
 RMS_MESSAGE_TYPE RMS_MESSAGE;
 
 void FEB_CAN_RMS_Init(void);
-void FEB_CAN_RMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type, const uint8_t *data, uint8_t length);
+void FEB_CAN_RMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type, const uint8_t *data,
+                          uint8_t length);
 
 #endif /* INC_FEB_CAN_RMS_H_ */

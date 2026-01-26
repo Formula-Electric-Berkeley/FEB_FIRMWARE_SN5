@@ -1,0 +1,63 @@
+name: Build All Projects
+
+on:
+  push:
+    branches: [main, "sa/*", "dev/*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { project: BMS,          buildable: true }
+          - { project: PCU,          buildable: true }
+          - { project: DASH,         buildable: true }
+          - { project: LVPDB,        buildable: true }
+          - { project: DART,         buildable: false }
+          - { project: DCU,          buildable: false }
+          - { project: Sensor_Nodes, buildable: false }
+
+    name: Build ${{ matrix.project }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ARM GCC Toolchain
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: latest
+
+      - name: Install Ninja
+        run: sudo apt-get install -y ninja-build
+
+      - name: Check buildability
+        id: check
+        run: |
+          if [ "${{ matrix.buildable }}" = "false" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::${{ matrix.project }} skipped -- Drivers/ not populated. Run CubeMX to generate."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure CMake
+        if: steps.check.outputs.skip != 'true'
+        working-directory: ${{ matrix.project }}
+        run: cmake --preset Debug
+
+      - name: Build
+        if: steps.check.outputs.skip != 'true'
+        working-directory: ${{ matrix.project }}
+        run: cmake --build --preset Debug
+
+      - name: Upload ELF artifact
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.project }}-firmware
+          path: ${{ matrix.project }}/build/Debug/${{ matrix.project }}.elf

@@ -26,4 +26,3 @@
 #define FEB_CAN_RMS_MOTOR_SPEED_FRAME_ID 0xA5
 
 #endif /* INC_FEB_CAN_FRAME_IDS_H_ */
-

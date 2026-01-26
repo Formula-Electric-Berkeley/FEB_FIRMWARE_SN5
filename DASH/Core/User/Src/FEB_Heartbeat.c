@@ -49,31 +49,35 @@ uint8_t FEB_CAN_HEARTBEAT_Filter_Config(CAN_HandleTypeDef* hcan, uint8_t FIFO_as
 }
 */
 
-void FEB_CAN_HEARTBEAT_Transmit() {
+void FEB_CAN_HEARTBEAT_Transmit()
+{
 
-    FEB_CAN_Tx_Header.StdId = FEB_CAN_DASH_HEARTBEAT_FRAME_ID;
-    FEB_CAN_Tx_Header.ExtId = 0;
-    FEB_CAN_Tx_Header.RTR = CAN_RTR_DATA; // Data frame.
-    FEB_CAN_Tx_Header.IDE = CAN_ID_STD;    // Standard ID.
-    FEB_CAN_Tx_Header.DLC = 8;       // Data Length Code (0-8 for standard CAN)
-    FEB_CAN_Tx_Header.TransmitGlobalTime = DISABLE;
+  FEB_CAN_Tx_Header.StdId = FEB_CAN_DASH_HEARTBEAT_FRAME_ID;
+  FEB_CAN_Tx_Header.ExtId = 0;
+  FEB_CAN_Tx_Header.RTR = CAN_RTR_DATA; // Data frame.
+  FEB_CAN_Tx_Header.IDE = CAN_ID_STD;   // Standard ID.
+  FEB_CAN_Tx_Header.DLC = 8;            // Data Length Code (0-8 for standard CAN)
+  FEB_CAN_Tx_Header.TransmitGlobalTime = DISABLE;
 
-	// Delay until mailbox available
-	while (HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) == 0) {}
+  // Delay until mailbox available
+  while (HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) == 0)
+  {
+  }
 
-    if (HAL_CAN_AddTxMessage(&hcan1, &FEB_CAN_Tx_Header, heartbeat, &FEB_CAN_Tx_Mailbox) != HAL_OK) {
-		// Code Error - Shutdown
-	}
+  if (HAL_CAN_AddTxMessage(&hcan1, &FEB_CAN_Tx_Header, heartbeat, &FEB_CAN_Tx_Mailbox) != HAL_OK)
+  {
+    // Code Error - Shutdown
+  }
 }
 
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
 
-void FEB_CAN_HEARTBEAT_Init() {
-	for ( int i = 0; i < 8; ++i ) {
-		memset(((uint8_t *)&heartbeat) + i, 0xFF, sizeof(uint8_t));
-	}
-
+void FEB_CAN_HEARTBEAT_Init()
+{
+  for (int i = 0; i < 8; ++i)
+  {
+    memset(((uint8_t *)&heartbeat) + i, 0xFF, sizeof(uint8_t));
+  }
 }
-

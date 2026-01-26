@@ -5,8 +5,9 @@
 
 #include "FEB_CAN_TX.h"
 
-typedef struct BSPD_TYPE {
-    int8_t state;
+typedef struct BSPD_TYPE
+{
+  int8_t state;
 } BSPD_TYPE;
 BSPD_TYPE BSPD;
 

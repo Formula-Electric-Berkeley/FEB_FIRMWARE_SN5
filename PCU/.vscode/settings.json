@@ -5,5 +5,13 @@
         "feb_printf_redirect.h": "c",
         "feb_adc.h": "c",
         "feb_can_tx.h": "c"
+    },
+    "[c]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools",
+        "editor.formatOnSave": true
+    },
+    "[cpp]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools",
+        "editor.formatOnSave": true
     }
 }

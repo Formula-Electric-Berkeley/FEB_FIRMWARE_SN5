@@ -1,0 +1,78 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [main, "sa/*", "dev/*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    name: clang-format check
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get install -y clang-format
+
+      - name: Check formatting (Core/ directories)
+        run: |
+          # Check all source files under Core/ (CubeMX-generated + user-written)
+          FILES=$(find . -path "*/Core/*" \( -name "*.c" -o -name "*.h" \) 2>/dev/null)
+          if [ -z "$FILES" ]; then
+            echo "No user source files found to check."
+            exit 0
+          fi
+          FAILED=0
+          for f in $FILES; do
+            if ! clang-format --dry-run --Werror "$f" 2>/dev/null; then
+              echo "::error file=$f::Formatting violation in $f"
+              FAILED=1
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then
+            echo ""
+            echo "Run 'clang-format -i <file>' to fix formatting, or use your editor's format-on-save."
+            exit 1
+          fi
+
+  cppcheck:
+    runs-on: ubuntu-latest
+    name: cppcheck ${{ matrix.project }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { project: BMS,          buildable: true }
+          - { project: PCU,          buildable: true }
+          - { project: DASH,         buildable: true }
+          - { project: LVPDB,        buildable: true }
+          - { project: DART,         buildable: false }
+          - { project: DCU,          buildable: false }
+          - { project: Sensor_Nodes, buildable: false }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        if: matrix.buildable
+        run: sudo apt-get install -y cppcheck
+
+      - name: Run cppcheck
+        if: matrix.buildable
+        working-directory: ${{ matrix.project }}
+        run: |
+          cppcheck \
+            --enable=warning,performance,portability \
+            --suppress=missingIncludeSystem \
+            --suppress=unmatchedSuppression \
+            --error-exitcode=1 \
+            --inline-suppr \
+            -i Drivers \
+            -i Middlewares \
+            Core/ \
+            2>&1

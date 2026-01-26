@@ -3,7 +3,7 @@
 
 // extern CAN_TxHeaderTypeDef FEB_CAN_Tx_Header;
 // extern uint32_t FEB_CAN_Tx_Mailbox;
-// extern CAN_HandleTypeDef hcan1; 
+// extern CAN_HandleTypeDef hcan1;
 // static uint8_t heartbeat[8];
 
 // // *********************************** Struct ************************************
@@ -14,7 +14,6 @@
 
 // // } BMS_MESSAGE_TYPE;
 // // BMS_MESSAGE_TYPE BMS_MESSAGE;
-
 
 // // ***** CAN FUNCTIONS ****
 // /* i dont think we need to config
@@ -68,4 +67,3 @@
 // 	}
 
 // }
-

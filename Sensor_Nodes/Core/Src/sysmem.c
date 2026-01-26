@@ -53,8 +53,8 @@ static uint8_t *__sbrk_heap_end = NULL;
  */
 void *_sbrk(ptrdiff_t incr)
 {
-  extern uint8_t _end; /* Symbol defined in the linker script */
-  extern uint8_t _estack; /* Symbol defined in the linker script */
+  extern uint8_t _end;             /* Symbol defined in the linker script */
+  extern uint8_t _estack;          /* Symbol defined in the linker script */
   extern uint32_t _Min_Stack_Size; /* Symbol defined in the linker script */
   const uint32_t stack_limit = (uint32_t)&_estack - (uint32_t)&_Min_Stack_Size;
   const uint8_t *max_heap = (uint8_t *)stack_limit;
@@ -80,8 +80,8 @@ void *_sbrk(ptrdiff_t incr)
 }
 
 #if defined(__PICOLIBC__)
-  // Picolibc expects syscalls without the leading underscore.
-  // This creates a strong alias so that
-  // calls to `sbrk()` are resolved to our `_sbrk()` implementation.
-  __strong_reference(_sbrk, sbrk);
+// Picolibc expects syscalls without the leading underscore.
+// This creates a strong alias so that
+// calls to `sbrk()` are resolved to our `_sbrk()` implementation.
+__strong_reference(_sbrk, sbrk);
 #endif

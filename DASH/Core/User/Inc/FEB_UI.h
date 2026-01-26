@@ -3,8 +3,8 @@
 
 // **************************************** Includes ****************************************
 
-//#include "FEB_CAN_ICS.h"
-//#include "FEB_CAN_BMS.h"
+// #include "FEB_CAN_ICS.h"
+// #include "FEB_CAN_BMS.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -17,8 +17,9 @@
 
 #include "stm32f4xx_hal.h"
 
-typedef struct {
-	char * test_str;
+typedef struct
+{
+  char *test_str;
 } Screen_Info_t;
 
 // **************************************** Functions ****************************************
