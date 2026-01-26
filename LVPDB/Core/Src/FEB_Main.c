@@ -87,7 +87,7 @@ void FEB_Main_Setup(void) {
 		
 		TPS2482_Init(&hi2c1, tps2482_i2c_addresses, tps2482_configurations, tps2482_ids, tps2482_init_res, NUM_TPS2482);
 		
-		printf("[SETUP] Initializing... [%d] Status:\tSH: %d,\tLT: %d,\tBM_L: %d,\tSM: %d,\tAF1_AF2: %d,\tCP_RF: %d\r\n", maxiter, tps2482_init_res[0], tps2482_init_res[1], tps2482_init_res[2], tps2482_init_res[3], tps2482_init_res[4], tps2482_init_res[5]);
+		printf("[SETUP] Initializing... [%d] Status:\tSH: %d,\tLT: %d,\tBM_L: %d,\tSM: %d,\tAF1_AF2: %d,\tCP_RF: %d\r\n", maxiter, tps2482_init_res[0], tps2482_init_res[1], tps2482_init_res[2], tps2482_init_res[3], tps2482_init_res[4], tps2482_init_res[5], );
 
 		for ( uint8_t i = 0; i < NUM_TPS2482; i++ ) {
 			// If any don't enable properly b will be false and thus loop continues
