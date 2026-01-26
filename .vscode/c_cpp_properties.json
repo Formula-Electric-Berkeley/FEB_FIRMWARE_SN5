@@ -2,16 +2,11 @@
     "configurations": [
         {
             "name": "STM32",
-            "compileCommands": [
-                "${workspaceFolder}/build/Debug/compile_commands.json"
-            ],
-            "macFrameworkPath": [
-                "/System/Library/Frameworks",
-                "/Library/Frameworks"
-            ],
-            "intelliSenseMode": "macos-clang-x64",
-            "cStandard": "c17",
-            "cppStandard": "c++14"
+            "compileCommands": "${workspaceFolder}/build/Debug/compile_commands.json",
+            "intelliSenseMode": "gcc-arm",
+            "cStandard": "c11",
+            "cppStandard": "c++14",
+            "compilerPath": "/opt/ST/STM32CubeCLT_1.19.0/GNU-tools-for-STM32/bin/arm-none-eabi-gcc"
         }
     ],
     "version": 4

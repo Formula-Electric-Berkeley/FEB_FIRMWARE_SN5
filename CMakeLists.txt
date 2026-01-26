@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.22)
 project(FEB_FIRMWARE_SN5 C CXX ASM)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+
 # Per-project build toggles (VSCode CMake extension shows these as options)
 option(BUILD_BMS          "Build BMS firmware"          OFF)
 option(BUILD_DASH         "Build DASH firmware"         OFF)
