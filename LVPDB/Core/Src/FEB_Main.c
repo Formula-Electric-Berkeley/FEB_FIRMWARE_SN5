@@ -87,7 +87,7 @@ void FEB_Main_Setup(void) {
 		
 		TPS2482_Init(&hi2c1, tps2482_i2c_addresses, tps2482_configurations, tps2482_ids, tps2482_init_res, NUM_TPS2482);
 		
-		printf("[SETUP] Initializing...  [%d]      Status:     LV: %d    SH: %d    LT: %d    BM_L: %d    SM: %d    AF1_AF2: %d    CP_RF: %d\r\n", maxiter, tps2482_init_res[0], tps2482_init_res[1], tps2482_init_res[2], tps2482_init_res[3], tps2482_init_res[4], tps2482_init_res[5], tps2482_init_res[6]);
+		printf("[SETUP] Initializing... [%d]       Status:     LV: %d    SH: %d    LT: %d    BM_L: %d    SM: %d    AF1_AF2: %d    CP_RF: %d\r\n", maxiter, tps2482_init_res[0], tps2482_init_res[1], tps2482_init_res[2], tps2482_init_res[3], tps2482_init_res[4], tps2482_init_res[5], tps2482_init_res[6]);
 
 		for ( uint8_t i = 0; i < NUM_TPS2482; i++ ) {
 			// If any don't enable properly b will be false and thus loop continues
@@ -119,8 +119,8 @@ void FEB_Main_Setup(void) {
 		TPS2482_Enable(tps2482_en_ports, tps2482_en_pins, start_en, tps2482_en_res, NUM_TPS2482 - 1);
 		TPS2482_GPIO_Read(tps2482_pg_ports, tps2482_pg_pins, tps2482_pg_res, NUM_TPS2482);
 
-		printf("[SETUP] Powering...    [%d] tps2482_en_res:     SH: %d     LT: %d     BM_L: %d     SM: %d     AF1_AF2: %d    CP_RF: %d\r\n", maxiter, tps2482_en_res[0], tps2482_en_res[1], tps2482_en_res[2], tps2482_en_res[3], tps2482_en_res[4], tps2482_en_res[5]);
-		printf("[SETUP] Validating...  [%d] tps2482_pg_res:     SH: %d     LT: %d     BM_L: %d     SM: %d     AF1_AF2: %d    CP_RF: %d,   LV: %d\r\n", maxiter, tps2482_pg_res[0], tps2482_pg_res[1], tps2482_pg_res[2], tps2482_pg_res[3], tps2482_pg_res[4], tps2482_pg_res[5], tps2482_pg_res[6]);
+		printf("[SETUP] Powering...     [%d] tps2482_en_res:               SH: %d    LT: %d     BM_L: %d     SM: %d     AF1_AF2: %d    CP_RF: %d\r\n", maxiter, tps2482_en_res[0], tps2482_en_res[1], tps2482_en_res[2], tps2482_en_res[3], tps2482_en_res[4], tps2482_en_res[5]);
+		printf("[SETUP] Validating...   [%d] tps2482_pg_res:     LV: %d    SH: %d    LT: %d     BM_L: %d     SM: %d     AF1_AF2: %d    CP_RF: %d\r\n", maxiter, tps2482_pg_res[0], tps2482_pg_res[1], tps2482_pg_res[2], tps2482_pg_res[3], tps2482_pg_res[4], tps2482_pg_res[5], tps2482_pg_res[6]);
 
 		for ( uint8_t i = 0; i < NUM_TPS2482 - 1; i++ ) {
 			// If any don't enable properly b will be false and thus loop continues
