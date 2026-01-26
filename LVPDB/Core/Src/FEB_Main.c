@@ -106,7 +106,7 @@ void FEB_Main_Setup(void) {
 	bool tps2482_pg_success = false;
 	maxiter = 0; // Safety in case of infinite while
 
-	uint8_t start_en[NUM_TPS2482 - 1] = {1, 1, 1, 1, 1, 1};
+	uint8_t start_en[NUM_TPS2482 - 1] = {1, 0, 0, 0, 0, 0};
 
 	while ( !tps2482_en_success || !tps2482_pg_success ) {
 		if ( maxiter > 100 ) {
@@ -315,7 +315,7 @@ static void FEB_Variable_Init(void) {
 	tps2482_i2c_addresses[3] = BM_L_ADDR;
 	tps2482_i2c_addresses[4] = SM_ADDR;
 	tps2482_i2c_addresses[5] = AF1_AF2_ADDR;
-	tps2482_i2c_addresses[6] = CP_RF_CURRENT_LSB;
+	tps2482_i2c_addresses[6] = CP_RF_ADDR;
 
 	for ( uint8_t i = 0; i < NUM_TPS2482; i++ ) {
 		tps2482_configurations[i].config = TPS2482_CONFIG_DEFAULT;
