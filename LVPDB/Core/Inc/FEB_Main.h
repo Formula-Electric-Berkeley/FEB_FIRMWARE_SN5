@@ -13,7 +13,7 @@
 /*
  * The LVPDB has multiple TPS chips on the bus. These are the addresses of
  * each of the TPS chips. The naming conventions is as follows:
- *		LV - Low Voltage Source (scl-sda)
+ *		LV - Low Voltage Source (sda-scl)
  *		SH - Shutdown Source (sda-sda)
  *		LT - Laptop Branch (gnd-gnd)
  *		BM_L - Braking Servo, Lidar (gnd-scl) 
@@ -25,7 +25,7 @@
 #define NUM_TPS2482	7
 #define NUM_TPS2482	7
 
-#define LV_ADDR         TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_SCL, TPS2482_I2C_ADDR_SDA) // A1:SCL 	A0:SDA
+#define LV_ADDR         TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_SDA, TPS2482_I2C_ADDR_SCL) // A1:SDA 	A0:SCL
 #define SH_ADDR         TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_SDA, TPS2482_I2C_ADDR_SDA) // A1:SDA 	A0:SDA
 #define LT_ADDR         TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_GND, TPS2482_I2C_ADDR_GND) // A1:GND 	A0:GND
 #define BM_L_ADDR         TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_GND, TPS2482_I2C_ADDR_SCL) // A1:GND 	A0:SCL
