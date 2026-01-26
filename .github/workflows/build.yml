@@ -47,11 +47,10 @@ jobs:
           -G Ninja
           -DCMAKE_BUILD_TYPE=Debug
           -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-arm-none-eabi.cmake
-          -DBUILD_${{ matrix.project }}=ON
 
       - name: Build
         if: steps.check.outputs.skip != 'true'
-        run: cmake --build build/${{ matrix.project }}
+        run: cmake --build build/${{ matrix.project }} --target ${{ matrix.project }}
 
       - name: Upload ELF artifact
         if: steps.check.outputs.skip != 'true'

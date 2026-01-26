@@ -4,17 +4,17 @@ Firmware for the FEB SN5 Formula E vehicle. Each subdirectory corresponds to a b
 
 ## Project Structure
 
-| Directory | Board | Build Status |
-|-----------|-------|--------------|
-| `LVPDB/` | Low Voltage Power Distribution Board | Buildable |
-| `BMS/` | Battery Management System | `.ioc` only |
-| `DASH/` | Dashboard | `.ioc` only |
-| `DART/` | DART | `.ioc` only |
-| `DCU/` | DCU | `.ioc` only |
-| `PCU/` | PCU | `.ioc` only |
-| `Sensor_Nodes/` | Sensor Nodes | `.ioc` only |
+| Directory | Board | MCU | Notes |
+|-----------|-------|-----|-------|
+| `LVPDB/` | Low Voltage Power Distribution Board | STM32F446RE | |
+| `BMS/` | Battery Management System | STM32F446RE | |
+| `DASH/` | Dashboard | STM32F469RE | FreeRTOS, FatFS |
+| `DART/` | DART | STM32F446RE | |
+| `DCU/` | DCU | STM32F446RE | |
+| `PCU/` | PCU | STM32F446RE | |
+| `Sensor_Nodes/` | Sensor Nodes | STM32F446RE | |
 
-Boards marked `.ioc` only contain STM32CubeMX project files but have not yet been set up for CMake builds. To make them buildable, open the `.ioc` file in STM32CubeMX, generate code, then add a `CMakeLists.txt` following the pattern in `LVPDB/`.
+All boards are fully buildable with CMake.
 
 ```
 cmake/                     # Shared toolchain files
@@ -68,11 +68,11 @@ All builds are driven from the project root.
 ### Using CMake Presets (recommended)
 
 ```bash
-# Configure (Debug)
+# Configure (Debug) -- configures all boards
 cmake --preset Debug
 
-# Build
-cmake --build build/Debug
+# Build a specific board
+cmake --build build/Debug --target LVPDB
 ```
 
 ### Manual CMake
@@ -82,17 +82,24 @@ cmake -S . -B build/Debug -G Ninja \
   -DCMAKE_BUILD_TYPE=Debug \
   -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-arm-none-eabi.cmake
 
-cmake --build build/Debug
+cmake --build build/Debug --target LVPDB
 ```
 
 ### Building a Specific Board
 
-Only LVPDB is enabled by default. To build a different board (once it has a `CMakeLists.txt` and `Core/` directory):
+Use `--target` to build a single board:
 
 ```bash
-cmake --preset Debug -DBUILD_LVPDB=OFF -DBUILD_BMS=ON
+cmake --build build/Debug --target BMS
+```
+
+Build all boards at once by omitting `--target`:
+
+```bash
 cmake --build build/Debug
 ```
+
+In VSCode with the CMake Tools extension, select the target from the **Build Target** dropdown in the status bar.
 
 ### Build Outputs
 

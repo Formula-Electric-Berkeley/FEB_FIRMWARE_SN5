@@ -1,6 +1,6 @@
 {
   "device": "STM32F446RET6",
   "core": "Cortex-M4",
-  "order": 0,
+  "order": 3,
   "toolchain": "GCC"
 }
