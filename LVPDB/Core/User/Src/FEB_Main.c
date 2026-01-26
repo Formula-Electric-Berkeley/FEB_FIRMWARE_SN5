@@ -69,7 +69,7 @@ bool bus_voltage_healthy = true;
 
 void FEB_Main_Setup(void)
 {
-  printf("Beginning Setup\r\n");
+  printf("[SETUP] Beginning Setup\r\n");
 
   FEB_Variable_Init();
   // FEB_CAN_HEARTBEAT_Init();
