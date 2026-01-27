@@ -1,0 +1,3 @@
+[submodule "common/FEB_CAN_Library_SN4"]
+	path = common/FEB_CAN_Library_SN4
+	url = https://github.com/Formula-Electric-Berkeley/FEB_CAN_Library_SN4.git
