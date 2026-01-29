@@ -94,4 +94,23 @@ jobs:
       - name: Validate generated files
         if: steps.check.outputs.skip != 'true'
         working-directory: common/FEB_CAN_Library_SN4
-        run: ./generate_can.sh --check
+        run: |
+          set +e
+          OUTPUT=$(./generate_can.sh --check 2>&1)
+          EXIT_CODE=$?
+          echo "$OUTPUT"
+
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "### Generated Files Check Failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+            echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "**To fix:** Run \`./generate_can.sh\` in \`common/FEB_CAN_Library_SN4\` and commit the changes." >> "$GITHUB_STEP_SUMMARY"
+            exit $EXIT_CODE
+          else
+            echo "### Generated Files Check" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "All CAN library generated files are up to date." >> "$GITHUB_STEP_SUMMARY"
+          fi
