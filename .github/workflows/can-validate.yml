@@ -81,7 +81,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install cantools
-        run: pip install cantools
+        run: pip install cantools==39.4.13
 
       - name: Check if CAN library exists
         id: check
