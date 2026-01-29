@@ -36,6 +36,7 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+.venv/
 
 # IDE files
 .idea/
