@@ -17,10 +17,24 @@ Firmware for the FEB SN5 Formula E vehicle. Each subdirectory corresponds to a b
 All boards are fully buildable with CMake.
 
 ```
-cmake/                     # Shared toolchain files
-  gcc-arm-none-eabi.cmake  # ARM GCC cross-compiler config
-  starm-clang.cmake        # Alternative STARM Clang config
-.github/workflows/         # CI/CD pipelines
+cmake/                           # Shared toolchain files
+  gcc-arm-none-eabi.cmake        # ARM GCC cross-compiler config
+common/
+  FEB_CAN_Library_SN4/           # CAN library (git submodule)
+    gen/                         # Generated C pack/unpack code
+    *_messages.py                # Python message definitions
+    generate_can.sh              # Generation script
+.github/workflows/               # CI/CD pipelines
+```
+
+## Cloning the Repository
+
+```bash
+# Clone with submodules (required for CAN library)
+git clone --recursive https://github.com/Formula-Electric-Berkeley/FEB_FIRMWARE_SN5.git
+
+# If already cloned without --recursive:
+git submodule update --init --recursive
 ```
 
 ## Prerequisites
@@ -37,7 +51,7 @@ cmake/                     # Shared toolchain files
 
 - **STM32CubeCLT / STM32CubeIDE** -- for IDE integration, flashing, and debugging
 - **STM32CubeMX** -- for modifying `.ioc` peripheral configurations
-- **Python 3** + `cantools` -- only needed to regenerate CAN message definitions (see [CAN Library](#can-library))
+- **Python 3** -- only needed to regenerate CAN message definitions; dependencies are managed automatically (see [CAN Library](#can-library))
 - **clang-format** -- for code formatting (enforced in CI)
 
 ### Environment Setup
@@ -124,35 +138,72 @@ If you have the STM32 VSCode extension installed, use the **CubeProg: Flash proj
 
 ## CAN Library
 
-Auto-generated CAN message packing/unpacking code lives in `LVPDB/Core/User/Inc/FEB_CAN_Library_SN4/gen/`. The generated files are committed to the repo, so you do not need to regenerate them to build.
+The CAN message library is a **git submodule** located at `common/FEB_CAN_Library_SN4/`. It provides auto-generated C pack/unpack functions from Python message definitions. The generated files are committed to the submodule, so you do not need to regenerate them to build.
 
-To regenerate after changing message definitions:
+### Regenerating CAN Code
+
+After modifying Python message definitions in `common/FEB_CAN_Library_SN4/*_messages.py`:
 
 ```bash
-cd LVPDB/Core/User/Inc/FEB_CAN_Library_SN4
-
-# Install cantools (once)
-pip install cantools
-
-# Generate DBC file from Python message definitions
-python3 generate.py
-
-# Generate C source from DBC
-sudo python3 -m cantools generate_c_source -o gen gen/FEB_CAN.dbc
+cd common/FEB_CAN_Library_SN4
+./generate_can.sh
 ```
 
-See `LVPDB/Core/User/Inc/FEB_CAN_Library_SN4/README.md` for more details.
+The script automatically manages a Python virtual environment and installs the correct version of cantools.
+
+### Useful Commands
+
+| Command | Description |
+|---------|-------------|
+| `./generate_can.sh` | Regenerate all CAN files |
+| `./generate_can.sh --list` | List all messages with frame IDs |
+| `./generate_can.sh --ids` | Show frame ID allocation map |
+| `./generate_can.sh --check` | CI mode: verify files are up to date |
+
+### Updating the Submodule
+
+If upstream CAN library changes:
+
+```bash
+git submodule update --remote common/FEB_CAN_Library_SN4
+```
+
+See `common/FEB_CAN_Library_SN4/README.md` for detailed documentation on adding new CAN messages.
 
 ## CI/CD
 
-GitHub Actions runs on pushes to `main`, `sa/*`, and `dev/*` branches, and on pull requests to `main`:
+GitHub Actions runs on pushes and pull requests to `main`:
 
-- **Build** (`build.yml`): Builds all boards that have a `CMakeLists.txt` + `Core/` directory. Boards without these are skipped with a warning.
-- **Code Quality** (`quality.yml`):
-  - `clang-format` check on user code (`Core/User/` only, not CubeMX-generated code)
-  - `cppcheck` static analysis on `Core/` (excludes `Drivers/` and `Middlewares/`)
+| Workflow | Trigger | Description |
+|----------|---------|-------------|
+| **Build** (`build.yml`) | Push/PR to main | Matrix build of all 7 boards. Skips boards missing `CMakeLists.txt` or `Core/`. |
+| **Code Quality** (`quality.yml`) | Push/PR to main | `clang-format` on `Core/User/` files, `cppcheck` static analysis. |
+| **CAN Validation** (`can-validate.yml`) | Push/PR to main | Checks submodule is up-to-date with upstream, validates generated files match definitions. |
+| **Firmware Size** (`size.yml`) | Push/PR to main | Tracks Flash/RAM usage per board. Warns at 90%, fails at 98%. |
+| **Release** (`release.yml`) | Tag `v*` | Builds Release binaries, creates GitHub Release with `.elf`, `.bin`, `.hex` artifacts. |
+
+### Flash Size Limits
+
+| Board | Flash Limit | MCU |
+|-------|-------------|-----|
+| BMS, PCU, LVPDB, DART, DCU, Sensor_Nodes | 512 KB | STM32F446RE |
+| DASH | 2 MB | STM32F469RE |
 
 ## Code Organization
+
+### Shared Code
+
+The `common/` directory contains shared code across all boards:
+
+```
+common/
+  FEB_CAN_Library_SN4/      # Git submodule - CAN message definitions
+    gen/                    # Generated C code (feb_can.c, feb_can.h)
+    *_messages.py           # Python message definitions per board
+    generate_can.sh         # Generation script
+```
+
+### Board Directory Structure
 
 Within each board directory:
 
