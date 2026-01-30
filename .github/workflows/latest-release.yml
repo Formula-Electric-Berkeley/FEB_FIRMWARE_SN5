@@ -124,11 +124,11 @@ jobs:
 
           ### Boards Included
           - BMS (Battery Management System)
-          - PCU (Power Control Unit)
+          - PCU (Powertrain Control Unit)
           - DASH (Dashboard)
           - LVPDB (Low Voltage Power Distribution)
           - DART
-          - DCU (Drive Control Unit)
+          - DCU (Data Control Unit)
           - Sensor_Nodes
 
           ### Files
