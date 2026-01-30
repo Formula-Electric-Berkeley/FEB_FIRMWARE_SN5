@@ -1,4 +1,4 @@
-name: Release Automation
+name: Tagged Release
 
 on:
   push:

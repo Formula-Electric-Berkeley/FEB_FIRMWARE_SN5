@@ -24,6 +24,9 @@ common/
     gen/                         # Generated C pack/unpack code
     *_messages.py                # Python message definitions
     generate_can.sh              # Generation script
+scripts/
+  flash.sh                       # Board flashing script
+  version.sh                     # Version tagging script
 .github/workflows/               # CI/CD pipelines
 ```
 
@@ -126,7 +129,22 @@ After a successful build, outputs are in `build/Debug/<BOARD>/`:
 
 ## Flashing
 
-### Using STM32_Programmer_CLI
+### Using the Flash Script (Recommended)
+
+The `scripts/flash.sh` script provides an easy interface for flashing boards with prerequisite checking and interactive selection:
+
+```bash
+./scripts/flash.sh                    # Interactive menu (shows build timestamps)
+./scripts/flash.sh -b LVPDB           # Flash specific board
+./scripts/flash.sh -f firmware.elf    # Flash specific file
+./scripts/flash.sh -l                 # Loop mode (flash multiple boards)
+./scripts/flash.sh --list-probes      # List connected programmers
+./scripts/flash.sh -h                 # Show help
+```
+
+The script checks for STM32CubeCLT installation and provides platform-specific setup instructions if needed. If the firmware hasn't been built yet, it offers to build it for you.
+
+### Using STM32_Programmer_CLI Directly
 
 ```bash
 STM32_Programmer_CLI --connect port=swd --download build/Debug/LVPDB/LVPDB.elf -hardRst -rst --start
@@ -180,7 +198,8 @@ GitHub Actions runs on pushes and pull requests to `main`:
 | **Code Quality** (`quality.yml`) | Push/PR to main | `clang-format` on `Core/User/` files, `cppcheck` static analysis. |
 | **CAN Validation** (`can-validate.yml`) | Push/PR to main | Checks submodule is up-to-date with upstream, validates generated files match definitions. |
 | **Firmware Size** (`size.yml`) | Push/PR to main | Tracks Flash/RAM usage per board. Warns at 90%, fails at 98%. |
-| **Release** (`release.yml`) | Tag `v*` | Builds Release binaries, creates GitHub Release with `.elf`, `.bin`, `.hex` artifacts. |
+| **Latest Release** (`latest-release.yml`) | Push to main | Auto-updates "latest" pre-release with current firmware binaries. |
+| **Tagged Release** (`release.yml`) | Tag `v*` | Builds Release binaries, creates versioned GitHub Release. |
 
 ### Flash Size Limits
 
@@ -188,6 +207,39 @@ GitHub Actions runs on pushes and pull requests to `main`:
 |-------|-------------|-----|
 | BMS, PCU, LVPDB, DART, DCU, Sensor_Nodes | 512 KB | STM32F446RE |
 | DASH | 2 MB | STM32F469RE |
+
+## Releases
+
+### Downloading Firmware
+
+Pre-built firmware binaries are available from [GitHub Releases](https://github.com/Formula-Electric-Berkeley/FEB_FIRMWARE_SN5/releases):
+
+- **Latest Build**: The `latest` pre-release is automatically updated on every push to `main`. Download from:
+  ```
+  https://github.com/Formula-Electric-Berkeley/FEB_FIRMWARE_SN5/releases/tag/latest
+  ```
+
+- **Versioned Releases**: Stable releases are tagged with version numbers (e.g., `v1.0.0`).
+
+Each release includes `.elf`, `.bin`, and `.hex` files for all 7 boards.
+
+### Creating a Versioned Release
+
+Use the version script to create and push a new version tag:
+
+```bash
+./scripts/version.sh              # Auto-increment patch (v1.0.0 → v1.0.1)
+./scripts/version.sh patch        # Same as above
+./scripts/version.sh minor        # Bump minor (v1.0.1 → v1.1.0)
+./scripts/version.sh major        # Bump major (v1.1.0 → v2.0.0)
+./scripts/version.sh 2.5.0        # Set explicit version (→ v2.5.0)
+```
+
+This automatically:
+1. Creates a git tag with the new version
+2. Pushes the tag to GitHub
+3. Triggers the Tagged Release workflow
+4. Creates a GitHub Release with all firmware binaries
 
 ## Code Organization
 
