@@ -57,7 +57,7 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         run: |
           TAG="${{ github.ref_name }}"
-          TIMESTAMP=$(date -u +"%m-%d-%Y_%H%M%S")
+          TIMESTAMP=$(TZ=America/Los_Angeles date +"%m-%d-%Y_%H-%M-%S")
           BUILD_DIR="build/${{ matrix.project }}/${{ matrix.project }}"
 
           cp "${BUILD_DIR}/${{ matrix.project }}.elf" "${BUILD_DIR}/${{ matrix.project }}-${TAG}-${TIMESTAMP}.elf"
