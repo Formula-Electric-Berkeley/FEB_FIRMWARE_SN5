@@ -12,10 +12,6 @@
 #
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$SCRIPT_DIR/.."
-BUILD_DIR="$REPO_ROOT/build/Debug"
-
 # Available boards
 BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes")
 
@@ -134,10 +130,17 @@ show_setup_instructions() {
     echo -e "${YELLOW}After installation, run this script again.${NC}"
 }
 
+# Get the build directory (computed lazily to support standalone script usage)
+get_build_dir() {
+    local script_dir="$(cd "$(dirname "$0")" && pwd)"
+    echo "$script_dir/../build/Debug"
+}
+
 # Get the .elf file path for a board
 get_elf_path() {
     local board="$1"
-    echo "$BUILD_DIR/$board/$board.elf"
+    local build_dir="$(get_build_dir)"
+    echo "$build_dir/$board/$board.elf"
 }
 
 # Check if a board name is valid
@@ -198,7 +201,7 @@ flash_board() {
 
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             log_info "Building $board..."
-            cmake --build "$BUILD_DIR" --target "$board"
+            cmake --build "$(get_build_dir)" --target "$board"
             echo ""
         else
             log_error "Cannot flash without firmware. Build first with:"
