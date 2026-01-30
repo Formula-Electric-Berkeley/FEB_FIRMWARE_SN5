@@ -57,11 +57,12 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         run: |
           TAG="${{ github.ref_name }}"
+          TIMESTAMP=$(date -u +"%m-%d-%Y_%H%M%S")
           BUILD_DIR="build/${{ matrix.project }}/${{ matrix.project }}"
 
-          cp "${BUILD_DIR}/${{ matrix.project }}.elf" "${BUILD_DIR}/${{ matrix.project }}-${TAG}.elf"
-          cp "${BUILD_DIR}/${{ matrix.project }}.bin" "${BUILD_DIR}/${{ matrix.project }}-${TAG}.bin"
-          cp "${BUILD_DIR}/${{ matrix.project }}.hex" "${BUILD_DIR}/${{ matrix.project }}-${TAG}.hex"
+          cp "${BUILD_DIR}/${{ matrix.project }}.elf" "${BUILD_DIR}/${{ matrix.project }}-${TAG}-${TIMESTAMP}.elf"
+          cp "${BUILD_DIR}/${{ matrix.project }}.bin" "${BUILD_DIR}/${{ matrix.project }}-${TAG}-${TIMESTAMP}.bin"
+          cp "${BUILD_DIR}/${{ matrix.project }}.hex" "${BUILD_DIR}/${{ matrix.project }}-${TAG}-${TIMESTAMP}.hex"
 
       - name: Upload release artifacts
         if: steps.check.outputs.skip != 'true'
@@ -69,9 +70,9 @@ jobs:
         with:
           name: ${{ matrix.project }}-release
           path: |
-            build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}-${{ github.ref_name }}.elf
-            build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}-${{ github.ref_name }}.bin
-            build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}-${{ github.ref_name }}.hex
+            build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}-${{ github.ref_name }}-*.elf
+            build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}-${{ github.ref_name }}-*.bin
+            build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}-${{ github.ref_name }}-*.hex
 
   release:
     needs: build

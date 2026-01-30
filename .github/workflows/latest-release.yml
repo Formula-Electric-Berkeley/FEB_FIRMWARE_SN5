@@ -61,11 +61,12 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         run: |
           SHORT_SHA="${GITHUB_SHA:0:7}"
+          TIMESTAMP=$(date -u +"%m-%d-%Y_%H%M%S")
           BUILD_DIR="build/${{ matrix.project }}/${{ matrix.project }}"
 
-          cp "${BUILD_DIR}/${{ matrix.project }}.elf" "${BUILD_DIR}/${{ matrix.project }}-latest-${SHORT_SHA}.elf"
-          cp "${BUILD_DIR}/${{ matrix.project }}.bin" "${BUILD_DIR}/${{ matrix.project }}-latest-${SHORT_SHA}.bin"
-          cp "${BUILD_DIR}/${{ matrix.project }}.hex" "${BUILD_DIR}/${{ matrix.project }}-latest-${SHORT_SHA}.hex"
+          cp "${BUILD_DIR}/${{ matrix.project }}.elf" "${BUILD_DIR}/${{ matrix.project }}-latest-${TIMESTAMP}-${SHORT_SHA}.elf"
+          cp "${BUILD_DIR}/${{ matrix.project }}.bin" "${BUILD_DIR}/${{ matrix.project }}-latest-${TIMESTAMP}-${SHORT_SHA}.bin"
+          cp "${BUILD_DIR}/${{ matrix.project }}.hex" "${BUILD_DIR}/${{ matrix.project }}-latest-${TIMESTAMP}-${SHORT_SHA}.hex"
 
       - name: Upload release artifacts
         if: steps.check.outputs.skip != 'true'
@@ -138,7 +139,11 @@ jobs:
           - \`.hex\` - Intel HEX format
 
           ### Flashing
-          Download \`flash.sh\` and run: \`./flash.sh -f <firmware.elf>\`" \
+          Download \`flash.sh\`, make it executable, and run:
+          \`\`\`
+          chmod +x flash.sh
+          ./flash.sh -f <firmware.elf>
+          \`\`\`" \
             --prerelease \
             --target ${{ github.sha }} \
             release-files/*

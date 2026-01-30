@@ -167,6 +167,8 @@ The `scripts/flash.sh` script provides an easy interface for flashing boards wit
 ./scripts/flash.sh -h                 # Show help
 ```
 
+> **Note:** If you downloaded `flash.sh` from a GitHub release, make it executable first: `chmod +x flash.sh`
+
 The script checks for STM32CubeCLT installation and provides platform-specific setup instructions if needed. If the firmware hasn't been built yet, it offers to build it for you.
 
 ### Using STM32_Programmer_CLI Directly
