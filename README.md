@@ -78,6 +78,35 @@ ninja --version
 echo $CUBE_BUNDLE_PATH   # should print your CubeCLT path
 ```
 
+## Code Formatting
+
+The project uses `clang-format` with an LLVM-based style (2-space indent, 120-char lines, Allman braces). The `.clang-format` file in the repo root is automatically detected by editors and tools.
+
+### Format on Save (VSCode)
+
+1. Install the **C/C++** extension (Microsoft) or **clang-format** extension
+2. Add to your `.vscode/settings.json` (workspace or user):
+   ```json
+   {
+     "editor.formatOnSave": true,
+     "[c]": {
+       "editor.defaultFormatter": "ms-vscode.cpptools"
+     },
+     "[cpp]": {
+       "editor.defaultFormatter": "ms-vscode.cpptools"
+     }
+   }
+   ```
+
+### Format Script
+
+Format all user code across all boards:
+
+```bash
+./scripts/format.sh           # Format all Core/User/ files
+./scripts/format.sh --check   # Check only (CI mode, exits 1 if changes needed)
+```
+
 ## Build
 
 All builds are driven from the project root.

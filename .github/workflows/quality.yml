@@ -19,25 +19,7 @@ jobs:
         run: sudo apt-get install -y clang-format
 
       - name: Check formatting (user code)
-        run: |
-          # Check user-written source files under Core/User/ (excludes CubeMX-generated code)
-          FILES=$(find . -path "*/Core/User/*" \( -name "*.c" -o -name "*.h" \) 2>/dev/null)
-          if [ -z "$FILES" ]; then
-            echo "No user source files found to check."
-            exit 0
-          fi
-          FAILED=0
-          for f in $FILES; do
-            if ! clang-format --dry-run --Werror "$f" 2>/dev/null; then
-              echo "::error file=$f::Formatting violation in $f"
-              FAILED=1
-            fi
-          done
-          if [ "$FAILED" -eq 1 ]; then
-            echo ""
-            echo "Run 'clang-format -i <file>' to fix formatting, or use your editor's format-on-save."
-            exit 1
-          fi
+        run: ./scripts/format.sh --check
 
   cppcheck:
     runs-on: ubuntu-latest
