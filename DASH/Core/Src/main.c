@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2025 STMicroelectronics.
+  * Copyright (c) 2026 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -68,7 +68,25 @@ UART_HandleTypeDef huart6;
 
 SDRAM_HandleTypeDef hsdram1;
 
-osThreadId defaultTaskHandle;
+/* Definitions for btnTxLoopTask */
+osThreadId_t btnTxLoopTaskHandle;
+const osThreadAttr_t btnTxLoopTask_attributes = {
+  .name = "btnTxLoopTask",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityHigh1,
+};
+/* Definitions for displayTask */
+osThreadId_t displayTaskHandle;
+const osThreadAttr_t displayTask_attributes = {
+  .name = "displayTask",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityHigh,
+};
+/* Definitions for FEB_I2C_Mutex */
+osMutexId_t FEB_I2C_MutexHandle;
+const osMutexAttr_t FEB_I2C_Mutex_attributes = {
+  .name = "FEB_I2C_Mutex"
+};
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -91,7 +109,8 @@ static void MX_SDIO_SD_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_USART6_UART_Init(void);
-void StartDefaultTask(void const * argument);
+void StartBtnTxLoop(void *argument);
+void StartDisplayTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -153,6 +172,12 @@ int main(void)
 
   /* USER CODE END 2 */
 
+  /* Init scheduler */
+  osKernelInitialize();
+  /* Create the mutex(es) */
+  /* creation of FEB_I2C_Mutex */
+  FEB_I2C_MutexHandle = osMutexNew(&FEB_I2C_Mutex_attributes);
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -170,13 +195,19 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 4096);
-  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+  /* creation of btnTxLoopTask */
+  btnTxLoopTaskHandle = osThreadNew(StartBtnTxLoop, NULL, &btnTxLoopTask_attributes);
+
+  /* creation of displayTask */
+  displayTaskHandle = osThreadNew(StartDisplayTask, NULL, &displayTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
 
   /* Start scheduler */
   osKernelStart();
@@ -215,8 +246,8 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 180;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 360;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 6;
   RCC_OscInitStruct.PLL.PLLR = 6;
@@ -259,12 +290,12 @@ void PeriphCommonClock_Config(void)
   */
   PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SAI_PLLSAI|RCC_PERIPHCLK_SDIO
                               |RCC_PERIPHCLK_CLK48|RCC_PERIPHCLK_LTDC;
-  PeriphClkInitStruct.PLLSAI.PLLSAIN = 144;
-  PeriphClkInitStruct.PLLSAI.PLLSAIR = 2;
+  PeriphClkInitStruct.PLLSAI.PLLSAIN = 384;
+  PeriphClkInitStruct.PLLSAI.PLLSAIR = 7;
   PeriphClkInitStruct.PLLSAI.PLLSAIQ = 2;
-  PeriphClkInitStruct.PLLSAI.PLLSAIP = RCC_PLLSAIP_DIV6;
+  PeriphClkInitStruct.PLLSAI.PLLSAIP = RCC_PLLSAIP_DIV8;
   PeriphClkInitStruct.PLLSAIDivQ = 1;
-  PeriphClkInitStruct.PLLSAIDivR = RCC_PLLSAIDIVR_4;
+  PeriphClkInitStruct.PLLSAIDivR = RCC_PLLSAIDIVR_2;
   PeriphClkInitStruct.Clk48ClockSelection = RCC_CLK48CLKSOURCE_PLLSAIP;
   PeriphClkInitStruct.SdioClockSelection = RCC_SDIOCLKSOURCE_CLK48;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
@@ -353,10 +384,10 @@ static void MX_DMA2D_Init(void)
   /* USER CODE END DMA2D_Init 1 */
   hdma2d.Instance = DMA2D;
   hdma2d.Init.Mode = DMA2D_M2M;
-  hdma2d.Init.ColorMode = DMA2D_OUTPUT_ARGB8888;
+  hdma2d.Init.ColorMode = DMA2D_OUTPUT_RGB565;
   hdma2d.Init.OutputOffset = 0;
   hdma2d.LayerCfg[1].InputOffset = 0;
-  hdma2d.LayerCfg[1].InputColorMode = DMA2D_INPUT_ARGB8888;
+  hdma2d.LayerCfg[1].InputColorMode = DMA2D_INPUT_RGB565;
   hdma2d.LayerCfg[1].AlphaMode = DMA2D_NO_MODIF_ALPHA;
   hdma2d.LayerCfg[1].InputAlpha = 0;
   if (HAL_DMA2D_Init(&hdma2d) != HAL_OK)
@@ -388,8 +419,7 @@ static void MX_DSIHOST_DSI_Init(void)
   DSI_PLLInitTypeDef PLLInit = {0};
   DSI_HOST_TimeoutTypeDef HostTimeouts = {0};
   DSI_PHY_TimerTypeDef PhyTimings = {0};
-  DSI_LPCmdTypeDef LPCmd = {0};
-  DSI_CmdCfgTypeDef CmdCfg = {0};
+  DSI_VidCfgTypeDef VidCfg = {0};
 
   /* USER CODE BEGIN DSIHOST_Init 1 */
 
@@ -418,17 +448,13 @@ static void MX_DSIHOST_DSI_Init(void)
   {
     Error_Handler();
   }
-  PhyTimings.ClockLaneHS2LPTime = 28;
-  PhyTimings.ClockLaneLP2HSTime = 33;
-  PhyTimings.DataLaneHS2LPTime = 15;
-  PhyTimings.DataLaneLP2HSTime = 25;
+  PhyTimings.ClockLaneHS2LPTime = 35;
+  PhyTimings.ClockLaneLP2HSTime = 35;
+  PhyTimings.DataLaneHS2LPTime = 35;
+  PhyTimings.DataLaneLP2HSTime = 35;
   PhyTimings.DataLaneMaxReadTime = 0;
   PhyTimings.StopWaitTime = 10;
   if (HAL_DSI_ConfigPhyTimer(&hdsi, &PhyTimings) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_DSI_ConfigFlowControl(&hdsi, DSI_FLOW_CONTROL_BTA) != HAL_OK)
   {
     Error_Handler();
   }
@@ -440,35 +466,34 @@ static void MX_DSIHOST_DSI_Init(void)
   {
     Error_Handler();
   }
-  LPCmd.LPGenShortWriteNoP = DSI_LP_GSW0P_ENABLE;
-  LPCmd.LPGenShortWriteOneP = DSI_LP_GSW1P_ENABLE;
-  LPCmd.LPGenShortWriteTwoP = DSI_LP_GSW2P_ENABLE;
-  LPCmd.LPGenShortReadNoP = DSI_LP_GSR0P_ENABLE;
-  LPCmd.LPGenShortReadOneP = DSI_LP_GSR1P_ENABLE;
-  LPCmd.LPGenShortReadTwoP = DSI_LP_GSR2P_ENABLE;
-  LPCmd.LPGenLongWrite = DSI_LP_GLW_ENABLE;
-  LPCmd.LPDcsShortWriteNoP = DSI_LP_DSW0P_ENABLE;
-  LPCmd.LPDcsShortWriteOneP = DSI_LP_DSW1P_ENABLE;
-  LPCmd.LPDcsShortReadNoP = DSI_LP_DSR0P_ENABLE;
-  LPCmd.LPDcsLongWrite = DSI_LP_DLW_ENABLE;
-  LPCmd.LPMaxReadPacket = DSI_LP_MRDP_ENABLE;
-  LPCmd.AcknowledgeRequest = DSI_ACKNOWLEDGE_DISABLE;
-  if (HAL_DSI_ConfigCommand(&hdsi, &LPCmd) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  CmdCfg.VirtualChannelID = 0;
-  CmdCfg.ColorCoding = DSI_RGB888;
-  CmdCfg.CommandSize = 200;
-  CmdCfg.TearingEffectSource = DSI_TE_EXTERNAL;
-  CmdCfg.TearingEffectPolarity = DSI_TE_RISING_EDGE;
-  CmdCfg.HSPolarity = DSI_HSYNC_ACTIVE_LOW;
-  CmdCfg.VSPolarity = DSI_VSYNC_ACTIVE_LOW;
-  CmdCfg.DEPolarity = DSI_DATA_ENABLE_ACTIVE_HIGH;
-  CmdCfg.VSyncPol = DSI_VSYNC_FALLING;
-  CmdCfg.AutomaticRefresh = DSI_AR_ENABLE;
-  CmdCfg.TEAcknowledgeRequest = DSI_TE_ACKNOWLEDGE_ENABLE;
-  if (HAL_DSI_ConfigAdaptedCommandMode(&hdsi, &CmdCfg) != HAL_OK)
+  VidCfg.VirtualChannelID = 0;
+  VidCfg.ColorCoding = DSI_RGB888;
+  VidCfg.LooselyPacked = DSI_LOOSELY_PACKED_DISABLE;
+  VidCfg.Mode = DSI_VID_MODE_BURST;
+  VidCfg.PacketSize = 800;
+  VidCfg.NumberOfChunks = 0;
+  VidCfg.NullPacketSize = 0;
+  VidCfg.HSPolarity = DSI_HSYNC_ACTIVE_HIGH;
+  VidCfg.VSPolarity = DSI_VSYNC_ACTIVE_HIGH;
+  VidCfg.DEPolarity = DSI_DATA_ENABLE_ACTIVE_HIGH;
+  VidCfg.HorizontalSyncActive = 5;
+  VidCfg.HorizontalBackPorch = 77;
+  VidCfg.HorizontalLine = 1982;
+  VidCfg.VerticalSyncActive = 120;
+  VidCfg.VerticalBackPorch = 150;
+  VidCfg.VerticalFrontPorch = 150;
+  VidCfg.VerticalActive = 480;
+  VidCfg.LPCommandEnable = DSI_LP_COMMAND_ENABLE;
+  VidCfg.LPLargestPacketSize = 16;
+  VidCfg.LPVACTLargestPacketSize = 0;
+  VidCfg.LPHorizontalFrontPorchEnable = DSI_LP_HFP_ENABLE;
+  VidCfg.LPHorizontalBackPorchEnable = DSI_LP_HBP_ENABLE;
+  VidCfg.LPVerticalActiveEnable = DSI_LP_VACT_ENABLE;
+  VidCfg.LPVerticalFrontPorchEnable = DSI_LP_VFP_ENABLE;
+  VidCfg.LPVerticalBackPorchEnable = DSI_LP_VBP_ENABLE;
+  VidCfg.LPVerticalSyncActiveEnable = DSI_LP_VSYNC_ENABLE;
+  VidCfg.FrameBTAAcknowledgeEnable = DSI_FBTAA_DISABLE;
+  if (HAL_DSI_ConfigVideoMode(&hdsi, &VidCfg) != HAL_OK)
   {
     Error_Handler();
   }
@@ -563,23 +588,24 @@ static void MX_LTDC_Init(void)
   /* USER CODE END LTDC_Init 0 */
 
   LTDC_LayerCfgTypeDef pLayerCfg = {0};
+  LTDC_LayerCfgTypeDef pLayerCfg1 = {0};
 
   /* USER CODE BEGIN LTDC_Init 1 */
 
   /* USER CODE END LTDC_Init 1 */
   hltdc.Instance = LTDC;
-  hltdc.Init.HSPolarity = LTDC_HSPOLARITY_AL;
-  hltdc.Init.VSPolarity = LTDC_VSPOLARITY_AL;
+  hltdc.Init.HSPolarity = LTDC_HSPOLARITY_AH;
+  hltdc.Init.VSPolarity = LTDC_VSPOLARITY_AH;
   hltdc.Init.DEPolarity = LTDC_DEPOLARITY_AL;
   hltdc.Init.PCPolarity = LTDC_PCPOLARITY_IPC;
-  hltdc.Init.HorizontalSync = 0;
-  hltdc.Init.VerticalSync = 0;
-  hltdc.Init.AccumulatedHBP = 1;
-  hltdc.Init.AccumulatedVBP = 1;
-  hltdc.Init.AccumulatedActiveW = 201;
-  hltdc.Init.AccumulatedActiveH = 481;
-  hltdc.Init.TotalWidth = 202;
-  hltdc.Init.TotalHeigh = 482;
+  hltdc.Init.HorizontalSync = 1;
+  hltdc.Init.VerticalSync = 119;
+  hltdc.Init.AccumulatedHBP = 35;
+  hltdc.Init.AccumulatedVBP = 269;
+  hltdc.Init.AccumulatedActiveW = 835;
+  hltdc.Init.AccumulatedActiveH = 749;
+  hltdc.Init.TotalWidth = 869;
+  hltdc.Init.TotalHeigh = 899;
   hltdc.Init.Backcolor.Blue = 0;
   hltdc.Init.Backcolor.Green = 0;
   hltdc.Init.Backcolor.Red = 0;
@@ -588,7 +614,7 @@ static void MX_LTDC_Init(void)
     Error_Handler();
   }
   pLayerCfg.WindowX0 = 0;
-  pLayerCfg.WindowX1 = 200;
+  pLayerCfg.WindowX1 = 800;
   pLayerCfg.WindowY0 = 0;
   pLayerCfg.WindowY1 = 480;
   pLayerCfg.PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
@@ -597,12 +623,31 @@ static void MX_LTDC_Init(void)
   pLayerCfg.BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
   pLayerCfg.BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
   pLayerCfg.FBStartAdress = 0xC0000000;
-  pLayerCfg.ImageWidth = 200;
+  pLayerCfg.ImageWidth = 800;
   pLayerCfg.ImageHeight = 480;
   pLayerCfg.Backcolor.Blue = 0;
   pLayerCfg.Backcolor.Green = 0;
   pLayerCfg.Backcolor.Red = 0;
   if (HAL_LTDC_ConfigLayer(&hltdc, &pLayerCfg, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  pLayerCfg1.WindowX0 = 0;
+  pLayerCfg1.WindowX1 = 0;
+  pLayerCfg1.WindowY0 = 0;
+  pLayerCfg1.WindowY1 = 0;
+  pLayerCfg1.PixelFormat = LTDC_PIXEL_FORMAT_ARGB8888;
+  pLayerCfg1.Alpha = 0;
+  pLayerCfg1.Alpha0 = 0;
+  pLayerCfg1.BlendingFactor1 = LTDC_BLENDING_FACTOR1_CA;
+  pLayerCfg1.BlendingFactor2 = LTDC_BLENDING_FACTOR2_CA;
+  pLayerCfg1.FBStartAdress = 0;
+  pLayerCfg1.ImageWidth = 0;
+  pLayerCfg1.ImageHeight = 0;
+  pLayerCfg1.Backcolor.Blue = 0;
+  pLayerCfg1.Backcolor.Green = 0;
+  pLayerCfg1.Backcolor.Red = 0;
+  if (HAL_LTDC_ConfigLayer(&hltdc, &pLayerCfg1, 1) != HAL_OK)
   {
     Error_Handler();
   }
@@ -1012,14 +1057,14 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_StartDefaultTask */
+/* USER CODE BEGIN Header_StartBtnTxLoop */
 /**
-  * @brief  Function implementing the defaultTask thread.
+  * @brief  Function implementing the btnTxLoopTask thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void const * argument)
+/* USER CODE END Header_StartBtnTxLoop */
+__weak void StartBtnTxLoop(void *argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
@@ -1028,6 +1073,24 @@ void StartDefaultTask(void const * argument)
     osDelay(1);
   }
   /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_StartDisplayTask */
+/**
+* @brief Function implementing the displayTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartDisplayTask */
+__weak void StartDisplayTask(void *argument)
+{
+  /* USER CODE BEGIN StartDisplayTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartDisplayTask */
 }
 
 /**

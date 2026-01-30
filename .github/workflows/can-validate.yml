@@ -1,0 +1,116 @@
+name: CAN Library Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  submodule-version:
+    name: Submodule Version Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Check submodule version
+        run: |
+          SUBMODULE_PATH="common/FEB_CAN_Library_SN4"
+
+          if [ ! -d "$SUBMODULE_PATH" ]; then
+            echo "::warning::CAN library submodule not found at $SUBMODULE_PATH"
+            exit 0
+          fi
+
+          # Get current submodule commit
+          CURRENT_COMMIT=$(git -C "$SUBMODULE_PATH" rev-parse HEAD)
+          echo "Current submodule commit: $CURRENT_COMMIT"
+
+          # Fetch latest from upstream
+          git -C "$SUBMODULE_PATH" fetch origin main --quiet
+
+          # Get latest upstream commit
+          LATEST_COMMIT=$(git -C "$SUBMODULE_PATH" rev-parse origin/main)
+          echo "Latest upstream commit: $LATEST_COMMIT"
+
+          if [ "$CURRENT_COMMIT" != "$LATEST_COMMIT" ]; then
+            # Count how many commits behind
+            COMMITS_BEHIND=$(git -C "$SUBMODULE_PATH" rev-list --count HEAD..origin/main)
+
+            echo "::warning::CAN Library submodule is $COMMITS_BEHIND commit(s) behind upstream!"
+            echo ""
+            echo "Current: ${CURRENT_COMMIT:0:7}"
+            echo "Latest:  ${LATEST_COMMIT:0:7}"
+            echo ""
+            echo "To update: git submodule update --remote common/FEB_CAN_Library_SN4"
+
+            echo "### Submodule Version Warning" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "CAN Library submodule is **$COMMITS_BEHIND commit(s) behind** upstream." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "| | Commit |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|---|--------|" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Current | \`${CURRENT_COMMIT:0:7}\` |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Latest | \`${LATEST_COMMIT:0:7}\` |" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "To update: \`git submodule update --remote common/FEB_CAN_Library_SN4\`" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Submodule is up to date with upstream main."
+            echo "### Submodule Version" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "CAN Library submodule is up to date with upstream main." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  generated-files:
+    name: Generated Files Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check if CAN library exists
+        id: check
+        run: |
+          CAN_LIB_PATH="common/FEB_CAN_Library_SN4"
+          if [ ! -d "$CAN_LIB_PATH" ] || [ ! -f "$CAN_LIB_PATH/generate_can.sh" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::CAN library not found or missing generate_can.sh"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate generated files
+        if: steps.check.outputs.skip != 'true'
+        working-directory: common/FEB_CAN_Library_SN4
+        run: |
+          set +e
+          OUTPUT=$(./generate_can.sh --check 2>&1)
+          EXIT_CODE=$?
+          echo "$OUTPUT"
+
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "### Generated Files Check Failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "$OUTPUT" >> "$GITHUB_STEP_SUMMARY"
+            echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "**To fix:** Run \`./generate_can.sh\` in \`common/FEB_CAN_Library_SN4\` and commit the changes." >> "$GITHUB_STEP_SUMMARY"
+            exit $EXIT_CODE
+          else
+            echo "### Generated Files Check" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "All CAN library generated files are up to date." >> "$GITHUB_STEP_SUMMARY"
+          fi

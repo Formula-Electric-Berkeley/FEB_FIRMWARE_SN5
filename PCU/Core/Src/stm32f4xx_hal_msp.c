@@ -7,7 +7,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2025 STMicroelectronics.
+  * Copyright (c) 2026 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -204,7 +204,11 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
     PC2     ------> ADC3_IN12
     PC3     ------> ADC3_IN13
     */
+<<<<<<< HEAD
     GPIO_InitStruct.Pin = BSPD_Indicator_Pin|BSPD_Reset_Pin|Acceleration_Pedal_2_Pin|Acceleration_Pedal_1_Pin;
+=======
+    GPIO_InitStruct.Pin = BSPD_Indicator_Pin|BSPD_Reset_Pin|ACC_Pedal_2_Pin|ACC_Pedal_1_Pin;
+>>>>>>> 2e8132ec05fcf09bfe2cbfd864108073e118e015
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
@@ -324,7 +328,11 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
     PC2     ------> ADC3_IN12
     PC3     ------> ADC3_IN13
     */
+<<<<<<< HEAD
     HAL_GPIO_DeInit(GPIOC, BSPD_Indicator_Pin|BSPD_Reset_Pin|Acceleration_Pedal_2_Pin|Acceleration_Pedal_1_Pin);
+=======
+    HAL_GPIO_DeInit(GPIOC, BSPD_Indicator_Pin|BSPD_Reset_Pin|ACC_Pedal_2_Pin|ACC_Pedal_1_Pin);
+>>>>>>> 2e8132ec05fcf09bfe2cbfd864108073e118e015
 
     /* ADC3 DMA DeInit */
     HAL_DMA_DeInit(hadc->DMA_Handle);

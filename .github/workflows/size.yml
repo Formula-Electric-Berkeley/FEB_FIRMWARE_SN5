@@ -1,0 +1,122 @@
+name: Firmware Size Tracking
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  size:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: BMS
+            flash_limit: 524288
+          - project: PCU
+            flash_limit: 524288
+          - project: DASH
+            flash_limit: 2097152
+          - project: LVPDB
+            flash_limit: 524288
+          - project: DART
+            flash_limit: 524288
+          - project: DCU
+            flash_limit: 524288
+          - project: Sensor_Nodes
+            flash_limit: 524288
+
+    name: Size ${{ matrix.project }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Check buildability
+        id: check
+        run: |
+          if [ ! -f "${{ matrix.project }}/CMakeLists.txt" ] || [ ! -d "${{ matrix.project }}/Core" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::${{ matrix.project }} skipped -- missing CMakeLists.txt or Core/ directory."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install ARM GCC Toolchain
+        if: steps.check.outputs.skip != 'true'
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: latest
+
+      - name: Install Ninja
+        if: steps.check.outputs.skip != 'true'
+        run: sudo apt-get install -y ninja-build
+
+      - name: Configure CMake
+        if: steps.check.outputs.skip != 'true'
+        run: >
+          cmake -S . -B build/${{ matrix.project }}
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-arm-none-eabi.cmake
+
+      - name: Build
+        if: steps.check.outputs.skip != 'true'
+        run: cmake --build build/${{ matrix.project }} --target ${{ matrix.project }}
+
+      - name: Measure firmware size
+        if: steps.check.outputs.skip != 'true'
+        id: size
+        run: |
+          ELF_PATH="build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}.elf"
+
+          # Get size output
+          SIZE_OUTPUT=$(arm-none-eabi-size --format=berkeley "$ELF_PATH")
+          echo "$SIZE_OUTPUT"
+
+          # Parse text + data = flash usage
+          FLASH_USED=$(arm-none-eabi-size --format=berkeley "$ELF_PATH" | tail -1 | awk '{print $1 + $2}')
+          RAM_USED=$(arm-none-eabi-size --format=berkeley "$ELF_PATH" | tail -1 | awk '{print $2 + $3}')
+
+          FLASH_LIMIT=${{ matrix.flash_limit }}
+          USAGE_PERCENT=$(echo "scale=1; $FLASH_USED * 100 / $FLASH_LIMIT" | bc)
+
+          echo "flash_used=$FLASH_USED" >> "$GITHUB_OUTPUT"
+          echo "ram_used=$RAM_USED" >> "$GITHUB_OUTPUT"
+          echo "usage_percent=$USAGE_PERCENT" >> "$GITHUB_OUTPUT"
+
+          # Format for display
+          FLASH_USED_KB=$(echo "scale=1; $FLASH_USED / 1024" | bc)
+          FLASH_LIMIT_KB=$(echo "scale=0; $FLASH_LIMIT / 1024" | bc)
+
+          echo "### ${{ matrix.project }} Firmware Size" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Flash Used | ${FLASH_USED_KB}KB / ${FLASH_LIMIT_KB}KB (${USAGE_PERCENT}%) |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| RAM Used | ${RAM_USED} bytes |" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check flash limits
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          FLASH_USED=${{ steps.size.outputs.flash_used }}
+          FLASH_LIMIT=${{ matrix.flash_limit }}
+          USAGE_PERCENT=${{ steps.size.outputs.usage_percent }}
+
+          # Warning threshold: 90%
+          WARNING_THRESHOLD=$(echo "$FLASH_LIMIT * 90 / 100" | bc)
+          # Error threshold: 98%
+          ERROR_THRESHOLD=$(echo "$FLASH_LIMIT * 98 / 100" | bc)
+
+          if [ "$FLASH_USED" -gt "$ERROR_THRESHOLD" ]; then
+            echo "::error::${{ matrix.project }} flash usage is critical: ${USAGE_PERCENT}% (>${{ matrix.flash_limit }} * 98%)"
+            exit 1
+          elif [ "$FLASH_USED" -gt "$WARNING_THRESHOLD" ]; then
+            echo "::warning::${{ matrix.project }} flash usage is high: ${USAGE_PERCENT}% (>${{ matrix.flash_limit }} * 90%)"
+          else
+            echo "${{ matrix.project }} flash usage OK: ${USAGE_PERCENT}%"
+          fi

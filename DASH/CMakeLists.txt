@@ -1,68 +1,142 @@
 cmake_minimum_required(VERSION 3.22)
 
-#
-# This file is generated only once,
-# and is not re-generated if converter is called multiple times.
-#
-# User is free to modify the file as much as necessary
-#
+# ── Project identity (derived from directory name) ───────────────────
+get_filename_component(PROJ_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 
-# Setup compiler settings
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS ON)
+# ── Compiler settings ────────────────────────────────────────────────
+set(CMAKE_C_STANDARD                11)
+set(CMAKE_C_STANDARD_REQUIRED       ON)
+set(CMAKE_C_EXTENSIONS              ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS   TRUE)
 
-
-# Define the build type
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
-# Set the project name
-set(CMAKE_PROJECT_NAME DASH)
+project(${PROJ_NAME} C CXX ASM)
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-# Enable compile command to ease indexing with e.g. clangd
-set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
-
-# Core project settings
-project(${CMAKE_PROJECT_NAME})
-message("Build type: " ${CMAKE_BUILD_TYPE})
-
-# Enable CMake support for ASM and C languages
-enable_language(C ASM)
-
-# Create an executable object type
-add_executable(${CMAKE_PROJECT_NAME})
-
-# Add STM32CubeMX generated sources
-add_subdirectory(cmake/stm32cubemx)
-
-# Link directories setup
-target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined library search paths
+# ── Compile definitions ──────────────────────────────────────────────
+add_compile_definitions(
+    USE_HAL_DRIVER
+    STM32F469xx
+    $<$<CONFIG:Debug>:DEBUG>
 )
 
-# Add sources to executable
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user sources here
+# ══════════════════════════════════════════════════════════════════════
+#  SOURCE COLLECTION
+# ══════════════════════════════════════════════════════════════════════
+
+# Core application sources (CubeMX-generated + user code)
+file(GLOB_RECURSE CORE_SOURCES "Core/*.c")
+
+# Startup assembly
+file(GLOB STARTUP_ASM "startup_*.s")
+
+# HAL/LL driver sources (safe: HAL_MODULE_ENABLED guards; exclude templates)
+file(GLOB HAL_SOURCES "Drivers/STM32F4xx_HAL_Driver/Src/*.c")
+list(FILTER HAL_SOURCES EXCLUDE REGEX "_template\\.c$")
+
+# Combine base sources
+set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES})
+
+# ── Middleware: FATFS application layer ──────────────────────────────
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/FATFS")
+    file(GLOB_RECURSE FATFS_APP_SOURCES "FATFS/*.c")
+    list(APPEND ALL_SOURCES ${FATFS_APP_SOURCES})
+endif()
+
+# ── Middleware: FreeRTOS ─────────────────────────────────────────────
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
+    file(GLOB FREERTOS_CORE "Middlewares/Third_Party/FreeRTOS/Source/*.c")
+    file(GLOB FREERTOS_CMSIS "Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/*.c")
+    file(GLOB FREERTOS_PORT "Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/*.c")
+    file(GLOB FREERTOS_HEAP "Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c")
+    list(APPEND ALL_SOURCES ${FREERTOS_CORE} ${FREERTOS_CMSIS} ${FREERTOS_PORT} ${FREERTOS_HEAP})
+endif()
+
+# ── Middleware: FatFs ────────────────────────────────────────────────
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FatFs")
+    file(GLOB FATFS_CORE "Middlewares/Third_Party/FatFs/src/*.c")
+    file(GLOB FATFS_OPTION "Middlewares/Third_Party/FatFs/src/option/syscall.c")
+    list(APPEND ALL_SOURCES ${FATFS_CORE} ${FATFS_OPTION})
+endif()
+
+# ══════════════════════════════════════════════════════════════════════
+#  INCLUDE DIRECTORIES
+# ══════════════════════════════════════════════════════════════════════
+
+set(BASE_INCLUDES
+    Core/Inc
+    Drivers/STM32F4xx_HAL_Driver/Inc
+    Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
+    Drivers/CMSIS/Device/ST/STM32F4xx/Include
+    Drivers/CMSIS/Include
 )
 
-# Add include paths
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined include paths
+# FATFS includes
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/FATFS")
+    list(APPEND BASE_INCLUDES FATFS/Target FATFS/App)
+endif()
+
+# FreeRTOS includes
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
+    list(APPEND BASE_INCLUDES
+        Middlewares/Third_Party/FreeRTOS/Source/include
+        Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
+        Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F
+    )
+endif()
+
+# FatFs includes
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FatFs")
+    list(APPEND BASE_INCLUDES Middlewares/Third_Party/FatFs/src)
+endif()
+
+# Auto-discover Core/User/Inc if it exists
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
+    list(APPEND BASE_INCLUDES Core/User/Inc)
+endif()
+
+# ══════════════════════════════════════════════════════════════════════
+#  EXECUTABLE TARGET
+# ══════════════════════════════════════════════════════════════════════
+
+add_executable(${PROJECT_NAME} ${ALL_SOURCES})
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
+
+target_link_libraries(${PROJECT_NAME} PRIVATE m)
+
+# Enable floating-point printf/scanf for newlib-nano
+target_link_options(${PROJECT_NAME} PRIVATE
+    "LINKER:-u,_printf_float"
+    "LINKER:-u,_scanf_float"
 )
 
-# Add project symbols (macros)
-target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined symbols
+# Linker script and map file (project-specific, not in shared toolchain)
+file(GLOB LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/STM32F4*_FLASH.ld")
+if(LINKER_SCRIPT)
+    list(GET LINKER_SCRIPT 0 LINKER_SCRIPT)
+    target_link_options(${PROJECT_NAME} PRIVATE -T "${LINKER_SCRIPT}")
+endif()
+target_link_options(${PROJECT_NAME} PRIVATE
+    -Wl,-Map=$<TARGET_FILE_DIR:${PROJECT_NAME}>/${PROJECT_NAME}.map
 )
 
-# Remove wrong libob.a library dependency when using cpp files
+# Remove wrong libob.a dependency
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
-# Add linked libraries
-target_link_libraries(${CMAKE_PROJECT_NAME}
-    stm32cubemx
+# ── Post-build: .bin, .hex, size ─────────────────────────────────────
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${PROJECT_NAME}>
+            ${PROJECT_NAME}.bin
+    COMMAND ${CMAKE_OBJCOPY} -O ihex   $<TARGET_FILE:${PROJECT_NAME}>
+            ${PROJECT_NAME}.hex
+    COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${PROJECT_NAME}>
+    COMMENT "Generating .bin/.hex for ${PROJECT_NAME}"
+)
 
-    # Add user defined libraries
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    ADDITIONAL_CLEAN_FILES "${PROJECT_NAME}.map;${PROJECT_NAME}.bin;${PROJECT_NAME}.hex"
 )

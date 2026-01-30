@@ -7,7 +7,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2025 STMicroelectronics.
+  * Copyright (c) 2026 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -61,10 +61,17 @@ void Error_Handler(void);
 #define BSPD_Indicator_GPIO_Port GPIOC
 #define BSPD_Reset_Pin GPIO_PIN_1
 #define BSPD_Reset_GPIO_Port GPIOC
+<<<<<<< HEAD
 #define Acceleration_Pedal_2_Pin GPIO_PIN_2
 #define Acceleration_Pedal_2_GPIO_Port GPIOC
 #define Acceleration_Pedal_1_Pin GPIO_PIN_3
 #define Acceleration_Pedal_1_GPIO_Port GPIOC
+=======
+#define ACC_Pedal_2_Pin GPIO_PIN_2
+#define ACC_Pedal_2_GPIO_Port GPIOC
+#define ACC_Pedal_1_Pin GPIO_PIN_3
+#define ACC_Pedal_1_GPIO_Port GPIOC
+>>>>>>> 2e8132ec05fcf09bfe2cbfd864108073e118e015
 #define Brake_Pressure_2_Pin GPIO_PIN_0
 #define Brake_Pressure_2_GPIO_Port GPIOA
 #define Brake_Pressure_1_Pin GPIO_PIN_1
