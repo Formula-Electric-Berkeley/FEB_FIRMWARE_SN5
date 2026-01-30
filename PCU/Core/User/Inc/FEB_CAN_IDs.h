@@ -1,15 +1,15 @@
 /**
-  ******************************************************************************
-  * @file           : FEB_CAN_IDs.h
-  * @brief          : CAN message ID definitions for PCU
-  ******************************************************************************
-  * @attention
-  *
-  * This file contains all CAN message identifiers used in the PCU firmware.
-  * IDs are organized by device/subsystem for easy reference.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : FEB_CAN_IDs.h
+ * @brief          : CAN message ID definitions for PCU
+ ******************************************************************************
+ * @attention
+ *
+ * This file contains all CAN message identifiers used in the PCU firmware.
+ * IDs are organized by device/subsystem for easy reference.
+ *
+ ******************************************************************************
+ */
 
 #ifndef __FEB_CAN_IDS_H
 #define __FEB_CAN_IDS_H
@@ -17,7 +17,8 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 /* ========================================================================== */

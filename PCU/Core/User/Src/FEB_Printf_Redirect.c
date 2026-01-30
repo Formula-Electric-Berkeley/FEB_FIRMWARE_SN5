@@ -1,19 +1,19 @@
 /**
-  ******************************************************************************
-  * @file           : FEB_Printf_Redirect.c
-  * @brief          : Simple printf redirection to UART using DMA
-  ******************************************************************************
-  * @attention
-  *
-  * This file implements minimal printf redirection by overriding the
-  * _write() system call to route stdout to a UART peripheral using DMA.
-  *
-  * Prerequisites:
-  * - Configure UART with DMA TX in STM32CubeMX
-  * - Enable circular mode for DMA if continuous transmission is needed
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : FEB_Printf_Redirect.c
+ * @brief          : Simple printf redirection to UART using DMA
+ ******************************************************************************
+ * @attention
+ *
+ * This file implements minimal printf redirection by overriding the
+ * _write() system call to route stdout to a UART peripheral using DMA.
+ *
+ * Prerequisites:
+ * - Configure UART with DMA TX in STM32CubeMX
+ * - Enable circular mode for DMA if continuous transmission is needed
+ *
+ ******************************************************************************
+ */
 
 #include "FEB_Printf_Redirect.h"
 
@@ -27,11 +27,12 @@ static UART_HandleTypeDef *printf_huart = NULL;
  * @brief Initialize printf redirection to UART with DMA
  * @param huart Pointer to UART handle (must be initialized with DMA)
  */
-void FEB_Printf_Init(UART_HandleTypeDef *huart) {
-    printf_huart = huart;
-    
-    /* Disable stdout buffering for immediate output */
-    setvbuf(stdout, NULL, _IONBF, 0);
+void FEB_Printf_Init(UART_HandleTypeDef *huart)
+{
+  printf_huart = huart;
+
+  /* Disable stdout buffering for immediate output */
+  setvbuf(stdout, NULL, _IONBF, 0);
 }
 
 /**

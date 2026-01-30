@@ -2,7 +2,8 @@
 #include "FEB_CAN_BMS.h"
 #include "FEB_ADC.h"
 
-typedef struct {
+typedef struct
+{
   int16_t torque;
   uint8_t enabled;
 } RMS_CONTROL;

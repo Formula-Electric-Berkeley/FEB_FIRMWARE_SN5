@@ -8,12 +8,13 @@
 #include <string.h>
 
 /* Conversion helper macros - TPS2482 conversion macros are in TPS2482.h */
-#define SIGN_MAGNITUDE(n)       ((int16_t)((((n >> 15) & 0x01) == 1) ? -(n & 0x7FFF) : (n & 0x7FFF)))
+#define SIGN_MAGNITUDE(n) ((int16_t)((((n >> 15) & 0x01) == 1) ? -(n & 0x7FFF) : (n & 0x7FFF)))
 
 /* Message structure */
-typedef struct {
-    uint16_t bus_voltage_mv;  /* Bus voltage in millivolts */
-    int16_t current_ma;       /* Current in milliamps */
+typedef struct
+{
+  uint16_t bus_voltage_mv; /* Bus voltage in millivolts */
+  int16_t current_ma;      /* Current in milliamps */
 } TPS_MESSAGE_TYPE;
 
 /* Global variable - defined in FEB_CAN_TPS.c */

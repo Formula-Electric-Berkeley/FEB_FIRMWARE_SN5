@@ -7,8 +7,9 @@
 #include "FEB_PINOUT.h"
 #include "FEB_CAN_IDs.h"
 
-typedef struct BSPD_TYPE {
-    int8_t state;
+typedef struct BSPD_TYPE
+{
+  int8_t state;
 } BSPD_TYPE;
 
 /* Global variable - defined in FEB_BSPD.c */
