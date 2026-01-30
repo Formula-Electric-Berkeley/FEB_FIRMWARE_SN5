@@ -1,0 +1,138 @@
+name: Latest Release
+
+on:
+  push:
+    branches: [main]
+
+# Prevent concurrent releases from overlapping
+concurrency:
+  group: latest-release
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes]
+
+    name: Build ${{ matrix.project }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Check buildability
+        id: check
+        run: |
+          if [ ! -f "${{ matrix.project }}/CMakeLists.txt" ] || [ ! -d "${{ matrix.project }}/Core" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::${{ matrix.project }} skipped -- missing CMakeLists.txt or Core/ directory."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install ARM GCC Toolchain
+        if: steps.check.outputs.skip != 'true'
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: latest
+
+      - name: Install Ninja
+        if: steps.check.outputs.skip != 'true'
+        run: sudo apt-get install -y ninja-build
+
+      - name: Configure CMake
+        if: steps.check.outputs.skip != 'true'
+        run: >
+          cmake -S . -B build/${{ matrix.project }}
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-arm-none-eabi.cmake
+
+      - name: Build
+        if: steps.check.outputs.skip != 'true'
+        run: cmake --build build/${{ matrix.project }} --target ${{ matrix.project }}
+
+      - name: Rename artifacts with commit SHA
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          BUILD_DIR="build/${{ matrix.project }}/${{ matrix.project }}"
+
+          cp "${BUILD_DIR}/${{ matrix.project }}.elf" "${BUILD_DIR}/${{ matrix.project }}-latest-${SHORT_SHA}.elf"
+          cp "${BUILD_DIR}/${{ matrix.project }}.bin" "${BUILD_DIR}/${{ matrix.project }}-latest-${SHORT_SHA}.bin"
+          cp "${BUILD_DIR}/${{ matrix.project }}.hex" "${BUILD_DIR}/${{ matrix.project }}-latest-${SHORT_SHA}.hex"
+
+      - name: Upload release artifacts
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.project }}-latest
+          path: |
+            build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}-latest-*.elf
+            build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}-latest-*.bin
+            build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}-latest-*.hex
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p release-files
+          find release-artifacts -type f \( -name "*.elf" -o -name "*.bin" -o -name "*.hex" \) -exec cp {} release-files/ \;
+          ls -la release-files/
+
+      - name: Delete existing latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+
+      - name: Create latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+
+          gh release create latest \
+            --title "Latest Build (${SHORT_SHA})" \
+            --notes "Automated build from commit [\`${SHORT_SHA}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+
+          **Branch:** main
+          **Commit:** ${{ github.sha }}
+
+          This is an automated pre-release containing the latest firmware binaries built from the main branch. For stable releases, see the tagged versions.
+
+          ### Boards Included
+          - BMS (Battery Management System)
+          - PCU (Power Control Unit)
+          - DASH (Dashboard)
+          - LVPDB (Low Voltage Power Distribution)
+          - DART
+          - DCU (Drive Control Unit)
+          - Sensor_Nodes
+
+          ### Files
+          Each board includes:
+          - \`.elf\` - Debug symbols, use with GDB/IDE
+          - \`.bin\` - Raw binary for flashing
+          - \`.hex\` - Intel HEX format" \
+            --prerelease \
+            --target ${{ github.sha }} \
+            release-files/*
