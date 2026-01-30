@@ -44,15 +44,11 @@ git submodule update --init --recursive
 
 ### Required
 
-- **ARM GCC Toolchain** (`arm-none-eabi-gcc`) -- must be on your `PATH`
-  - Install via [ARM Developer](https://developer.arm.com/downloads/-/gnu-rm) or your package manager
-  - Or install [STM32CubeCLT](https://www.st.com/en/development-tools/stm32cubeclt.html) which bundles it
-- **CMake** >= 3.22
-- **Ninja** build system
+- **STM32CubeCLT** -- bundles ARM GCC, CMake, Ninja, and STM32_Programmer_CLI
+  - Download from [ST website](https://www.st.com/en/development-tools/stm32cubeclt.html)
 
 ### Optional
 
-- **STM32CubeCLT / STM32CubeIDE** -- for IDE integration, flashing, and debugging
 - **STM32CubeMX** -- for modifying `.ioc` peripheral configurations
 - **Python 3** -- only needed to regenerate CAN message definitions; dependencies are managed automatically (see [CAN Library](#can-library))
 - **clang-format** -- for code formatting (enforced in CI)
