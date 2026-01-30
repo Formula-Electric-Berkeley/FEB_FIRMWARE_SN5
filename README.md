@@ -10,8 +10,8 @@ Firmware for the FEB SN5 Formula E vehicle. Each subdirectory corresponds to a b
 | `BMS/` | Battery Management System | STM32F446RE | |
 | `DASH/` | Dashboard | STM32F469RE | FreeRTOS, FatFS |
 | `DART/` | DART | STM32F446RE | |
-| `DCU/` | DCU | STM32F446RE | |
-| `PCU/` | PCU | STM32F446RE | |
+| `DCU/` | Data Control Unit | STM32F446RE | |
+| `PCU/` | Powertrain Control Unit | STM32F446RE | |
 | `Sensor_Nodes/` | Sensor Nodes | STM32F446RE | |
 
 All boards are fully buildable with CMake.
