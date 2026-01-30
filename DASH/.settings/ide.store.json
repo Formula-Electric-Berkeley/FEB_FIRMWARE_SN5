@@ -1,11 +1,1 @@
-<<<<<<< HEAD
-{
-  "board": "STM32F469I-DISCO",
-  "device": "STM32F469NIH6",
-  "core": "Cortex-M4",
-  "order": 0,
-  "toolchain": "GCC"
-}
-=======
 {}
->>>>>>> 2e8132ec05fcf09bfe2cbfd864108073e118e015
