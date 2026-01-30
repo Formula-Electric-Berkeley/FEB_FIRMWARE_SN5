@@ -17,7 +17,7 @@
                 "--connect",
                 "port=swd",
                 "--download",
-                "${command:cmake.launchTargetPath}",
+                "${workspaceFolder}/build/Debug/${input:boardName}/${input:boardName}.elf",
                 "-hardRst",
                 "-rst",
                 "--start"
@@ -26,14 +26,6 @@
                 "cwd": "${workspaceFolder}"
             },
             "problemMatcher": []
-        },
-        {
-            "label": "Build + Flash",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "CMake: clean rebuild",
-                "CubeProg: Flash project (SWD)"
-            ]
         },
         {
             "type": "cmake",
@@ -54,6 +46,15 @@
                 "cwd": "${workspaceFolder}"
             },
             "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "boardName",
+            "type": "pickString",
+            "description": "Select board to flash",
+            "options": ["BMS", "DASH", "DART", "DCU", "LVPDB", "PCU", "Sensor_Nodes"],
+            "default": "LVPDB"
         }
     ]
 }
