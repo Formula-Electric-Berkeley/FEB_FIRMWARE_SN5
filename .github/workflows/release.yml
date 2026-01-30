@@ -94,6 +94,9 @@ jobs:
           find release-artifacts -type f \( -name "*.elf" -o -name "*.bin" -o -name "*.hex" \) -exec cp {} release-files/ \;
           ls -la release-files/
 
+      - name: Include flash script
+        run: cp scripts/flash.sh release-files/
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
