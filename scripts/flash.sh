@@ -130,17 +130,59 @@ show_setup_instructions() {
     echo -e "${YELLOW}After installation, run this script again.${NC}"
 }
 
-# Get the build directory (computed lazily to support standalone script usage)
-get_build_dir() {
-    local script_dir="$(cd "$(dirname "$0")" && pwd)"
-    echo "$script_dir/../build/Debug"
+# Get the script's directory
+get_script_dir() {
+    cd "$(dirname "$0")" && pwd
 }
 
-# Get the .elf file path for a board
+# Get the build directory (for repo mode)
+get_build_dir() {
+    echo "$(get_script_dir)/../build/Debug"
+}
+
+# Check if running in standalone mode (release package, not in repo)
+is_standalone_mode() {
+    local build_dir="$(get_build_dir)"
+    # If build directory doesn't exist, check for firmware files nearby
+    if [ ! -d "$build_dir" ]; then
+        local script_dir="$(get_script_dir)"
+        # Look for .elf files in script dir or board subdirs
+        if ls "$script_dir"/*.elf >/dev/null 2>&1 || ls "$script_dir"/*/*.elf >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Discover firmware file for a board in standalone mode
+discover_firmware() {
+    local board="$1"
+    local script_dir="$(get_script_dir)"
+    local elf_file=""
+
+    # Check board subdirectory first (e.g., ./BMS/BMS-latest-*.elf)
+    if [ -d "$script_dir/$board" ]; then
+        elf_file=$(ls "$script_dir/$board"/*.elf 2>/dev/null | head -1)
+    fi
+
+    # Fall back to flat structure (e.g., ./BMS-latest-*.elf)
+    if [ -z "$elf_file" ]; then
+        elf_file=$(ls "$script_dir/$board"-*.elf 2>/dev/null | head -1)
+    fi
+
+    echo "$elf_file"
+}
+
+# Get the .elf file path for a board (works in both repo and standalone mode)
 get_elf_path() {
     local board="$1"
-    local build_dir="$(get_build_dir)"
-    echo "$build_dir/$board/$board.elf"
+
+    if is_standalone_mode; then
+        discover_firmware "$board"
+    else
+        local build_dir="$(get_build_dir)"
+        echo "$build_dir/$board/$board.elf"
+    fi
 }
 
 # Check if a board name is valid
@@ -193,20 +235,27 @@ flash_board() {
     local elf_path
     elf_path=$(get_elf_path "$board")
 
-    if [ ! -f "$elf_path" ]; then
-        log_warn "Firmware not found: $elf_path"
-        echo ""
-        read -p "Would you like to build $board first? [y/N] " -n 1 -r
-        echo ""
-
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            log_info "Building $board..."
-            cmake --build "$(get_build_dir)" --target "$board"
-            echo ""
-        else
-            log_error "Cannot flash without firmware. Build first with:"
-            echo "  cmake --build build/Debug --target $board"
+    if [ -z "$elf_path" ] || [ ! -f "$elf_path" ]; then
+        if is_standalone_mode; then
+            log_error "Firmware not found for $board"
+            echo "Make sure the firmware files are in the correct location."
             return 1
+        else
+            log_warn "Firmware not found: $elf_path"
+            echo ""
+            read -p "Would you like to build $board first? [y/N] " -n 1 -r
+            echo ""
+
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                log_info "Building $board..."
+                cmake --build "$(get_build_dir)" --target "$board"
+                echo ""
+                elf_path=$(get_elf_path "$board")
+            else
+                log_error "Cannot flash without firmware. Build first with:"
+                echo "  cmake --build build/Debug --target $board"
+                return 1
+            fi
         fi
     fi
 
@@ -228,18 +277,31 @@ show_board_menu() {
     echo -e "${BOLD}Select a board to flash:${NC}"
     echo ""
 
+    local standalone=false
+    if is_standalone_mode; then
+        standalone=true
+    fi
+
     for i in "${!BOARDS[@]}"; do
         local board="${BOARDS[$i]}"
         local elf_path
         elf_path=$(get_elf_path "$board")
 
         local status=""
-        if [ -f "$elf_path" ]; then
-            local build_time
-            build_time=$(get_file_time "$elf_path")
-            status="${GREEN}[built ${build_time}]${NC}"
+        if [ -n "$elf_path" ] && [ -f "$elf_path" ]; then
+            if [ "$standalone" = true ]; then
+                status="${GREEN}[ready]${NC}"
+            else
+                local build_time
+                build_time=$(get_file_time "$elf_path")
+                status="${GREEN}[built ${build_time}]${NC}"
+            fi
         else
-            status="${YELLOW}[not built]${NC}"
+            if [ "$standalone" = true ]; then
+                status="${RED}[not found]${NC}"
+            else
+                status="${YELLOW}[not built]${NC}"
+            fi
         fi
 
         printf "  %d) %-15s %b\n" $((i + 1)) "$board" "$status"

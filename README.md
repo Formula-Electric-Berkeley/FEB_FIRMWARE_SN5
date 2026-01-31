@@ -154,7 +154,22 @@ After a successful build, outputs are in `build/Debug/<BOARD>/`:
 
 ## Flashing
 
-### Using the Flash Script (Recommended)
+### Using Pre-built Firmware (Easiest)
+
+Download the latest firmware zip from [GitHub Releases](https://github.com/FormulaElectricBerkeley/FEB_FIRMWARE_SN5/releases):
+
+1. Download `FEB_Firmware_latest.zip` (or a versioned release)
+2. Extract the zip
+3. Run:
+   ```bash
+   chmod +x flash.sh
+   ./flash.sh
+   ```
+4. Select the board you want to flash from the interactive menu
+
+The zip contains firmware for all boards organized in subdirectories, plus the flash script which auto-detects available firmware.
+
+### Using the Flash Script (For Development)
 
 The `scripts/flash.sh` script provides an easy interface for flashing boards with prerequisite checking and interactive selection:
 

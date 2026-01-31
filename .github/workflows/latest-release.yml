@@ -93,14 +93,47 @@ jobs:
         with:
           path: release-artifacts
 
-      - name: Flatten artifacts
+      - name: Organize artifacts by board
         run: |
-          mkdir -p release-files
-          find release-artifacts -type f \( -name "*.elf" -o -name "*.bin" -o -name "*.hex" \) -exec cp {} release-files/ \;
-          ls -la release-files/
+          mkdir -p release-package
+          for board in BMS PCU DASH LVPDB DART DCU Sensor_Nodes; do
+            mkdir -p "release-package/$board"
+            find release-artifacts -name "$board-*" -type f \( -name "*.elf" -o -name "*.bin" -o -name "*.hex" \) -exec cp {} "release-package/$board/" \; 2>/dev/null || true
+          done
+          cp scripts/flash.sh release-package/
+          chmod +x release-package/flash.sh
+          echo "=== Release package structure ==="
+          find release-package -type f | sort
 
-      - name: Include flash script
-        run: cp scripts/flash.sh release-files/
+      - name: Create README.txt
+        run: |
+          cat > release-package/README.txt << 'EOF'
+          FEB Firmware Release
+          ====================
+
+          Quick Start:
+            1. Extract this zip
+            2. Make flash.sh executable: chmod +x flash.sh
+            3. Run: ./flash.sh
+            4. Select the board you want to flash from the menu
+
+          Manual Flashing:
+            ./flash.sh -f BMS/BMS-latest-*.elf
+
+          Requirements:
+            - STM32CubeCLT (provides STM32_Programmer_CLI)
+            - ST-Link or compatible SWD programmer
+
+          For more information, visit:
+          https://github.com/FormulaElectricBerkeley/FEB_FIRMWARE_SN5
+          EOF
+
+      - name: Create release zip
+        run: |
+          cd release-package
+          zip -r ../FEB_Firmware_latest.zip .
+          cd ..
+          ls -la FEB_Firmware_latest.zip
 
       - name: Delete existing latest release
         env:
@@ -123,6 +156,16 @@ jobs:
 
           This is an automated pre-release containing the latest firmware binaries built from the main branch. For stable releases, see the tagged versions.
 
+          ### Quick Start
+          1. Download \`FEB_Firmware_latest.zip\`
+          2. Extract the zip
+          3. Run:
+          \`\`\`
+          chmod +x flash.sh
+          ./flash.sh
+          \`\`\`
+          4. Select the board you want to flash from the menu
+
           ### Boards Included
           - BMS (Battery Management System)
           - PCU (Powertrain Control Unit)
@@ -136,14 +179,7 @@ jobs:
           Each board includes:
           - \`.elf\` - Debug symbols, use with GDB/IDE
           - \`.bin\` - Raw binary for flashing
-          - \`.hex\` - Intel HEX format
-
-          ### Flashing
-          Download \`flash.sh\`, make it executable, and run:
-          \`\`\`
-          chmod +x flash.sh
-          ./flash.sh -f <firmware.elf>
-          \`\`\`" \
+          - \`.hex\` - Intel HEX format" \
             --prerelease \
             --target ${{ github.sha }} \
-            release-files/*
+            FEB_Firmware_latest.zip
