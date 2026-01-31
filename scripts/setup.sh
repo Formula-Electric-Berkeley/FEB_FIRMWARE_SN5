@@ -192,25 +192,20 @@ install_hooks() {
 
     cd "$REPO_ROOT"
 
-    if [ -f ".pre-commit-config.yaml" ]; then
+    if [ -f "scripts/setup-hooks.sh" ]; then
+        # Use the dedicated setup script (handles Homebrew, pipx, etc.)
+        log_step "Running setup-hooks.sh..."
+        bash scripts/setup-hooks.sh
+    elif [ -f ".pre-commit-config.yaml" ]; then
         if command_exists pre-commit; then
             log_step "Installing pre-commit hooks..."
             pre-commit install
             log_info "Pre-commit hooks installed"
-        elif command_exists pip || command_exists pip3; then
-            log_step "Installing pre-commit..."
-            pip3 install pre-commit 2>/dev/null || pip install pre-commit 2>/dev/null
-            log_step "Installing hooks..."
-            pre-commit install
-            log_info "Pre-commit hooks installed"
         else
-            log_warn "pip not found. Skipping pre-commit hook installation."
-            echo "  Install manually: pip install pre-commit && pre-commit install"
+            log_warn "pre-commit not found. Skipping hook installation."
+            echo "  Install with: brew install pre-commit (macOS)"
+            echo "             or: pipx install pre-commit"
         fi
-    elif [ -f "scripts/setup-hooks.sh" ]; then
-        log_step "Running setup-hooks.sh..."
-        bash scripts/setup-hooks.sh
-        log_info "Hooks configured"
     else
         log_info "No pre-commit configuration found. Skipping."
     fi

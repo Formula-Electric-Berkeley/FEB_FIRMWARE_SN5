@@ -45,23 +45,61 @@ check_precommit() {
     return 1
 }
 
-# Install pre-commit via pip
+# Install pre-commit using the best available method
 install_precommit() {
     log_info "Installing pre-commit..."
 
-    if command -v pip3 &> /dev/null; then
-        pip3 install pre-commit
-    elif command -v pip &> /dev/null; then
-        pip install pre-commit
-    else
-        log_error "pip not found. Cannot install pre-commit."
-        echo ""
-        echo "Install pip first, or install pre-commit manually:"
-        echo "  - macOS:   brew install pre-commit"
-        echo "  - Ubuntu:  sudo apt install pre-commit"
-        echo "  - pip:     pip install pre-commit"
-        return 1
+    # macOS: prefer Homebrew (avoids PEP 668 issues)
+    if [[ "$(uname -s)" == "Darwin" ]] && command -v brew &> /dev/null; then
+        log_info "Using Homebrew to install pre-commit..."
+        if brew install pre-commit; then
+            return 0
+        fi
+        log_warn "Homebrew install failed, trying alternatives..."
     fi
+
+    # Try pipx (manages its own virtualenv, works everywhere)
+    if command -v pipx &> /dev/null; then
+        log_info "Using pipx to install pre-commit..."
+        if pipx install pre-commit; then
+            return 0
+        fi
+        log_warn "pipx install failed, trying pip..."
+    fi
+
+    # Try pip with --user flag (safer than system-wide)
+    if command -v pip3 &> /dev/null; then
+        log_info "Using pip3 --user to install pre-commit..."
+        if pip3 install --user pre-commit; then
+            # Add user bin to PATH hint
+            log_warn "You may need to add ~/.local/bin to your PATH"
+            return 0
+        fi
+    elif command -v pip &> /dev/null; then
+        log_info "Using pip --user to install pre-commit..."
+        if pip install --user pre-commit; then
+            log_warn "You may need to add ~/.local/bin to your PATH"
+            return 0
+        fi
+    fi
+
+    # All methods failed
+    log_error "Could not install pre-commit automatically."
+    echo ""
+    echo "Please install pre-commit manually using one of these methods:"
+    echo ""
+    echo "  macOS (recommended):"
+    echo "    brew install pre-commit"
+    echo ""
+    echo "  Using pipx (any platform):"
+    echo "    brew install pipx  # or: sudo apt install pipx"
+    echo "    pipx install pre-commit"
+    echo ""
+    echo "  Linux:"
+    echo "    sudo apt install pre-commit"
+    echo ""
+    echo "Then run this script again."
+    return 1
 }
 
 # Install git hooks

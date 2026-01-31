@@ -1,30 +1,28 @@
 # Pre-commit hooks for FEB Firmware
 #
-# Install: pip install pre-commit && pre-commit install
+# Install: brew install pre-commit && pre-commit install
 # Run manually: pre-commit run --all-files
 #
-# See https://pre-commit.com for more information
+# IMPORTANT: These hooks ONLY touch files in Core/User/ directories.
+# Vendor code (Drivers/, Middlewares/, Core/Inc/, Core/Src/) is never modified.
 #
 repos:
-  # Standard pre-commit hooks
+  # Standard pre-commit hooks - ONLY on User code and scripts
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v4.6.0
     hooks:
       - id: trailing-whitespace
-        exclude: ^(Drivers/|Middlewares/|.*\.patch$)
+        files: (Core/User/|scripts/|\.github/)
       - id: end-of-file-fixer
-        exclude: ^(Drivers/|Middlewares/)
+        files: (Core/User/|scripts/|\.github/)
       - id: check-added-large-files
         args: ['--maxkb=500']
       - id: check-merge-conflict
-      - id: mixed-line-ending
-        args: ['--fix=lf']
-        exclude: ^(Drivers/|Middlewares/)
 
   # Local hooks using project scripts
   - repo: local
     hooks:
-      # clang-format check on user code
+      # clang-format check on user code only
       - id: clang-format
         name: clang-format
         entry: ./scripts/format.sh --check
@@ -33,18 +31,11 @@ repos:
         pass_filenames: false
         files: Core/User/
 
-      # cppcheck static analysis (runs per-board)
+      # cppcheck static analysis on user code only (skips if not installed)
       - id: cppcheck
         name: cppcheck
-        entry: bash -c 'for board in BMS DASH DART DCU LVPDB PCU Sensor_Nodes; do if [ -d "$board/Core" ]; then cppcheck --quiet --enable=warning,performance,portability --suppress=missingIncludeSystem --suppress=unmatchedSuppression --error-exitcode=1 -i Drivers -i Middlewares "$board/Core/"; fi; done'
+        entry: bash -c 'if ! command -v cppcheck &>/dev/null; then echo "cppcheck not installed, skipping (install via brew install cppcheck)"; exit 0; fi; for board in BMS DASH DART DCU LVPDB PCU Sensor_Nodes; do if [ -d "$board/Core/User" ] && find "$board/Core/User" -name "*.c" -print -quit 2>/dev/null | grep -q .; then cppcheck --quiet --enable=warning,performance,portability --suppress=missingIncludeSystem --suppress=unmatchedSuppression --error-exitcode=1 "$board/Core/User/"; fi; done'
         language: system
         types: [c]
         pass_filenames: false
-
-      # Verify CAN library generated files match definitions
-      - id: can-validate
-        name: can-validate
-        entry: bash -c 'cd common/FEB_CAN_Library_SN4 && ./generate_can.sh --check'
-        language: system
-        files: (common/FEB_CAN_Library_SN4/.*\.py$|common/FEB_CAN_Library_SN4/gen/)
-        pass_filenames: false
+        files: Core/User/

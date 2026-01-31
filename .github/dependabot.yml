@@ -16,19 +16,7 @@ updates:
       - "github-actions"
     open-pull-requests-limit: 5
 
-  # Python dependencies (for CAN library generation)
-  - package-ecosystem: "pip"
-    directory: "/common/FEB_CAN_Library_SN4"
-    schedule:
-      interval: "monthly"
-    commit-message:
-      prefix: "deps"
-    labels:
-      - "dependencies"
-      - "python"
-    open-pull-requests-limit: 3
-
-  # Git submodules
+  # Git submodules (includes CAN library)
   - package-ecosystem: "gitsubmodule"
     directory: "/"
     schedule:
