@@ -25,8 +25,12 @@ common/
     *_messages.py                # Python message definitions
     generate_can.sh              # Generation script
 scripts/
-  flash.sh                       # Board flashing script
-  version.sh                     # Version tagging script
+  setup.sh                       # First-time dev environment setup
+  build.sh                       # Build firmware (interactive/batch/release)
+  flash.sh                       # Flash firmware to boards
+  format.sh                      # Code formatting (--check for CI)
+  setup-hooks.sh                 # Install pre-commit hooks
+  version.sh                     # Create version tags for releases
 .github/workflows/               # CI/CD pipelines
 ```
 
@@ -39,6 +43,22 @@ git clone --recursive https://github.com/Formula-Electric-Berkeley/FEB_FIRMWARE_
 # If already cloned without --recursive:
 git submodule update --init --recursive
 ```
+
+## Getting Started
+
+For first-time setup, run the setup script:
+
+```bash
+./scripts/setup.sh        # Full setup with initial build
+./scripts/setup.sh --quick  # Skip initial build
+```
+
+This script:
+- Verifies toolchain installation (ARM GCC, CMake, Ninja)
+- Initializes git submodules
+- Installs pre-commit hooks
+- Configures CMake
+- Runs an initial build to verify everything works
 
 ## Prerequisites
 
@@ -103,11 +123,48 @@ Format all user code across all boards:
 ./scripts/format.sh --check   # Check only (CI mode, exits 1 if changes needed)
 ```
 
+## Pre-commit Hooks
+
+The repository includes pre-commit hooks that run automatically before each commit:
+
+```bash
+./scripts/setup-hooks.sh          # Install hooks
+./scripts/setup-hooks.sh --remove # Remove hooks
+```
+
+Hooks include:
+- **clang-format** - Formats C code in `Core/User/`
+- **cppcheck** - Static analysis for warnings and portability issues
+- **CAN validation** - Verifies generated CAN files match definitions
+- **Trailing whitespace** and **end-of-file** fixers
+
+To run hooks manually:
+
+```bash
+pre-commit run --all-files     # Run all hooks on all files
+pre-commit run clang-format    # Run specific hook
+git commit --no-verify         # Skip hooks (use sparingly)
+```
+
 ## Build
 
 All builds are driven from the project root.
 
-### Using CMake Presets (recommended)
+### Using the Build Script (Recommended)
+
+```bash
+./scripts/build.sh                # Interactive menu
+./scripts/build.sh -a             # Build all boards (Debug)
+./scripts/build.sh -b LVPDB       # Build specific board
+./scripts/build.sh -b LVPDB -b PCU  # Build multiple boards
+./scripts/build.sh -r             # Build in Release mode
+./scripts/build.sh -c             # Clean and rebuild
+./scripts/build.sh -l             # Loop mode (build multiple boards interactively)
+```
+
+The script validates prerequisites, shows build progress, and displays Flash/RAM usage summary.
+
+### Using CMake Presets
 
 ```bash
 # Configure (Debug) -- configures all boards
@@ -240,6 +297,7 @@ GitHub Actions runs on pushes and pull requests to `main`:
 | **Code Quality** (`quality.yml`) | Push/PR to main | `clang-format` on `Core/User/` files, `cppcheck` static analysis. |
 | **CAN Validation** (`can-validate.yml`) | Push/PR to main | Checks submodule is up-to-date with upstream, validates generated files match definitions. |
 | **Firmware Size** (`size.yml`) | Push/PR to main | Tracks Flash/RAM usage per board. Warns at 90%, fails at 98%. |
+| **Security** (`security.yml`) | Push/PR to main, weekly | CodeQL security analysis + TruffleHog secret scanning. |
 | **Latest Release** (`latest-release.yml`) | Push to main | Auto-updates "latest" pre-release with current firmware binaries. |
 | **Tagged Release** (`release.yml`) | Tag `v*` | Builds Release binaries, creates versioned GitHub Release. |
 
@@ -263,7 +321,23 @@ Pre-built firmware binaries are available from [GitHub Releases](https://github.
 
 - **Versioned Releases**: Stable releases are tagged with version numbers (e.g., `v1.0.0`).
 
-Each release includes `.elf`, `.bin`, and `.hex` files for all 7 boards.
+Each release includes:
+- `.elf`, `.bin`, and `.hex` files for all 7 boards
+- `FEB_Firmware_{version}.zip` - Complete firmware package with bundled `flash.sh`
+- `SHA256SUMS.txt` - Checksums for individual firmware files
+- `.zip.sha256` - Checksum for the release archive
+
+### Verifying Downloads
+
+Verify integrity of downloaded files using the SHA256 checksums:
+
+```bash
+# Verify the zip archive
+sha256sum -c FEB_Firmware_latest.zip.sha256
+
+# Verify individual firmware files
+sha256sum -c SHA256SUMS.txt
+```
 
 ### Creating a Versioned Release
 
