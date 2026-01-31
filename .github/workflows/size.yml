@@ -78,9 +78,14 @@ jobs:
           SIZE_OUTPUT=$(arm-none-eabi-size --format=berkeley "$ELF_PATH")
           echo "$SIZE_OUTPUT"
 
-          # Parse text + data = flash usage
-          FLASH_USED=$(arm-none-eabi-size --format=berkeley "$ELF_PATH" | tail -1 | awk '{print $1 + $2}')
-          RAM_USED=$(arm-none-eabi-size --format=berkeley "$ELF_PATH" | tail -1 | awk '{print $2 + $3}')
+          # Parse individual sections
+          TEXT=$(arm-none-eabi-size --format=berkeley "$ELF_PATH" | tail -1 | awk '{print $1}')
+          DATA=$(arm-none-eabi-size --format=berkeley "$ELF_PATH" | tail -1 | awk '{print $2}')
+          BSS=$(arm-none-eabi-size --format=berkeley "$ELF_PATH" | tail -1 | awk '{print $3}')
+
+          # Calculate totals
+          FLASH_USED=$((TEXT + DATA))
+          RAM_USED=$((DATA + BSS))
 
           FLASH_LIMIT=${{ matrix.flash_limit }}
           USAGE_PERCENT=$(echo "scale=1; $FLASH_USED * 100 / $FLASH_LIMIT" | bc)
@@ -88,17 +93,39 @@ jobs:
           echo "flash_used=$FLASH_USED" >> "$GITHUB_OUTPUT"
           echo "ram_used=$RAM_USED" >> "$GITHUB_OUTPUT"
           echo "usage_percent=$USAGE_PERCENT" >> "$GITHUB_OUTPUT"
+          echo "text=$TEXT" >> "$GITHUB_OUTPUT"
+          echo "data=$DATA" >> "$GITHUB_OUTPUT"
+          echo "bss=$BSS" >> "$GITHUB_OUTPUT"
 
           # Format for display
           FLASH_USED_KB=$(echo "scale=1; $FLASH_USED / 1024" | bc)
           FLASH_LIMIT_KB=$(echo "scale=0; $FLASH_LIMIT / 1024" | bc)
+          TEXT_KB=$(echo "scale=1; $TEXT / 1024" | bc)
+          DATA_KB=$(echo "scale=1; $DATA / 1024" | bc)
+          BSS_KB=$(echo "scale=1; $BSS / 1024" | bc)
+          RAM_KB=$(echo "scale=1; $RAM_USED / 1024" | bc)
 
           echo "### ${{ matrix.project }} Firmware Size" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Flash Used | ${FLASH_USED_KB}KB / ${FLASH_LIMIT_KB}KB (${USAGE_PERCENT}%) |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| RAM Used | ${RAM_USED} bytes |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Section | Size | Description |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---------|------|-------------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| .text | ${TEXT_KB} KB | Code (Flash) |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| .data | ${DATA_KB} KB | Initialized data (Flash + RAM) |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| .bss | ${BSS_KB} KB | Uninitialized data (RAM) |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Flash Total** | **${FLASH_USED_KB} KB / ${FLASH_LIMIT_KB} KB** | **${USAGE_PERCENT}%** |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **RAM Total** | **${RAM_KB} KB** | data + bss |" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Show largest symbols
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          ELF_PATH="build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}.elf"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "#### Top 10 Largest Symbols" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+          arm-none-eabi-nm --size-sort --print-size --radix=d "$ELF_PATH" | tail -10 | tac >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Check flash limits
         if: steps.check.outputs.skip != 'true'

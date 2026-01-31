@@ -1,0 +1,100 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug BMS (ST-Link)",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/BMS/BMS.elf",
+      "request": "launch",
+      "type": "cortex-debug",
+      "servertype": "stlink",
+      "device": "STM32F446RE",
+      "runToEntryPoint": "main",
+      "preLaunchTask": "Build BMS"
+    },
+    {
+      "name": "Debug DASH (ST-Link)",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/DASH/DASH.elf",
+      "request": "launch",
+      "type": "cortex-debug",
+      "servertype": "stlink",
+      "device": "STM32F469NI",
+      "runToEntryPoint": "main",
+      "preLaunchTask": "Build DASH"
+    },
+    {
+      "name": "Debug DART (ST-Link)",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/DART/DART.elf",
+      "request": "launch",
+      "type": "cortex-debug",
+      "servertype": "stlink",
+      "device": "STM32F446RE",
+      "runToEntryPoint": "main",
+      "preLaunchTask": "Build DART"
+    },
+    {
+      "name": "Debug DCU (ST-Link)",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/DCU/DCU.elf",
+      "request": "launch",
+      "type": "cortex-debug",
+      "servertype": "stlink",
+      "device": "STM32F446RE",
+      "runToEntryPoint": "main",
+      "preLaunchTask": "Build DCU"
+    },
+    {
+      "name": "Debug LVPDB (ST-Link)",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/LVPDB/LVPDB.elf",
+      "request": "launch",
+      "type": "cortex-debug",
+      "servertype": "stlink",
+      "device": "STM32F446RE",
+      "runToEntryPoint": "main",
+      "preLaunchTask": "Build LVPDB"
+    },
+    {
+      "name": "Debug PCU (ST-Link)",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/PCU/PCU.elf",
+      "request": "launch",
+      "type": "cortex-debug",
+      "servertype": "stlink",
+      "device": "STM32F446RE",
+      "runToEntryPoint": "main",
+      "preLaunchTask": "Build PCU"
+    },
+    {
+      "name": "Debug Sensor_Nodes (ST-Link)",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/Sensor_Nodes/Sensor_Nodes.elf",
+      "request": "launch",
+      "type": "cortex-debug",
+      "servertype": "stlink",
+      "device": "STM32F446RE",
+      "runToEntryPoint": "main",
+      "preLaunchTask": "Build Sensor_Nodes"
+    },
+    {
+      "name": "Attach BMS (ST-Link)",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/BMS/BMS.elf",
+      "request": "attach",
+      "type": "cortex-debug",
+      "servertype": "stlink",
+      "device": "STM32F446RE"
+    },
+    {
+      "name": "Attach LVPDB (ST-Link)",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/LVPDB/LVPDB.elf",
+      "request": "attach",
+      "type": "cortex-debug",
+      "servertype": "stlink",
+      "device": "STM32F446RE"
+    }
+  ]
+}

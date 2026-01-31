@@ -1,0 +1,50 @@
+# Pre-commit hooks for FEB Firmware
+#
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+#
+# See https://pre-commit.com for more information
+#
+repos:
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(Drivers/|Middlewares/|.*\.patch$)
+      - id: end-of-file-fixer
+        exclude: ^(Drivers/|Middlewares/)
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+        exclude: ^(Drivers/|Middlewares/)
+
+  # Local hooks using project scripts
+  - repo: local
+    hooks:
+      # clang-format check on user code
+      - id: clang-format
+        name: clang-format
+        entry: ./scripts/format.sh --check
+        language: script
+        types: [c]
+        pass_filenames: false
+        files: Core/User/
+
+      # cppcheck static analysis (runs per-board)
+      - id: cppcheck
+        name: cppcheck
+        entry: bash -c 'for board in BMS DASH DART DCU LVPDB PCU Sensor_Nodes; do if [ -d "$board/Core" ]; then cppcheck --quiet --enable=warning,performance,portability --suppress=missingIncludeSystem --suppress=unmatchedSuppression --error-exitcode=1 -i Drivers -i Middlewares "$board/Core/"; fi; done'
+        language: system
+        types: [c]
+        pass_filenames: false
+
+      # Verify CAN library generated files match definitions
+      - id: can-validate
+        name: can-validate
+        entry: bash -c 'cd common/FEB_CAN_Library_SN4 && ./generate_can.sh --check'
+        language: system
+        files: (common/FEB_CAN_Library_SN4/.*\.py$|common/FEB_CAN_Library_SN4/gen/)
+        pass_filenames: false

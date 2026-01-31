@@ -128,12 +128,27 @@ jobs:
           https://github.com/FormulaElectricBerkeley/FEB_FIRMWARE_SN5
           EOF
 
+      - name: Generate checksums
+        run: |
+          cd release-package
+          echo "SHA256 Checksums" > SHA256SUMS.txt
+          echo "================" >> SHA256SUMS.txt
+          echo "" >> SHA256SUMS.txt
+          find . -type f \( -name "*.elf" -o -name "*.bin" -o -name "*.hex" \) | sort | while read file; do
+            sha256sum "$file" >> SHA256SUMS.txt
+          done
+          echo "" >> SHA256SUMS.txt
+          echo "Generated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
       - name: Create release zip
         run: |
           cd release-package
           zip -r ../FEB_Firmware_latest.zip .
           cd ..
-          ls -la FEB_Firmware_latest.zip
+          # Also generate checksum for the zip itself
+          sha256sum FEB_Firmware_latest.zip > FEB_Firmware_latest.zip.sha256
+          ls -la FEB_Firmware_latest.zip*
 
       - name: Delete existing latest release
         env:
@@ -182,4 +197,5 @@ jobs:
           - \`.hex\` - Intel HEX format" \
             --prerelease \
             --target ${{ github.sha }} \
-            FEB_Firmware_latest.zip
+            FEB_Firmware_latest.zip \
+            FEB_Firmware_latest.zip.sha256

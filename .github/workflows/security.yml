@@ -1,0 +1,96 @@
+name: Security Analysis
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run weekly on Monday at 7 AM UTC
+    - cron: '0 7 * * 1'
+
+jobs:
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [LVPDB]  # Start with one board for faster scans
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Check buildability
+        id: check
+        run: |
+          if [ ! -f "${{ matrix.project }}/CMakeLists.txt" ] || [ ! -d "${{ matrix.project }}/Core" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Initialize CodeQL
+        if: steps.check.outputs.skip != 'true'
+        uses: github/codeql-action/init@v3
+        with:
+          languages: c-cpp
+          # Focus on user code, not HAL drivers
+          config: |
+            paths:
+              - '${{ matrix.project }}/Core/User'
+            paths-ignore:
+              - '**/Drivers/**'
+              - '**/Middlewares/**'
+
+      - name: Install ARM GCC Toolchain
+        if: steps.check.outputs.skip != 'true'
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: latest
+
+      - name: Install Ninja
+        if: steps.check.outputs.skip != 'true'
+        run: sudo apt-get install -y ninja-build
+
+      - name: Configure CMake
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          cmake -S . -B build/${{ matrix.project }} \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-arm-none-eabi.cmake
+
+      - name: Build for CodeQL
+        if: steps.check.outputs.skip != 'true'
+        run: cmake --build build/${{ matrix.project }} --target ${{ matrix.project }}
+
+      - name: Perform CodeQL Analysis
+        if: steps.check.outputs.skip != 'true'
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:c-cpp"
+
+  secrets-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          extra_args: --only-verified
