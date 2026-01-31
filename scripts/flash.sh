@@ -289,13 +289,9 @@ show_board_menu() {
 
         local status=""
         if [ -n "$elf_path" ] && [ -f "$elf_path" ]; then
-            if [ "$standalone" = true ]; then
-                status="${GREEN}[ready]${NC}"
-            else
-                local build_time
-                build_time=$(get_file_time "$elf_path")
-                status="${GREEN}[built ${build_time}]${NC}"
-            fi
+            local build_time
+            build_time=$(get_file_time "$elf_path")
+            status="${GREEN}[built ${build_time}]${NC}"
         else
             if [ "$standalone" = true ]; then
                 status="${RED}[not found]${NC}"
