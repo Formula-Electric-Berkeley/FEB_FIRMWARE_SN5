@@ -202,7 +202,6 @@ void StartTask03(void *argument)
   uint16_t vshunt_raw[1] = {0};
   uint16_t vbus_raw[1] = {0};
   uint16_t current_raw[1] = {0};
-  uint16_t power_raw[1] = {0};
 
   printf("[TPS2482] Task start\r\n");
   osDelay(pdMS_TO_TICKS(1000));
@@ -215,14 +214,17 @@ void StartTask03(void *argument)
   {
     TPS2482_Poll_Shunt_Voltage(&hi2c1, tps_addresses, vshunt_raw, tps_count);
     TPS2482_Poll_Bus_Voltage(&hi2c1, tps_addresses, vbus_raw, tps_count);
-    TPS2482_Poll_Current(&hi2c1, tps_addresses, current_raw, tps_count);
-    TPS2482_Poll_Power(&hi2c1, tps_addresses, power_raw, tps_count);
+    TPS2482_Poll_Current(&hi2c1, tps_addresses, current_raw, tps_count);   
 
-    printf("[TPS2482] vshunt=0x%04X vbus=0x%04X current=0x%04X power=0x%04X\r\n",
-           (unsigned int)vshunt_raw[0],
-           (unsigned int)vbus_raw[0],
-           (unsigned int)current_raw[0],
-           (unsigned int)power_raw[0]);
+    // printf("[TPS2482] vshunt=0x%04X vbus=0x%04X current=0x%04X \r\n",
+    //        (unsigned int)vshunt_raw[0],
+    //        (unsigned int)vbus_raw[0],
+    //        (unsigned int)current_raw[0]);
+    
+    printf("[TPS2482] Vshunt=%.3f mV, Vbus=%.3f V, I=%04X mA\r\n",
+           (unsigned int)vshunt_raw[0] * TPS2482_CONV_VSHUNT,
+            (unsigned int)vbus_raw[0] * TPS2482_CONV_VBUS,
+            (unsigned int)TPS2482_CURRENT_LSB_EQ(current_raw[0]));
 
     osDelay(pdMS_TO_TICKS(1000));
   }
