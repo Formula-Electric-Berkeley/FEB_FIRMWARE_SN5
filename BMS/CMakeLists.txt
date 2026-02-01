@@ -1,17 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
-#
-# This file is generated only once,
-# and is not re-generated if converter is called multiple times.
-#
-# User is free to modify the file as much as necessary
-#
-include_directories(
-    ${CMAKE_SOURCE_DIR}/Drivers/STM32F4xx_HAL_Driver/Inc
-    ${CMAKE_SOURCE_DIR}/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
-    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/Device/ST/STM32F4xx/Include
-    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/Include
-)
+# ── Project identity (derived from directory name) ───────────────────
+get_filename_component(PROJ_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 
 # ── Compiler settings ────────────────────────────────────────────────
 set(CMAKE_C_STANDARD                11)
@@ -33,24 +23,67 @@ add_compile_definitions(
     $<$<CONFIG:Debug>:DEBUG>
 )
 
-# Add sources to executable
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user sources here
-    Core/User/Src/bms_tasks.c
-    Core/User/Src/FEB_HW.c
-    Core/User/Src/FEB_AD68xx_Interface.c
-    Core/User/Src/FEB_ADBMS6830B.c
-    Core/User/Src/FEB_ADBMS6830B_Driver.c
-    Core/User/Src/FEB_SM.c
-    Core/User/Src/FEB_CAN_IVT.c
-    Core/User/Src/FEB_i2c_protected.c
-    Core/User/Src/FEB_TPS2482.c
+# ══════════════════════════════════════════════════════════════════════
+#  SOURCE COLLECTION
+# ══════════════════════════════════════════════════════════════════════
+
+# Core application sources (CubeMX-generated + user code)
+file(GLOB_RECURSE CORE_SOURCES "Core/*.c")
+
+# Startup assembly
+file(GLOB STARTUP_ASM "startup_*.s")
+
+# HAL/LL driver sources (safe: HAL_MODULE_ENABLED guards; exclude templates)
+file(GLOB HAL_SOURCES "Drivers/STM32F4xx_HAL_Driver/Src/*.c")
+list(FILTER HAL_SOURCES EXCLUDE REGEX "_template\\.c$")
+
+# Combine base sources
+set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES})
+
+# ── Middleware: FreeRTOS ─────────────────────────────────────────────
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
+    file(GLOB FREERTOS_CORE "Middlewares/Third_Party/FreeRTOS/Source/*.c")
+    file(GLOB FREERTOS_CMSIS "Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/*.c")
+    file(GLOB FREERTOS_PORT "Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/*.c")
+    file(GLOB FREERTOS_HEAP "Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c")
+    list(APPEND ALL_SOURCES ${FREERTOS_CORE} ${FREERTOS_CMSIS} ${FREERTOS_PORT} ${FREERTOS_HEAP})
+endif()
+
+# CAN library generated source (from common submodule)
+list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can.c")
+
+# ══════════════════════════════════════════════════════════════════════
+#  INCLUDE DIRECTORIES
+# ══════════════════════════════════════════════════════════════════════
+
+set(BASE_INCLUDES
+    Core/Inc
+    Drivers/STM32F4xx_HAL_Driver/Inc
+    Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
+    Drivers/CMSIS/Device/ST/STM32F4xx/Include
+    Drivers/CMSIS/Include
 )
+
+# FreeRTOS includes
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
+    list(APPEND BASE_INCLUDES
+        Middlewares/Third_Party/FreeRTOS/Source/include
+        Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
+        Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F
+    )
+endif()
 
 # Auto-discover Core/User/Inc if it exists
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
     list(APPEND BASE_INCLUDES Core/User/Inc)
 endif()
+
+# Common CAN library (submodule)
+set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4")
+list(APPEND BASE_INCLUDES
+    "${CAN_LIB_DIR}/.."          # resolves #include "FEB_CAN_Library_SN4/gen/feb_can.h"
+    "${CAN_LIB_DIR}/gen"         # resolves #include "feb_can.h" directly
+)
 
 # ══════════════════════════════════════════════════════════════════════
 #  EXECUTABLE TARGET
@@ -93,11 +126,4 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     ADDITIONAL_CLEAN_FILES "${PROJECT_NAME}.map;${PROJECT_NAME}.bin;${PROJECT_NAME}.hex"
-)
-
-# Add linker options
-target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
-    # Enable floating-point printf/scanf support for newlib-nano
-    "LINKER:-u,_printf_float"
-    "LINKER:-u,_scanf_float"
 )
