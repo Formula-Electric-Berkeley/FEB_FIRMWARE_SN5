@@ -13,6 +13,11 @@ extern CAN_HandleTypeDef hcan2;
 extern I2C_HandleTypeDef hi2c1;
 extern TIM_HandleTypeDef htim1;
 extern UART_HandleTypeDef huart2;
+extern DMA_HandleTypeDef hdma_usart2_tx;
+extern DMA_HandleTypeDef hdma_usart2_rx;
+
+static uint8_t uart_tx_buf[512];
+static uint8_t uart_rx_buf[256];
 
 static void FEB_Compose_CAN_Data(void);
 static void FEB_Variable_Conversion(void);
@@ -69,7 +74,23 @@ bool bus_voltage_healthy = true;
 
 void FEB_Main_Setup(void)
 {
-  printf("[SETUP] Beginning Setup\r\n");
+  // Initialize UART library first (before any LOG calls)
+  FEB_UART_Config_t uart_cfg = {
+      .huart = &huart2,
+      .hdma_tx = &hdma_usart2_tx,
+      .hdma_rx = &hdma_usart2_rx,
+      .tx_buffer = uart_tx_buf,
+      .tx_buffer_size = sizeof(uart_tx_buf),
+      .rx_buffer = uart_rx_buf,
+      .rx_buffer_size = sizeof(uart_rx_buf),
+      .log_level = FEB_UART_LOG_DEBUG,
+      .enable_colors = true,
+      .enable_timestamps = true,
+      .get_tick_ms = HAL_GetTick,
+  };
+  FEB_UART_Init(&uart_cfg);
+
+  LOG_I(TAG_MAIN, "Beginning Setup");
 
   FEB_Variable_Init();
   // FEB_CAN_HEARTBEAT_Init();
@@ -90,10 +111,9 @@ void FEB_Main_Setup(void)
 
     TPS2482_Init(&hi2c1, tps2482_i2c_addresses, tps2482_configurations, tps2482_ids, tps2482_init_res, NUM_TPS2482);
 
-    printf("[SETUP] Initializing... [%d]       Status:     LV: %d    SH: %d    LT: %d    BM_L: %d    SM: %d    "
-           "AF1_AF2: %d    CP_RF: %d\r\n",
-           maxiter, tps2482_init_res[0], tps2482_init_res[1], tps2482_init_res[2], tps2482_init_res[3],
-           tps2482_init_res[4], tps2482_init_res[5], tps2482_init_res[6]);
+    LOG_I(TAG_MAIN, "Initializing... [%d] Status: LV:%d SH:%d LT:%d BM_L:%d SM:%d AF1_AF2:%d CP_RF:%d", maxiter,
+          tps2482_init_res[0], tps2482_init_res[1], tps2482_init_res[2], tps2482_init_res[3], tps2482_init_res[4],
+          tps2482_init_res[5], tps2482_init_res[6]);
 
     for (uint8_t i = 0; i < NUM_TPS2482; i++)
     {
@@ -128,14 +148,12 @@ void FEB_Main_Setup(void)
     TPS2482_Enable(tps2482_en_ports, tps2482_en_pins, start_en, tps2482_en_res, NUM_TPS2482 - 1);
     TPS2482_GPIO_Read(tps2482_pg_ports, tps2482_pg_pins, tps2482_pg_res, NUM_TPS2482);
 
-    printf("[SETUP] Powering...     [%d] tps2482_en_res:              SH: %d    LT: %d     BM_L: %d     SM: %d     "
-           "AF1_AF2: %d    CP_RF: %d\r\n",
-           maxiter, tps2482_en_res[0], tps2482_en_res[1], tps2482_en_res[2], tps2482_en_res[3], tps2482_en_res[4],
-           tps2482_en_res[5]);
-    printf("[SETUP] Validating...   [%d] tps2482_pg_res:     LV: %d    SH: %d    LT: %d     BM_L: %d     SM: %d     "
-           "AF1_AF2: %d    CP_RF: %d\r\n",
-           maxiter, tps2482_pg_res[0], tps2482_pg_res[1], tps2482_pg_res[2], tps2482_pg_res[3], tps2482_pg_res[4],
-           tps2482_pg_res[5], tps2482_pg_res[6]);
+    LOG_I(TAG_MAIN, "Powering... [%d] tps2482_en_res: SH:%d LT:%d BM_L:%d SM:%d AF1_AF2:%d CP_RF:%d", maxiter,
+          tps2482_en_res[0], tps2482_en_res[1], tps2482_en_res[2], tps2482_en_res[3], tps2482_en_res[4],
+          tps2482_en_res[5]);
+    LOG_I(TAG_MAIN, "Validating... [%d] tps2482_pg_res: LV:%d SH:%d LT:%d BM_L:%d SM:%d AF1_AF2:%d CP_RF:%d", maxiter,
+          tps2482_pg_res[0], tps2482_pg_res[1], tps2482_pg_res[2], tps2482_pg_res[3], tps2482_pg_res[4],
+          tps2482_pg_res[5], tps2482_pg_res[6]);
 
     for (uint8_t i = 0; i < NUM_TPS2482 - 1; i++)
     {
@@ -170,7 +188,10 @@ void FEB_Main_Setup(void)
   HAL_TIM_Base_Start_IT(&htim1);
 }
 
-void FEB_Main_Loop(void) {}
+void FEB_Main_Loop(void)
+{
+  FEB_UART_ProcessRx(); // Process any received UART commands
+}
 
 void FEB_1ms_Callback(void)
 {

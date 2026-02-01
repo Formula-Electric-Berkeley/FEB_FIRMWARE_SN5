@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "can.h"
+#include "dma.h"
 #include "i2c.h"
 #include "tim.h"
 #include "usart.h"
@@ -90,6 +91,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_CAN1_Init();
   MX_CAN2_Init();
@@ -97,7 +99,6 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-  printf("[STARTUP] ALL PERIPHERALS INIT\r\n");
   FEB_Main_Setup();
 
   /* USER CODE END 2 */
@@ -168,11 +169,7 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-PUTCHAR_PROTOTYPE
-{
-  HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
-  return ch;
-}
+
 /* USER CODE END 4 */
 
 /**
