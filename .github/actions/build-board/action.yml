@@ -1,0 +1,91 @@
+name: 'Build STM32 Board'
+description: 'Builds a single STM32 board firmware with ARM GCC toolchain'
+
+inputs:
+  board:
+    description: 'Board name (BMS, DASH, DART, DCU, LVPDB, PCU, Sensor_Nodes)'
+    required: true
+  build-type:
+    description: 'Build type (Debug or Release)'
+    required: false
+    default: 'Debug'
+  upload-artifacts:
+    description: 'Whether to upload build artifacts'
+    required: false
+    default: 'true'
+  artifact-suffix:
+    description: 'Suffix to append to artifact name'
+    required: false
+    default: ''
+
+outputs:
+  skipped:
+    description: 'Whether the build was skipped (missing files)'
+    value: ${{ steps.check.outputs.skip }}
+  elf-path:
+    description: 'Path to the built ELF file'
+    value: ${{ steps.paths.outputs.elf }}
+  bin-path:
+    description: 'Path to the built BIN file'
+    value: ${{ steps.paths.outputs.bin }}
+  hex-path:
+    description: 'Path to the built HEX file'
+    value: ${{ steps.paths.outputs.hex }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check buildability
+      id: check
+      shell: bash
+      run: |
+        if [ ! -f "${{ inputs.board }}/CMakeLists.txt" ] || [ ! -d "${{ inputs.board }}/Core" ]; then
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+          echo "::warning::${{ inputs.board }} skipped -- missing CMakeLists.txt or Core/ directory"
+        else
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Install ARM GCC Toolchain
+      if: steps.check.outputs.skip != 'true'
+      uses: carlosperate/arm-none-eabi-gcc-action@v1
+      with:
+        release: latest
+
+    - name: Install Ninja
+      if: steps.check.outputs.skip != 'true'
+      shell: bash
+      run: sudo apt-get install -y ninja-build
+
+    - name: Configure CMake
+      if: steps.check.outputs.skip != 'true'
+      shell: bash
+      run: |
+        cmake -S . -B build/${{ inputs.board }} \
+          -G Ninja \
+          -DCMAKE_BUILD_TYPE=${{ inputs.build-type }} \
+          -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-arm-none-eabi.cmake
+
+    - name: Build
+      if: steps.check.outputs.skip != 'true'
+      shell: bash
+      run: cmake --build build/${{ inputs.board }} --target ${{ inputs.board }}
+
+    - name: Set output paths
+      if: steps.check.outputs.skip != 'true'
+      id: paths
+      shell: bash
+      run: |
+        echo "elf=build/${{ inputs.board }}/${{ inputs.board }}/${{ inputs.board }}.elf" >> "$GITHUB_OUTPUT"
+        echo "bin=build/${{ inputs.board }}/${{ inputs.board }}/${{ inputs.board }}.bin" >> "$GITHUB_OUTPUT"
+        echo "hex=build/${{ inputs.board }}/${{ inputs.board }}/${{ inputs.board }}.hex" >> "$GITHUB_OUTPUT"
+
+    - name: Upload artifacts
+      if: steps.check.outputs.skip != 'true' && inputs.upload-artifacts == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.board }}-firmware${{ inputs.artifact-suffix }}
+        path: |
+          build/${{ inputs.board }}/${{ inputs.board }}/${{ inputs.board }}.elf
+          build/${{ inputs.board }}/${{ inputs.board }}/${{ inputs.board }}.bin
+          build/${{ inputs.board }}/${{ inputs.board }}/${{ inputs.board }}.hex

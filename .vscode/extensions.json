@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "ms-vscode.cpptools",
+    "ms-vscode.cmake-tools",
+    "stmicroelectronics.stm32-vscode-extension",
+    "ms-python.python",
+    "marus25.cortex-debug",
+    "dan-c-underwood.arm",
+    "usernamehw.errorlens",
+    "eamodio.gitlens",
+    "github.vscode-github-actions",
+    "ms-vsliveshare.vsliveshare"
+  ]
+}

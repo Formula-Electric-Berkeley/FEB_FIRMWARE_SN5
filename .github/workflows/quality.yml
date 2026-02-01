@@ -1,0 +1,63 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    name: clang-format check
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install clang-format
+        run: sudo apt-get install -y clang-format
+
+      - name: Check formatting (user code)
+        run: ./scripts/format.sh --check
+
+  cppcheck:
+    runs-on: ubuntu-latest
+    name: cppcheck ${{ matrix.project }}
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Check if project has source code
+        id: check
+        run: |
+          if [ ! -d "${{ matrix.project }}/Core" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::${{ matrix.project }} has no Core/ directory, skipping cppcheck."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install cppcheck
+        if: steps.check.outputs.skip != 'true'
+        run: sudo apt-get install -y cppcheck
+
+      - name: Run cppcheck
+        if: steps.check.outputs.skip != 'true'
+        working-directory: ${{ matrix.project }}
+        run: |
+          cppcheck \
+            --enable=warning,performance,portability \
+            --suppress=missingIncludeSystem \
+            --suppress=unmatchedSuppression \
+            --error-exitcode=1 \
+            --inline-suppr \
+            -i Drivers \
+            -i Middlewares \
+            Core/ \
+            2>&1

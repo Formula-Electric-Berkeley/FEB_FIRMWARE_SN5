@@ -1,0 +1,175 @@
+name: Tagged Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes]
+
+    name: Build ${{ matrix.project }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Check buildability
+        id: check
+        run: |
+          if [ ! -f "${{ matrix.project }}/CMakeLists.txt" ] || [ ! -d "${{ matrix.project }}/Core" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::${{ matrix.project }} skipped -- missing CMakeLists.txt or Core/ directory."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install ARM GCC Toolchain
+        if: steps.check.outputs.skip != 'true'
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: latest
+
+      - name: Install Ninja
+        if: steps.check.outputs.skip != 'true'
+        run: sudo apt-get install -y ninja-build
+
+      - name: Configure CMake
+        if: steps.check.outputs.skip != 'true'
+        run: >
+          cmake -S . -B build/${{ matrix.project }}
+          -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_TOOLCHAIN_FILE=cmake/gcc-arm-none-eabi.cmake
+
+      - name: Build
+        if: steps.check.outputs.skip != 'true'
+        run: cmake --build build/${{ matrix.project }} --target ${{ matrix.project }}
+
+      - name: Rename artifacts with version
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          TAG="${{ github.ref_name }}"
+          TIMESTAMP=$(TZ=America/Los_Angeles date +"%m-%d-%Y_%H-%M-%S")
+          BUILD_DIR="build/${{ matrix.project }}/${{ matrix.project }}"
+
+          cp "${BUILD_DIR}/${{ matrix.project }}.elf" "${BUILD_DIR}/${{ matrix.project }}-${TAG}-${TIMESTAMP}.elf"
+          cp "${BUILD_DIR}/${{ matrix.project }}.bin" "${BUILD_DIR}/${{ matrix.project }}-${TAG}-${TIMESTAMP}.bin"
+          cp "${BUILD_DIR}/${{ matrix.project }}.hex" "${BUILD_DIR}/${{ matrix.project }}-${TAG}-${TIMESTAMP}.hex"
+
+      - name: Upload release artifacts
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.project }}-release
+          path: |
+            build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}-${{ github.ref_name }}-*.elf
+            build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}-${{ github.ref_name }}-*.bin
+            build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}-${{ github.ref_name }}-*.hex
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: release-artifacts
+
+      - name: Organize artifacts by board
+        run: |
+          mkdir -p release-package
+          for board in BMS PCU DASH LVPDB DART DCU Sensor_Nodes; do
+            mkdir -p "release-package/$board"
+            find release-artifacts -name "$board-*" -type f \( -name "*.elf" -o -name "*.bin" -o -name "*.hex" \) -exec cp {} "release-package/$board/" \; 2>/dev/null || true
+          done
+          cp scripts/flash.sh release-package/
+          chmod +x release-package/flash.sh
+          echo "=== Release package structure ==="
+          find release-package -type f | sort
+
+      - name: Create README.txt
+        run: |
+          cat > release-package/README.txt << 'EOF'
+          FEB Firmware Release ${{ github.ref_name }}
+          ============================================
+
+          Quick Start:
+            1. Extract this zip
+            2. Make flash.sh executable: chmod +x flash.sh
+            3. Run: ./flash.sh
+            4. Select the board you want to flash from the menu
+
+          Manual Flashing:
+            ./flash.sh -f BMS/BMS-*.elf
+
+          Requirements:
+            - STM32CubeCLT (provides STM32_Programmer_CLI)
+            - ST-Link or compatible SWD programmer
+
+          For more information, visit:
+          https://github.com/FormulaElectricBerkeley/FEB_FIRMWARE_SN5
+          EOF
+
+      - name: Generate checksums
+        run: |
+          cd release-package
+          echo "SHA256 Checksums for ${{ github.ref_name }}" > SHA256SUMS.txt
+          echo "=======================================" >> SHA256SUMS.txt
+          echo "" >> SHA256SUMS.txt
+          find . -type f \( -name "*.elf" -o -name "*.bin" -o -name "*.hex" \) | sort | while read file; do
+            sha256sum "$file" >> SHA256SUMS.txt
+          done
+          echo "" >> SHA256SUMS.txt
+          echo "Generated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create release zip
+        run: |
+          cd release-package
+          zip -r ../FEB_Firmware_${{ github.ref_name }}.zip .
+          cd ..
+          # Also generate checksum for the zip itself
+          sha256sum FEB_Firmware_${{ github.ref_name }}.zip > FEB_Firmware_${{ github.ref_name }}.zip.sha256
+          ls -la FEB_Firmware_${{ github.ref_name }}.zip*
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            FEB_Firmware_${{ github.ref_name }}.zip
+            FEB_Firmware_${{ github.ref_name }}.zip.sha256
+          fail_on_unmatched_files: false
+          body: |
+            ## Quick Start
+            1. Download `FEB_Firmware_${{ github.ref_name }}.zip`
+            2. Extract the zip
+            3. Run:
+            ```
+            chmod +x flash.sh
+            ./flash.sh
+            ```
+            4. Select the board you want to flash from the menu
+
+            ## Boards Included
+            - BMS (Battery Management System)
+            - PCU (Powertrain Control Unit)
+            - DASH (Dashboard)
+            - LVPDB (Low Voltage Power Distribution)
+            - DART
+            - DCU (Data Control Unit)
+            - Sensor_Nodes

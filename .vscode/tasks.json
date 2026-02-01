@@ -1,0 +1,127 @@
+{
+    "version": "2.0.0",
+    "windows": {
+        "options": {
+            "shell": {
+                "executable": "cmd.exe",
+                "args": ["/d", "/c"]
+            }
+        }
+    },
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "Build BMS",
+            "command": "cmake",
+            "args": ["--build", "build/Debug", "--target", "BMS"],
+            "group": "build",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "type": "shell",
+            "label": "Build DASH",
+            "command": "cmake",
+            "args": ["--build", "build/Debug", "--target", "DASH"],
+            "group": "build",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "type": "shell",
+            "label": "Build DART",
+            "command": "cmake",
+            "args": ["--build", "build/Debug", "--target", "DART"],
+            "group": "build",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "type": "shell",
+            "label": "Build DCU",
+            "command": "cmake",
+            "args": ["--build", "build/Debug", "--target", "DCU"],
+            "group": "build",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "type": "shell",
+            "label": "Build LVPDB",
+            "command": "cmake",
+            "args": ["--build", "build/Debug", "--target", "LVPDB"],
+            "group": "build",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "type": "shell",
+            "label": "Build PCU",
+            "command": "cmake",
+            "args": ["--build", "build/Debug", "--target", "PCU"],
+            "group": "build",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "type": "shell",
+            "label": "Build Sensor_Nodes",
+            "command": "cmake",
+            "args": ["--build", "build/Debug", "--target", "Sensor_Nodes"],
+            "group": "build",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "type": "shell",
+            "label": "Build All",
+            "command": "cmake",
+            "args": ["--build", "build/Debug"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "type": "shell",
+            "label": "CubeProg: Flash project (SWD)",
+            "command": "STM32_Programmer_CLI",
+            "args": [
+                "--connect",
+                "port=swd",
+                "--download",
+                "${workspaceFolder}/build/Debug/${input:boardName}/${input:boardName}.elf",
+                "-hardRst",
+                "-rst",
+                "--start"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "type": "cmake",
+            "label": "CMake: clean rebuild",
+            "command": "cleanRebuild",
+            "targets": ["all"],
+            "preset": "${command:cmake.activeBuildPresetName}",
+            "group": "build",
+            "problemMatcher": [],
+            "detail": "CMake template clean rebuild task"
+        },
+        {
+            "type": "shell",
+            "label": "CubeProg: List all available communication interfaces",
+            "command": "STM32_Programmer_CLI",
+            "args": ["--list"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "boardName",
+            "type": "pickString",
+            "description": "Select board to flash",
+            "options": ["BMS", "DASH", "DART", "DCU", "LVPDB", "PCU", "Sensor_Nodes"],
+            "default": "LVPDB"
+        }
+    ]
+}
