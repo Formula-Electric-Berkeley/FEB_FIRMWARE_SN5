@@ -6,6 +6,8 @@
 // Typically used with NTC thermistors in battery cell monitoring
 
 #include <stdint.h>
+#include "FEB_Const.h"
+#include "main.h"
 
 // Function to convert thermistor voltage to temperature
 // voltage_mV: voltage in millivolts from thermistor divider circuit
@@ -22,8 +24,8 @@ static inline float convert_thermistor_to_temp(float voltage_mV) {
     // 3. Polynomial curve fit
 
     // For now, return a dummy linear approximation
-    // Assumes 2.5V ≈ 25°C with ~10mV/°C sensitivity
-    float temp_C = 25.0f + (voltage_mV - 2500.0f) / 10.0f;
+    // Uses constants from FEB_Const.h
+    float temp_C = THERM_REF_TEMP_C + (voltage_mV - THERM_REF_VOLTAGE_MV) / THERM_SENSITIVITY_MV_PER_C;
 
     return temp_C;
 }
@@ -36,8 +38,8 @@ static inline int FEB_Cell_Temp_LUT_Get_Temp_100mC(int voltage_mV) {
     // TODO: Replace with actual thermistor calibration curve/LUT based on your hardware
 
     // For now, use a simple linear approximation
-    // Assumes 2.5V ≈ 25°C with ~10mV/°C sensitivity
-    float temp_C = 25.0f + ((float)voltage_mV - 2500.0f) / 10.0f;
+    // Uses constants from FEB_Const.h
+    float temp_C = THERM_REF_TEMP_C + ((float)voltage_mV - THERM_REF_VOLTAGE_MV) / THERM_SENSITIVITY_MV_PER_C;
 
     // Convert to units of 0.1°C (100mC)
     return (int)(temp_C * 10.0f);

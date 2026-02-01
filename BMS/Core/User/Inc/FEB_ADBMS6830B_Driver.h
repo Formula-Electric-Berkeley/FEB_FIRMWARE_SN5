@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "main.h"
 
 // ********************************** Macros *************************************
 
@@ -313,6 +314,15 @@ and store the gpio voltages in a_codes variable.
 uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
                      	   cell_asic *ic // Array of the parsed cell codes
                     	  );
+
+/*!
+ Read the unique 48-bit Serial ID from each ADBMS6830B in the daisy chain.
+ The Serial ID is factory-programmed and unique to each device.
+ @return uint8_t, PEC Status (0: no error, non-zero: error)
+ */
+uint8_t ADBMS6830B_rdsid(uint8_t total_ic, // The number of ICs in the system
+                         cell_asic *ic     // Array to store the serial IDs
+                        );
 
 // ******************************** Auxilary Functions ********************************
 /*!

@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include "FEB_Const.h"
+#include "main.h"
 
 /**
  * @brief Get maximum safe cell voltage

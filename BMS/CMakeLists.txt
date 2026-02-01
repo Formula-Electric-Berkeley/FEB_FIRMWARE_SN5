@@ -1,7 +1,17 @@
 cmake_minimum_required(VERSION 3.22)
 
-# ── Project identity (derived from directory name) ───────────────────
-get_filename_component(PROJ_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
+#
+# This file is generated only once,
+# and is not re-generated if converter is called multiple times.
+#
+# User is free to modify the file as much as necessary
+#
+include_directories(
+    ${CMAKE_SOURCE_DIR}/Drivers/STM32F4xx_HAL_Driver/Inc
+    ${CMAKE_SOURCE_DIR}/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
+    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/Device/ST/STM32F4xx/Include
+    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/Include
+)
 
 # ── Compiler settings ────────────────────────────────────────────────
 set(CMAKE_C_STANDARD                11)
@@ -23,33 +33,18 @@ add_compile_definitions(
     $<$<CONFIG:Debug>:DEBUG>
 )
 
-# ══════════════════════════════════════════════════════════════════════
-#  SOURCE COLLECTION
-# ══════════════════════════════════════════════════════════════════════
-
-# Core application sources (CubeMX-generated + user code)
-file(GLOB_RECURSE CORE_SOURCES "Core/*.c")
-
-# Startup assembly
-file(GLOB STARTUP_ASM "startup_*.s")
-
-# HAL/LL driver sources (safe: HAL_MODULE_ENABLED guards; exclude templates)
-file(GLOB HAL_SOURCES "Drivers/STM32F4xx_HAL_Driver/Src/*.c")
-list(FILTER HAL_SOURCES EXCLUDE REGEX "_template\\.c$")
-
-# Combine base sources
-set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES})
-
-# ══════════════════════════════════════════════════════════════════════
-#  INCLUDE DIRECTORIES
-# ══════════════════════════════════════════════════════════════════════
-
-set(BASE_INCLUDES
-    Core/Inc
-    Drivers/STM32F4xx_HAL_Driver/Inc
-    Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
-    Drivers/CMSIS/Device/ST/STM32F4xx/Include
-    Drivers/CMSIS/Include
+# Add sources to executable
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+    # Add user sources here
+    Core/User/Src/bms_tasks.c
+    Core/User/Src/FEB_HW.c
+    Core/User/Src/FEB_AD68xx_Interface.c
+    Core/User/Src/FEB_ADBMS6830B.c
+    Core/User/Src/FEB_ADBMS6830B_Driver.c
+    Core/User/Src/FEB_SM.c
+    Core/User/Src/FEB_CAN_IVT.c
+    Core/User/Src/FEB_i2c_protected.c
+    Core/User/Src/FEB_TPS2482.c
 )
 
 # Auto-discover Core/User/Inc if it exists

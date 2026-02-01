@@ -7,7 +7,7 @@
 #define FEB_NUM_ICPBANK 2
 
 // Number of banks in the system
-#define FEB_NBANKS 6
+#define FEB_NBANKS 4
 
 // Total number of ICs in the daisy chain
 #define FEB_NUM_IC (FEB_NUM_ICPBANK * FEB_NBANKS)
@@ -26,6 +26,33 @@
 
 // Number of temperature sensors per IC (for MUX reading)
 #define FEB_NUM_TEMP_SENSE_PER_IC 10
+
+// ********************************** ADBMS6830B ADC Conversion Constants ********
+// From ADBMS6830B datasheet - Cell voltage measurement
+
+#define ADBMS_ADC_LSB_UV            150        // ADC resolution: 150 µV/LSB
+#define ADBMS_ADC_LSB_V             0.000150f  // ADC resolution in volts
+#define ADBMS_ADC_OFFSET_V          1.5f       // ADC bipolar offset voltage
+
+// ********************************** Thermistor Conversion Constants *************
+// Placeholder values - calibrate for actual hardware
+
+#define THERM_REF_VOLTAGE_MV        2500       // Reference voltage at 25°C
+#define THERM_REF_TEMP_C            25.0f      // Reference temperature
+#define THERM_SENSITIVITY_MV_PER_C  10.0f      // mV per degree C
+
+// ********************************** Error Type Codes ****************************
+
+#define ERROR_TYPE_TEMP_VIOLATION    0x10
+#define ERROR_TYPE_LOW_TEMP_READS    0x20
+#define ERROR_TYPE_VOLTAGE_VIOLATION 0x30
+#define ERROR_TYPE_INIT_FAILURE      0x40
+
+// ********************************** Temperature Validation Range ****************
+// Valid operating range for temperature sensors (in deci-Celsius)
+
+#define TEMP_VALID_MIN_DC           (-400)     // -40.0°C minimum valid reading
+#define TEMP_VALID_MAX_DC           850        // 85.0°C maximum valid reading
 
 // ********************************** Voltage and Temperature Limits *************
 

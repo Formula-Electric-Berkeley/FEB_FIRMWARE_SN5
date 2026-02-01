@@ -7,6 +7,7 @@
 #include "FreeRTOS.h"
 #include "cmsis_os.h"
 #include <string.h>
+#include <stdio.h>
 
 // ********************************** Functions **********************************
 
@@ -345,8 +346,11 @@ uint8_t ADBMS6830B_rdsv(uint8_t total_ic, // The number of ICs in the system
 void ADBMS6830B_wrALL(uint8_t total_ic, // The number of ICs being written to
 		      cell_asic ic[] // A two dimensional array of the configuration data that will be written
 		      ) {
+	printf("[ADBMS] Writing ADBMS CFGRA Configuration to ICs\r\n");
 	ADBMS6830B_wrcfga(total_ic, ic);
+	printf("[ADBMS] Writing ADBMS CFGRB Configuration to ICs\r\n");
 	ADBMS6830B_wrcfgb(total_ic, ic);
+	printf("[ADBMS] ADBMS CFGRA and CFGRB Configuration Written to ICs\r\n");
 }
 
 void ADBMS6830B_rdALL(uint8_t total_ic, // The number of ICs being written to
@@ -535,6 +539,34 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
 	// ADBMS6830B_check_pec(total_ic, CELL, ic);
 	vPortFree(cell_data);
 	return (pec_error);
+}
+
+/*
+Read the unique 48-bit Serial ID from each ADBMS6830B in the daisy chain.
+The Serial ID is factory-programmed and unique to each device.
+Returns 6 bytes per IC stored in ic[].sid[6].
+*/
+uint8_t ADBMS6830B_rdsid(uint8_t total_ic, // The number of ICs in the system
+			 cell_asic *ic     // Array to store the serial IDs
+			 ) {
+	uint8_t pec_error = 0;
+	uint8_t *sid_data;
+	sid_data = (uint8_t *)pvPortMalloc((NUM_RX_BYT * total_ic) * sizeof(uint8_t));
+	if (sid_data == NULL) {
+		return 1; // Memory allocation failed
+	}
+
+	wakeup_sleep(total_ic);
+	transmitCMDR(RDSID, sid_data, NUM_RX_BYT * total_ic);
+
+	for (int i = 0; i < total_ic; i++) {
+		// Copy 6 bytes of SID data (bytes 0-5 of each IC's response)
+		// Bytes 6-7 are PEC which we skip
+		memcpy(ic[i].sid, sid_data + (i * NUM_RX_BYT), 6);
+	}
+
+	vPortFree(sid_data);
+	return pec_error;
 }
 
 void ADBMS6830B_CLRFLAG(uint8_t total_ic) {

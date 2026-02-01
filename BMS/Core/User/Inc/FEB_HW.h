@@ -1,6 +1,7 @@
 #ifndef INC_FEB_HW_H_
 #define INC_FEB_HW_H_
 
+#include "projdefs.h"
 #include "spi.h"
 #include "gpio.h"
 #include "main.h"
@@ -8,6 +9,7 @@
 #include "cmsis_os.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 // ********************************** isoSPI Hardware Abstraction *****************
 // This file provides a hardware abstraction layer for ADBMS6830B isoSPI communication
@@ -116,8 +118,42 @@ static inline void FEB_spi_write_array(uint16_t len, uint8_t *data)
 // SPI Write Then Read Function
 static inline void FEB_spi_write_read(uint8_t *tx_data, uint16_t tx_len, uint8_t *rx_data, uint16_t rx_len)
 {
-    HAL_SPI_Transmit(FEB_ACTIVE_SPI, tx_data, tx_len, FEB_SPI_TIMEOUT_MS);
-    HAL_SPI_Receive(FEB_ACTIVE_SPI, rx_data, rx_len, FEB_SPI_TIMEOUT_MS);
+    // Combine TX and RX into a single transaction for standard SPI "Read after Write"
+    // Using a local buffer to ensure continuous clock and CS low state.
+    // Max size typically: 4 bytes CMD + (8 ICs * 8 bytes data) = 68 bytes.
+    // Using 256 bytes to be safe for stack allocation.
+
+    if ((uint32_t)(tx_len + rx_len) > 256) {
+        // Fallback for unexpectedly large transfers (should not happen in normal BMS op)
+        // Note: This split method is technically incorrect for some SPI devices but avoids stack overflow.
+        HAL_StatusTypeDef tx_status = HAL_SPI_Transmit(FEB_ACTIVE_SPI, tx_data, tx_len, FEB_SPI_TIMEOUT_MS);
+        HAL_StatusTypeDef rx_status = HAL_SPI_Receive(FEB_ACTIVE_SPI, rx_data, rx_len, FEB_SPI_TIMEOUT_MS);
+        printf("[SPI] HAL TX=%d RX=%d (fallback)\r\n", tx_status, rx_status);
+        return;
+    }
+
+    uint8_t tx_buf[256];
+    uint8_t rx_buf[256];
+
+    // Prepare TX buffer: [Command Bytes] [Dummy Bytes for RX]
+    // Copy command bytes
+    for (int i = 0; i < tx_len; i++) {
+        tx_buf[i] = tx_data[i];
+    }
+    // Fill dummy bytes for the read phase (usually 0xFF or 0x00, 0xFF is common for idle MOSI)
+    for (int i = 0; i < rx_len; i++) {
+        tx_buf[tx_len + i] = 0xFF;
+    }
+
+    // Perform single full-duplex transaction
+    // This sends the command while ignoring RX, then sends dummy while capturing RX
+    HAL_StatusTypeDef hal_status = HAL_SPI_TransmitReceive(FEB_ACTIVE_SPI, tx_buf, rx_buf, tx_len + rx_len, FEB_SPI_TIMEOUT_MS);
+    printf("[SPI] HAL status=%d\r\n", hal_status);
+
+    // Extract RX data: [Garbage during CMD] [Actual Data]
+    for (int i = 0; i < rx_len; i++) {
+        rx_data[i] = rx_buf[tx_len + i];
+    }
 }
 
 // SPI Read Single Byte Function
@@ -140,7 +176,8 @@ static inline void wakeup_sleep(uint8_t total_ic)
     FEB_cs_low();
 
     // Short delay >400ns (a few microseconds)
-    for (volatile int i = 0; i < 100; i++)
+    // Increased to 1000 iterations to ensure sufficient pulse width across optimization levels
+    for (volatile int i = 0; i < 1000; i++)
     {
         __NOP();
     }
@@ -149,7 +186,7 @@ static inline void wakeup_sleep(uint8_t total_ic)
 
     // Wait 300us minimum for ADBMS to wake up
     // Using 1ms for safety (osDelay is FreeRTOS-aware)
-    osDelay(1);
+    osDelay(pdMS_TO_TICKS(1));
 }
 
 #endif /* INC_FEB_HW_H_ */

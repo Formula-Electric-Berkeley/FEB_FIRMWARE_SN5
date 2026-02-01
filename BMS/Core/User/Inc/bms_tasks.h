@@ -7,6 +7,7 @@
 #include "queue.h"
 #include "event_groups.h"
 #include <stdint.h>
+#include "main.h"
 
 typedef struct {
   uint32_t id;
