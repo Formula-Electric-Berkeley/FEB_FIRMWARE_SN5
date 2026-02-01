@@ -6,6 +6,12 @@ cmake_minimum_required(VERSION 3.22)
 #
 # User is free to modify the file as much as necessary
 #
+include_directories(
+    ${CMAKE_SOURCE_DIR}/Drivers/STM32F4xx_HAL_Driver/Inc
+    ${CMAKE_SOURCE_DIR}/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
+    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/Device/ST/STM32F4xx/Include
+    ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/Include
+)
 
 # Setup compiler settings
 set(CMAKE_C_STANDARD 11)
@@ -52,6 +58,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/User/Src/FEB_ADBMS6830B_Driver.c
     Core/User/Src/FEB_SM.c
     Core/User/Src/FEB_CAN_IVT.c
+    Core/User/Src/FEB_i2c_protected.c
+    Core/User/Src/FEB_TPS2482.c
 )
 
 # Add include paths
