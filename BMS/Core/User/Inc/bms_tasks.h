@@ -26,5 +26,6 @@ enum
 };
 
 void StartADBMSTask(void *arg);
+void StartTPSTask(void *arg);
 
 #endif

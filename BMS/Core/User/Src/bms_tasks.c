@@ -6,6 +6,8 @@
 #include "FEB_HW.h"
 #include "FEB_SM.h"
 #include "FEB_Const.h"
+#include "TPS2482.h"
+#include "i2c.h"
 #include "cmsis_os.h"
 #include <stdio.h>
 
@@ -109,5 +111,55 @@ void StartADBMSTask(void *argument)
     /* Task runs at 10ms period (100 Hz) */
 
     osDelay(pdMS_TO_TICKS(10));
+  }
+}
+
+/* ===== StartTPSTask =====
+   Low-priority task for TPS2482 power monitoring
+   - Monitors LV bus voltage and current
+   - Single TPS2482 with A0=GND, A1=GND */
+#define BMS_TPS_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_GND, TPS2482_I2C_ADDR_GND)
+#define BMS_TPS_R_SHUNT 0.002 // 2 mOhm shunt resistor (WSR52L000FEA)
+#define BMS_TPS_I_MAX 5.0     // 5A fuse max
+#define BMS_TPS_CURRENT_LSB TPS2482_CURRENT_LSB_EQ(BMS_TPS_I_MAX)
+#define BMS_TPS_CAL TPS2482_CAL_EQ(BMS_TPS_CURRENT_LSB, BMS_TPS_R_SHUNT)
+
+void StartTPSTask(void *argument)
+{
+  uint8_t addr = BMS_TPS_ADDR;
+  TPS2482_Configuration config = {.config = TPS2482_CONFIG_DEFAULT, .cal = BMS_TPS_CAL, .mask = 0, .alert_lim = 0};
+  uint16_t id = 0;
+  bool init_result = false;
+
+  printf("[TPS_TASK] Initializing TPS2482 at address 0x%02X\r\n", addr);
+
+  TPS2482_Init(&hi2c1, &addr, &config, &id, &init_result, 1);
+
+  if (!init_result)
+  {
+    printf("[TPS_TASK] WARNING: TPS2482 initialization failed\r\n");
+  }
+  else
+  {
+    printf("[TPS_TASK] TPS2482 initialized, ID: 0x%04X\r\n", id);
+  }
+
+  for (;;)
+  {
+    uint16_t current_raw = 0;
+    uint16_t voltage_raw = 0;
+
+    TPS2482_Poll_Current(&hi2c1, &addr, &current_raw, 1);
+    TPS2482_Poll_Bus_Voltage(&hi2c1, &addr, &voltage_raw, 1);
+
+    // Convert to physical units
+    // Current: raw * current_LSB (in Amps)
+    // Voltage: raw * 1.25mV/LSB = raw * 0.00125 V
+    float current_A = (float)((int16_t)current_raw) * BMS_TPS_CURRENT_LSB;
+    float voltage_V = (float)voltage_raw * TPS2482_CONV_VBUS;
+
+    printf("[TPS] V=%.2fV I=%.3fA\r\n", voltage_V, current_A);
+
+    osDelay(pdMS_TO_TICKS(1000)); // 1 Hz polling
   }
 }
