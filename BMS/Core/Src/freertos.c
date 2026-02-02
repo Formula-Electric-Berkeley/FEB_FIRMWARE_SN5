@@ -187,14 +187,36 @@ __weak void StartADBMSTask(void *argument)
 void StartTask03(void *argument)
 {
   /* USER CODE BEGIN StartTask03 */
+  #define LV_FUSE_MAX (double)(5)
+  #define LV_CURRENT_LSB TPS2482_CURRENT_LSB_EQ(LV_FUSE_MAX)
+  #define LV_CAL_VAL TPS2482_CAL_EQ(LV_CURRENT_LSB, R_SHUNT)
+  #define LV_ALERT_LIM_VAL TPS2482_SHUNT_VOLT_REG_VAL_EQ((uint16_t)(LV_FUSE_MAX / LV_CURRENT_LSB), LV_CAL_VAL)
+  #define R_SHUNT (double)(.002) // Ohm
+
+  printf("Starting I2C Scanning: \r\n");
+  uint8_t i = 0, ret;
+  for (i = 1; i < 128; i++)
+  {
+    ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i << 1), 3, 5);
+    if (ret != HAL_OK)
+    { /* No ACK Received At That Address */
+      printf(" - ");
+    }
+    else if (ret == HAL_OK)
+    {
+      printf("0x%X", i);
+    }
+  }
+  printf("Done! \r\n\r\n");
+
   const uint8_t tps_count = 1;
   uint8_t tps_addresses[1] = { TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_GND, TPS2482_I2C_ADDR_GND) };
   TPS2482_Configuration tps_cfg[1] = {
     {
       .config = TPS2482_CONFIG_DEFAULT,
-      .cal = 0,
-      .mask = 0,
-      .alert_lim = 0
+      .cal = LV_CAL_VAL,
+      .mask = TPS2482_MASK_SOL,
+      .alert_lim = LV_ALERT_LIM_VAL
     }
   };
   uint16_t tps_ids[1] = {0};
@@ -206,8 +228,8 @@ void StartTask03(void *argument)
   printf("[TPS2482] Task start\r\n");
   osDelay(pdMS_TO_TICKS(1000));
   TPS2482_Init(&hi2c1, tps_addresses, tps_cfg, tps_ids, tps_ok, tps_count);
-  printf("[TPS2482] Init done ok=%u id=0x%04X\r\n",
-         (unsigned int)tps_ok[0], (unsigned int)tps_ids[0]);
+  printf("[TPS2482] Init done ok=%u id=0x%u\r\n",
+         (unsigned int)tps_ok[0], tps_ids[0]);
 
   /* Infinite loop */
   for(;;)
@@ -216,12 +238,12 @@ void StartTask03(void *argument)
     TPS2482_Poll_Bus_Voltage(&hi2c1, tps_addresses, vbus_raw, tps_count);
     TPS2482_Poll_Current(&hi2c1, tps_addresses, current_raw, tps_count);   
 
-    // printf("[TPS2482] vshunt=0x%04X vbus=0x%04X current=0x%04X \r\n",
-    //        (unsigned int)vshunt_raw[0],
-    //        (unsigned int)vbus_raw[0],
-    //        (unsigned int)current_raw[0]);
+    printf("[TPS2482] Raw vshunt=0x%04X vbus=0x%04X current=0x%04X \r\n",
+           (unsigned int)vshunt_raw[0],
+           (unsigned int)vbus_raw[0],
+           (unsigned int)current_raw[0]);
     
-    printf("[TPS2482] Vshunt=%.3f mV, Vbus=%.3f V, I=%04X mA\r\n",
+    printf("[TPS2482] Conv Vshunt=%.3f mV, Vbus=%.3f V, I=%.3f mA\r\n",
            (unsigned int)vshunt_raw[0] * TPS2482_CONV_VSHUNT,
             (unsigned int)vbus_raw[0] * TPS2482_CONV_VBUS,
             (unsigned int)TPS2482_CURRENT_LSB_EQ(current_raw[0]));

@@ -9,21 +9,22 @@
 #include <stdint.h>
 #include "main.h"
 
-typedef struct {
+typedef struct
+{
   uint32_t id;
-  uint8_t  dlc;
-  uint8_t  data[8];
-  uint32_t ts;  
+  uint8_t dlc;
+  uint8_t data[8];
+  uint32_t ts;
 } can_msg_t;
 
 extern osMutexId_t ADBMSMutexHandle;
 
-enum {
-  EV_FAULT = (1u<<0),
-  EV_PRECHARGE_OK = (1u<<1),
+enum
+{
+  EV_FAULT = (1u << 0),
+  EV_PRECHARGE_OK = (1u << 1),
 };
 
 void StartADBMSTask(void *arg);
 
 #endif
-
