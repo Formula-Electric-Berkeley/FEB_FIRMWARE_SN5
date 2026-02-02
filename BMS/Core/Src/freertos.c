@@ -244,8 +244,8 @@ void StartTask03(void *argument)
     
     printf("[TPS2482] Conv Vshunt=%.3f mV, Vbus=%.3f V, I=%.3f mA\r\n",
            (unsigned int)vshunt_raw[0] * TPS2482_CONV_VSHUNT,
-            (unsigned int)vbus_raw[0] * TPS2482_CONV_VBUS,
-            (unsigned int)TPS2482_CURRENT_LSB_EQ(current_raw[0]));
+           (unsigned int)vbus_raw[0] * TPS2482_CONV_VBUS,
+           TPS2482_CURRENT_LSB_EQ(current_raw[0]));
 
     osDelay(pdMS_TO_TICKS(1000));
   }
