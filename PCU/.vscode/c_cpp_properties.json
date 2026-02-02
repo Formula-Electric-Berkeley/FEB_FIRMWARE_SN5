@@ -3,13 +3,8 @@
         {
             "name": "STM32",
             "configurationProvider": "ms-vscode.cmake-tools",
-            "intelliSenseMode": "${default}",
-            "compileCommands": "${workspaceFolder}/build/Debug/compile_commands.json",
-            "includePath": [
-                "${default}",
-                "${workspaceFolder}/Drivers/STM32F4xx_HAL_Driver/Inc",
-                "${workspaceFolder}/Core/Inc"
-            ]
+            "compileCommands": "${workspaceFolder}/../build/Debug/compile_commands.json",
+            "intelliSenseMode": "gcc-arm"
         }
     ],
     "version": 4

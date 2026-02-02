@@ -269,7 +269,6 @@ show_summary() {
     echo ""
     echo -e "${BOLD}Documentation:${NC}"
     echo "  - README.md        General project info"
-    echo "  - CLAUDE.md        AI assistant guidelines"
     echo ""
     echo -e "${GREEN}Happy coding!${NC}"
 }

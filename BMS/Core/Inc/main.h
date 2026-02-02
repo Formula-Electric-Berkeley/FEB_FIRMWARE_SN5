@@ -59,8 +59,6 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define W1_Pin GPIO_PIN_10
 #define W1_GPIO_Port GPIOB
-#define CSB2_Pin GPIO_PIN_7
-#define CSB2_GPIO_Port GPIOC
 #define I1_Pin GPIO_PIN_8
 #define I1_GPIO_Port GPIOA
 #define M2_Pin GPIO_PIN_10
@@ -73,6 +71,8 @@ void Error_Handler(void);
 #define W2_GPIO_Port GPIOB
 #define SPI1_CS_Pin GPIO_PIN_6
 #define SPI1_CS_GPIO_Port GPIOB
+#define ALERT_Pin GPIO_PIN_7
+#define ALERT_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

@@ -55,24 +55,24 @@ const osMutexAttr_t FEB_I2C_Mutex_attributes = {
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
-/*osThreadId_t defaultTaskHandle;
+osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for ADBMSTask */
-/*osThreadId_t ADBMSTaskHandle;
+osThreadId_t ADBMSTaskHandle;
 const osThreadAttr_t ADBMSTask_attributes = {
   .name = "ADBMSTask",
   .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityRealtime,
 };
-/*Definitions for bomb_squad_tps */
+/* Definitions for bomb_squad_tps */
 osThreadId_t bomb_squad_tpsHandle;
 const osThreadAttr_t bomb_squad_tps_attributes = {
   .name = "bomb_squad_tps",
-  .stack_size = 512 * 4,
+  .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for ADBMSMutex */
@@ -86,8 +86,8 @@ const osMutexAttr_t ADBMSMutex_attributes = {
 
 /* USER CODE END FunctionPrototypes */
 
-/*void StartDefaultTask(void *argument);
-/*void StartADBMSTask(void *argument);*/
+void StartDefaultTask(void *argument);
+void StartADBMSTask(void *argument);
 void StartTask03(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -104,7 +104,6 @@ void MX_FREERTOS_Init(void) {
   /* Create the mutex(es) */
   /* creation of ADBMSMutex */
   ADBMSMutexHandle = osMutexNew(&ADBMSMutex_attributes);
-  FEB_I2C_MutexHandle = osMutexNew(&FEB_I2C_Mutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -124,10 +123,10 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* creation of defaultTask */
-  /*defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   /* creation of ADBMSTask */
-  /*ADBMSTaskHandle = osThreadNew(StartADBMSTask, NULL, &ADBMSTask_attributes);
+  ADBMSTaskHandle = osThreadNew(StartADBMSTask, NULL, &ADBMSTask_attributes);
 
   /* creation of bomb_squad_tps */
   bomb_squad_tpsHandle = osThreadNew(StartTask03, NULL, &bomb_squad_tps_attributes);
