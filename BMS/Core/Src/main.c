@@ -93,10 +93,26 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI1_Init();
-  MX_I2C1_Init();
   MX_USART2_UART_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   printf("[BOOT] UART ready @115200 (USART2)\r\n");
+
+  printf("Starting I2C Scanning: \r\n");
+  uint8_t i = 0, ret;
+  for (i = 1; i < 128; i++)
+  {
+    ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i << 1), 3, 5);
+    if (ret != HAL_OK)
+    { /* No ACK Received At That Address */
+      printf(" - ");
+    }
+    else if (ret == HAL_OK)
+    {
+      printf("0x%X", i);
+    }
+  }
+  printf("Done! \r\n\r\n");
 
   /* USER CODE END 2 */
 
