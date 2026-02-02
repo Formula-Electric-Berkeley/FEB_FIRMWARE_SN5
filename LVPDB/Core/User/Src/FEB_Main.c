@@ -1,5 +1,6 @@
 #include "FEB_Main.h"
 #include "main.h"
+#include <stdint.h>
 #include <stdio.h>
 
 static CAN_TxHeaderTypeDef FEB_CAN_Tx_Header;
@@ -71,6 +72,22 @@ void FEB_Main_Setup(void)
 {
   printf("[SETUP] Beginning Setup\r\n");
 
+  printf("Starting I2C Scanning: \r\n");
+  uint8_t i = 0, ret;
+  for (i = 1; i < 128; i++)
+  {
+    ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i << 1), 3, 5);
+    if (ret != HAL_OK)
+    { /* No ACK Received At That Address */
+      printf(" - ");
+    }
+    else if (ret == HAL_OK)
+    {
+      printf("0x%X", i);
+    }
+  }
+  printf("Done! \r\n\r\n");
+
   FEB_Variable_Init();
   // FEB_CAN_HEARTBEAT_Init();
 
@@ -113,7 +130,7 @@ void FEB_Main_Setup(void)
   bool tps2482_pg_success = false;
   maxiter = 0; // Safety in case of infinite while
 
-  uint8_t start_en[NUM_TPS2482 - 1] = {0, 0, 0, 0, 1, 0};
+  uint8_t start_en[NUM_TPS2482 - 1] = {1, 1, 1, 1, 1, 1};
 
   while (!tps2482_en_success || !tps2482_pg_success)
   {
