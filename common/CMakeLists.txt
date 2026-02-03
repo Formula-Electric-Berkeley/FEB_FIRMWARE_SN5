@@ -6,3 +6,6 @@
 
 # UART Library - printf/scanf redirection with DMA support
 add_subdirectory(FEB_UART_Library)
+
+# Console Library - command-line interface with case-insensitive commands
+add_subdirectory(FEB_Console_Library)

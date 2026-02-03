@@ -15,7 +15,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR/.."
 
 # Available boards
-BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes")
+BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART_TEST")
+
+# Common libraries to format
+COMMON_LIBS=("common/FEB_UART_Library" "common/FEB_Console_Library")
 
 # Colors for output
 RED='\033[0;31m'
@@ -106,6 +109,15 @@ for board in "${BOARDS[@]}"; do
         while IFS= read -r -d '' file; do
             FILES+=("$file")
         done < <(find "$user_dir" -type f \( -name "*.c" -o -name "*.h" \) -print0 2>/dev/null)
+    fi
+done
+
+# Also format common libraries (Inc/ and Src/ directories)
+for lib in "${COMMON_LIBS[@]}"; do
+    if [[ -d "$lib" ]]; then
+        while IFS= read -r -d '' file; do
+            FILES+=("$file")
+        done < <(find "$lib" -type f \( -name "*.c" -o -name "*.h" \) -print0 2>/dev/null)
     fi
 done
 

@@ -24,8 +24,8 @@
 #include <stdarg.h>
 #include <string.h>
 
-/* STM32 HAL includes - required for actual implementation */
-#include "stm32f4xx_hal.h"
+/* STM32 HAL includes - main.h is MCU-agnostic (CubeMX includes correct HAL) */
+#include "main.h"
 
 /* ============================================================================
  * Private Types
@@ -57,10 +57,11 @@ typedef struct
   /* RX state */
   uint8_t *rx_buffer;
   size_t rx_buffer_size;
-  volatile size_t rx_head;  /* Updated by DMA/ISR */
-  size_t rx_tail;           /* Updated by ProcessRx */
+  volatile size_t rx_head; /* Updated by DMA/ISR */
+  size_t rx_tail;          /* Updated by ProcessRx */
   FEB_UART_RxLineCallback_t rx_line_callback;
   FEB_UART_LineBuffer_t line_buffer;
+  bool last_was_line_ending; /* Track \r\n and \n\r sequences */
 
 } FEB_UART_Context_t;
 
@@ -78,6 +79,8 @@ static char staging_buffer[FEB_UART_STAGING_BUFFER_SIZE];
  * ============================================================================ */
 
 static void start_dma_tx(void);
+static int feb_uart_write_internal(const uint8_t *data, size_t len);
+static int feb_uart_printf_internal(const char *format, ...);
 static size_t get_rx_count(void);
 static uint32_t default_get_tick(void);
 
@@ -127,6 +130,7 @@ int FEB_UART_Init(const FEB_UART_Config_t *config)
   ctx.rx_tail = 0;
   ctx.rx_line_callback = NULL;
   ctx.line_buffer.len = 0;
+  ctx.last_was_line_ending = false;
 
   /* Start circular DMA RX if DMA available */
   if (ctx.hdma_rx != NULL)
@@ -219,6 +223,20 @@ int FEB_UART_Printf(const char *format, ...)
     return -1;
   }
 
+  int written;
+  bool in_isr = FEB_UART_IN_ISR();
+
+  /* Acquire lock BEFORE formatting to protect staging_buffer */
+#if FEB_UART_USE_FREERTOS
+  if (!in_isr)
+  {
+    FEB_UART_MUTEX_LOCK(ctx.tx_mutex);
+  }
+#else
+  (void)in_isr;
+  FEB_UART_ENTER_CRITICAL();
+#endif
+
   va_list args;
   va_start(args, format);
   int len = vsnprintf(staging_buffer, sizeof(staging_buffer), format, args);
@@ -226,16 +244,28 @@ int FEB_UART_Printf(const char *format, ...)
 
   if (len < 0)
   {
-    return -1;
+    written = -1;
   }
-
-  /* Clamp to buffer size */
-  if ((size_t)len >= sizeof(staging_buffer))
+  else
   {
-    len = sizeof(staging_buffer) - 1;
+    /* Clamp to buffer size */
+    if ((size_t)len >= sizeof(staging_buffer))
+    {
+      len = sizeof(staging_buffer) - 1;
+    }
+    written = feb_uart_write_internal((const uint8_t *)staging_buffer, (size_t)len);
   }
 
-  return FEB_UART_Write((const uint8_t *)staging_buffer, (size_t)len);
+#if FEB_UART_USE_FREERTOS
+  if (!in_isr)
+  {
+    FEB_UART_MUTEX_UNLOCK(ctx.tx_mutex);
+  }
+#else
+  FEB_UART_EXIT_CRITICAL();
+#endif
+
+  return written;
 }
 
 int FEB_UART_Write(const uint8_t *data, size_t len)
@@ -245,41 +275,24 @@ int FEB_UART_Write(const uint8_t *data, size_t len)
     return -1;
   }
 
-  size_t written;
+  int written;
+  bool in_isr = FEB_UART_IN_ISR();
 
   /* Lock for thread safety */
 #if FEB_UART_USE_FREERTOS
-  if (!FEB_UART_IN_ISR())
+  if (!in_isr)
   {
     FEB_UART_MUTEX_LOCK(ctx.tx_mutex);
   }
 #else
+  (void)in_isr;
   FEB_UART_ENTER_CRITICAL();
 #endif
 
-  /* Write to ring buffer */
-  written = feb_uart_ring_write(&ctx.tx_ring, data, len);
-
-  /* Start DMA if idle */
-  if (ctx.tx_state == FEB_UART_TX_IDLE && ctx.hdma_tx != NULL)
-  {
-    start_dma_tx();
-  }
-  else if (ctx.hdma_tx == NULL)
-  {
-    /* Polling mode - transmit directly */
-    size_t count = feb_uart_ring_count(&ctx.tx_ring);
-    while (count > 0)
-    {
-      uint8_t byte;
-      feb_uart_ring_read(&ctx.tx_ring, &byte, 1);
-      HAL_UART_Transmit(ctx.huart, &byte, 1, FEB_UART_TX_TIMEOUT_MS);
-      count--;
-    }
-  }
+  written = feb_uart_write_internal(data, len);
 
 #if FEB_UART_USE_FREERTOS
-  if (!FEB_UART_IN_ISR())
+  if (!in_isr)
   {
     FEB_UART_MUTEX_UNLOCK(ctx.tx_mutex);
   }
@@ -287,7 +300,7 @@ int FEB_UART_Write(const uint8_t *data, size_t len)
   FEB_UART_EXIT_CRITICAL();
 #endif
 
-  return (int)written;
+  return written;
 }
 
 int FEB_UART_Flush(uint32_t timeout_ms)
@@ -343,23 +356,31 @@ void FEB_UART_ProcessRx(void)
     ctx.rx_tail = (ctx.rx_tail + 1) % ctx.rx_buffer_size;
     count--;
 
-    /* Skip carriage return */
-    if (byte == '\r')
-    {
-      continue;
-    }
+    /* Check if this is a line ending character (\r or \n) */
+    bool is_line_ending = (byte == '\r' || byte == '\n');
 
-    /* Newline - end of line */
-    if (byte == '\n')
+    if (is_line_ending)
     {
+      /* Skip if this is the second char of a \r\n or \n\r sequence */
+      if (ctx.last_was_line_ending)
+      {
+        ctx.last_was_line_ending = false;
+        continue;
+      }
+
+      /* Trigger callback for complete line */
       if (ctx.line_buffer.len > 0 && ctx.rx_line_callback != NULL)
       {
         ctx.line_buffer.buffer[ctx.line_buffer.len] = '\0';
         ctx.rx_line_callback(ctx.line_buffer.buffer, ctx.line_buffer.len);
       }
       ctx.line_buffer.len = 0;
+      ctx.last_was_line_ending = true;
       continue;
     }
+
+    /* Reset line ending tracking for non-line-ending characters */
+    ctx.last_was_line_ending = false;
 
     /* Add to line buffer (with overflow protection) */
     if (ctx.line_buffer.len < sizeof(ctx.line_buffer.buffer) - 1)
@@ -565,12 +586,7 @@ __attribute__((weak)) int __io_getchar(void)
  * Logging Implementation
  * ============================================================================ */
 
-void FEB_UART_Log(FEB_UART_LogLevel_t level,
-                  const char *tag,
-                  const char *file,
-                  int line,
-                  const char *format,
-                  ...)
+void FEB_UART_Log(FEB_UART_LogLevel_t level, const char *tag, const char *file, int line, const char *format, ...)
 {
   if (!ctx.initialized)
   {
@@ -635,23 +651,43 @@ void FEB_UART_Log(FEB_UART_LogLevel_t level,
     break;
   }
 
+  bool in_isr = FEB_UART_IN_ISR();
+
+  /* Acquire lock for entire log message to prevent interleaving */
+#if FEB_UART_USE_FREERTOS
+  if (!in_isr)
+  {
+    FEB_UART_MUTEX_LOCK(ctx.tx_mutex);
+  }
+#else
+  (void)in_isr;
+  FEB_UART_ENTER_CRITICAL();
+#endif
+
   /* Format: [timestamp] TAG LEVEL: message (file:line) */
   if (ctx.timestamps_enabled)
   {
-    FEB_UART_Printf("%s[%u] %s %s: ", color_start, (unsigned int)ctx.get_tick_ms(), tag, level_str);
+    feb_uart_printf_internal("%s[%u] %s %s: ", color_start, (unsigned int)ctx.get_tick_ms(), tag, level_str);
   }
   else
   {
-    FEB_UART_Printf("%s%s %s: ", color_start, tag, level_str);
+    feb_uart_printf_internal("%s%s %s: ", color_start, tag, level_str);
   }
 
   /* Format user message */
   va_list args;
   va_start(args, format);
-  vsnprintf(staging_buffer, sizeof(staging_buffer), format, args);
+  int len = vsnprintf(staging_buffer, sizeof(staging_buffer), format, args);
   va_end(args);
 
-  FEB_UART_Printf("%s", staging_buffer);
+  if (len > 0)
+  {
+    if ((size_t)len >= sizeof(staging_buffer))
+    {
+      len = sizeof(staging_buffer) - 1;
+    }
+    feb_uart_write_internal((const uint8_t *)staging_buffer, (size_t)len);
+  }
 
   /* Add file:line for ERROR and WARN */
   if (file != NULL && line > 0)
@@ -667,10 +703,19 @@ void FEB_UART_Log(FEB_UART_LogLevel_t level,
       }
       p++;
     }
-    FEB_UART_Printf(" (%s:%d)", filename, line);
+    feb_uart_printf_internal(" (%s:%d)", filename, line);
   }
 
-  FEB_UART_Printf("%s\r\n", color_end);
+  feb_uart_printf_internal("%s\r\n", color_end);
+
+#if FEB_UART_USE_FREERTOS
+  if (!in_isr)
+  {
+    FEB_UART_MUTEX_UNLOCK(ctx.tx_mutex);
+  }
+#else
+  FEB_UART_EXIT_CRITICAL();
+#endif
 }
 
 void FEB_UART_LogHexdump(const char *tag, const uint8_t *data, size_t len)
@@ -742,6 +787,63 @@ static void start_dma_tx(void)
   ctx.tx_state = FEB_UART_TX_DMA_ACTIVE;
 
   HAL_UART_Transmit_DMA(ctx.huart, &ctx.tx_ring.buffer[ctx.tx_ring.tail], contig_len);
+}
+
+/**
+ * @brief Internal write function - caller must hold mutex
+ * @param data Data to write
+ * @param len  Number of bytes to write
+ * @return Number of bytes written, or -1 on error
+ */
+static int feb_uart_write_internal(const uint8_t *data, size_t len)
+{
+  /* Write to ring buffer */
+  size_t written = feb_uart_ring_write(&ctx.tx_ring, data, len);
+
+  /* Start DMA if idle */
+  if (ctx.tx_state == FEB_UART_TX_IDLE && ctx.hdma_tx != NULL)
+  {
+    start_dma_tx();
+  }
+  else if (ctx.hdma_tx == NULL)
+  {
+    /* Polling mode - transmit directly */
+    size_t count = feb_uart_ring_count(&ctx.tx_ring);
+    while (count > 0)
+    {
+      uint8_t byte;
+      feb_uart_ring_read(&ctx.tx_ring, &byte, 1);
+      HAL_UART_Transmit(ctx.huart, &byte, 1, FEB_UART_TX_TIMEOUT_MS);
+      count--;
+    }
+  }
+
+  return (int)written;
+}
+
+/**
+ * @brief Internal printf function - caller must hold mutex
+ * @param format Printf format string
+ * @return Number of bytes written, or -1 on error
+ */
+static int feb_uart_printf_internal(const char *format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  int len = vsnprintf(staging_buffer, sizeof(staging_buffer), format, args);
+  va_end(args);
+
+  if (len < 0)
+  {
+    return -1;
+  }
+
+  if ((size_t)len >= sizeof(staging_buffer))
+  {
+    len = sizeof(staging_buffer) - 1;
+  }
+
+  return feb_uart_write_internal((const uint8_t *)staging_buffer, (size_t)len);
 }
 
 /**

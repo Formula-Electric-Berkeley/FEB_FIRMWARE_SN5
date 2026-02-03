@@ -250,11 +250,11 @@ void TIM1_UP_TIM10_IRQHandler(void)
 void USART2_IRQHandler(void)
 {
   /* USER CODE BEGIN USART2_IRQn 0 */
-
+  FEB_UART_IDLE_Callback(&huart2);  // Must be called BEFORE HAL handler to capture IDLE flag
   /* USER CODE END USART2_IRQn 0 */
   HAL_UART_IRQHandler(&huart2);
   /* USER CODE BEGIN USART2_IRQn 1 */
-  FEB_UART_IDLE_Callback(&huart2);
+
   /* USER CODE END USART2_IRQn 1 */
 }
 
@@ -270,5 +270,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
   FEB_UART_TxCpltCallback(huart);
+}
+
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{
+  FEB_UART_RxEventCallback(huart, Size);
 }
 /* USER CODE END 1 */

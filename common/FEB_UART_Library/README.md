@@ -318,6 +318,23 @@ When bare-metal:
 - Critical sections use `__disable_irq()`/`__enable_irq()`
 - Single-threaded access assumed
 
+## Thread-Safety Reference
+
+| Function | Thread-Safe | ISR-Safe | Notes |
+|----------|-------------|----------|-------|
+| `FEB_UART_Printf()` | Yes | Yes | Mutex-protected, ISR bypasses mutex |
+| `FEB_UART_Write()` | Yes | Yes | Mutex-protected, ISR bypasses mutex |
+| `FEB_UART_Log()` | Yes | Yes | Atomic output (no interleaving) |
+| `FEB_UART_Flush()` | Yes | No | Blocks until TX complete |
+| `FEB_UART_ProcessRx()` | No | No | Single-task only |
+| `FEB_UART_Read()` | No | No | Single-task only |
+| `FEB_UART_SetRxLineCallback()` | No | No | Call during init only |
+
+**Important:**
+- RX processing (`ProcessRx` and `Read`) must be called from a single task/context
+- Do not use both `ProcessRx` (line-based) and `Read` (raw) APIs simultaneously
+- In FreeRTOS, dedicate a single task to RX processing
+
 ## Files
 
 | File | Purpose |

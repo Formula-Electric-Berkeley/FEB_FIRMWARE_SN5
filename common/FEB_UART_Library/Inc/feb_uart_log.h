@@ -42,61 +42,57 @@ extern "C"
 #include "feb_uart.h"
 #include "feb_uart_config.h"
 
-/* ============================================================================
- * Module Tags
- * ============================================================================
- *
- * Standard module tags for consistent log output.
- * Define additional tags in your application as needed.
- */
+  /* ============================================================================
+   * Module Tags
+   * ============================================================================
+   *
+   * Standard module tags for consistent log output.
+   * Define additional tags in your application as needed.
+   */
 
 #define TAG_MAIN "[MAIN]"
-#define TAG_ADC  "[ADC]"
-#define TAG_CAN  "[CAN]"
-#define TAG_RMS  "[RMS]"
-#define TAG_BMS  "[BMS]"
+#define TAG_ADC "[ADC]"
+#define TAG_CAN "[CAN]"
+#define TAG_RMS "[RMS]"
+#define TAG_BMS "[BMS]"
 #define TAG_BSPD "[BSPD]"
-#define TAG_TPS  "[TPS]"
+#define TAG_TPS "[TPS]"
 #define TAG_UART "[UART]"
-#define TAG_I2C  "[I2C]"
-#define TAG_SPI  "[SPI]"
-#define TAG_DMA  "[DMA]"
-#define TAG_PWM  "[PWM]"
+#define TAG_I2C "[I2C]"
+#define TAG_SPI "[SPI]"
+#define TAG_DMA "[DMA]"
+#define TAG_PWM "[PWM]"
 #define TAG_GPIO "[GPIO]"
 #define TAG_PUMP "[PUMP]"
-#define TAG_FAN  "[FAN]"
+#define TAG_FAN "[FAN]"
 
-/* ============================================================================
- * Internal Logging Function
- * ============================================================================ */
+  /* ============================================================================
+   * Internal Logging Function
+   * ============================================================================ */
 
-/**
- * @brief Internal logging function - do not call directly
- *
- * Use the LOG_E, LOG_W, LOG_I, LOG_D, LOG_T macros instead.
- *
- * @param level   Log level
- * @param tag     Module tag (e.g., "[MAIN]")
- * @param file    Source file name (for ERROR/WARN, NULL otherwise)
- * @param line    Source line number (for ERROR/WARN, 0 otherwise)
- * @param format  Printf format string
- * @param ...     Variable arguments
- */
-void FEB_UART_Log(FEB_UART_LogLevel_t level,
-                  const char *tag,
-                  const char *file,
-                  int line,
-                  const char *format,
-                  ...) __attribute__((format(printf, 5, 6)));
+  /**
+   * @brief Internal logging function - do not call directly
+   *
+   * Use the LOG_E, LOG_W, LOG_I, LOG_D, LOG_T macros instead.
+   *
+   * @param level   Log level
+   * @param tag     Module tag (e.g., "[MAIN]")
+   * @param file    Source file name (for ERROR/WARN, NULL otherwise)
+   * @param line    Source line number (for ERROR/WARN, 0 otherwise)
+   * @param format  Printf format string
+   * @param ...     Variable arguments
+   */
+  void FEB_UART_Log(FEB_UART_LogLevel_t level, const char *tag, const char *file, int line, const char *format, ...)
+      __attribute__((format(printf, 5, 6)));
 
-/* ============================================================================
- * Logging Macros
- * ============================================================================
- *
- * These macros provide compile-time elimination when the log level is
- * above FEB_UART_COMPILE_LOG_LEVEL. At runtime, messages are filtered
- * against the level set by FEB_UART_SetLogLevel().
- */
+  /* ============================================================================
+   * Logging Macros
+   * ============================================================================
+   *
+   * These macros provide compile-time elimination when the log level is
+   * above FEB_UART_COMPILE_LOG_LEVEL. At runtime, messages are filtered
+   * against the level set by FEB_UART_SetLogLevel().
+   */
 
 #if FEB_UART_COMPILE_LOG_LEVEL >= 1 /* ERROR */
 /**
@@ -110,8 +106,7 @@ void FEB_UART_Log(FEB_UART_LogLevel_t level,
  * @param fmt Printf-style format string
  * @param ... Variable arguments
  */
-#define LOG_E(tag, fmt, ...) \
-  FEB_UART_Log(FEB_UART_LOG_ERROR, tag, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_E(tag, fmt, ...) FEB_UART_Log(FEB_UART_LOG_ERROR, tag, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #else
 #define LOG_E(tag, fmt, ...) ((void)0)
 #endif
@@ -128,8 +123,7 @@ void FEB_UART_Log(FEB_UART_LogLevel_t level,
  * @param fmt Printf-style format string
  * @param ... Variable arguments
  */
-#define LOG_W(tag, fmt, ...) \
-  FEB_UART_Log(FEB_UART_LOG_WARN, tag, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_W(tag, fmt, ...) FEB_UART_Log(FEB_UART_LOG_WARN, tag, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #else
 #define LOG_W(tag, fmt, ...) ((void)0)
 #endif
@@ -146,8 +140,7 @@ void FEB_UART_Log(FEB_UART_LogLevel_t level,
  * @param fmt Printf-style format string
  * @param ... Variable arguments
  */
-#define LOG_I(tag, fmt, ...) \
-  FEB_UART_Log(FEB_UART_LOG_INFO, tag, NULL, 0, fmt, ##__VA_ARGS__)
+#define LOG_I(tag, fmt, ...) FEB_UART_Log(FEB_UART_LOG_INFO, tag, NULL, 0, fmt, ##__VA_ARGS__)
 #else
 #define LOG_I(tag, fmt, ...) ((void)0)
 #endif
@@ -164,8 +157,7 @@ void FEB_UART_Log(FEB_UART_LogLevel_t level,
  * @param fmt Printf-style format string
  * @param ... Variable arguments
  */
-#define LOG_D(tag, fmt, ...) \
-  FEB_UART_Log(FEB_UART_LOG_DEBUG, tag, NULL, 0, fmt, ##__VA_ARGS__)
+#define LOG_D(tag, fmt, ...) FEB_UART_Log(FEB_UART_LOG_DEBUG, tag, NULL, 0, fmt, ##__VA_ARGS__)
 #else
 #define LOG_D(tag, fmt, ...) ((void)0)
 #endif
@@ -182,8 +174,7 @@ void FEB_UART_Log(FEB_UART_LogLevel_t level,
  * @param fmt Printf-style format string
  * @param ... Variable arguments
  */
-#define LOG_T(tag, fmt, ...) \
-  FEB_UART_Log(FEB_UART_LOG_TRACE, tag, NULL, 0, fmt, ##__VA_ARGS__)
+#define LOG_T(tag, fmt, ...) FEB_UART_Log(FEB_UART_LOG_TRACE, tag, NULL, 0, fmt, ##__VA_ARGS__)
 #else
 #define LOG_T(tag, fmt, ...) ((void)0)
 #endif
@@ -215,10 +206,10 @@ void FEB_UART_Log(FEB_UART_LogLevel_t level,
  */
 #define LOG_HEXDUMP(tag, data, len) FEB_UART_LogHexdump(tag, data, len)
 
-/**
- * @brief Internal hexdump function
- */
-void FEB_UART_LogHexdump(const char *tag, const uint8_t *data, size_t len);
+  /**
+   * @brief Internal hexdump function
+   */
+  void FEB_UART_LogHexdump(const char *tag, const uint8_t *data, size_t len);
 
 /**
  * @brief Assert with logging
@@ -228,13 +219,13 @@ void FEB_UART_LogHexdump(const char *tag, const uint8_t *data, size_t len);
  * @param cond Condition to check
  * @param msg  Message to log if false
  */
-#define LOG_ASSERT(cond, msg)                                                 \
-  do                                                                          \
-  {                                                                           \
-    if (!(cond))                                                              \
-    {                                                                         \
-      LOG_E(TAG_MAIN, "ASSERT FAILED: %s (%s:%d)", msg, __FILE__, __LINE__);  \
-    }                                                                         \
+#define LOG_ASSERT(cond, msg)                                                                                          \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    if (!(cond))                                                                                                       \
+    {                                                                                                                  \
+      LOG_E(TAG_MAIN, "ASSERT FAILED: %s (%s:%d)", msg, __FILE__, __LINE__);                                           \
+    }                                                                                                                  \
   } while (0)
 
 #ifdef __cplusplus
