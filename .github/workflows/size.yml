@@ -27,6 +27,8 @@ jobs:
             flash_limit: 524288
           - project: Sensor_Nodes
             flash_limit: 524288
+          - project: UART_TEST
+            flash_limit: 2097152
 
     name: Size ${{ matrix.project }}
 

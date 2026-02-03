@@ -13,6 +13,7 @@ Firmware for the FEB SN5 Formula E vehicle. Each subdirectory corresponds to a b
 | `DCU/` | Data Control Unit | STM32F446RE | |
 | `PCU/` | Powertrain Control Unit | STM32F446RE | |
 | `Sensor_Nodes/` | Sensor Nodes | STM32F446RE | |
+| `UART_TEST/` | UART/Console Test Board | STM32U575ZI | Test platform for UART/Console libraries |
 
 All boards are fully buildable with CMake.
 
@@ -369,7 +370,15 @@ common/
     gen/                    # Generated C code (feb_can.c, feb_can.h)
     *_messages.py           # Python message definitions per board
     generate_can.sh         # Generation script
+  FEB_UART_Library/         # Printf/logging with DMA
+    Inc/                    # Headers (feb_uart.h, feb_uart_log.h, etc.)
+    Src/                    # Implementation (feb_uart.c)
+  FEB_Console_Library/      # CLI interface
+    Inc/                    # Headers (feb_console.h, feb_console_commands.h)
+    Src/                    # Implementation (feb_console.c, feb_console_commands.c)
 ```
+
+See [FEB_UART_Library/README.md](common/FEB_UART_Library/README.md) and [FEB_Console_Library/README.md](common/FEB_Console_Library/README.md) for detailed usage documentation.
 
 ### Board Directory Structure
 
