@@ -1,6 +1,7 @@
 #include "FEB_Main.h"
 #include "FEB_LVPDB_Commands.h"
 #include "main.h"
+#include <stdint.h>
 #include <stdio.h>
 
 static CAN_TxHeaderTypeDef FEB_CAN_Tx_Header;
@@ -99,6 +100,22 @@ void FEB_Main_Setup(void)
   FEB_UART_SetRxLineCallback(FEB_Console_ProcessLine);
 
   LOG_I(TAG_MAIN, "Beginning Setup");
+
+  printf("Starting I2C Scanning: \r\n");
+  uint8_t i = 0, ret;
+  for (i = 1; i < 128; i++)
+  {
+    ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i << 1), 3, 5);
+    if (ret != HAL_OK)
+    { /* No ACK Received At That Address */
+      printf(" - ");
+    }
+    else if (ret == HAL_OK)
+    {
+      printf("0x%X", i);
+    }
+  }
+  printf("Done! \r\n\r\n");
 
   FEB_Variable_Init();
   // FEB_CAN_HEARTBEAT_Init();

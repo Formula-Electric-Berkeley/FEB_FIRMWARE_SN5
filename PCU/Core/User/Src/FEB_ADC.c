@@ -111,6 +111,7 @@ static ADC_CalibrationTypeDef brake_pressure2_calibration = {
     .inverted = false};
 
 #define VOLTAGE_DIVIDER_RATIO (5.0f / 3.3f)
+#define VOLTAGE_DIVIDER_RATIO_ACCEL1 2.0f
 
 /* Private function prototypes -----------------------------------------------*/
 static uint16_t GetAveragedADCValue(ADC_HandleTypeDef *hadc, uint32_t channel, uint8_t samples);
@@ -386,7 +387,7 @@ float FEB_ADC_GetAccelPedal1Voltage(void)
   uint16_t raw = accel_pedal1_config.filter.enabled
                      ? FEB_ADC_GetFilteredValue(&hadc3, ADC3_ACCEL_PEDAL_1_CHANNEL, accel_pedal1_config.filter.samples)
                      : FEB_ADC_GetAccelPedal1Raw();
-  return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO;
+  return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO_ACCEL1;
 }
 
 float FEB_ADC_GetAccelPedal2Voltage(void)
