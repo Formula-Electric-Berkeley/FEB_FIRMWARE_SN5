@@ -23,8 +23,6 @@ void TPS2482_Init(I2C_HandleTypeDef *hi2c, uint8_t *addresses, TPS2482_Configura
     alert_limits[i] = configurations[i].alert_lim;
   }
 
-  printf("[TPS] Writing Config\r\n");
-
   // Write configurations to the TPS2482
   TPS2482_Write_Config(hi2c, addresses, configs, messageCount);
   TPS2482_Write_CAL(hi2c, addresses, cals, messageCount);

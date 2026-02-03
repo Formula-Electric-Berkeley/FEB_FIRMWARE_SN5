@@ -1,4 +1,5 @@
 #include "FEB_Main.h"
+#include "FEB_LVPDB_Commands.h"
 #include "main.h"
 #include <stdio.h>
 
@@ -6,8 +7,6 @@ static CAN_TxHeaderTypeDef FEB_CAN_Tx_Header;
 
 static uint32_t FEB_CAN_Tx_Mailbox;
 
-extern CAN_HandleTypeDef hcan1;
-extern CAN_HandleTypeDef hcan2;
 extern CAN_HandleTypeDef hcan1;
 extern CAN_HandleTypeDef hcan2;
 extern I2C_HandleTypeDef hi2c1;
@@ -90,6 +89,15 @@ void FEB_Main_Setup(void)
   };
   FEB_UART_Init(&uart_cfg);
 
+  // Initialize console (registers built-in commands: help, version, uptime, reboot, log)
+  FEB_Console_Init();
+
+  // Register LVPDB-specific commands
+  LVPDB_RegisterCommands();
+
+  // Connect UART RX to console processor
+  FEB_UART_SetRxLineCallback(FEB_Console_ProcessLine);
+
   LOG_I(TAG_MAIN, "Beginning Setup");
 
   FEB_Variable_Init();
@@ -103,7 +111,8 @@ void FEB_Main_Setup(void)
   {
     if (maxiter > 100)
     {
-      break; // Todo add failure case
+      LOG_E(TAG_MAIN, "TPS2482 init failed after 100 retries");
+      break;
     }
 
     // Assume successful init
@@ -111,9 +120,9 @@ void FEB_Main_Setup(void)
 
     TPS2482_Init(&hi2c1, tps2482_i2c_addresses, tps2482_configurations, tps2482_ids, tps2482_init_res, NUM_TPS2482);
 
-    LOG_I(TAG_MAIN, "Initializing... [%d] Status: LV:%d SH:%d LT:%d BM_L:%d SM:%d AF1_AF2:%d CP_RF:%d", maxiter,
-          tps2482_init_res[0], tps2482_init_res[1], tps2482_init_res[2], tps2482_init_res[3], tps2482_init_res[4],
-          tps2482_init_res[5], tps2482_init_res[6]);
+    LOG_D(TAG_MAIN, "TPS init [%d] LV:%d SH:%d LT:%d BM_L:%d SM:%d AF1_AF2:%d CP_RF:%d", maxiter, tps2482_init_res[0],
+          tps2482_init_res[1], tps2482_init_res[2], tps2482_init_res[3], tps2482_init_res[4], tps2482_init_res[5],
+          tps2482_init_res[6]);
 
     for (uint8_t i = 0; i < NUM_TPS2482; i++)
     {
@@ -125,6 +134,11 @@ void FEB_Main_Setup(void)
     maxiter += 1;
   }
 
+  if (tps2482_init_success)
+  {
+    LOG_I(TAG_MAIN, "TPS2482 I2C init complete");
+  }
+
   // printf("[SETUP] tps2482_init_success: %d\r\n", tps2482_init_success);
 
   bool tps2482_en_res[NUM_TPS2482 - 1]; // LVPDB is always enabled so num TPS - 1
@@ -133,13 +147,14 @@ void FEB_Main_Setup(void)
   bool tps2482_pg_success = false;
   maxiter = 0; // Safety in case of infinite while
 
-  uint8_t start_en[NUM_TPS2482 - 1] = {0, 0, 0, 0, 1, 0};
+  uint8_t start_en[NUM_TPS2482 - 1] = {0, 0, 0, 0, 0, 0};
 
   while (!tps2482_en_success || !tps2482_pg_success)
   {
     if (maxiter > 100)
     {
-      break; // Todo add failure case
+      LOG_E(TAG_MAIN, "TPS2482 enable/power-good failed after 100 retries");
+      break;
     }
     // Assume successful enable
     bool b1 = true;
@@ -148,10 +163,9 @@ void FEB_Main_Setup(void)
     TPS2482_Enable(tps2482_en_ports, tps2482_en_pins, start_en, tps2482_en_res, NUM_TPS2482 - 1);
     TPS2482_GPIO_Read(tps2482_pg_ports, tps2482_pg_pins, tps2482_pg_res, NUM_TPS2482);
 
-    LOG_I(TAG_MAIN, "Powering... [%d] tps2482_en_res: SH:%d LT:%d BM_L:%d SM:%d AF1_AF2:%d CP_RF:%d", maxiter,
-          tps2482_en_res[0], tps2482_en_res[1], tps2482_en_res[2], tps2482_en_res[3], tps2482_en_res[4],
-          tps2482_en_res[5]);
-    LOG_I(TAG_MAIN, "Validating... [%d] tps2482_pg_res: LV:%d SH:%d LT:%d BM_L:%d SM:%d AF1_AF2:%d CP_RF:%d", maxiter,
+    LOG_D(TAG_MAIN, "TPS enable [%d] SH:%d LT:%d BM_L:%d SM:%d AF1_AF2:%d CP_RF:%d", maxiter, tps2482_en_res[0],
+          tps2482_en_res[1], tps2482_en_res[2], tps2482_en_res[3], tps2482_en_res[4], tps2482_en_res[5]);
+    LOG_D(TAG_MAIN, "TPS power-good [%d] LV:%d SH:%d LT:%d BM_L:%d SM:%d AF1_AF2:%d CP_RF:%d", maxiter,
           tps2482_pg_res[0], tps2482_pg_res[1], tps2482_pg_res[2], tps2482_pg_res[3], tps2482_pg_res[4],
           tps2482_pg_res[5], tps2482_pg_res[6]);
 
@@ -180,10 +194,18 @@ void FEB_Main_Setup(void)
     maxiter += 1;
   }
 
+  if (tps2482_en_success && tps2482_pg_success)
+  {
+    LOG_I(TAG_MAIN, "TPS2482 power rails enabled");
+  }
+
   // Initialize brake light to be off
   HAL_GPIO_WritePin(BL_Switch_GPIO_Port, BL_Switch_Pin, GPIO_PIN_RESET);
 
   FEB_CAN_Init(FEB_CAN1_Rx_Callback);
+
+  LOG_I(TAG_MAIN, "LVPDB Setup Complete");
+  LOG_I(TAG_MAIN, "Type 'help' for available commands");
 
   HAL_TIM_Base_Start_IT(&htim1);
 }

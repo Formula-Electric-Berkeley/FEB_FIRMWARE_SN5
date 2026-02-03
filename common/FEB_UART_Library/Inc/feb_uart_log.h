@@ -63,8 +63,6 @@ extern "C"
 #define TAG_DMA "[DMA]"
 #define TAG_PWM "[PWM]"
 #define TAG_GPIO "[GPIO]"
-#define TAG_PUMP "[PUMP]"
-#define TAG_FAN "[FAN]"
 
   /* ============================================================================
    * Internal Logging Function
