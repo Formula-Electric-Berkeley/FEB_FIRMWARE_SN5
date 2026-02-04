@@ -22,6 +22,7 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "feb_can_lib.h"
 #include "feb_uart.h"
 /* USER CODE END Includes */
 
@@ -275,5 +276,35 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
   FEB_UART_RxEventCallback(huart, Size);
+}
+
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
+{
+  FEB_CAN_RxFifo0Callback(hcan);
+}
+
+void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
+{
+  FEB_CAN_RxFifo1Callback(hcan);
+}
+
+void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
+{
+  FEB_CAN_TxMailbox0CompleteCallback(hcan);
+}
+
+void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
+{
+  FEB_CAN_TxMailbox1CompleteCallback(hcan);
+}
+
+void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
+{
+  FEB_CAN_TxMailbox2CompleteCallback(hcan);
+}
+
+void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
+{
+  FEB_CAN_ErrorCallback(hcan);
 }
 /* USER CODE END 1 */

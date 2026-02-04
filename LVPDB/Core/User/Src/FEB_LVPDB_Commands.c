@@ -7,6 +7,7 @@
  */
 
 #include "FEB_LVPDB_Commands.h"
+#include "FEB_CAN_PingPong.h"
 #include "FEB_Main.h"
 #include "TPS2482.h"
 #include "feb_console.h"
@@ -119,10 +120,17 @@ static void print_lvpdb_help(void)
   FEB_Console_Printf("  LVPDB|read|<chip>|<reg>   - Read register\r\n");
   FEB_Console_Printf("  LVPDB|write|<chip>|<reg>|<val> - Write register\r\n");
   FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("CAN Ping/Pong:\r\n");
+  FEB_Console_Printf("  LVPDB|ping|<ch>           - Start ping mode (TX every 100ms) on channel 1-4\r\n");
+  FEB_Console_Printf("  LVPDB|pong|<ch>           - Start pong mode (respond to pings) on channel 1-4\r\n");
+  FEB_Console_Printf("  LVPDB|stop|<ch|all>       - Stop channel (1-4) or all\r\n");
+  FEB_Console_Printf("  LVPDB|canstatus           - Show CAN ping/pong status\r\n");
+  FEB_Console_Printf("\r\n");
   FEB_Console_Printf("Chips: LV(0), SH(1), LT(2), BM_L(3), SM(4), AF1_AF2(5), CP_RF(6)\r\n");
   FEB_Console_Printf("  Note: LV cannot be enabled/disabled (always on)\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("Registers: config, shunt, bus, power, current, cal, mask, alert, id\r\n");
+  FEB_Console_Printf("CAN Channels: 1 (0xE0), 2 (0xE1), 3 (0xE2), 4 (0xE3)\r\n");
 }
 
 static void cmd_status(void)
@@ -310,6 +318,97 @@ static void cmd_write(int argc, char *argv[])
 }
 
 /* ============================================================================
+ * CAN Ping/Pong Command Handlers
+ * ============================================================================ */
+
+static const char *mode_names[] = {"OFF", "PING", "PONG"};
+static const uint32_t pingpong_frame_ids[] = {0xE0, 0xE1, 0xE2, 0xE3};
+
+static void cmd_ping(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_Printf("Usage: LVPDB|ping|<channel>\r\n");
+    FEB_Console_Printf("Channels: 1-4 (Frame IDs 0xE0-0xE3)\r\n");
+    return;
+  }
+
+  int ch = atoi(argv[1]);
+  if (ch < 1 || ch > 4)
+  {
+    FEB_Console_Printf("Error: Channel must be 1-4\r\n");
+    return;
+  }
+
+  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PING);
+  FEB_Console_Printf("Channel %d (0x%02X): PING mode started\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+}
+
+static void cmd_pong(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_Printf("Usage: LVPDB|pong|<channel>\r\n");
+    FEB_Console_Printf("Channels: 1-4 (Frame IDs 0xE0-0xE3)\r\n");
+    return;
+  }
+
+  int ch = atoi(argv[1]);
+  if (ch < 1 || ch > 4)
+  {
+    FEB_Console_Printf("Error: Channel must be 1-4\r\n");
+    return;
+  }
+
+  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PONG);
+  FEB_Console_Printf("Channel %d (0x%02X): PONG mode started\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+}
+
+static void cmd_stop(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_Printf("Usage: LVPDB|stop|<channel|all>\r\n");
+    return;
+  }
+
+  if (strcasecmp_local(argv[1], "all") == 0)
+  {
+    FEB_CAN_PingPong_Reset();
+    FEB_Console_Printf("All channels stopped\r\n");
+    return;
+  }
+
+  int ch = atoi(argv[1]);
+  if (ch < 1 || ch > 4)
+  {
+    FEB_Console_Printf("Error: Channel must be 1-4 or 'all'\r\n");
+    return;
+  }
+
+  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_OFF);
+  FEB_Console_Printf("Channel %d stopped\r\n", ch);
+}
+
+static void cmd_canstatus(void)
+{
+  FEB_Console_Printf("CAN Ping/Pong Status:\r\n");
+  FEB_Console_Printf("%-3s %-6s %-5s %10s %10s %12s\r\n", "Ch", "FrameID", "Mode", "TX Count", "RX Count", "Last RX");
+  FEB_Console_Printf("--- ------ ----- ---------- ---------- ------------\r\n");
+
+  for (int ch = 1; ch <= 4; ch++)
+  {
+    FEB_PingPong_Mode_t mode = FEB_CAN_PingPong_GetMode((uint8_t)ch);
+    uint32_t tx_count = FEB_CAN_PingPong_GetTxCount((uint8_t)ch);
+    uint32_t rx_count = FEB_CAN_PingPong_GetRxCount((uint8_t)ch);
+    int32_t last_rx = FEB_CAN_PingPong_GetLastCounter((uint8_t)ch);
+
+    FEB_Console_Printf("%-3d 0x%02X   %-5s %10u %10u %12d\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1],
+                       mode_names[mode], (unsigned int)tx_count, (unsigned int)rx_count, (int)last_rx);
+  }
+}
+
+/* ============================================================================
  * Main Command Handler
  * ============================================================================ */
 
@@ -343,6 +442,22 @@ static void cmd_lvpdb(int argc, char *argv[])
   else if (strcasecmp_local(subcmd, "write") == 0)
   {
     cmd_write(argc - 1, argv + 1);
+  }
+  else if (strcasecmp_local(subcmd, "ping") == 0)
+  {
+    cmd_ping(argc - 1, argv + 1);
+  }
+  else if (strcasecmp_local(subcmd, "pong") == 0)
+  {
+    cmd_pong(argc - 1, argv + 1);
+  }
+  else if (strcasecmp_local(subcmd, "stop") == 0)
+  {
+    cmd_stop(argc - 1, argv + 1);
+  }
+  else if (strcasecmp_local(subcmd, "canstatus") == 0)
+  {
+    cmd_canstatus();
   }
   else
   {

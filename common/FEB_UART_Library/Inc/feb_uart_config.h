@@ -69,6 +69,51 @@ extern "C"
 #endif
 
   /* ============================================================================
+   * Queue Support (FreeRTOS only)
+   * ============================================================================
+   *
+   * Enable FreeRTOS message queue support for RX/TX.
+   * Auto-enabled when FreeRTOS is detected, can be overridden.
+   */
+
+#ifndef FEB_UART_ENABLE_QUEUES
+#if FEB_UART_USE_FREERTOS
+#define FEB_UART_ENABLE_QUEUES 1
+#else
+#define FEB_UART_ENABLE_QUEUES 0
+#endif
+#endif
+
+  /* Queue size defaults */
+#ifndef FEB_UART_RX_QUEUE_DEPTH
+#define FEB_UART_RX_QUEUE_DEPTH 8
+#endif
+
+#ifndef FEB_UART_TX_QUEUE_DEPTH
+#define FEB_UART_TX_QUEUE_DEPTH 4
+#endif
+
+#ifndef FEB_UART_QUEUE_LINE_SIZE
+#define FEB_UART_QUEUE_LINE_SIZE FEB_UART_DEFAULT_LINE_BUFFER_SIZE
+#endif
+
+#ifndef FEB_UART_TX_QUEUE_MSG_SIZE
+#define FEB_UART_TX_QUEUE_MSG_SIZE FEB_UART_STAGING_BUFFER_SIZE
+#endif
+
+  /* ============================================================================
+   * Multi-Instance Support
+   * ============================================================================
+   *
+   * Maximum number of UART instances that can be used simultaneously.
+   * Each instance has independent TX/RX buffers, callbacks, and queues.
+   */
+
+#ifndef FEB_UART_MAX_INSTANCES
+#define FEB_UART_MAX_INSTANCES 2
+#endif
+
+  /* ============================================================================
    * ANSI Color Codes
    * ============================================================================ */
 

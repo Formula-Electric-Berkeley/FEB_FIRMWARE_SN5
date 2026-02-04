@@ -20,6 +20,7 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 add_compile_definitions(
     USE_HAL_DRIVER
     STM32U575xx
+    USE_FreeRTOS_HEAP_5
     $<$<CONFIG:Debug>:DEBUG>
 )
 
@@ -37,8 +38,16 @@ file(GLOB STARTUP_ASM "startup_*.s")
 file(GLOB HAL_SOURCES "Drivers/STM32U5xx_HAL_Driver/Src/*.c")
 list(FILTER HAL_SOURCES EXCLUDE REGEX "_template\\.c$")
 
+# FreeRTOS kernel sources
+file(GLOB FREERTOS_SOURCES
+    "Middlewares/Third_Party/FreeRTOS/Source/*.c"
+    "Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.c"
+    "Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM33_NTZ/non_secure/*.c"
+    "Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_5.c"
+)
+
 # Combine all sources
-set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES})
+set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES} ${FREERTOS_SOURCES})
 
 # ══════════════════════════════════════════════════════════════════════
 #  INCLUDE DIRECTORIES
@@ -50,6 +59,10 @@ set(BASE_INCLUDES
     Drivers/STM32U5xx_HAL_Driver/Inc/Legacy
     Drivers/CMSIS/Device/ST/STM32U5xx/Include
     Drivers/CMSIS/Include
+    Middlewares/Third_Party/FreeRTOS/Source/include
+    Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
+    Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM33_NTZ/non_secure
+    Middlewares/Third_Party/CMSIS/RTOS2/Include
 )
 
 # Auto-discover Core/User/Inc if it exists

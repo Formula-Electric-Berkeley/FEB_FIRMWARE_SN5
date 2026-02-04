@@ -7,18 +7,20 @@
  * @details
  *
  * Provides a comprehensive UART interface with:
+ *   - Multi-instance support (up to FEB_UART_MAX_INSTANCES UARTs)
  *   - DMA-based non-blocking TX/RX
  *   - FreeRTOS-optional thread safety
  *   - Printf/scanf redirection with buffering
  *   - Verbosity levels, ANSI colors, timestamps
  *   - Bidirectional command parsing
+ *   - Optional FreeRTOS queue support
  *
  * Usage:
  *   1. Configure UART + DMA in STM32CubeMX
  *   2. Add library to CMakeLists.txt
- *   3. Call FEB_UART_Init() with configuration
+ *   3. Call FEB_UART_Init(instance, &config)
  *   4. Route HAL callbacks to library functions
- *   5. Use printf() or LOG_I() macros for output
+ *   5. Use FEB_UART_Printf() or printf() for output
  *   6. Call FEB_UART_ProcessRx() in main loop for input
  *
  * Example:
@@ -35,7 +37,7 @@
  *     .enable_timestamps = true,
  *     .get_tick_ms = HAL_GetTick,
  *   };
- *   FEB_UART_Init(&cfg);
+ *   FEB_UART_Init(FEB_UART_INSTANCE_1, &cfg);
  *
  ******************************************************************************
  */
@@ -52,6 +54,8 @@ extern "C"
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "feb_uart_config.h"
+
   /* ============================================================================
    * Forward Declarations
    * ============================================================================
@@ -65,6 +69,23 @@ extern "C"
 
   struct __DMA_HandleTypeDef;
   typedef struct __DMA_HandleTypeDef DMA_HandleTypeDef;
+
+  /* ============================================================================
+   * Instance Enumeration
+   * ============================================================================ */
+
+  /**
+   * @brief UART instance identifiers
+   *
+   * Each instance is independent with its own TX/RX buffers, callbacks, and
+   * optional FreeRTOS queues. Use FEB_UART_INSTANCE_1 for boards with one UART.
+   */
+  typedef enum
+  {
+    FEB_UART_INSTANCE_1 = 0, /**< First UART instance */
+    FEB_UART_INSTANCE_2 = 1, /**< Second UART instance */
+    FEB_UART_INSTANCE_COUNT  /**< Number of instances (for array sizing) */
+  } FEB_UART_Instance_t;
 
   /* ============================================================================
    * Log Level Enumeration
@@ -122,6 +143,12 @@ extern "C"
     /* Optional: Timestamp source (defaults to HAL_GetTick if NULL) */
     uint32_t (*get_tick_ms)(void); /**< Function returning millisecond tick */
 
+#if FEB_UART_ENABLE_QUEUES
+    /* Queue configuration (FreeRTOS only) */
+    bool enable_rx_queue; /**< Enable RX line queue mode (disables callback) */
+    bool enable_tx_queue; /**< Enable TX queue mode */
+#endif
+
   } FEB_UART_Config_t;
 
   /* ============================================================================
@@ -152,35 +179,39 @@ extern "C"
    * ============================================================================ */
 
   /**
-   * @brief Initialize the UART library
+   * @brief Initialize a UART instance
    *
-   * Sets up the TX ring buffer, RX circular DMA, and printf redirection.
-   * After calling this function, printf() output will go through this library.
+   * Sets up the TX ring buffer, RX circular DMA, and printf redirection
+   * (for instance 0 only). Multiple instances can be initialized independently.
    *
-   * @param config Pointer to configuration structure
+   * @param instance UART instance to initialize
+   * @param config   Pointer to configuration structure
    * @return 0 on success, negative error code on failure
-   *   - -1: Invalid configuration (NULL pointers)
+   *   - -1: Invalid instance or configuration (NULL pointers)
    *   - -2: DMA initialization failed
    *
    * @note Configuration structure and buffers must remain valid until DeInit
    * @note If using DMA RX, starts circular DMA reception automatically
+   * @note Printf/scanf redirection uses instance 0 only
    */
-  int FEB_UART_Init(const FEB_UART_Config_t *config);
+  int FEB_UART_Init(FEB_UART_Instance_t instance, const FEB_UART_Config_t *config);
 
   /**
-   * @brief Deinitialize the UART library
+   * @brief Deinitialize a UART instance
    *
-   * Stops DMA transfers and releases resources.
-   * Printf redirection is disabled after this call.
+   * Stops DMA transfers and releases resources for the specified instance.
+   *
+   * @param instance UART instance to deinitialize
    */
-  void FEB_UART_DeInit(void);
+  void FEB_UART_DeInit(FEB_UART_Instance_t instance);
 
   /**
-   * @brief Check if library is initialized
+   * @brief Check if instance is initialized
    *
+   * @param instance UART instance to check
    * @return true if initialized, false otherwise
    */
-  bool FEB_UART_IsInitialized(void);
+  bool FEB_UART_IsInitialized(FEB_UART_Instance_t instance);
 
   /* ============================================================================
    * Runtime Configuration API
@@ -189,47 +220,50 @@ extern "C"
   /**
    * @brief Set runtime log verbosity level
    *
-   * Messages above this level are filtered at runtime.
-   * Note: Compile-time level (FEB_UART_COMPILE_LOG_LEVEL) takes precedence.
-   *
-   * @param level New log level (FEB_UART_LOG_NONE to FEB_UART_LOG_TRACE)
+   * @param instance UART instance
+   * @param level    New log level (FEB_UART_LOG_NONE to FEB_UART_LOG_TRACE)
    */
-  void FEB_UART_SetLogLevel(FEB_UART_LogLevel_t level);
+  void FEB_UART_SetLogLevel(FEB_UART_Instance_t instance, FEB_UART_LogLevel_t level);
 
   /**
    * @brief Get current runtime log level
    *
+   * @param instance UART instance
    * @return Current log level
    */
-  FEB_UART_LogLevel_t FEB_UART_GetLogLevel(void);
+  FEB_UART_LogLevel_t FEB_UART_GetLogLevel(FEB_UART_Instance_t instance);
 
   /**
-   * @brief Enable or disable ANSI color codes at runtime
+   * @brief Enable or disable ANSI color codes
    *
-   * @param enable true to enable colors, false to disable
+   * @param instance UART instance
+   * @param enable   true to enable colors, false to disable
    */
-  void FEB_UART_SetColorsEnabled(bool enable);
+  void FEB_UART_SetColorsEnabled(FEB_UART_Instance_t instance, bool enable);
 
   /**
    * @brief Check if colors are enabled
    *
+   * @param instance UART instance
    * @return true if colors enabled, false otherwise
    */
-  bool FEB_UART_GetColorsEnabled(void);
+  bool FEB_UART_GetColorsEnabled(FEB_UART_Instance_t instance);
 
   /**
-   * @brief Enable or disable timestamps at runtime
+   * @brief Enable or disable timestamps
    *
-   * @param enable true to enable timestamps, false to disable
+   * @param instance UART instance
+   * @param enable   true to enable timestamps, false to disable
    */
-  void FEB_UART_SetTimestampsEnabled(bool enable);
+  void FEB_UART_SetTimestampsEnabled(FEB_UART_Instance_t instance, bool enable);
 
   /**
    * @brief Check if timestamps are enabled
    *
+   * @param instance UART instance
    * @return true if timestamps enabled, false otherwise
    */
-  bool FEB_UART_GetTimestampsEnabled(void);
+  bool FEB_UART_GetTimestampsEnabled(FEB_UART_Instance_t instance);
 
   /* ============================================================================
    * Output API
@@ -241,49 +275,44 @@ extern "C"
    * Formats the message and queues it for DMA transmission.
    * Non-blocking unless TX buffer is full.
    *
-   * @param format Printf format string
-   * @param ... Variable arguments
+   * @param instance UART instance
+   * @param format   Printf format string
+   * @param ...      Variable arguments
    * @return Number of bytes queued, or negative on error
-   *   - >= 0: Bytes successfully queued
-   *   - -1: Not initialized
-   *   - -2: Buffer overflow (partial write)
    *
    * @note Thread-safe when FreeRTOS is enabled
    * @note Safe to call from ISR (uses separate path)
    */
-  int FEB_UART_Printf(const char *format, ...) __attribute__((format(printf, 1, 2)));
+  int FEB_UART_Printf(FEB_UART_Instance_t instance, const char *format, ...) __attribute__((format(printf, 2, 3)));
 
   /**
    * @brief Write raw bytes to UART
    *
-   * Queues raw data for DMA transmission without formatting.
-   *
-   * @param data Pointer to data to send
-   * @param len  Number of bytes to send
+   * @param instance UART instance
+   * @param data     Pointer to data to send
+   * @param len      Number of bytes to send
    * @return Number of bytes queued, or negative on error
-   *
-   * @note Thread-safe when FreeRTOS is enabled
    */
-  int FEB_UART_Write(const uint8_t *data, size_t len);
+  int FEB_UART_Write(FEB_UART_Instance_t instance, const uint8_t *data, size_t len);
 
   /**
    * @brief Flush pending TX data
    *
    * Blocks until all queued data is transmitted or timeout expires.
    *
+   * @param instance   UART instance
    * @param timeout_ms Maximum time to wait in milliseconds (0 = infinite)
-   * @return 0 on success (buffer empty), -1 on timeout
-   *
-   * @warning Do not call from ISR context
+   * @return 0 on success, -1 on timeout
    */
-  int FEB_UART_Flush(uint32_t timeout_ms);
+  int FEB_UART_Flush(FEB_UART_Instance_t instance, uint32_t timeout_ms);
 
   /**
    * @brief Get number of bytes pending in TX buffer
    *
+   * @param instance UART instance
    * @return Number of bytes waiting to be transmitted
    */
-  size_t FEB_UART_TxPending(void);
+  size_t FEB_UART_TxPending(FEB_UART_Instance_t instance);
 
   /* ============================================================================
    * Input API
@@ -292,111 +321,147 @@ extern "C"
   /**
    * @brief Register callback for received lines
    *
-   * The callback is invoked from FEB_UART_ProcessRx() when a complete
-   * line is received. Line termination is triggered by \\r, \\n, or
-   * combined sequences (\\r\\n, \\n\\r) without double-triggering.
-   *
+   * @param instance UART instance
    * @param callback Function to call, or NULL to disable
-   *
-   * @note Callback is called from main loop context, not ISR
    */
-  void FEB_UART_SetRxLineCallback(FEB_UART_RxLineCallback_t callback);
+  void FEB_UART_SetRxLineCallback(FEB_UART_Instance_t instance, FEB_UART_RxLineCallback_t callback);
 
   /**
    * @brief Process received data and invoke callbacks
    *
    * Must be called periodically from the main loop or a SINGLE RTOS task.
-   * Parses received data, builds lines, and invokes the line callback.
    *
-   * @note Not reentrant - call from single context only
-   * @note Do not call concurrently with FEB_UART_Read()
-   * @warning FreeRTOS: Dedicate a single task to RX processing
+   * @param instance UART instance
    */
-  void FEB_UART_ProcessRx(void);
+  void FEB_UART_ProcessRx(FEB_UART_Instance_t instance);
 
   /**
    * @brief Check if RX data is available
    *
+   * @param instance UART instance
    * @return Number of unprocessed bytes in RX buffer
    */
-  size_t FEB_UART_RxAvailable(void);
+  size_t FEB_UART_RxAvailable(FEB_UART_Instance_t instance);
 
   /**
    * @brief Read raw bytes from RX buffer
    *
-   * Reads and removes bytes from the RX buffer without line parsing.
-   * Use this for binary protocols instead of line-based commands.
-   *
-   * @param data Destination buffer
-   * @param max_len Maximum bytes to read
+   * @param instance UART instance
+   * @param data     Destination buffer
+   * @param max_len  Maximum bytes to read
    * @return Number of bytes actually read
-   *
-   * @note Not thread-safe - call from single task/context only
-   * @note Do not call concurrently with FEB_UART_ProcessRx()
-   * @warning Choose either line-based (ProcessRx) OR raw (Read) API, not both
    */
-  size_t FEB_UART_Read(uint8_t *data, size_t max_len);
+  size_t FEB_UART_Read(FEB_UART_Instance_t instance, uint8_t *data, size_t max_len);
 
   /* ============================================================================
    * HAL Callback Integration
    * ============================================================================
    *
-   * The user must call these functions from the appropriate HAL callbacks.
-   * This is required because HAL callbacks are defined as weak symbols and
-   * must be implemented in user code to route to this library.
+   * These callbacks auto-route to the correct instance by matching the huart
+   * handle. Simply call them from HAL callbacks without specifying instance.
    */
 
   /**
    * @brief Call from HAL_UART_TxCpltCallback()
    *
-   * Handles DMA TX complete interrupt. Advances the TX ring buffer
-   * and starts the next DMA transfer if data is pending.
+   * Auto-routes to correct instance based on huart handle.
    *
    * @param huart UART handle that completed transmission
-   *
-   * Example usage in stm32f4xx_hal_msp.c or callbacks file:
-   * @code
-   * void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
-   *   FEB_UART_TxCpltCallback(huart);
-   * }
-   * @endcode
    */
   void FEB_UART_TxCpltCallback(UART_HandleTypeDef *huart);
 
   /**
    * @brief Call from HAL_UARTEx_RxEventCallback()
    *
-   * Handles DMA RX events (half-complete, complete, idle).
+   * Auto-routes to correct instance based on huart handle.
    *
    * @param huart UART handle
    * @param size  Number of bytes received
-   *
-   * Example usage:
-   * @code
-   * void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
-   *   FEB_UART_RxEventCallback(huart, Size);
-   * }
-   * @endcode
    */
   void FEB_UART_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size);
 
   /**
    * @brief Call from USARTx_IRQHandler for IDLE line detection
    *
-   * Checks and clears the IDLE flag, then updates the RX head position.
-   * Call BEFORE HAL_UART_IRQHandler() in the interrupt handler.
+   * Auto-routes to correct instance based on huart handle.
    *
    * @param huart UART handle
-   *
-   * Example usage in stm32f4xx_it.c:
-   * @code
-   * void USART2_IRQHandler(void) {
-   *   FEB_UART_IDLE_Callback(&huart2);  // Call first
-   *   HAL_UART_IRQHandler(&huart2);
-   * }
-   * @endcode
    */
   void FEB_UART_IDLE_Callback(UART_HandleTypeDef *huart);
+
+  /* ============================================================================
+   * Queue-Based API (FreeRTOS only)
+   * ============================================================================ */
+
+#if FEB_UART_ENABLE_QUEUES
+
+  /**
+   * @brief Receive a line from the RX queue (blocking)
+   *
+   * @param instance UART instance
+   * @param buffer   Destination buffer for the line
+   * @param max_len  Maximum buffer size
+   * @param out_len  Output: actual line length (optional, can be NULL)
+   * @param timeout  Timeout in ms (osWaitForever for infinite)
+   * @return true if line received, false on timeout
+   */
+  bool FEB_UART_QueueReceiveLine(FEB_UART_Instance_t instance, char *buffer, size_t max_len, size_t *out_len,
+                                 uint32_t timeout);
+
+  /**
+   * @brief Get number of lines waiting in RX queue
+   *
+   * @param instance UART instance
+   * @return Number of complete lines queued
+   */
+  uint32_t FEB_UART_RxQueueCount(FEB_UART_Instance_t instance);
+
+  /**
+   * @brief Check if RX queue mode is enabled
+   *
+   * @param instance UART instance
+   * @return true if RX queue is active
+   */
+  bool FEB_UART_IsRxQueueEnabled(FEB_UART_Instance_t instance);
+
+  /**
+   * @brief Queue data for transmission (blocking)
+   *
+   * @param instance UART instance
+   * @param data     Data to transmit
+   * @param len      Data length
+   * @param timeout  Timeout in ms
+   * @return Number of bytes queued, or -1 on error
+   */
+  int FEB_UART_QueueWrite(FEB_UART_Instance_t instance, const uint8_t *data, size_t len, uint32_t timeout);
+
+  /**
+   * @brief Queue formatted output for transmission (blocking)
+   *
+   * @param instance UART instance
+   * @param timeout  Timeout in ms
+   * @param format   Printf format string
+   * @return Number of bytes queued, or -1 on error
+   */
+  int FEB_UART_QueuePrintf(FEB_UART_Instance_t instance, uint32_t timeout, const char *format, ...)
+      __attribute__((format(printf, 3, 4)));
+
+  /**
+   * @brief Process TX queue and transmit pending messages
+   *
+   * @param instance UART instance
+   */
+  void FEB_UART_ProcessTxQueue(FEB_UART_Instance_t instance);
+
+  /**
+   * @brief Check if TX queue mode is enabled
+   *
+   * @param instance UART instance
+   * @return true if TX queue is active
+   */
+  bool FEB_UART_IsTxQueueEnabled(FEB_UART_Instance_t instance);
+
+#endif /* FEB_UART_ENABLE_QUEUES */
 
 #ifdef __cplusplus
 }

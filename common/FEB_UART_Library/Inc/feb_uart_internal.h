@@ -81,6 +81,67 @@ typedef volatile uint8_t FEB_UART_Semaphore_t;
 #endif /* FEB_UART_USE_FREERTOS */
 
   /* ============================================================================
+   * Queue Abstraction Layer (FreeRTOS only)
+   * ============================================================================ */
+
+#if FEB_UART_USE_FREERTOS && FEB_UART_ENABLE_QUEUES
+
+  typedef osMessageQueueId_t FEB_UART_Queue_t;
+
+#define FEB_UART_QUEUE_CREATE(depth, item_size) osMessageQueueNew(depth, item_size, NULL)
+#define FEB_UART_QUEUE_DELETE(q) osMessageQueueDelete(q)
+#define FEB_UART_QUEUE_SEND(q, item, timeout) (osMessageQueuePut(q, item, 0, timeout) == osOK)
+#define FEB_UART_QUEUE_SEND_ISR(q, item) (osMessageQueuePut(q, item, 0, 0) == osOK)
+#define FEB_UART_QUEUE_RECEIVE(q, item, timeout) (osMessageQueueGet(q, item, NULL, timeout) == osOK)
+#define FEB_UART_QUEUE_COUNT(q) osMessageQueueGetCount(q)
+#define FEB_UART_QUEUE_SPACE(q) osMessageQueueGetSpace(q)
+
+#else /* Bare-metal or queues disabled */
+
+typedef void *FEB_UART_Queue_t;
+
+#define FEB_UART_QUEUE_CREATE(depth, item_size) NULL
+#define FEB_UART_QUEUE_DELETE(q) ((void)0)
+#define FEB_UART_QUEUE_SEND(q, item, timeout) false
+#define FEB_UART_QUEUE_SEND_ISR(q, item) false
+#define FEB_UART_QUEUE_RECEIVE(q, item, timeout) false
+#define FEB_UART_QUEUE_COUNT(q) 0
+#define FEB_UART_QUEUE_SPACE(q) 0
+
+#endif /* FEB_UART_USE_FREERTOS && FEB_UART_ENABLE_QUEUES */
+
+  /* ============================================================================
+   * Queue Message Structures
+   * ============================================================================ */
+
+#if FEB_UART_ENABLE_QUEUES
+
+  /**
+   * @brief RX queue message structure
+   *
+   * Contains a complete received line with metadata.
+   */
+  typedef struct
+  {
+    char line[FEB_UART_QUEUE_LINE_SIZE]; /**< Received line (null-terminated) */
+    uint16_t len;                        /**< Line length (not including null) */
+    uint32_t timestamp;                  /**< Reception timestamp (ms) */
+  } FEB_UART_RxQueueMsg_t;
+
+  /**
+   * @brief TX queue message structure
+   *
+   * Contains data to be transmitted.
+   */
+  typedef struct
+  {
+    uint8_t data[FEB_UART_TX_QUEUE_MSG_SIZE]; /**< Data to transmit */
+    uint16_t len;                             /**< Data length */
+  } FEB_UART_TxQueueMsg_t;
+
+#endif /* FEB_UART_ENABLE_QUEUES */
+
+  /* ============================================================================
    * Ring Buffer Structure
    * ============================================================================ */
 

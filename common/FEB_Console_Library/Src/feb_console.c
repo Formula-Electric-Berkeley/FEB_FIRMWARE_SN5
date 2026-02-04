@@ -109,7 +109,7 @@ void FEB_Console_Printf(const char *fmt, ...)
     {
       len = sizeof(printf_buf) - 1;
     }
-    FEB_UART_Write((const uint8_t *)printf_buf, (size_t)len);
+    FEB_UART_Write(FEB_UART_INSTANCE_1, (const uint8_t *)printf_buf, (size_t)len);
   }
 }
 
