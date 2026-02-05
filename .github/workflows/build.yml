@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes]
+        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes, UART_TEST]
 
     name: Build ${{ matrix.project }}
 

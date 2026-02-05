@@ -30,7 +30,9 @@
 #ifndef FEB_DEBUG_H
 #define FEB_DEBUG_H
 
+#ifndef DEBUG_ENABLE
 #define DEBUG_ENABLE
+#endif
 
 #ifdef __cplusplus
 extern "C"

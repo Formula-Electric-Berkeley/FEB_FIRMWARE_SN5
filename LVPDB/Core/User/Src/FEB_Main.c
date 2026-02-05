@@ -1,4 +1,7 @@
 #include "FEB_Main.h"
+#include "FEB_CAN_PingPong.h"
+#include "FEB_LVPDB_Commands.h"
+#include "feb_can_lib.h"
 #include "main.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -9,11 +12,14 @@ static uint32_t FEB_CAN_Tx_Mailbox;
 
 extern CAN_HandleTypeDef hcan1;
 extern CAN_HandleTypeDef hcan2;
-extern CAN_HandleTypeDef hcan1;
-extern CAN_HandleTypeDef hcan2;
 extern I2C_HandleTypeDef hi2c1;
 extern TIM_HandleTypeDef htim1;
 extern UART_HandleTypeDef huart2;
+extern DMA_HandleTypeDef hdma_usart2_tx;
+extern DMA_HandleTypeDef hdma_usart2_rx;
+
+static uint8_t uart_tx_buf[512];
+static uint8_t uart_rx_buf[256];
 
 static void FEB_Compose_CAN_Data(void);
 static void FEB_Variable_Conversion(void);
@@ -70,7 +76,32 @@ bool bus_voltage_healthy = true;
 
 void FEB_Main_Setup(void)
 {
-  printf("[SETUP] Beginning Setup\r\n");
+  // Initialize UART library first (before any LOG calls)
+  FEB_UART_Config_t uart_cfg = {
+      .huart = &huart2,
+      .hdma_tx = &hdma_usart2_tx,
+      .hdma_rx = &hdma_usart2_rx,
+      .tx_buffer = uart_tx_buf,
+      .tx_buffer_size = sizeof(uart_tx_buf),
+      .rx_buffer = uart_rx_buf,
+      .rx_buffer_size = sizeof(uart_rx_buf),
+      .log_level = FEB_UART_LOG_DEBUG,
+      .enable_colors = true,
+      .enable_timestamps = true,
+      .get_tick_ms = HAL_GetTick,
+  };
+  FEB_UART_Init(FEB_UART_INSTANCE_1, &uart_cfg);
+
+  // Initialize console (registers built-in commands: help, version, uptime, reboot, log)
+  FEB_Console_Init();
+
+  // Register LVPDB-specific commands
+  LVPDB_RegisterCommands();
+
+  // Connect UART RX to console processor
+  FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
+
+  LOG_I(TAG_MAIN, "Beginning Setup");
 
   printf("Starting I2C Scanning: \r\n");
   uint8_t i = 0, ret;
@@ -99,7 +130,8 @@ void FEB_Main_Setup(void)
   {
     if (maxiter > 100)
     {
-      break; // Todo add failure case
+      LOG_E(TAG_MAIN, "TPS2482 init failed after 100 retries");
+      break;
     }
 
     // Assume successful init
@@ -107,10 +139,9 @@ void FEB_Main_Setup(void)
 
     TPS2482_Init(&hi2c1, tps2482_i2c_addresses, tps2482_configurations, tps2482_ids, tps2482_init_res, NUM_TPS2482);
 
-    printf("[SETUP] Initializing... [%d]       Status:     LV: %d    SH: %d    LT: %d    BM_L: %d    SM: %d    "
-           "AF1_AF2: %d    CP_RF: %d\r\n",
-           maxiter, tps2482_init_res[0], tps2482_init_res[1], tps2482_init_res[2], tps2482_init_res[3],
-           tps2482_init_res[4], tps2482_init_res[5], tps2482_init_res[6]);
+    LOG_D(TAG_MAIN, "TPS init [%d] LV:%d SH:%d LT:%d BM_L:%d SM:%d AF1_AF2:%d CP_RF:%d", maxiter, tps2482_init_res[0],
+          tps2482_init_res[1], tps2482_init_res[2], tps2482_init_res[3], tps2482_init_res[4], tps2482_init_res[5],
+          tps2482_init_res[6]);
 
     for (uint8_t i = 0; i < NUM_TPS2482; i++)
     {
@@ -122,6 +153,11 @@ void FEB_Main_Setup(void)
     maxiter += 1;
   }
 
+  if (tps2482_init_success)
+  {
+    LOG_I(TAG_MAIN, "TPS2482 I2C init complete");
+  }
+
   // printf("[SETUP] tps2482_init_success: %d\r\n", tps2482_init_success);
 
   bool tps2482_en_res[NUM_TPS2482 - 1]; // LVPDB is always enabled so num TPS - 1
@@ -130,13 +166,14 @@ void FEB_Main_Setup(void)
   bool tps2482_pg_success = false;
   maxiter = 0; // Safety in case of infinite while
 
-  uint8_t start_en[NUM_TPS2482 - 1] = {1, 1, 1, 1, 1, 1};
+  uint8_t start_en[NUM_TPS2482 - 1] = {0, 0, 0, 0, 0, 0};
 
   while (!tps2482_en_success || !tps2482_pg_success)
   {
     if (maxiter > 100)
     {
-      break; // Todo add failure case
+      LOG_E(TAG_MAIN, "TPS2482 enable/power-good failed after 100 retries");
+      break;
     }
     // Assume successful enable
     bool b1 = true;
@@ -145,14 +182,11 @@ void FEB_Main_Setup(void)
     TPS2482_Enable(tps2482_en_ports, tps2482_en_pins, start_en, tps2482_en_res, NUM_TPS2482 - 1);
     TPS2482_GPIO_Read(tps2482_pg_ports, tps2482_pg_pins, tps2482_pg_res, NUM_TPS2482);
 
-    printf("[SETUP] Powering...     [%d] tps2482_en_res:              SH: %d    LT: %d     BM_L: %d     SM: %d     "
-           "AF1_AF2: %d    CP_RF: %d\r\n",
-           maxiter, tps2482_en_res[0], tps2482_en_res[1], tps2482_en_res[2], tps2482_en_res[3], tps2482_en_res[4],
-           tps2482_en_res[5]);
-    printf("[SETUP] Validating...   [%d] tps2482_pg_res:     LV: %d    SH: %d    LT: %d     BM_L: %d     SM: %d     "
-           "AF1_AF2: %d    CP_RF: %d\r\n",
-           maxiter, tps2482_pg_res[0], tps2482_pg_res[1], tps2482_pg_res[2], tps2482_pg_res[3], tps2482_pg_res[4],
-           tps2482_pg_res[5], tps2482_pg_res[6]);
+    LOG_D(TAG_MAIN, "TPS enable [%d] SH:%d LT:%d BM_L:%d SM:%d AF1_AF2:%d CP_RF:%d", maxiter, tps2482_en_res[0],
+          tps2482_en_res[1], tps2482_en_res[2], tps2482_en_res[3], tps2482_en_res[4], tps2482_en_res[5]);
+    LOG_D(TAG_MAIN, "TPS power-good [%d] LV:%d SH:%d LT:%d BM_L:%d SM:%d AF1_AF2:%d CP_RF:%d", maxiter,
+          tps2482_pg_res[0], tps2482_pg_res[1], tps2482_pg_res[2], tps2482_pg_res[3], tps2482_pg_res[4],
+          tps2482_pg_res[5], tps2482_pg_res[6]);
 
     for (uint8_t i = 0; i < NUM_TPS2482 - 1; i++)
     {
@@ -179,15 +213,38 @@ void FEB_Main_Setup(void)
     maxiter += 1;
   }
 
+  if (tps2482_en_success && tps2482_pg_success)
+  {
+    LOG_I(TAG_MAIN, "TPS2482 power rails enabled");
+  }
+
   // Initialize brake light to be off
   HAL_GPIO_WritePin(BL_Switch_GPIO_Port, BL_Switch_Pin, GPIO_PIN_RESET);
 
-  FEB_CAN_Init(FEB_CAN1_Rx_Callback);
+  // Initialize CAN library
+  FEB_CAN_Config_t can_cfg = {
+      .hcan1 = &hcan1,
+      .hcan2 = NULL,
+      .get_tick_ms = HAL_GetTick,
+  };
+  FEB_CAN_Init(&can_cfg);
+
+  // Initialize ping/pong module
+  FEB_CAN_PingPong_Init();
+
+  // Configure accept-all filter for testing (use filter bank 0, FIFO 0)
+  FEB_CAN_Filter_AcceptAll(FEB_CAN_INSTANCE_1, 0, FEB_CAN_FIFO_0);
+
+  LOG_I(TAG_MAIN, "LVPDB Setup Complete");
+  LOG_I(TAG_MAIN, "Type 'help' for available commands");
 
   HAL_TIM_Base_Start_IT(&htim1);
 }
 
-void FEB_Main_Loop(void) {}
+void FEB_Main_Loop(void)
+{
+  FEB_UART_ProcessRx(FEB_UART_INSTANCE_1); // Process any received UART commands
+}
 
 void FEB_1ms_Callback(void)
 {
@@ -197,13 +254,14 @@ void FEB_1ms_Callback(void)
 
   FEB_Variable_Conversion();
 
-  // FEB_Compose_CAN_Data();
-
-  // for ( uint8_t i = 0; i < 3; i++ ) {
-  // 	can_data.flags &= 0xF0FFFFFF;
-  // 	can_data.flags |= ((uint32_t)i) << 24;
-  // 	FEB_CAN_Transmit(&hcan1, &can_data);
-  // }
+  // Process CAN ping/pong every 100ms
+  static uint16_t ping_divider = 0;
+  ping_divider++;
+  if (ping_divider >= 100)
+  {
+    ping_divider = 0;
+    FEB_CAN_PingPong_Tick();
+  }
 }
 
 void FEB_CAN1_Rx_Callback(CAN_RxHeaderTypeDef *rx_header, void *data)
