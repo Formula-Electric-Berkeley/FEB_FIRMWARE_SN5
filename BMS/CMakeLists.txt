@@ -50,8 +50,14 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
 endif()
 
 # CAN library generated source (from common submodule) #H
-list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can.c")
+# list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can.c")
+# ── SN5 CAN library sources ───────────────────────────────────────────
+file(GLOB CAN_LIB_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/gen/*.c" #patching BMS CAN to use SN4 gen files for now -HP
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.c" #patching BMS CAN to use SN4 gen files for now -HP
+)
 
+list(APPEND ALL_SOURCES ${CAN_LIB_SOURCES})
 # ══════════════════════════════════════════════════════════════════════
 #  INCLUDE DIRECTORIES
 # ══════════════════════════════════════════════════════════════════════
