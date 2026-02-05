@@ -1,9 +1,15 @@
 // **************************************** Includes & External ****************************************
 
 #include <FEB_CAN.h>
+#include <string.h>
 
 extern CAN_HandleTypeDef hcan1;
 extern UART_HandleTypeDef huart2;
+
+// **************************************** Forward Declarations ****************************************
+
+static void FEB_CAN_Filter_Config(void);
+static uint8_t FEB_CAN_LVPDB_Filter(CAN_HandleTypeDef *hcan, unsigned char FIFO_assignment, uint8_t filter_bank);
 
 // **************************************** CAN Configuration ****************************************
 
@@ -26,7 +32,8 @@ static void (*FEB_CAN_Rx_Callback)(CAN_RxHeaderTypeDef *, void *);
 
 // **************************************** Functions ****************************************
 
-void FEB_CAN_Init(void (*CAN_Callback)(CAN_RxHeaderTypeDef *, void *))
+/* Legacy FEB_CAN_Init - renamed to avoid conflict with new library */
+void FEB_CAN_Legacy_Init(void (*CAN_Callback)(CAN_RxHeaderTypeDef *, void *))
 {
   FEB_CAN_Filter_Config();
   if (HAL_CAN_Start(&hcan1) != HAL_OK)
@@ -41,13 +48,13 @@ void FEB_CAN_Init(void (*CAN_Callback)(CAN_RxHeaderTypeDef *, void *))
   FEB_CAN_Rx_Callback = CAN_Callback;
 }
 
-void FEB_CAN_Filter_Config(void)
+static void FEB_CAN_Filter_Config(void)
 {
   uint8_t filter_bank = 0;
   filter_bank = FEB_CAN_LVPDB_Filter(&hcan1, CAN_RX_FIFO0, filter_bank);
 }
 
-uint8_t FEB_CAN_LVPDB_Filter(CAN_HandleTypeDef *hcan, unsigned char FIFO_assignment, uint8_t filter_bank)
+static uint8_t FEB_CAN_LVPDB_Filter(CAN_HandleTypeDef *hcan, unsigned char FIFO_assignment, uint8_t filter_bank)
 {
   // For multiple filters, create array of filter IDs and loop over IDs.
   CAN_FilterTypeDef filter_config;
@@ -78,14 +85,8 @@ uint8_t FEB_CAN_LVPDB_Filter(CAN_HandleTypeDef *hcan, unsigned char FIFO_assignm
   return filter_bank;
 }
 
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
-{
-  if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &FEB_CAN_Rx_Header, FEB_CAN_Rx_Data) == HAL_OK)
-  {
-
-    FEB_CAN_Rx_Callback(&FEB_CAN_Rx_Header, FEB_CAN_Rx_Data);
-  }
-}
+/* HAL_CAN_RxFifo0MsgPendingCallback removed - now handled by stm32f4xx_it.c
+ * which routes to the new FEB_CAN_Library */
 
 void FEB_CAN_Transmit(CAN_HandleTypeDef *hcan, FEB_LVPDB_CAN_Data *can_data)
 {

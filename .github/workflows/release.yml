@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes]
+        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes, UART_TEST]
 
     name: Build ${{ matrix.project }}
 
@@ -92,7 +92,7 @@ jobs:
       - name: Organize artifacts by board
         run: |
           mkdir -p release-package
-          for board in BMS PCU DASH LVPDB DART DCU Sensor_Nodes; do
+          for board in BMS PCU DASH LVPDB DART DCU Sensor_Nodes UART_TEST; do
             mkdir -p "release-package/$board"
             find release-artifacts -name "$board-*" -type f \( -name "*.elf" -o -name "*.bin" -o -name "*.hex" \) -exec cp {} "release-package/$board/" \; 2>/dev/null || true
           done
@@ -173,3 +173,4 @@ jobs:
             - DART
             - DCU (Data Control Unit)
             - Sensor_Nodes
+            - UART_TEST (UART/Console Test Board)

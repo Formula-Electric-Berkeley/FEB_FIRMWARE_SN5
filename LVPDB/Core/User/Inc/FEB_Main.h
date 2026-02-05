@@ -4,6 +4,9 @@
 #include "FEB_CAN.h"
 #include "FEB_CAN_Heartbeat.h"
 #include "TPS2482.h"
+#include "feb_console.h"
+#include "feb_uart.h"
+#include "feb_uart_log.h"
 
 #include <stm32f4xx_hal.h>
 #include <stdint.h>

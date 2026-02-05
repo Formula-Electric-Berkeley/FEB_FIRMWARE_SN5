@@ -79,6 +79,17 @@
       "preLaunchTask": "Build Sensor_Nodes"
     },
     {
+      "name": "Debug UART_TEST (ST-Link)",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/UART_TEST/UART_TEST.elf",
+      "request": "launch",
+      "type": "cortex-debug",
+      "servertype": "stlink",
+      "device": "STM32U575ZI",
+      "runToEntryPoint": "main",
+      "preLaunchTask": "Build UART_TEST"
+    },
+    {
       "name": "Attach BMS (ST-Link)",
       "cwd": "${workspaceFolder}",
       "executable": "${workspaceFolder}/build/Debug/BMS/BMS.elf",
@@ -95,6 +106,15 @@
       "type": "cortex-debug",
       "servertype": "stlink",
       "device": "STM32F446RE"
+    },
+    {
+      "name": "Attach UART_TEST (ST-Link)",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/UART_TEST/UART_TEST.elf",
+      "request": "attach",
+      "type": "cortex-debug",
+      "servertype": "stlink",
+      "device": "STM32U575ZI"
     }
   ]
 }
