@@ -18,9 +18,10 @@
  ******************************************************************************
  */
 
-#include "feb_can.h"
+#include "feb_can_lib.h"
 #include "cmsis_os2.h"
 #include "main.h"
+#include <stdio.h>
 
 #define FEB_UART_USE_FREERTOS 1
 

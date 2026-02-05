@@ -49,7 +49,7 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
     list(APPEND ALL_SOURCES ${FREERTOS_CORE} ${FREERTOS_CMSIS} ${FREERTOS_PORT} ${FREERTOS_HEAP})
 endif()
 
-# CAN library generated source (from common submodule)
+# CAN library generated source (from common submodule) #H
 list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can.c")
 
 # ══════════════════════════════════════════════════════════════════════
@@ -78,12 +78,17 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
     list(APPEND BASE_INCLUDES Core/User/Inc)
 endif()
 
-# Common CAN library (submodule)
-set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4")
+# Common CAN library (submodule) #H
+set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library")
 list(APPEND BASE_INCLUDES
-    "${CAN_LIB_DIR}/.."          # resolves #include "FEB_CAN_Library_SN4/gen/feb_can.h"
-    "${CAN_LIB_DIR}/gen"         # resolves #include "feb_can.h" directly
+    "${CAN_LIB_DIR}/Inc"         # This should contain feb_can_lib.h
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen"  # For generated files
 )
+# set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library")
+# list(APPEND BASE_INCLUDES
+#     "${CAN_LIB_DIR}/Inc"
+#     "${CAN_LIB_DIR}/gen"
+# )
 
 # ══════════════════════════════════════════════════════════════════════
 #  EXECUTABLE TARGET
@@ -93,7 +98,7 @@ add_executable(${PROJECT_NAME} ${ALL_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE m feb_can)
+target_link_libraries(${PROJECT_NAME} PRIVATE m) #H
 
 # Enable floating-point printf/scanf for newlib-nano
 target_link_options(${PROJECT_NAME} PRIVATE
