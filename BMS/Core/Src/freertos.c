@@ -71,6 +71,20 @@ const osThreadAttr_t TPSTask_attributes = {
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
+/* Definitions for BMSTaskRx */
+osThreadId_t BMSTaskRxHandle;
+const osThreadAttr_t BMSTaskRx_attributes = {
+  .name = "BMSTaskRx",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for BMSTaskTx */
+osThreadId_t BMSTaskTxHandle;
+const osThreadAttr_t BMSTaskTx_attributes = {
+  .name = "BMSTaskTx",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 /* Definitions for ADBMSMutex */
 osMutexId_t ADBMSMutexHandle;
 const osMutexAttr_t ADBMSMutex_attributes = {
@@ -85,6 +99,8 @@ const osMutexAttr_t ADBMSMutex_attributes = {
 void StartDefaultTask(void *argument);
 void StartADBMSTask(void *argument);
 void StartTPSTask(void *argument);
+void StartBMSTaskRx(void *argument);
+void StartBMSTaskTx(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -126,6 +142,12 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of TPSTask */
   TPSTaskHandle = osThreadNew(StartTPSTask, NULL, &TPSTask_attributes);
+
+  /* creation of BMSTaskRx */
+  BMSTaskRxHandle = osThreadNew(StartBMSTaskRx, NULL, &BMSTaskRx_attributes);
+
+  /* creation of BMSTaskTx */
+  BMSTaskTxHandle = osThreadNew(StartBMSTaskTx, NULL, &BMSTaskTx_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
 
@@ -188,6 +210,42 @@ __weak void StartTPSTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END StartTPSTask */
+}
+
+/* USER CODE BEGIN Header_StartBMSTaskRx */
+/**
+* @brief Function implementing the BMSTaskRx thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartBMSTaskRx */
+void StartBMSTaskRx(void *argument)
+{
+  /* USER CODE BEGIN StartBMSTaskRx */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartBMSTaskRx */
+}
+
+/* USER CODE BEGIN Header_StartBMSTaskTx */
+/**
+* @brief Function implementing the BMSTaskTx thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartBMSTaskTx */
+void StartBMSTaskTx(void *argument)
+{
+  /* USER CODE BEGIN StartBMSTaskTx */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartBMSTaskTx */
 }
 
 /* Private application code --------------------------------------------------*/
