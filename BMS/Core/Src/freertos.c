@@ -219,7 +219,7 @@ __weak void StartTPSTask(void *argument)
 * @retval None
 */
 /* USER CODE END Header_StartBMSTaskRx */
-void StartBMSTaskRx(void *argument)
+__weak void StartBMSTaskRx(void *argument)
 {
   /* USER CODE BEGIN StartBMSTaskRx */
   /* Infinite loop */
@@ -237,7 +237,7 @@ void StartBMSTaskRx(void *argument)
 * @retval None
 */
 /* USER CODE END Header_StartBMSTaskTx */
-void StartBMSTaskTx(void *argument)
+__weak void StartBMSTaskTx(void *argument)
 {
   /* USER CODE BEGIN StartBMSTaskTx */
   /* Infinite loop */
