@@ -1,5 +1,6 @@
 #include "FEB_Main.h"
 #include "FEB_CAN_PingPong.h"
+#include "FEB_CAN_TPS.h"
 #include "FEB_LVPDB_Commands.h"
 #include "feb_can_lib.h"
 #include "main.h"
@@ -258,6 +259,15 @@ void FEB_1ms_Callback(void)
   {
     ping_divider = 0;
     FEB_CAN_PingPong_Tick();
+  }
+
+  // Process CAN tps reading every 100ms
+  static uint16_t tps_divider = 0;
+  tps_divider++;
+  if (tps_divider >= 67)
+  {
+    tps_divider = 0;
+    FEB_CAN_TPS_Tick(tps2482_current_raw, tps2482_bus_voltage_raw, tps2482_shunt_voltage_raw, 7);
   }
 }
 
