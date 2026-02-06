@@ -939,11 +939,42 @@ static void start_dma_tx(int inst)
 }
 
 /**
- * @brief Internal write function - caller must hold mutex
+ * @brief Internal write function - caller must hold mutex/critical section
+ *
+ * Blocks until sufficient buffer space is available (in main context).
+ * In ISR context, falls back to truncated write to avoid blocking.
  */
 static int feb_uart_write_internal(int inst, const uint8_t *data, size_t len)
 {
-  /* Write to ring buffer */
+  /* Block until sufficient space available (with timeout) */
+  /* Note: Caller already holds critical section, so we exit/enter to allow DMA ISR */
+  uint32_t start = ctx[inst].get_tick_ms ? ctx[inst].get_tick_ms() : 0;
+  const uint32_t timeout_ms = 1000; /* 1 second timeout */
+
+  while (feb_uart_ring_space(&ctx[inst].tx_ring) < len)
+  {
+    /* ISR context: can't block, just truncate as before */
+    if (FEB_UART_IN_ISR())
+    {
+      break;
+    }
+
+    /* Check timeout */
+    if (ctx[inst].get_tick_ms && (ctx[inst].get_tick_ms() - start) > timeout_ms)
+    {
+      break; /* Timeout - proceed with truncated write */
+    }
+
+    /* Release critical section to allow DMA completion interrupt to run */
+    FEB_UART_EXIT_CRITICAL();
+    /* Brief yield - DMA ISR can now advance tail pointer */
+    for (volatile int i = 0; i < 100; i++)
+    {
+    }
+    FEB_UART_ENTER_CRITICAL();
+  }
+
+  /* Write to ring buffer (may still truncate if ISR or timeout) */
   size_t written = feb_uart_ring_write(&ctx[inst].tx_ring, data, len);
 
   /* Start DMA if idle */

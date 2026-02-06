@@ -18,7 +18,7 @@ extern UART_HandleTypeDef huart2;
 extern DMA_HandleTypeDef hdma_usart2_tx;
 extern DMA_HandleTypeDef hdma_usart2_rx;
 
-static uint8_t uart_tx_buf[512];
+static uint8_t uart_tx_buf[4096];
 static uint8_t uart_rx_buf[256];
 
 static void FEB_Compose_CAN_Data(void);
@@ -231,9 +231,6 @@ void FEB_Main_Setup(void)
 
   // Initialize ping/pong module
   FEB_CAN_PingPong_Init();
-
-  // Configure accept-all filter for testing (use filter bank 0, FIFO 0)
-  FEB_CAN_Filter_AcceptAll(FEB_CAN_INSTANCE_1, 0, FEB_CAN_FIFO_0);
 
   LOG_I(TAG_MAIN, "LVPDB Setup Complete");
   LOG_I(TAG_MAIN, "Type 'help' for available commands");
