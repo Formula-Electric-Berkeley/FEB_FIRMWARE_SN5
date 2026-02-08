@@ -99,6 +99,9 @@ void FEB_Main_Setup(void)
 
   LOG_I(TAG_MAIN, "=== Setup Complete ===");
   LOG_RAW("\r\n");
+
+  FEB_CAN_RMS_Transmit_UpdateTorque(0, 0);
+  HAL_Delay(1000);
 }
 
 /**
@@ -125,7 +128,7 @@ void FEB_Main_While()
   // }
   /* Enable motor only in DRIVE state */
   // else if (bms_state == FEB_SM_ST_DRIVE) {
-  //     FEB_RMS_Process();
+  FEB_RMS_Process();
   // } else {
   //     FEB_RMS_Disable();
   // }
