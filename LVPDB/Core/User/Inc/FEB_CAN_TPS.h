@@ -11,6 +11,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 
 /* ============================================================================
  * API Functions
@@ -25,7 +26,6 @@ void FEB_CAN_PingPong_Init(void);
 /**
  * @brief Process ping transmissions (call from timer, e.g., every 100ms)
  */
-void FEB_CAN_TPS_Tick(uint16_t *tps_current_raw, uint16_t *tps_bus_voltage_raw, uint16_t *uint_shunt_voltage,
-                      size_t length);
+void FEB_CAN_TPS_Tick(uint16_t *tps_current_raw, uint16_t *tps_bus_voltage_raw, size_t length);
 
 #endif /* FEB_CAN_TPS_H */

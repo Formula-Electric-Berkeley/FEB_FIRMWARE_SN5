@@ -111,11 +111,11 @@ void FEB_Main_Setup(void)
     ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i << 1), 3, 5);
     if (ret != HAL_OK)
     { /* No ACK Received At That Address */
-      printf(" - ");
+      printf("- ");
     }
     else if (ret == HAL_OK)
     {
-      printf("0x%X", i);
+      printf("0x%X ", i);
     }
   }
   printf("Done! \r\n\r\n");
@@ -267,7 +267,7 @@ void FEB_1ms_Callback(void)
   if (tps_divider >= 67)
   {
     tps_divider = 0;
-    FEB_CAN_TPS_Tick(tps2482_current_raw, tps2482_bus_voltage_raw, tps2482_shunt_voltage_raw, 7);
+    FEB_CAN_TPS_Tick(tps2482_current_raw, tps2482_bus_voltage_raw, NUM_TPS2482);
   }
 }
 
@@ -495,9 +495,9 @@ static void FEB_Variable_Init(void)
   tps2482_alert_pins[5] = AF1_AF2_Alert_Pin;
   tps2482_alert_pins[6] = CP_RF_Alert_Pin;
 
-  can_data.ids[0] = FEB_CAN_LVPDB_FLAGS_BUS_VOLTAGE_LV_CURRENT_FRAME_ID;
-  can_data.ids[1] = FEB_CAN_LVPDB_COOLANT_FANS_SHUTDOWN_FRAME_ID;
-  can_data.ids[2] = FEB_CAN_LVPDB_AUTONOMOUS_FRAME_ID;
+  // can_data.ids[0] = FEB_CAN_LVPDB_FLAGS_BUS_VOLTAGE_LV_CURRENT_FRAME_ID;
+  // can_data.ids[1] = FEB_CAN_LVPDB_COOLANT_FANS_SHUTDOWN_FRAME_ID;
+  // can_data.ids[2] = FEB_CAN_LVPDB_AUTONOMOUS_FRAME_ID;
 
   memset(tps2482_current_raw, 0, NUM_TPS2482 * sizeof(uint16_t));
   memset(tps2482_bus_voltage_raw, 0, NUM_TPS2482 * sizeof(uint16_t));
