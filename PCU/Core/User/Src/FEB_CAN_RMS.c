@@ -1,5 +1,5 @@
 #include "FEB_CAN_RMS.h"
-#include "FEB_Debug.h"
+#include "feb_uart_log.h"
 
 /* Global RMS message data */
 RMS_MESSAGE_TYPE RMS_MESSAGE;
@@ -7,17 +7,65 @@ RMS_MESSAGE_TYPE RMS_MESSAGE;
 /* RMS parameter broadcast data */
 uint8_t PARAM_BROADCAST_DATA[2] = {0b10100000, 0b00010101};
 
+/* Forward declaration of callback with new signature */
+static void FEB_CAN_RMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
+                                 const uint8_t *data, uint8_t length, void *user_data);
+
+/* Accessor functions for console commands */
+float FEB_CAN_RMS_getDCBusVoltage(void)
+{
+  return RMS_MESSAGE.DC_Bus_Voltage_V;
+}
+
+int16_t FEB_CAN_RMS_getMotorSpeed(void)
+{
+  return RMS_MESSAGE.Motor_Speed;
+}
+
+int16_t FEB_CAN_RMS_getMotorAngle(void)
+{
+  return RMS_MESSAGE.Motor_Angle;
+}
+
+float FEB_CAN_RMS_getTorqueCommand(void)
+{
+  return RMS_MESSAGE.Torque_Command / 10.0f;
+}
+
+float FEB_CAN_RMS_getTorqueFeedback(void)
+{
+  return RMS_MESSAGE.Torque_Feedback / 10.0f;
+}
+
 void FEB_CAN_RMS_Init(void)
 {
   LOG_I(TAG_CAN, "Initializing RMS CAN communication");
 
-  FEB_CAN_RX_Register(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_VOLTAGE, FEB_CAN_ID_STD, FEB_CAN_RMS_Callback);
-  FEB_CAN_RX_Register(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_MOTOR, FEB_CAN_ID_STD, FEB_CAN_RMS_Callback);
+  // Register RX callbacks using new API
+  FEB_CAN_RX_Params_t params = {
+      .instance = FEB_CAN_INSTANCE_1,
+      .id_type = FEB_CAN_ID_STD,
+      .filter_type = FEB_CAN_FILTER_EXACT,
+      .fifo = FEB_CAN_FIFO_0,
+      .callback = FEB_CAN_RMS_Callback,
+      .user_data = NULL,
+  };
+
+  params.can_id = FEB_CAN_ID_RMS_VOLTAGE;
+  FEB_CAN_RX_Register(&params);
+
+  params.can_id = FEB_CAN_ID_RMS_MOTOR;
+  FEB_CAN_RX_Register(&params);
+
   LOG_I(TAG_CAN, "Registered RMS CAN callbacks (Voltage: 0x%03lX, Motor: 0x%03lX)", FEB_CAN_ID_RMS_VOLTAGE,
         FEB_CAN_ID_RMS_MOTOR);
 
   RMS_MESSAGE.HV_Bus_Voltage = 0;
   RMS_MESSAGE.Motor_Speed = 0;
+  RMS_MESSAGE.Motor_Angle = 0;
+  RMS_MESSAGE.Torque_Command = 0;
+  RMS_MESSAGE.Torque_Feedback = 0;
+  RMS_MESSAGE.DC_Bus_Voltage_V = 0.0f;
 
   LOG_I(TAG_CAN, "Sending RMS parameter safety commands");
   for (int i = 0; i < 10; i++)
@@ -46,9 +94,14 @@ void FEB_CAN_RMS_Init(void)
   LOG_I(TAG_CAN, "RMS CAN initialization complete");
 }
 
-void FEB_CAN_RMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type, uint8_t *data,
-                          uint8_t length)
+static void FEB_CAN_RMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
+                                 const uint8_t *data, uint8_t length, void *user_data)
 {
+  (void)instance;
+  (void)id_type;
+  (void)length;
+  (void)user_data;
+
   LOG_D(TAG_RMS, "RMS Callback: ID=0x%03lX, Len=%d, Payload: %02X %02X %02X %02X %02X %02X %02X %02X", can_id, length,
         data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
 
@@ -57,8 +110,8 @@ void FEB_CAN_RMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_
     int16_t temp_voltage;
     memcpy(&temp_voltage, data, 2);
     RMS_MESSAGE.HV_Bus_Voltage = temp_voltage;
-    float voltage_v = (temp_voltage - 50.0f) / 10.0f;
-    LOG_D(TAG_CAN, "RMS voltage: %.1fV (raw: %d)", voltage_v, temp_voltage);
+    RMS_MESSAGE.DC_Bus_Voltage_V = (temp_voltage - 50.0f) / 10.0f;
+    LOG_D(TAG_CAN, "RMS voltage: %.1fV (raw: %d)", RMS_MESSAGE.DC_Bus_Voltage_V, temp_voltage);
   }
   else if (can_id == FEB_CAN_ID_RMS_MOTOR)
   {
@@ -82,7 +135,6 @@ void FEB_CAN_RMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_
  */
 void FEB_CAN_RMS_Transmit_UpdateTorque(int16_t torque, uint8_t enabled)
 {
-
 // Bounds checking: Limit torque to motor capabilities
 // Negative torque (regen) is allowed within motor limits
 #define MAX_REGEN_TORQUE -3000 // Max regen: -300.0 Nm
@@ -100,6 +152,8 @@ void FEB_CAN_RMS_Transmit_UpdateTorque(int16_t torque, uint8_t enabled)
     LOG_W(TAG_CAN, "Torque clamped to max regen: %d -> %d", original_torque, torque);
   }
 
+  RMS_MESSAGE.Torque_Command = torque;
+
   uint8_t data[8];
   data[0] = (uint8_t)(torque & 0xFF);
   data[1] = (uint8_t)((torque >> 8) & 0xFF);
@@ -110,7 +164,7 @@ void FEB_CAN_RMS_Transmit_UpdateTorque(int16_t torque, uint8_t enabled)
   data[6] = 0;
   data[7] = 0;
 
-  FEB_CAN_Status_t status = FEB_CAN_TX_TransmitDefault(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_TORQUE, data, 8);
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_TORQUE, FEB_CAN_ID_STD, data, 8);
   if (status != FEB_CAN_OK)
   {
     LOG_E(TAG_CAN, "Failed to transmit torque command: %d", status);
@@ -132,7 +186,7 @@ void FEB_CAN_RMS_Transmit_Disable_Undervolt(void)
   data[5] = 0;
   data[6] = 0;
   data[7] = 0;
-  FEB_CAN_Status_t status = FEB_CAN_TX_TransmitDefault(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_PARAM, data, 8);
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_PARAM, FEB_CAN_ID_STD, data, 8);
   if (status != FEB_CAN_OK)
   {
     LOG_E(TAG_CAN, "Failed to transmit undervolt disable: %d", status);
@@ -150,7 +204,7 @@ void FEB_CAN_RMS_Transmit_ParamSafety(void)
   data[5] = 0;
   data[6] = 0;
   data[7] = 0;
-  FEB_CAN_Status_t status = FEB_CAN_TX_TransmitDefault(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_PARAM, data, 8);
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_PARAM, FEB_CAN_ID_STD, data, 8);
   if (status != FEB_CAN_OK)
   {
     LOG_E(TAG_CAN, "Failed to transmit param safety: %d", status);
@@ -168,7 +222,7 @@ void FEB_CAN_RMS_Transmit_ParamBroadcast(void)
   data[5] = PARAM_BROADCAST_DATA[1];
   data[6] = 0;
   data[7] = 0;
-  FEB_CAN_Status_t status = FEB_CAN_TX_TransmitDefault(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_PARAM, data, 8);
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_PARAM, FEB_CAN_ID_STD, data, 8);
   if (status != FEB_CAN_OK)
   {
     LOG_E(TAG_CAN, "Failed to transmit param broadcast: %d", status);
@@ -190,7 +244,7 @@ void FEB_CAN_RMS_Transmit_CommDisable(void)
   data[5] = 0;
   data[6] = 0;
   data[7] = 0;
-  FEB_CAN_Status_t status = FEB_CAN_TX_TransmitDefault(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_PARAM, data, 8);
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_PARAM, FEB_CAN_ID_STD, data, 8);
   if (status != FEB_CAN_OK)
   {
     LOG_E(TAG_CAN, "Failed to transmit comm disable: %d", status);

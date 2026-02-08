@@ -15,8 +15,6 @@
  * API Implementation
  * ============================================================================ */
 
-void FEB_CAN_PingPong_Init(void) {}
-
 void FEB_CAN_TPS_Tick(uint16_t *tps_current_raw, uint16_t *tps_bus_voltage_raw, uint16_t *uint_shunt_voltage,
                       size_t length)
 {
