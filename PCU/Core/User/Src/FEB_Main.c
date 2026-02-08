@@ -70,6 +70,17 @@ void FEB_Main_Setup(void)
     printf("[DIAG] UART DMA RX not started! RxState=%d (expected %d)\r\n", huart2.RxState, HAL_UART_STATE_BUSY_RX);
   }
 
+  // Additional diagnostics for UART Rx debugging
+  printf("[DIAG] UART RX Debug:\r\n");
+  printf("  huart2 addr: %p\r\n", (void *)&huart2);
+  printf("  RxState: %d (expected %d)\r\n", huart2.RxState, HAL_UART_STATE_BUSY_RX);
+  printf("  IDLE IT enabled: %d\r\n", __HAL_UART_GET_IT_SOURCE(&huart2, UART_IT_IDLE) ? 1 : 0);
+  printf("  DMA RX handle: %p\r\n", (void *)huart2.hdmarx);
+  if (huart2.hdmarx)
+  {
+    printf("  DMA counter: %lu\r\n", (unsigned long)__HAL_DMA_GET_COUNTER(huart2.hdmarx));
+  }
+
   // Initialize console (registers built-in commands: help, version, uptime, reboot, log)
   FEB_Console_Init();
 
@@ -152,6 +163,14 @@ void FEB_Main_Setup(void)
 
 void FEB_Main_Loop(void)
 {
+  // Heartbeat to verify main loop is running
+  static uint32_t last_heartbeat = 0;
+  if (HAL_GetTick() - last_heartbeat >= 5000)
+  {
+    last_heartbeat = HAL_GetTick();
+    printf("[HEARTBEAT] Main loop running, tick=%lu\r\n", (unsigned long)last_heartbeat);
+  }
+
   // Process any received UART commands (console input)
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
 
