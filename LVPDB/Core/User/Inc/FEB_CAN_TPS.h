@@ -10,6 +10,7 @@
 #define FEB_CAN_TPS_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -18,13 +19,7 @@
  * ============================================================================ */
 
 /**
- * @brief Initialize the ping/pong module
- * @note Must be called after FEB_CAN_Init()
- */
-void FEB_CAN_PingPong_Init(void);
-
-/**
- * @brief Process ping transmissions (call from timer, e.g., every 100ms)
+ * @brief Process TPS data transmissions
  */
 void FEB_CAN_TPS_Tick(uint16_t *tps_current_raw, uint16_t *tps_bus_voltage_raw, size_t length);
 

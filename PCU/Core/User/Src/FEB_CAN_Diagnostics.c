@@ -1,4 +1,5 @@
 #include "FEB_CAN_Diagnostics.h"
+#include "feb_uart_log.h"
 
 Brake_DataTypeDef Brake_Data;
 
@@ -29,8 +30,13 @@ void FEB_CAN_Diagnostics_TransmitBrakeData(void)
   data[7] = Brake_Data.brake_switch ? 0x02 : 0x01;
 
   // Transmit CAN message
-  FEB_CAN_TX_TransmitDefault(FEB_CAN_INSTANCE_1, FEB_CAN_ID_BRAKE_DATA, data, 8);
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_BRAKE_DATA, FEB_CAN_ID_STD, data, 8);
+  if (status != FEB_CAN_OK)
+  {
+    LOG_E(TAG_CAN, "Failed to transmit brake data: %d", status);
+  }
 }
+
 void FEB_CAN_Diagnostics_TransmitAPPSData(void)
 {
   uint8_t data[8] = {0};
@@ -61,5 +67,9 @@ void FEB_CAN_Diagnostics_TransmitAPPSData(void)
   data[7] = 0;
 
   // Transmit CAN message
-  FEB_CAN_TX_TransmitDefault(FEB_CAN_INSTANCE_1, FEB_CAN_ID_APPS_DATA, data, 8);
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_APPS_DATA, FEB_CAN_ID_STD, data, 8);
+  if (status != FEB_CAN_OK)
+  {
+    LOG_E(TAG_CAN, "Failed to transmit APPS data: %d", status);
+  }
 }
