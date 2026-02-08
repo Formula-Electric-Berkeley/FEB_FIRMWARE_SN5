@@ -186,14 +186,25 @@ int FEB_UART_Init(FEB_UART_Instance_t instance, const FEB_UART_Config_t *config)
   if (ctx[inst].hdma_rx != NULL)
   {
     /* Start DMA reception FIRST (before enabling IDLE interrupt) */
-    HAL_UARTEx_ReceiveToIdle_DMA(ctx[inst].huart, ctx[inst].rx_buffer, ctx[inst].rx_buffer_size);
+    HAL_StatusTypeDef status =
+        HAL_UARTEx_ReceiveToIdle_DMA(ctx[inst].huart, ctx[inst].rx_buffer, ctx[inst].rx_buffer_size);
 
-    /* THEN enable IDLE line interrupt (after DMA is ready) */
-    __HAL_UART_ENABLE_IT(ctx[inst].huart, UART_IT_IDLE);
+    /* If DMA start failed, try to recover by aborting and retrying */
+    if (status != HAL_OK)
+    {
+      HAL_UART_Abort(ctx[inst].huart);
+      status = HAL_UARTEx_ReceiveToIdle_DMA(ctx[inst].huart, ctx[inst].rx_buffer, ctx[inst].rx_buffer_size);
+    }
 
-    /* Disable half-transfer interrupt (we only care about IDLE and complete) */
-    __HAL_DMA_DISABLE_IT(ctx[inst].hdma_rx, DMA_IT_HT);
+    if (status == HAL_OK)
+    {
+      /* Disable half-transfer interrupt (we only care about IDLE and complete) */
+      __HAL_DMA_DISABLE_IT(ctx[inst].hdma_rx, DMA_IT_HT);
+    }
   }
+
+  /* ALWAYS enable IDLE line interrupt - required for RX to work even if DMA fails */
+  __HAL_UART_ENABLE_IT(ctx[inst].huart, UART_IT_IDLE);
 
 #if FEB_UART_ENABLE_QUEUES
   /* Initialize queues if enabled */

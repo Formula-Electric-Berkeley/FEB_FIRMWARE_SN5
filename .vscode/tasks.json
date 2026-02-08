@@ -74,14 +74,23 @@
             "problemMatcher": "$gcc"
         },
         {
-            "type": "shell",
-            "label": "Build All",
-            "command": "cmake",
-            "args": ["--build", "build/Debug"],
+            "type": "cmake",
+            "label": "CMake: Build Selected Target",
+            "command": "build",
+            "targets": ["${command:cmake.buildTargetName}"],
+            "preset": "${command:cmake.activeBuildPresetName}",
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "type": "shell",
+            "label": "Build All",
+            "command": "cmake",
+            "args": ["--build", "build/Debug"],
+            "group": "build",
             "problemMatcher": "$gcc"
         },
         {

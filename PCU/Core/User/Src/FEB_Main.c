@@ -57,12 +57,18 @@ void FEB_Main_Setup(void)
       .tx_buffer_size = sizeof(uart_tx_buf),
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
-      .log_level = FEB_UART_LOG_DEBUG,
+      .log_level = FEB_UART_LOG_INFO,
       .enable_colors = true,
       .enable_timestamps = true,
       .get_tick_ms = HAL_GetTick,
   };
   FEB_UART_Init(FEB_UART_INSTANCE_1, &uart_cfg);
+
+  // Verify UART DMA RX is running (diagnostic for RX issues)
+  if (huart2.RxState != HAL_UART_STATE_BUSY_RX)
+  {
+    printf("[DIAG] UART DMA RX not started! RxState=%d (expected %d)\r\n", huart2.RxState, HAL_UART_STATE_BUSY_RX);
+  }
 
   // Initialize console (registers built-in commands: help, version, uptime, reboot, log)
   FEB_Console_Init();
@@ -148,6 +154,12 @@ void FEB_Main_Loop(void)
 {
   // Process any received UART commands (console input)
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
+
+  // Process CAN TX queue (required for FreeRTOS mode, no-op in bare-metal)
+  FEB_CAN_TX_Process();
+
+  // Process periodic CAN messages
+  FEB_CAN_TX_ProcessPeriodic();
 }
 
 void FEB_1ms_Callback(void)
@@ -156,6 +168,9 @@ void FEB_1ms_Callback(void)
   static uint16_t tps_divider = 0;
   static uint16_t diagnostics_divider = 0;
   static uint16_t debug_divider = 0;
+
+  // Process deferred heartbeat TX (set by BMS RX callback)
+  FEB_CAN_BMS_ProcessHeartbeat();
 
   // Update torque command at 100Hz (every 10ms)
   torque_divider++;

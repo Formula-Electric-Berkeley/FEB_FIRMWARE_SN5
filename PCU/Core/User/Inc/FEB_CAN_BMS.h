@@ -62,5 +62,6 @@ float FEB_CAN_BMS_getAccumulatorVoltage(void);
 float FEB_CAN_BMS_getMaxTemperature(void);
 void FEB_CAN_BMS_Init(void);
 void FEB_CAN_HEARTBEAT_Transmit(void);
+void FEB_CAN_BMS_ProcessHeartbeat(void);
 
 #endif /* INC_FEB_CAN_BMS_H_ */

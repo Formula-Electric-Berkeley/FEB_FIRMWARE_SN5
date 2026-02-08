@@ -102,8 +102,7 @@ static void FEB_CAN_RMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
   (void)length;
   (void)user_data;
 
-  LOG_D(TAG_RMS, "RMS Callback: ID=0x%03lX, Len=%d, Payload: %02X %02X %02X %02X %02X %02X %02X %02X", can_id, length,
-        data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
+  /* NOTE: This callback runs in ISR context - avoid logging and blocking operations */
 
   if (can_id == FEB_CAN_ID_RMS_VOLTAGE)
   {
@@ -111,18 +110,12 @@ static void FEB_CAN_RMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
     memcpy(&temp_voltage, data, 2);
     RMS_MESSAGE.HV_Bus_Voltage = temp_voltage;
     RMS_MESSAGE.DC_Bus_Voltage_V = (temp_voltage - 50.0f) / 10.0f;
-    LOG_D(TAG_CAN, "RMS voltage: %.1fV (raw: %d)", RMS_MESSAGE.DC_Bus_Voltage_V, temp_voltage);
   }
   else if (can_id == FEB_CAN_ID_RMS_MOTOR)
   {
     int16_t temp_speed;
     memcpy(&temp_speed, data + 2, 2);
     RMS_MESSAGE.Motor_Speed = temp_speed;
-    LOG_D(TAG_CAN, "RMS motor speed: %d RPM", temp_speed);
-  }
-  else
-  {
-    LOG_W(TAG_CAN, "Unknown RMS CAN ID: 0x%03lX", can_id);
   }
 }
 
