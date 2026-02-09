@@ -460,14 +460,15 @@ ADC_StatusTypeDef FEB_ADC_GetAPPSData(APPS_DataTypeDef *apps_data)
   apps_data->short_circuit = (voltage1 < APPS_SHORT_CIRCUIT_DETECT_MV) || (voltage2 < APPS_SHORT_CIRCUIT_DETECT_MV);
   apps_data->open_circuit = (voltage1 > APPS_OPEN_CIRCUIT_DETECT_MV) || (voltage2 > APPS_OPEN_CIRCUIT_DETECT_MV);
 
-  if (apps_data->short_circuit || apps_data->open_circuit)
-  {
-    apps_data->position1 = 0.0f;
-    apps_data->position2 = 0.0f;
-    apps_data->acceleration = 0.0f;
-    apps_data->plausible = false;
-    return ADC_STATUS_OUT_OF_RANGE;
-  }
+  // OVERRIDE: Allow operation with single APPS sensor for testing
+  // if (apps_data->short_circuit || apps_data->open_circuit)
+  // {
+  //   apps_data->position1 = 0.0f;
+  //   apps_data->position2 = 0.0f;
+  //   apps_data->acceleration = 0.0f;
+  //   apps_data->plausible = false;
+  //   return ADC_STATUS_OUT_OF_RANGE;
+  // }
 
   /* Apply calibration and convert to percentage */
   apps_data->position1 =

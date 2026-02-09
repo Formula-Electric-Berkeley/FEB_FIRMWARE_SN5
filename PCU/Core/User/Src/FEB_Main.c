@@ -130,6 +130,9 @@ void FEB_Main_While()
   //     FEB_RMS_Disable();
   // }
 
+  /* Enable the inverter */
+  FEB_RMS_Process();
+
   /* Update torque command based on pedal inputs and safety checks */
   FEB_RMS_Torque();
   FEB_CAN_Diagnostics_TransmitBrakeData(); // Transmit brake position to dash/telemetry

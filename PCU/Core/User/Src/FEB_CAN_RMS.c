@@ -1,6 +1,8 @@
 #include "FEB_CAN_RMS.h"
 #include "FEB_Debug.h"
 
+extern CAN_HandleTypeDef hcan1;
+
 /* Global RMS message data */
 RMS_MESSAGE_TYPE RMS_MESSAGE;
 
@@ -117,6 +119,13 @@ void FEB_CAN_RMS_Transmit_UpdateTorque(int16_t torque, uint8_t enabled)
   }
   else
   {
+    // Wait briefly then check if TX completed
+    HAL_Delay(5);
+    uint32_t free_mailboxes = HAL_CAN_GetTxMailboxesFreeLevel(&hcan1);
+    if (free_mailboxes < 3)
+    {
+      LOG_W(TAG_CAN, "Torque TX may have failed - mailbox still pending (free: %lu)", free_mailboxes);
+    }
     LOG_D(TAG_CAN, "Torque command sent: %.1f Nm, enabled: %d", torque / 10.0f, enabled);
   }
 }
