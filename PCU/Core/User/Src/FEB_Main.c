@@ -198,14 +198,6 @@ void FEB_Main_Loop(void)
    * - FEB_HECS_update()                  // Update HECS (HV Enable Check System)
    */
 
-  /* Debug output every 100 loops (1 second at 100Hz) */
-  counter++;
-  if (counter >= 1)
-  {
-    last_heartbeat = HAL_GetTick();
-    printf("[HEARTBEAT] Main loop running, tick=%lu\r\n", (unsigned long)last_heartbeat);
-  }
-
   // Process any received UART commands (console input)
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
 
