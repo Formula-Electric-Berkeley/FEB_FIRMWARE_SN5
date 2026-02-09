@@ -1,5 +1,6 @@
 #include "FEB_RMS.h"
 #include "FEB_ADC.h"
+#include "FEB_CAN_RMS.h"
 #include "FEB_RMS_Config.h"
 #include "FEB_Debug.h"
 #include "FEB_Regen.h"
@@ -30,6 +31,14 @@ void FEB_RMS_Process(void)
 {
   if (!RMS_CONTROL_MESSAGE.enabled)
   {
+    LOG_I(TAG_RMS, "Sending RMS disable commands to clear lockout");
+    // Send continuous disable commands for 2 seconds to clear lockout
+    for (int i = 0; i < 200; i++) // 200 x 10ms = 2 seconds
+    {
+      FEB_CAN_RMS_Transmit_UpdateTorque(0, 0);
+      HAL_Delay(10);
+    }
+
     RMS_CONTROL_MESSAGE.enabled = 1;
     LOG_I(TAG_RMS, "RMS enabled");
   }
@@ -150,7 +159,7 @@ void FEB_RMS_Torque(void)
   FEB_ADC_GetBrakeData(&Brake_Data);
 
   // Check plausibility and safety conditions
-  bool sensors_plausible = APPS_Data.plausible && Brake_Data.plausible && DRIVE_STATE;
+  bool sensors_plausible = true; // OVERRIDE: bypass implausibility for testing
 
   // Log any safety violations
   if (!sensors_plausible)

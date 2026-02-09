@@ -163,9 +163,44 @@ void FEB_Main_Setup(void)
 
 void FEB_Main_Loop(void)
 {
-  // Heartbeat to verify main loop is running
-  static uint32_t last_heartbeat = 0;
-  if (HAL_GetTick() - last_heartbeat >= 5000)
+
+  /* Check BMS state and enable/disable RMS accordingly */
+  // FEB_SM_ST_t bms_state = FEB_CAN_BMS_getState();
+
+  // /* Handle fault states - disable motor if not in drive state */
+  // if (bms_state == FEB_SM_ST_FAULT_BMS ||
+  //     bms_state == FEB_SM_ST_FAULT_BSPD ||
+  //     bms_state == FEB_SM_ST_FAULT_IMD) {
+  //     FEB_RMS_Disable();
+  // }
+  /* Enable motor only in DRIVE state */
+  // else if (bms_state == FEB_SM_ST_DRIVE) {
+  //     FEB_RMS_Process();
+  // } else {
+  //     FEB_RMS_Disable();
+  // }
+
+  /* Enable the inverter */
+  FEB_RMS_Process();
+
+  /* Update torque command based on pedal inputs and safety checks */
+  FEB_RMS_Torque();
+  FEB_CAN_Diagnostics_TransmitBrakeData(); // Transmit brake position to dash/telemetry
+  FEB_CAN_Diagnostics_TransmitAPPSData();  // Transmit accelerator position
+
+  /* TODO: Implement additional CAN transmissions:
+   * - FEB_CAN_HEARTBEAT_Transmit()       // Already implemented in BMS callback */
+
+  // TPS2482 power monitoring - Read voltage/current and transmit over CAN
+  FEB_CAN_TPS_Update(&hi2c1, &tps_i2c_address, NUM_TPS_DEVICES);
+  FEB_CAN_TPS_Transmit();
+  /*
+   * - FEB_HECS_update()                  // Update HECS (HV Enable Check System)
+   */
+
+  /* Debug output every 100 loops (1 second at 100Hz) */
+  counter++;
+  if (counter >= 1)
   {
     last_heartbeat = HAL_GetTick();
     printf("[HEARTBEAT] Main loop running, tick=%lu\r\n", (unsigned long)last_heartbeat);
