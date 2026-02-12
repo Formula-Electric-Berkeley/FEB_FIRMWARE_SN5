@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2026 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2025 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -23,6 +23,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "stm32469i_discovery.h"
+#include "stm32469i_discovery_lcd.h"
+#include "otm8009a.h"
+#include <stdio.h> 
 
 /* USER CODE END Includes */
 
@@ -1059,16 +1063,16 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN Header_StartBtnTxLoop */
 /**
-  * @brief  Function implementing the btnTxLoopTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
+ * @brief  Function implementing the btnTxLoopTask thread.
+ * @param  argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartBtnTxLoop */
 __weak void StartBtnTxLoop(void *argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     osDelay(1);
   }
@@ -1077,16 +1081,16 @@ __weak void StartBtnTxLoop(void *argument)
 
 /* USER CODE BEGIN Header_StartDisplayTask */
 /**
-* @brief Function implementing the displayTask thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the displayTask thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartDisplayTask */
 __weak void StartDisplayTask(void *argument)
 {
   /* USER CODE BEGIN StartDisplayTask */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     osDelay(1);
   }
