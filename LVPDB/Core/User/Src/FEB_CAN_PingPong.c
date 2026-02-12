@@ -10,6 +10,7 @@
 #include "feb_can_lib.h"
 #include "feb_uart.h"
 #include "feb_uart_log.h"
+#include "stm32f4xx_hal.h"
 #include <string.h>
 
 #define TAG_PING "PING"
@@ -219,7 +220,17 @@ void FEB_CAN_PingPong_Tick(void)
       tx_data[2] = (uint8_t)((ch->tx_counter >> 16) & 0xFF);
       tx_data[3] = (uint8_t)((ch->tx_counter >> 24) & 0xFF);
 
-      FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, frame_ids[i], FEB_CAN_ID_STD, tx_data, 8);
+      /* Retry with timeout if mailbox full (STM32F4 has only 3 TX mailboxes) */
+      FEB_CAN_Status_t status;
+      uint32_t retry_start = HAL_GetTick();
+      do
+      {
+        status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, frame_ids[i], FEB_CAN_ID_STD, tx_data, 8);
+        if (status == FEB_CAN_OK)
+        {
+          break;
+        }
+      } while ((HAL_GetTick() - retry_start) < 5); /* 5ms timeout */
 
       LOG_D(TAG_PING, "TX ch%d ID:0x%02X cnt:%ld", i + 1, (unsigned int)frame_ids[i], (long)ch->tx_counter);
 

@@ -521,6 +521,14 @@ extern "C"
    */
   void FEB_CAN_ResetErrorCounters(void);
 
+  /**
+   * @brief Convert CAN status code to human-readable string
+   *
+   * @param status Status code to convert
+   * @return Pointer to static string describing the status
+   */
+  const char *FEB_CAN_StatusToString(FEB_CAN_Status_t status);
+
   /* ============================================================================
    * HAL Callback Integration
    * ============================================================================

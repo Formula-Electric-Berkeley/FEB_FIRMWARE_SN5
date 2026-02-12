@@ -619,6 +619,9 @@ void FEB_UART_SetRxLineCallback(FEB_UART_Instance_t instance, FEB_UART_RxLineCal
   ctx[instance].rx_line_callback = callback;
 }
 
+// DEBUG: Set to 1 to enable verbose RX debugging
+#define FEB_UART_DEBUG_RX 0
+
 void FEB_UART_ProcessRx(FEB_UART_Instance_t instance)
 {
   VALIDATE_INSTANCE_VOID(instance);
@@ -626,11 +629,33 @@ void FEB_UART_ProcessRx(FEB_UART_Instance_t instance)
 
   size_t count = get_rx_count(inst);
 
+#if FEB_UART_DEBUG_RX
+  if (count > 0)
+  {
+    printf("[RX] count=%u head=%u tail=%u\r\n", (unsigned)count, (unsigned)ctx[inst].rx_head,
+           (unsigned)ctx[inst].rx_tail);
+  }
+#endif
+
   while (count > 0)
   {
     uint8_t byte = ctx[inst].rx_buffer[ctx[inst].rx_tail];
     ctx[inst].rx_tail = (ctx[inst].rx_tail + 1) % ctx[inst].rx_buffer_size;
     count--;
+
+#if FEB_UART_DEBUG_RX
+    // Print each byte: printable chars as-is, control chars as hex
+    if (byte >= 0x20 && byte < 0x7F)
+    {
+      printf("[RX] byte='%c' (0x%02X) linebuf_len=%u last_le=%d\r\n", byte, byte, (unsigned)ctx[inst].line_buffer.len,
+             ctx[inst].last_was_line_ending);
+    }
+    else
+    {
+      printf("[RX] byte=0x%02X linebuf_len=%u last_le=%d\r\n", byte, (unsigned)ctx[inst].line_buffer.len,
+             ctx[inst].last_was_line_ending);
+    }
+#endif
 
     /* Check if this is a line ending character (\r or \n) */
     bool is_line_ending = (byte == '\r' || byte == '\n');
@@ -640,9 +665,17 @@ void FEB_UART_ProcessRx(FEB_UART_Instance_t instance)
       /* Skip if this is the second char of a \r\n or \n\r sequence */
       if (ctx[inst].last_was_line_ending)
       {
+#if FEB_UART_DEBUG_RX
+        printf("[RX] skipping second line ending\r\n");
+#endif
         ctx[inst].last_was_line_ending = false;
         continue;
       }
+
+#if FEB_UART_DEBUG_RX
+      printf("[RX] LINE ENDING detected, firing callback with '%s' len=%u\r\n", ctx[inst].line_buffer.buffer,
+             (unsigned)ctx[inst].line_buffer.len);
+#endif
 
       /* Trigger callback or post to queue for complete line */
       if (ctx[inst].line_buffer.len > 0)

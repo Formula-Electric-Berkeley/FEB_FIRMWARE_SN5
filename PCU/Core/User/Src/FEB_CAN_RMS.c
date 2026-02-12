@@ -68,6 +68,7 @@ void FEB_CAN_RMS_Init(void)
   RMS_MESSAGE.Torque_Command = 0;
   RMS_MESSAGE.Torque_Feedback = 0;
   RMS_MESSAGE.DC_Bus_Voltage_V = 0.0f;
+  RMS_MESSAGE.last_rx_timestamp = 0;
 
   LOG_I(TAG_CAN, "Sending RMS parameter safety commands");
   for (int i = 0; i < 10; i++)
@@ -105,6 +106,8 @@ static void FEB_CAN_RMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
   (void)user_data;
 
   /* NOTE: This callback runs in ISR context - avoid logging and blocking operations */
+
+  RMS_MESSAGE.last_rx_timestamp = HAL_GetTick();
 
   if (can_id == FEB_CAN_ID_RMS_VOLTAGE)
   {
@@ -159,21 +162,10 @@ void FEB_CAN_RMS_Transmit_UpdateTorque(int16_t torque, uint8_t enabled)
   data[6] = 0;
   data[7] = 0;
 
-  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_TORQUE, FEB_CAN_ID_STD, data, 8);
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_RMS_COMMAND_FRAME_ID, FEB_CAN_ID_STD, data, 8);
   if (status != FEB_CAN_OK)
   {
-    LOG_E(TAG_CAN, "Failed to transmit torque command: %d", status);
-  }
-  else
-  {
-    // Wait briefly then check if TX completed
-    HAL_Delay(5);
-    uint32_t free_mailboxes = HAL_CAN_GetTxMailboxesFreeLevel(&hcan1);
-    if (free_mailboxes < 3)
-    {
-      LOG_W(TAG_CAN, "Torque TX may have failed - mailbox still pending (free: %lu)", free_mailboxes);
-    }
-    LOG_D(TAG_CAN, "Torque command sent: %.1f Nm, enabled: %d", torque / 10.0f, enabled);
+    LOG_E(TAG_CAN, "Failed to transmit torque command: %s", FEB_CAN_StatusToString(status));
   }
 }
 
@@ -188,10 +180,10 @@ void FEB_CAN_RMS_Transmit_Disable_Undervolt(void)
   data[5] = 0;
   data[6] = 0;
   data[7] = 0;
-  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_PARAM, FEB_CAN_ID_STD, data, 8);
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_RMS_PARAM_FRAME_ID, FEB_CAN_ID_STD, data, 8);
   if (status != FEB_CAN_OK)
   {
-    LOG_E(TAG_CAN, "Failed to transmit undervolt disable: %d", status);
+    LOG_E(TAG_CAN, "Failed to transmit undervolt disable: %s", FEB_CAN_StatusToString(status));
   }
 }
 
@@ -206,10 +198,10 @@ void FEB_CAN_RMS_Transmit_ParamSafety(void)
   data[5] = 0;
   data[6] = 0;
   data[7] = 0;
-  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_PARAM, FEB_CAN_ID_STD, data, 8);
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_RMS_PARAM_FRAME_ID, FEB_CAN_ID_STD, data, 8);
   if (status != FEB_CAN_OK)
   {
-    LOG_E(TAG_CAN, "Failed to transmit param safety: %d", status);
+    LOG_E(TAG_CAN, "Failed to transmit param safety: %s", FEB_CAN_StatusToString(status));
   }
 }
 
@@ -224,10 +216,10 @@ void FEB_CAN_RMS_Transmit_ParamBroadcast(void)
   data[5] = PARAM_BROADCAST_DATA[1];
   data[6] = 0;
   data[7] = 0;
-  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_PARAM, FEB_CAN_ID_STD, data, 8);
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_RMS_PARAM_FRAME_ID, FEB_CAN_ID_STD, data, 8);
   if (status != FEB_CAN_OK)
   {
-    LOG_E(TAG_CAN, "Failed to transmit param broadcast: %d", status);
+    LOG_E(TAG_CAN, "Failed to transmit param broadcast: %s", FEB_CAN_StatusToString(status));
   }
   else
   {
@@ -246,9 +238,9 @@ void FEB_CAN_RMS_Transmit_CommDisable(void)
   data[5] = 0;
   data[6] = 0;
   data[7] = 0;
-  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_RMS_PARAM, FEB_CAN_ID_STD, data, 8);
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_RMS_PARAM_FRAME_ID, FEB_CAN_ID_STD, data, 8);
   if (status != FEB_CAN_OK)
   {
-    LOG_E(TAG_CAN, "Failed to transmit comm disable: %d", status);
+    LOG_E(TAG_CAN, "Failed to transmit comm disable: %s", FEB_CAN_StatusToString(status));
   }
 }
