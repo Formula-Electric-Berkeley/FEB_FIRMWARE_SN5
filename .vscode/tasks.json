@@ -67,6 +67,14 @@
         },
         {
             "type": "shell",
+            "label": "Build UART_TEST",
+            "command": "cmake",
+            "args": ["--build", "build/Debug", "--target", "UART_TEST"],
+            "group": "build",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "type": "shell",
             "label": "Build All",
             "command": "cmake",
             "args": ["--build", "build/Debug"],
@@ -120,7 +128,7 @@
             "id": "boardName",
             "type": "pickString",
             "description": "Select board to flash",
-            "options": ["BMS", "DASH", "DART", "DCU", "LVPDB", "PCU", "Sensor_Nodes"],
+            "options": ["BMS", "DASH", "DART", "DCU", "LVPDB", "PCU", "Sensor_Nodes", "UART_TEST"],
             "default": "LVPDB"
         }
     ]

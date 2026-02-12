@@ -17,6 +17,7 @@ repos:
         files: (Core/User/|scripts/|\.github/)
       - id: check-added-large-files
         args: ['--maxkb=500']
+        exclude: '^.*/Drivers/.*$'
       - id: check-merge-conflict
 
   # Local hooks using project scripts
