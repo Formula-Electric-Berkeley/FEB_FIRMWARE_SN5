@@ -69,6 +69,18 @@ void FEB_RMS_Disable(void)
  */
 float FEB_Get_Peak_Current_Delimiter()
 {
+  // Skip voltage-based limiting if we've never received RMS data
+  if (RMS_MESSAGE.last_rx_timestamp == 0)
+  {
+    static uint32_t last_no_data_log = 0;
+    if (HAL_GetTick() - last_no_data_log >= 5000)
+    {
+      last_no_data_log = HAL_GetTick();
+      LOG_W(TAG_RMS, "No RMS voltage data received yet");
+    }
+    return 1.0f; // Don't limit torque without real data
+  }
+
   // Convert RMS voltage format: decivolts with 50V offset
   // Formula: actual_voltage = (HV_Bus_Voltage - 50) / 10
   float accumulator_voltage = (RMS_MESSAGE.HV_Bus_Voltage - 50.0f) / 10.0f;
@@ -86,7 +98,13 @@ float FEB_Get_Peak_Current_Delimiter()
   // Below minimum safe voltage: limit to 10A (16.7% of 60A)
   if (accumulator_voltage <= 410.0f)
   {
-    LOG_W(TAG_RMS, "Low pack voltage: %.1fV, limiting to 10A", accumulator_voltage);
+    // Rate-limit this warning to once per second
+    static uint32_t last_low_voltage_log = 0;
+    if (HAL_GetTick() - last_low_voltage_log >= 1000)
+    {
+      last_low_voltage_log = HAL_GetTick();
+      LOG_W(TAG_RMS, "Low pack voltage: %.1fV, limiting to 10A", accumulator_voltage);
+    }
     return (10.0f / PEAK_CURRENT);
   }
 
@@ -94,8 +112,6 @@ float FEB_Get_Peak_Current_Delimiter()
   // y = mx + b where m = (y1 - y0) / (x1 - x0)
   float slope = ((10.0f / PEAK_CURRENT) - 1.0f) / (410.0f - start_derating_voltage);
   float derater = slope * (accumulator_voltage - start_derating_voltage) + 1.0f;
-
-  LOG_D(TAG_RMS, "Voltage derating: %.1fV -> %.1f%% current", accumulator_voltage, derater * 100.0f);
 
   return derater;
 }
@@ -118,25 +134,31 @@ float FEB_RMS_GetMaxTorque(void)
 
   // Select torque limit based on pack voltage
   uint16_t minimum_torque = MAX_TORQUE;
-  if (BMS_MESSAGE.voltage < LOW_PACK_VOLTAGE)
+  if (BMS_MESSAGE.last_rx_timestamp == 0)
+  {
+    // No BMS data yet, use default max torque
+  }
+  else if (BMS_MESSAGE.voltage < LOW_PACK_VOLTAGE)
   {
     minimum_torque = MAX_TORQUE_LOW_V;
-    LOG_W(TAG_RMS, "Low pack voltage detected, reducing max torque to %d", minimum_torque);
+    // Rate-limit this warning to once per second
+    static uint32_t last_low_pack_log = 0;
+    if (HAL_GetTick() - last_low_pack_log >= 1000)
+    {
+      last_low_pack_log = HAL_GetTick();
+      LOG_W(TAG_RMS, "Low pack voltage detected, reducing max torque to %d", minimum_torque);
+    }
   }
 
   // Below minimum speed threshold: use constant torque mode
   // Prevents division by zero and handles stopped/negative rotation
   if (motor_speed < MIN_MOTOR_SPEED_RAD_S)
   {
-    LOG_D(TAG_RMS, "Low motor speed: %.1f rad/s, using constant torque: %d", motor_speed, minimum_torque);
     return minimum_torque;
   }
 
   // Above minimum speed: limit by power (constant power mode)
   float maxTorque = min(minimum_torque, (power_capped) / motor_speed);
-
-  LOG_D(TAG_RMS, "Max torque: %.1f Nm (speed: %.1f rad/s, power: %.1f W)", maxTorque / 10.0f, motor_speed,
-        power_capped);
 
   return maxTorque;
 }
@@ -202,18 +224,12 @@ void FEB_RMS_Torque(void)
     // Apply brake position scaling and negative sign (SN3 style)
     // torque_command = -1 * 10 * brake% * filtered_regen / 100
     RMS_CONTROL_MESSAGE.torque = (int16_t)(-10.0f * Brake_Data.brake_position * filtered_regen / 100.0f);
-
-    LOG_D(TAG_RMS, "Regen torque: %.1f Nm (Brake: %.1f%%, Max: %.1f Nm)", RMS_CONTROL_MESSAGE.torque / 10.0f,
-          Brake_Data.brake_position, filtered_regen);
   }
   else if (Brake_Data.brake_position < BRAKE_POSITION_THRESHOLD && sensors_plausible)
   {
     // ACCELERATION MODE: No brake and sensors are plausible
     // Calculate commanded torque: acceleration (0-100%) * max_torque
     RMS_CONTROL_MESSAGE.torque = (int16_t)(0.01f * APPS_Data.acceleration * FEB_RMS_GetMaxTorque());
-
-    LOG_D(TAG_RMS, "Accel torque: %.1f Nm (APPS: %.1f%%, Enabled: %d)", RMS_CONTROL_MESSAGE.torque / 10.0f,
-          APPS_Data.acceleration, RMS_CONTROL_MESSAGE.enabled);
   }
   else
   {

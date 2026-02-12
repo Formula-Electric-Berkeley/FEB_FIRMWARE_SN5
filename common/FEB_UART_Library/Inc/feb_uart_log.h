@@ -187,7 +187,7 @@ extern "C"
  * @param fmt Printf-style format string
  * @param ... Variable arguments
  */
-#define LOG_RAW(fmt, ...) FEB_UART_Printf(fmt, ##__VA_ARGS__)
+#define LOG_RAW(fmt, ...) FEB_UART_Printf(FEB_UART_INSTANCE_1, fmt, ##__VA_ARGS__)
 
 /* ============================================================================
  * Utility Macros
