@@ -33,7 +33,7 @@ void FEB_BSPD_CAN_Transmit()
   uint8_t data[8];
   data[0] = BSPD.state;
 
-  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_BSPD_STATUS, FEB_CAN_ID_STD, data, 1);
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BSPD_STATE_FRAME_ID, FEB_CAN_ID_STD, data, 1);
   if (status != FEB_CAN_OK)
   {
     LOG_E(TAG_BSPD, "Failed to transmit BSPD status: %d", status);

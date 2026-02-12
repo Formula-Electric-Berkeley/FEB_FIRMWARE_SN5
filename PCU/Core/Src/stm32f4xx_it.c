@@ -332,7 +332,7 @@ void TIM1_UP_TIM10_IRQHandler(void)
 void USART2_IRQHandler(void)
 {
   /* USER CODE BEGIN USART2_IRQn 0 */
-  FEB_UART_IDLE_Callback(&huart2);  // Must be called BEFORE HAL handler
+  FEB_UART_IDLE_Callback(&huart2); // Must be called BEFORE HAL handler
   /* USER CODE END USART2_IRQn 0 */
   HAL_UART_IRQHandler(&huart2);
   /* USER CODE BEGIN USART2_IRQn 1 */

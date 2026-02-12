@@ -1,5 +1,4 @@
 #include "FEB_CAN_BMS.h"
-#include "FEB_CAN_IDs.h"
 #include "feb_uart_log.h"
 
 /* Global BMS message data */
@@ -56,17 +55,18 @@ void FEB_CAN_BMS_Init(void)
       .user_data = NULL,
   };
 
-  params.can_id = FEB_CAN_ID_BMS_ACCUMULATOR_TEMPERATURE;
+  params.can_id = FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID;
   FEB_CAN_RX_Register(&params);
 
-  params.can_id = FEB_CAN_ID_BMS_STATE;
+  params.can_id = FEB_CAN_BMS_STATE_FRAME_ID;
   FEB_CAN_RX_Register(&params);
 
-  params.can_id = FEB_CAN_ID_BMS_ACCUMULATOR_VOLTAGE;
+  params.can_id = FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID;
   FEB_CAN_RX_Register(&params);
 
   LOG_I(TAG_BMS, "Registered BMS CAN callbacks (Temp: 0x%03lX, State: 0x%03lX, Voltage: 0x%03lX)",
-        FEB_CAN_ID_BMS_ACCUMULATOR_TEMPERATURE, FEB_CAN_ID_BMS_STATE, FEB_CAN_ID_BMS_ACCUMULATOR_VOLTAGE);
+        FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID, FEB_CAN_BMS_STATE_FRAME_ID,
+        FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID);
 
   BMS_MESSAGE.temperature = 0;
   BMS_MESSAGE.voltage = 0;
@@ -74,6 +74,7 @@ void FEB_CAN_BMS_Init(void)
   BMS_MESSAGE.ping_ack = FEB_HB_NULL;
   BMS_MESSAGE.max_temperature = 0.0f;
   BMS_MESSAGE.accumulator_voltage = 0.0f;
+  BMS_MESSAGE.last_rx_timestamp = 0;
 
   LOG_I(TAG_BMS, "BMS CAN initialization complete");
 }
@@ -88,12 +89,14 @@ static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
 
   /* NOTE: This callback runs in ISR context - avoid logging and blocking operations */
 
-  if (can_id == FEB_CAN_ID_BMS_ACCUMULATOR_TEMPERATURE)
+  BMS_MESSAGE.last_rx_timestamp = HAL_GetTick();
+
+  if (can_id == FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID)
   {
     BMS_MESSAGE.temperature = data[2] << 8 | data[3];
     BMS_MESSAGE.max_temperature = (float)BMS_MESSAGE.temperature / 10.0f;
   }
-  else if (can_id == FEB_CAN_ID_BMS_STATE)
+  else if (can_id == FEB_CAN_BMS_STATE_FRAME_ID)
   {
     BMS_MESSAGE.state = data[0] & 0x1F;
     BMS_MESSAGE.ping_ack = (data[0] & 0xE0) >> 5;
@@ -104,7 +107,7 @@ static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
       heartbeat_pending = true;
     }
   }
-  else if (can_id == FEB_CAN_ID_BMS_ACCUMULATOR_VOLTAGE)
+  else if (can_id == FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID)
   {
     BMS_MESSAGE.voltage = (data[0] << 8) | (data[1]);
     BMS_MESSAGE.accumulator_voltage = (float)BMS_MESSAGE.voltage / 10.0f;
@@ -120,7 +123,7 @@ void FEB_CAN_HEARTBEAT_Transmit(void)
       FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_PCU_HEARTBEAT_FRAME_ID, FEB_CAN_ID_STD, data, 1);
   if (status != FEB_CAN_OK)
   {
-    LOG_E(TAG_BMS, "Failed to transmit heartbeat: %d", status);
+    LOG_E(TAG_BMS, "Failed to transmit heartbeat: %s", FEB_CAN_StatusToString(status));
   }
   else
   {

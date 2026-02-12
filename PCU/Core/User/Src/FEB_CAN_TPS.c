@@ -99,10 +99,10 @@ void FEB_CAN_TPS_Transmit(void)
   memcpy(&data[2], &TPS_MESSAGE.current_ma, sizeof(int16_t));
 
   /* Transmit CAN message */
-  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_TPS_DATA, FEB_CAN_ID_STD, data, 4);
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_PCU_TPS_FRAME_ID, FEB_CAN_ID_STD, data, 4);
   if (status != FEB_CAN_OK)
   {
-    LOG_E(TAG_TPS, "Failed to transmit TPS data: %d", status);
+    LOG_E(TAG_TPS, "Failed to transmit TPS data: %s", FEB_CAN_StatusToString(status));
   }
   else
   {

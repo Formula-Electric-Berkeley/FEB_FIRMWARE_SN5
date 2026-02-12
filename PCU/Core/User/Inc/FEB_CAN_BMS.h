@@ -4,7 +4,7 @@
 #include "stm32f4xx_hal.h"
 
 #include "feb_can_lib.h"
-#include "FEB_CAN_IDs.h"
+#include "feb_can.h"
 
 // BMS States
 typedef enum
@@ -43,12 +43,13 @@ typedef enum
 
 typedef struct BMS_MESSAGE_TYPE
 {
-  volatile uint16_t temperature;      // Updated in ISR, read in main loop
-  volatile uint16_t voltage;          // Updated in ISR, read in main loop (in 0.1V units)
-  volatile FEB_SM_ST_t state;         // Updated in ISR, read in main loop
-  volatile FEB_HB_t ping_ack;         // Updated in ISR, read in main loop
-  volatile float max_temperature;     // Max accumulator temperature in C
-  volatile float accumulator_voltage; // Accumulator voltage in V
+  volatile uint16_t temperature;       // Updated in ISR, read in main loop
+  volatile uint16_t voltage;           // Updated in ISR, read in main loop (in 0.1V units)
+  volatile FEB_SM_ST_t state;          // Updated in ISR, read in main loop
+  volatile FEB_HB_t ping_ack;          // Updated in ISR, read in main loop
+  volatile float max_temperature;      // Max accumulator temperature in C
+  volatile float accumulator_voltage;  // Accumulator voltage in V
+  volatile uint32_t last_rx_timestamp; // 0 = never received, else HAL_GetTick() when last RX
 } BMS_MESSAGE_TYPE;
 
 // Global variable - defined in FEB_CAN_BMS.c

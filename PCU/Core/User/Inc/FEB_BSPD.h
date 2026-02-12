@@ -5,7 +5,7 @@
 
 #include "feb_can_lib.h"
 #include "FEB_PINOUT.h"
-#include "FEB_CAN_IDs.h"
+#include "feb_can.h"
 
 typedef struct BSPD_TYPE
 {

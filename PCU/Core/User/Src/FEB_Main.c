@@ -64,23 +64,6 @@ void FEB_Main_Setup(void)
   };
   FEB_UART_Init(FEB_UART_INSTANCE_1, &uart_cfg);
 
-  // Verify UART DMA RX is running (diagnostic for RX issues)
-  if (huart2.RxState != HAL_UART_STATE_BUSY_RX)
-  {
-    printf("[DIAG] UART DMA RX not started! RxState=%d (expected %d)\r\n", huart2.RxState, HAL_UART_STATE_BUSY_RX);
-  }
-
-  // Additional diagnostics for UART Rx debugging
-  printf("[DIAG] UART RX Debug:\r\n");
-  printf("  huart2 addr: %p\r\n", (void *)&huart2);
-  printf("  RxState: %d (expected %d)\r\n", huart2.RxState, HAL_UART_STATE_BUSY_RX);
-  printf("  IDLE IT enabled: %d\r\n", __HAL_UART_GET_IT_SOURCE(&huart2, UART_IT_IDLE) ? 1 : 0);
-  printf("  DMA RX handle: %p\r\n", (void *)huart2.hdmarx);
-  if (huart2.hdmarx)
-  {
-    printf("  DMA counter: %lu\r\n", (unsigned long)__HAL_DMA_GET_COUNTER(huart2.hdmarx));
-  }
-
   // Initialize console (registers built-in commands: help, version, uptime, reboot, log)
   FEB_Console_Init();
 
@@ -90,9 +73,7 @@ void FEB_Main_Setup(void)
   // Connect UART RX to console processor
   FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
 
-  LOG_I(TAG_MAIN, "=== FEB PCU Starting ===");
-
-  // Initialize CAN library (replaces FEB_CAN_TX_Init/FEB_CAN_RX_Init)
+  // CAN initialization
   FEB_CAN_Config_t can_cfg = {
       .hcan1 = &hcan1,
       .hcan2 = &hcan2,
@@ -107,38 +88,25 @@ void FEB_Main_Setup(void)
     LOG_I(TAG_MAIN, "CAN initialized");
   }
 
-  // Start ADCs
+  // ADC initialization
   FEB_ADC_Init();
   FEB_ADC_Start(ADC_MODE_DMA);
   LOG_I(TAG_MAIN, "ADC initialized");
 
-  // Diagnostic: Print APPS calibration values
-  HAL_Delay(100); // Wait for ADC to stabilize
-  LOG_I(TAG_MAIN, "=== APPS Calibration Diagnostics ===");
-  LOG_I(TAG_MAIN, "APPS1 Cal: %d - %d mV (range: %d mV)", APPS1_DEFAULT_MIN_VOLTAGE_MV, APPS1_DEFAULT_MAX_VOLTAGE_MV,
-        APPS1_DEFAULT_MAX_VOLTAGE_MV - APPS1_DEFAULT_MIN_VOLTAGE_MV);
-  LOG_I(TAG_MAIN, "APPS2 Cal: %d - %d mV (range: %d mV)", APPS2_DEFAULT_MIN_VOLTAGE_MV, APPS2_DEFAULT_MAX_VOLTAGE_MV,
-        APPS2_DEFAULT_MAX_VOLTAGE_MV - APPS2_DEFAULT_MIN_VOLTAGE_MV);
-  LOG_I(TAG_MAIN, "Initial APPS1 read: %d ADC (%.2fV)", FEB_ADC_GetAccelPedal1Raw(), FEB_ADC_GetAccelPedal1Voltage());
-  LOG_I(TAG_MAIN, "Initial APPS2 read: %d ADC (%.2fV)", FEB_ADC_GetAccelPedal2Raw(), FEB_ADC_GetAccelPedal2Voltage());
-  printf("\r\n");
-
-  // RMS Setup (registers RX callbacks for RMS messages)
+  // RMS and BMS initialization
   FEB_CAN_RMS_Init();
   LOG_I(TAG_MAIN, "RMS initialized");
 
-  // BMS Setup (registers RX callbacks for BMS messages)
+  // Clear RMS lockout (2-second blocking sequence - runs once at startup)
+  FEB_RMS_Process();
+
   FEB_CAN_BMS_Init();
   LOG_I(TAG_MAIN, "BMS initialized");
 
-  // TPS2482 Setup
+  // TPS2482 I2C initialization
   uint16_t tps_device_id = 0;
   bool tps_init_success = false;
-
-  /* Initialize TPS2482 hardware (configure CAL, CONFIG, MASK, ALERT_LIM registers) */
   TPS2482_Init(&hi2c1, &tps_i2c_address, &tps_config, &tps_device_id, &tps_init_success, NUM_TPS_DEVICES);
-
-  /* Initialize TPS CAN message structure */
   FEB_CAN_TPS_Init();
 
   if (tps_init_success)
@@ -155,70 +123,32 @@ void FEB_Main_Setup(void)
   }
 
   LOG_I(TAG_MAIN, "=== Setup Complete ===");
-  LOG_I(TAG_MAIN, "Type 'help' for available commands");
 
-  // Start 1ms timer for periodic callbacks
   HAL_TIM_Base_Start_IT(&htim1);
 }
 
 void FEB_Main_Loop(void)
 {
-
-  /* Check BMS state and enable/disable RMS accordingly */
-  // FEB_SM_ST_t bms_state = FEB_CAN_BMS_getState();
-
-  // /* Handle fault states - disable motor if not in drive state */
-  // if (bms_state == FEB_SM_ST_FAULT_BMS ||
-  //     bms_state == FEB_SM_ST_FAULT_BSPD ||
-  //     bms_state == FEB_SM_ST_FAULT_IMD) {
-  //     FEB_RMS_Disable();
-  // }
-  /* Enable motor only in DRIVE state */
-  // else if (bms_state == FEB_SM_ST_DRIVE) {
-  //     FEB_RMS_Process();
-  // } else {
-  //     FEB_RMS_Disable();
-  // }
-
-  /* Enable the inverter */
-  FEB_RMS_Process();
-
-  /* Update torque command based on pedal inputs and safety checks */
-  FEB_RMS_Torque();
-  FEB_CAN_Diagnostics_TransmitBrakeData(); // Transmit brake position to dash/telemetry
-  FEB_CAN_Diagnostics_TransmitAPPSData();  // Transmit accelerator position
-
-  /* TODO: Implement additional CAN transmissions:
-   * - FEB_CAN_HEARTBEAT_Transmit()       // Already implemented in BMS callback */
-
-  // TPS2482 power monitoring - Read voltage/current and transmit over CAN
-  FEB_CAN_TPS_Update(&hi2c1, &tps_i2c_address, NUM_TPS_DEVICES);
-  FEB_CAN_TPS_Transmit();
-  /*
-   * - FEB_HECS_update()                  // Update HECS (HV Enable Check System)
-   */
-
-  // Process any received UART commands (console input)
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
 
-  // Process CAN TX queue (required for FreeRTOS mode, no-op in bare-metal)
-  FEB_CAN_TX_Process();
+  // TPS uses blocking I2C - runs in main loop only
+  FEB_CAN_TPS_Update(&hi2c1, &tps_i2c_address, NUM_TPS_DEVICES);
+  FEB_CAN_TPS_Transmit();
 
-  // Process periodic CAN messages
+  // CAN TX processing
+  FEB_CAN_TX_Process();
   FEB_CAN_TX_ProcessPeriodic();
+
+  // NOTE: FEB_RMS_Torque() and diagnostics run from FEB_1ms_Callback every 10-20ms
 }
 
 void FEB_1ms_Callback(void)
 {
   static uint16_t torque_divider = 0;
-  static uint16_t tps_divider = 0;
   static uint16_t diagnostics_divider = 0;
-  static uint16_t debug_divider = 0;
 
-  // Process deferred heartbeat TX (set by BMS RX callback)
   FEB_CAN_BMS_ProcessHeartbeat();
 
-  // Update torque command at 100Hz (every 10ms)
   torque_divider++;
   if (torque_divider >= 10)
   {
@@ -226,7 +156,6 @@ void FEB_1ms_Callback(void)
     FEB_RMS_Torque();
   }
 
-  // Diagnostics transmission at 50Hz (every 20ms)
   diagnostics_divider++;
   if (diagnostics_divider >= 20)
   {
@@ -235,36 +164,5 @@ void FEB_1ms_Callback(void)
     FEB_CAN_Diagnostics_TransmitAPPSData();
   }
 
-  // TPS2482 power monitoring at 10Hz (every 100ms)
-  tps_divider++;
-  if (tps_divider >= 100)
-  {
-    tps_divider = 0;
-    FEB_CAN_TPS_Update(&hi2c1, &tps_i2c_address, NUM_TPS_DEVICES);
-    FEB_CAN_TPS_Transmit();
-  }
-
-  // Debug output at 1Hz (every 1000ms)
-  debug_divider++;
-  if (debug_divider >= 1000)
-  {
-    debug_divider = 0;
-
-    APPS_DataTypeDef apps_data;
-    Brake_DataTypeDef brake_data;
-
-    FEB_ADC_GetAPPSData(&apps_data);
-    FEB_ADC_GetBrakeData(&brake_data);
-
-    // Enhanced debug output with raw ADC values
-    LOG_D(TAG_MAIN, "APPS1: %4d ADC (%.2fV / %.1f%%) | APPS2: %4d ADC (%.2fV / %.1f%%) | Avg: %.1f%% | %s",
-          FEB_ADC_GetAccelPedal1Raw(), FEB_ADC_GetAccelPedal1Voltage(), apps_data.position1,
-          FEB_ADC_GetAccelPedal2Raw(), FEB_ADC_GetAccelPedal2Voltage(), apps_data.position2, apps_data.acceleration,
-          apps_data.plausible ? "PLAUS" : "IMPLAUS");
-
-    LOG_D(TAG_MAIN, "Brake1: %4d ADC (%.2fV / %.1f%%) | Brake2: %4d ADC (%.2fV / %.1f%%) | Brake Input: %.1f%% | %s",
-          FEB_ADC_GetBrakePressure1Raw(), FEB_ADC_GetBrakePressure1Voltage(), brake_data.pressure1_percent,
-          FEB_ADC_GetBrakePressure2Raw(), FEB_ADC_GetBrakePressure2Voltage(), brake_data.pressure2_percent,
-          brake_data.brake_position, brake_data.brake_pressed ? "PRESSED" : "RELEASED");
-  }
+  // NOTE: TPS update is handled in FEB_Main_Loop (uses blocking I2C, cannot run in ISR)
 }
