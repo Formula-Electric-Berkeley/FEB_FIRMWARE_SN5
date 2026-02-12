@@ -1,5 +1,5 @@
 #include "FEB_CAN_TPS.h"
-#include "FEB_Debug.h"
+#include "feb_uart_log.h"
 
 /* TPS2482 Configuration */
 #define TPS_MAX_CURRENT_A 4.0         /* Maximum current in Amps (based on 4A fuse rating) */
@@ -13,7 +13,15 @@ void FEB_CAN_TPS_Init(void)
   /* Initialize TPS message structure */
   TPS_MESSAGE.bus_voltage_mv = 0;
   TPS_MESSAGE.current_ma = 0;
+  TPS_MESSAGE.shunt_voltage_uv = 0;
   LOG_I(TAG_TPS, "TPS CAN initialized");
+}
+
+void FEB_CAN_TPS_GetData(FEB_CAN_TPS_Data_t *data)
+{
+  data->bus_voltage_mv = TPS_MESSAGE.bus_voltage_mv;
+  data->current_ma = TPS_MESSAGE.current_ma;
+  data->shunt_voltage_uv = TPS_MESSAGE.shunt_voltage_uv;
 }
 
 void FEB_CAN_TPS_Update(I2C_HandleTypeDef *hi2c, uint8_t *i2c_addresses, uint8_t num_devices)
@@ -75,6 +83,9 @@ void FEB_CAN_TPS_Update(I2C_HandleTypeDef *hi2c, uint8_t *i2c_addresses, uint8_t
     TPS_MESSAGE.current_ma = (int16_t)current_ma;
   }
 
+  /* Calculate shunt voltage in microvolts */
+  TPS_MESSAGE.shunt_voltage_uv = (int32_t)(TPS_MESSAGE.current_ma * TPS_SHUNT_RESISTOR_OHMS * 1000.0);
+
   LOG_D(TAG_TPS, "TPS update: Voltage=%d mV (%.2fV), Current=%d mA (%.2fA) [raw: V=0x%04X, I=0x%04X]",
         TPS_MESSAGE.bus_voltage_mv, voltage_v, TPS_MESSAGE.current_ma, current_a, voltage_raw, current_raw);
 }
@@ -88,10 +99,10 @@ void FEB_CAN_TPS_Transmit(void)
   memcpy(&data[2], &TPS_MESSAGE.current_ma, sizeof(int16_t));
 
   /* Transmit CAN message */
-  FEB_CAN_Status_t status = FEB_CAN_TX_TransmitDefault(FEB_CAN_INSTANCE_1, FEB_CAN_ID_TPS_DATA, data, 4);
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_PCU_TPS_FRAME_ID, FEB_CAN_ID_STD, data, 4);
   if (status != FEB_CAN_OK)
   {
-    LOG_E(TAG_TPS, "Failed to transmit TPS data: %d", status);
+    LOG_E(TAG_TPS, "Failed to transmit TPS data: %s", FEB_CAN_StatusToString(status));
   }
   else
   {

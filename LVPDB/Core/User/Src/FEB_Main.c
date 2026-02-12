@@ -1,5 +1,6 @@
 #include "FEB_Main.h"
 #include "FEB_CAN_PingPong.h"
+#include "FEB_CAN_TPS.h"
 #include "FEB_LVPDB_Commands.h"
 #include "feb_can_lib.h"
 #include "main.h"
@@ -18,7 +19,7 @@ extern UART_HandleTypeDef huart2;
 extern DMA_HandleTypeDef hdma_usart2_tx;
 extern DMA_HandleTypeDef hdma_usart2_rx;
 
-static uint8_t uart_tx_buf[512];
+static uint8_t uart_tx_buf[4096];
 static uint8_t uart_rx_buf[256];
 
 static void FEB_Compose_CAN_Data(void);
@@ -110,11 +111,11 @@ void FEB_Main_Setup(void)
     ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i << 1), 3, 5);
     if (ret != HAL_OK)
     { /* No ACK Received At That Address */
-      printf(" - ");
+      printf("- ");
     }
     else if (ret == HAL_OK)
     {
-      printf("0x%X", i);
+      printf("0x%X ", i);
     }
   }
   printf("Done! \r\n\r\n");
@@ -232,9 +233,6 @@ void FEB_Main_Setup(void)
   // Initialize ping/pong module
   FEB_CAN_PingPong_Init();
 
-  // Configure accept-all filter for testing (use filter bank 0, FIFO 0)
-  FEB_CAN_Filter_AcceptAll(FEB_CAN_INSTANCE_1, 0, FEB_CAN_FIFO_0);
-
   LOG_I(TAG_MAIN, "LVPDB Setup Complete");
   LOG_I(TAG_MAIN, "Type 'help' for available commands");
 
@@ -261,6 +259,15 @@ void FEB_1ms_Callback(void)
   {
     ping_divider = 0;
     FEB_CAN_PingPong_Tick();
+  }
+
+  // Process CAN tps reading every 100ms
+  static uint16_t tps_divider = 0;
+  tps_divider++;
+  if (tps_divider >= 67)
+  {
+    tps_divider = 0;
+    FEB_CAN_TPS_Tick(tps2482_current_raw, tps2482_bus_voltage_raw, NUM_TPS2482);
   }
 }
 
@@ -488,9 +495,9 @@ static void FEB_Variable_Init(void)
   tps2482_alert_pins[5] = AF1_AF2_Alert_Pin;
   tps2482_alert_pins[6] = CP_RF_Alert_Pin;
 
-  can_data.ids[0] = FEB_CAN_LVPDB_FLAGS_BUS_VOLTAGE_LV_CURRENT_FRAME_ID;
-  can_data.ids[1] = FEB_CAN_LVPDB_COOLANT_FANS_SHUTDOWN_FRAME_ID;
-  can_data.ids[2] = FEB_CAN_LVPDB_AUTONOMOUS_FRAME_ID;
+  // can_data.ids[0] = FEB_CAN_LVPDB_FLAGS_BUS_VOLTAGE_LV_CURRENT_FRAME_ID;
+  // can_data.ids[1] = FEB_CAN_LVPDB_COOLANT_FANS_SHUTDOWN_FRAME_ID;
+  // can_data.ids[2] = FEB_CAN_LVPDB_AUTONOMOUS_FRAME_ID;
 
   memset(tps2482_current_raw, 0, NUM_TPS2482 * sizeof(uint16_t));
   memset(tps2482_bus_voltage_raw, 0, NUM_TPS2482 * sizeof(uint16_t));

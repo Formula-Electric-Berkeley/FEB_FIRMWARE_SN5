@@ -37,7 +37,7 @@ extern "C"
 #endif
 
 #ifndef FEB_UART_STAGING_BUFFER_SIZE
-#define FEB_UART_STAGING_BUFFER_SIZE 256
+#define FEB_UART_STAGING_BUFFER_SIZE 512
 #endif
 
   /* ============================================================================

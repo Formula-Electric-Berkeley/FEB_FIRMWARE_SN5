@@ -186,14 +186,25 @@ int FEB_UART_Init(FEB_UART_Instance_t instance, const FEB_UART_Config_t *config)
   if (ctx[inst].hdma_rx != NULL)
   {
     /* Start DMA reception FIRST (before enabling IDLE interrupt) */
-    HAL_UARTEx_ReceiveToIdle_DMA(ctx[inst].huart, ctx[inst].rx_buffer, ctx[inst].rx_buffer_size);
+    HAL_StatusTypeDef status =
+        HAL_UARTEx_ReceiveToIdle_DMA(ctx[inst].huart, ctx[inst].rx_buffer, ctx[inst].rx_buffer_size);
 
-    /* THEN enable IDLE line interrupt (after DMA is ready) */
-    __HAL_UART_ENABLE_IT(ctx[inst].huart, UART_IT_IDLE);
+    /* If DMA start failed, try to recover by aborting and retrying */
+    if (status != HAL_OK)
+    {
+      HAL_UART_Abort(ctx[inst].huart);
+      status = HAL_UARTEx_ReceiveToIdle_DMA(ctx[inst].huart, ctx[inst].rx_buffer, ctx[inst].rx_buffer_size);
+    }
 
-    /* Disable half-transfer interrupt (we only care about IDLE and complete) */
-    __HAL_DMA_DISABLE_IT(ctx[inst].hdma_rx, DMA_IT_HT);
+    if (status == HAL_OK)
+    {
+      /* Disable half-transfer interrupt (we only care about IDLE and complete) */
+      __HAL_DMA_DISABLE_IT(ctx[inst].hdma_rx, DMA_IT_HT);
+    }
   }
+
+  /* ALWAYS enable IDLE line interrupt - required for RX to work even if DMA fails */
+  __HAL_UART_ENABLE_IT(ctx[inst].huart, UART_IT_IDLE);
 
 #if FEB_UART_ENABLE_QUEUES
   /* Initialize queues if enabled */
@@ -608,6 +619,9 @@ void FEB_UART_SetRxLineCallback(FEB_UART_Instance_t instance, FEB_UART_RxLineCal
   ctx[instance].rx_line_callback = callback;
 }
 
+// DEBUG: Set to 1 to enable verbose RX debugging
+#define FEB_UART_DEBUG_RX 0
+
 void FEB_UART_ProcessRx(FEB_UART_Instance_t instance)
 {
   VALIDATE_INSTANCE_VOID(instance);
@@ -615,11 +629,33 @@ void FEB_UART_ProcessRx(FEB_UART_Instance_t instance)
 
   size_t count = get_rx_count(inst);
 
+#if FEB_UART_DEBUG_RX
+  if (count > 0)
+  {
+    printf("[RX] count=%u head=%u tail=%u\r\n", (unsigned)count, (unsigned)ctx[inst].rx_head,
+           (unsigned)ctx[inst].rx_tail);
+  }
+#endif
+
   while (count > 0)
   {
     uint8_t byte = ctx[inst].rx_buffer[ctx[inst].rx_tail];
     ctx[inst].rx_tail = (ctx[inst].rx_tail + 1) % ctx[inst].rx_buffer_size;
     count--;
+
+#if FEB_UART_DEBUG_RX
+    // Print each byte: printable chars as-is, control chars as hex
+    if (byte >= 0x20 && byte < 0x7F)
+    {
+      printf("[RX] byte='%c' (0x%02X) linebuf_len=%u last_le=%d\r\n", byte, byte, (unsigned)ctx[inst].line_buffer.len,
+             ctx[inst].last_was_line_ending);
+    }
+    else
+    {
+      printf("[RX] byte=0x%02X linebuf_len=%u last_le=%d\r\n", byte, (unsigned)ctx[inst].line_buffer.len,
+             ctx[inst].last_was_line_ending);
+    }
+#endif
 
     /* Check if this is a line ending character (\r or \n) */
     bool is_line_ending = (byte == '\r' || byte == '\n');
@@ -629,9 +665,17 @@ void FEB_UART_ProcessRx(FEB_UART_Instance_t instance)
       /* Skip if this is the second char of a \r\n or \n\r sequence */
       if (ctx[inst].last_was_line_ending)
       {
+#if FEB_UART_DEBUG_RX
+        printf("[RX] skipping second line ending\r\n");
+#endif
         ctx[inst].last_was_line_ending = false;
         continue;
       }
+
+#if FEB_UART_DEBUG_RX
+      printf("[RX] LINE ENDING detected, firing callback with '%s' len=%u\r\n", ctx[inst].line_buffer.buffer,
+             (unsigned)ctx[inst].line_buffer.len);
+#endif
 
       /* Trigger callback or post to queue for complete line */
       if (ctx[inst].line_buffer.len > 0)
@@ -939,11 +983,42 @@ static void start_dma_tx(int inst)
 }
 
 /**
- * @brief Internal write function - caller must hold mutex
+ * @brief Internal write function - caller must hold mutex/critical section
+ *
+ * Blocks until sufficient buffer space is available (in main context).
+ * In ISR context, falls back to truncated write to avoid blocking.
  */
 static int feb_uart_write_internal(int inst, const uint8_t *data, size_t len)
 {
-  /* Write to ring buffer */
+  /* Block until sufficient space available (with timeout) */
+  /* Note: Caller already holds critical section, so we exit/enter to allow DMA ISR */
+  uint32_t start = ctx[inst].get_tick_ms ? ctx[inst].get_tick_ms() : 0;
+  const uint32_t timeout_ms = 1000; /* 1 second timeout */
+
+  while (feb_uart_ring_space(&ctx[inst].tx_ring) < len)
+  {
+    /* ISR context: can't block, just truncate as before */
+    if (FEB_UART_IN_ISR())
+    {
+      break;
+    }
+
+    /* Check timeout */
+    if (ctx[inst].get_tick_ms && (ctx[inst].get_tick_ms() - start) > timeout_ms)
+    {
+      break; /* Timeout - proceed with truncated write */
+    }
+
+    /* Release critical section to allow DMA completion interrupt to run */
+    FEB_UART_EXIT_CRITICAL();
+    /* Brief yield - DMA ISR can now advance tail pointer */
+    for (volatile int i = 0; i < 100; i++)
+    {
+    }
+    FEB_UART_ENTER_CRITICAL();
+  }
+
+  /* Write to ring buffer (may still truncate if ISR or timeout) */
   size_t written = feb_uart_ring_write(&ctx[inst].tx_ring, data, len);
 
   /* Start DMA if idle */

@@ -8,7 +8,12 @@
 
 #include "FEB_CAN_PingPong.h"
 #include "feb_can_lib.h"
+#include "feb_uart.h"
+#include "feb_uart_log.h"
+#include "stm32f4xx_hal.h"
 #include <string.h>
+
+#define TAG_PING "PING"
 
 /* ============================================================================
  * Internal State
@@ -22,6 +27,7 @@ typedef struct
   uint32_t tx_count;
   uint32_t rx_count;
   int32_t rx_handle;
+  bool pending_rx_log;
 } PingPong_Channel_t;
 
 static PingPong_Channel_t channels[FEB_PINGPONG_NUM_CHANNELS];
@@ -56,6 +62,7 @@ static void pingpong_rx_callback(uint8_t channel_idx, const uint8_t *data, uint8
 
   ch->last_rx_counter = counter;
   ch->rx_count++;
+  ch->pending_rx_log = true;
 
   /* If in pong mode, send response with counter+1 */
   if (ch->mode == PINGPONG_MODE_PONG)
@@ -196,6 +203,13 @@ void FEB_CAN_PingPong_Tick(void)
   {
     PingPong_Channel_t *ch = &channels[i];
 
+    /* Deferred RX logging (safe from main loop context, not ISR) */
+    if (ch->pending_rx_log)
+    {
+      LOG_D(TAG_PING, "RX ch%d cnt:%ld total:%lu", i + 1, (long)ch->last_rx_counter, (unsigned long)ch->rx_count);
+      ch->pending_rx_log = false;
+    }
+
     if (ch->mode == PINGPONG_MODE_PING)
     {
       /* Pack and send the counter */
@@ -206,7 +220,19 @@ void FEB_CAN_PingPong_Tick(void)
       tx_data[2] = (uint8_t)((ch->tx_counter >> 16) & 0xFF);
       tx_data[3] = (uint8_t)((ch->tx_counter >> 24) & 0xFF);
 
-      FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, frame_ids[i], FEB_CAN_ID_STD, tx_data, 8);
+      /* Retry with timeout if mailbox full (STM32F4 has only 3 TX mailboxes) */
+      FEB_CAN_Status_t status;
+      uint32_t retry_start = HAL_GetTick();
+      do
+      {
+        status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, frame_ids[i], FEB_CAN_ID_STD, tx_data, 8);
+        if (status == FEB_CAN_OK)
+        {
+          break;
+        }
+      } while ((HAL_GetTick() - retry_start) < 5); /* 5ms timeout */
+
+      LOG_D(TAG_PING, "TX ch%d ID:0x%02X cnt:%ld", i + 1, (unsigned int)frame_ids[i], (long)ch->tx_counter);
 
       ch->tx_counter++;
       ch->tx_count++;

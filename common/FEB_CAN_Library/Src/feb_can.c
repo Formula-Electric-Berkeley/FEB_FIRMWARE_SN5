@@ -403,3 +403,32 @@ void FEB_CAN_ResetErrorCounters(void)
   feb_can_ctx.tx_timeout_count = 0;
   feb_can_ctx.hal_error_count = 0;
 }
+
+const char *FEB_CAN_StatusToString(FEB_CAN_Status_t status)
+{
+  switch (status)
+  {
+  case FEB_CAN_OK:
+    return "OK";
+  case FEB_CAN_ERROR:
+    return "ERROR";
+  case FEB_CAN_ERROR_INVALID_PARAM:
+    return "INVALID_PARAM";
+  case FEB_CAN_ERROR_FULL:
+    return "QUEUE_FULL";
+  case FEB_CAN_ERROR_NOT_FOUND:
+    return "NOT_FOUND";
+  case FEB_CAN_ERROR_ALREADY_EXISTS:
+    return "ALREADY_EXISTS";
+  case FEB_CAN_ERROR_TIMEOUT:
+    return "TIMEOUT";
+  case FEB_CAN_ERROR_HAL:
+    return "HAL_ERROR";
+  case FEB_CAN_ERROR_NOT_INIT:
+    return "NOT_INIT";
+  case FEB_CAN_ERROR_QUEUE:
+    return "QUEUE_ERROR";
+  default:
+    return "UNKNOWN";
+  }
+}

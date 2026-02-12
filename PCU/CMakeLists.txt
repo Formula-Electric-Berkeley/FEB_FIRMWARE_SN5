@@ -38,8 +38,11 @@ file(GLOB STARTUP_ASM "startup_*.s")
 file(GLOB HAL_SOURCES "Drivers/STM32F4xx_HAL_Driver/Src/*.c")
 list(FILTER HAL_SOURCES EXCLUDE REGEX "_template\\.c$")
 
+# CAN library generated source (from common submodule)
+set(CAN_GEN_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can.c")
+
 # Combine base sources
-set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES})
+set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES} ${CAN_GEN_SOURCE})
 
 # ══════════════════════════════════════════════════════════════════════
 #  INCLUDE DIRECTORIES
@@ -58,6 +61,13 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
     list(APPEND BASE_INCLUDES Core/User/Inc)
 endif()
 
+# Common CAN library includes (submodule)
+set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4")
+list(APPEND BASE_INCLUDES
+    "${CAN_LIB_DIR}/.."     # resolves #include "FEB_CAN_Library_SN4/gen/feb_can.h"
+    "${CAN_LIB_DIR}/gen"    # resolves #include "feb_can.h" directly
+)
+
 # ══════════════════════════════════════════════════════════════════════
 #  EXECUTABLE TARGET
 # ══════════════════════════════════════════════════════════════════════
@@ -66,7 +76,7 @@ add_executable(${PROJECT_NAME} ${ALL_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE m feb_uart)
+target_link_libraries(${PROJECT_NAME} PRIVATE m feb_uart feb_console feb_can)
 
 # Enable floating-point printf/scanf for newlib-nano
 target_link_options(${PROJECT_NAME} PRIVATE
