@@ -64,7 +64,7 @@ void FEB_CAN_BMS_Init(void)
   params.can_id = FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID;
   FEB_CAN_RX_Register(&params);
 
-  LOG_I(TAG_BMS, "Registered BMS CAN callbacks (Temp: 0x%03lX, State: 0x%03lX, Voltage: 0x%03lX)",
+  LOG_I(TAG_BMS, "Registered BMS CAN callbacks (Temp: 0x%03X, State: 0x%03X, Voltage: 0x%03X)",
         FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID, FEB_CAN_BMS_STATE_FRAME_ID,
         FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID);
 

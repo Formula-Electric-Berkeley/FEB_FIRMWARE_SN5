@@ -7,10 +7,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-static CAN_TxHeaderTypeDef FEB_CAN_Tx_Header;
-
-static uint32_t FEB_CAN_Tx_Mailbox;
-
 extern CAN_HandleTypeDef hcan1;
 extern CAN_HandleTypeDef hcan2;
 extern I2C_HandleTypeDef hi2c1;
@@ -22,7 +18,6 @@ extern DMA_HandleTypeDef hdma_usart2_rx;
 static uint8_t uart_tx_buf[4096];
 static uint8_t uart_rx_buf[256];
 
-static void FEB_Compose_CAN_Data(void);
 static void FEB_Variable_Conversion(void);
 static void FEB_Variable_Init(void);
 
@@ -159,8 +154,6 @@ void FEB_Main_Setup(void)
     LOG_I(TAG_MAIN, "TPS2482 I2C init complete");
   }
 
-  // printf("[SETUP] tps2482_init_success: %d\r\n", tps2482_init_success);
-
   bool tps2482_en_res[NUM_TPS2482 - 1]; // LVPDB is always enabled so num TPS - 1
   bool tps2482_en_success = false;
   GPIO_PinState tps2482_pg_res[NUM_TPS2482];
@@ -269,109 +262,6 @@ void FEB_1ms_Callback(void)
     tps_divider = 0;
     FEB_CAN_TPS_Tick(tps2482_current_raw, tps2482_bus_voltage_raw, NUM_TPS2482);
   }
-}
-
-void FEB_CAN1_Rx_Callback(CAN_RxHeaderTypeDef *rx_header, void *data)
-{
-  (void)rx_header;
-  (void)data;
-
-  // if ( rx_header->StdId == FEB_CAN_BRAKE_FRAME_ID ) {
-  // 	uint8_t brake_pressure = *((uint8_t *)data);
-
-  // 	if ( brake_pressure > FEB_BREAK_THRESHOLD ) {
-  // 		HAL_GPIO_WritePin(BL_SWITCH_GPIO_Port, BL_SWITCH_Pin, GPIO_PIN_SET);
-  // 	}
-  // 	else {
-  // 		HAL_GPIO_WritePin(BL_SWITCH_GPIO_Port, BL_SWITCH_Pin, GPIO_PIN_RESET);
-  // 	}
-  // }
-
-  // if ( rx_header->StdId == FEB_CAN_DASH_IO_FRAME_ID ) {
-  // 	uint8_t dash_data = *((uint8_t *)data);
-  // 	bool cp_en = (dash_data >> 5) & 0x01;
-  // 	bool rf_en = (dash_data >> 6) & 0x01;
-  // 	bool af_en = (dash_data >> 7) & 0x01;
-  // 	bool as_en = af_en;
-
-  // 	// Read LV bus voltage
-  // 	float lv_voltage = tps2482_bus_voltage[0] / 1000.0f;
-
-  // 	if (lv_voltage < 21.0f) {
-  // 		bus_voltage_healthy = false;
-  // 	}
-
-  // 	// Only enable Accumulator Fans if accum over certain temp threshold and bus voltage is over 23.
-  // 	af_en = (af_en && (bms_message.max_acc_temp > 40.0f) && bus_voltage_healthy); // back turns on when 35*C
-  // 	as_en = (as_en && (bms_message.max_acc_temp > 50.0f) && bus_voltage_healthy); // front turns on when 45*C
-
-  // 	// Only enable Coolant Pump and Rad Fans if bus voltage is over 23.
-  // 	cp_en = cp_en && bus_voltage_healthy;
-  // 	rf_en = rf_en && bus_voltage_healthy;
-
-  // 	bool tps2482_en_res[NUM_TPS2482 - 1];
-  // 	GPIO_PinState tps2482_en_initial[NUM_TPS2482 - 1];
-  // 	bool tps2482_en_success = true; // Assume successful enable
-  // 	GPIO_PinState tps2482_pg_res[NUM_TPS2482];
-  // 	bool tps2482_pg_success = true; // Assume successful enable
-
-  // 	TPS2482_GPIO_Read(tps2482_pg_ports, tps2482_pg_pins, tps2482_pg_res, NUM_TPS2482);
-  // 	TPS2482_GPIO_Read(tps2482_en_ports, tps2482_en_pins, tps2482_en_initial, NUM_TPS2482 - 1);
-
-  // 	for ( uint8_t i = 0; i < NUM_TPS2482; i++ ) {
-  // 		// If any don't enable properly b will be false and thus loop continues
-  // 		tps2482_pg_success &= (tps2482_pg_res[i] == (bool)tps2482_en_initial[i]);
-  // 	}
-
-  // 	if ( !tps2482_pg_success ) {
-  // 		// Todo: Error State
-  // 	}
-
-  // 	// Todo: have this check that nothing has changed since last send
-  // 	tps2482_en_initial[0] = (GPIO_PinState)cp_en;
-  // 	tps2482_en_initial[1] = (GPIO_PinState)af_en;
-  // 	tps2482_en_initial[2] = (GPIO_PinState)rf_en;
-  // 	tps2482_en_initial[5] = (GPIO_PinState)as_en;
-
-  // 	TPS2482_Enable(tps2482_en_ports, tps2482_en_pins, tps2482_en_initial, tps2482_en_res, NUM_TPS2482 - 1);
-
-  // 	for ( uint8_t i = 0; i < NUM_TPS2482 - 1; i++ ) {
-  // 		// If any don't enable properly b will be false and thus loop continues
-  // 		tps2482_en_success &= (tps2482_en_res[i] == tps2482_en_initial[i]);
-  // 	}
-
-  // 	if ( !tps2482_en_success ) {
-  // 		// Todo: Error State
-  // 	}
-  // }
-
-  // if ( rx_header->StdId == FEB_CAN_BMS_STATE_FRAME_ID ) {
-  // 	uint8_t rx_data[rx_header->DLC];
-
-  // 		memcpy(rx_data, data, rx_header->DLC);
-
-  // 		if ( ((rx_data[0] & 0x1F) == FEB_SM_ST_HEALTH_CHECK) || (((rx_data[0] & 0xE0) >> 5) == FEB_HB_LVPDB) ) {
-  // 			// FEB_CAN_HEARTBEAT_Transmit();
-  // 		}
-  // }
-
-  // if (rx_header->StdId == FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID ) {
-  // 	uint8_t rx_data[rx_header->DLC];
-  // 	bms_message.max_acc_temp = (rx_data[5] << 8) | rx_data[4];
-  // }
-}
-
-static void FEB_Compose_CAN_Data(void)
-{
-  memset(&can_data, 0, sizeof(FEB_LVPDB_CAN_Data));
-
-  // can_data.ids[0] = FEB_CAN_LVPDB_FLAGS_BUS_VOLTAGE_LV_CURRENT_FRAME_ID;
-  // can_data.ids[1] = FEB_CAN_LVPDB_COOLANT_FANS_SHUTDOWN_FRAME_ID;
-  // can_data.ids[2] = FEB_CAN_LVPDB_AUTONOMOUS_FRAME_ID;
-
-  // can_data.bus_voltage = tps2482_bus_voltage[0];
-
-  // memcpy(&can_data.lv_current, tps2482_current, NUM_TPS2482 * sizeof(uint16_t));
 }
 
 #define ADC_FILTER_EXPONENT 2
@@ -494,10 +384,6 @@ static void FEB_Variable_Init(void)
   tps2482_alert_pins[4] = SM_Alert_Pin;
   tps2482_alert_pins[5] = AF1_AF2_Alert_Pin;
   tps2482_alert_pins[6] = CP_RF_Alert_Pin;
-
-  // can_data.ids[0] = FEB_CAN_LVPDB_FLAGS_BUS_VOLTAGE_LV_CURRENT_FRAME_ID;
-  // can_data.ids[1] = FEB_CAN_LVPDB_COOLANT_FANS_SHUTDOWN_FRAME_ID;
-  // can_data.ids[2] = FEB_CAN_LVPDB_AUTONOMOUS_FRAME_ID;
 
   memset(tps2482_current_raw, 0, NUM_TPS2482 * sizeof(uint16_t));
   memset(tps2482_bus_voltage_raw, 0, NUM_TPS2482 * sizeof(uint16_t));
