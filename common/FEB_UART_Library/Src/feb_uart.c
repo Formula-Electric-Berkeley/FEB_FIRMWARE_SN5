@@ -690,7 +690,7 @@ void FEB_UART_ProcessRx(FEB_UART_Instance_t instance)
           memcpy(msg.line, ctx[inst].line_buffer.buffer, ctx[inst].line_buffer.len + 1);
           msg.len = (uint16_t)ctx[inst].line_buffer.len;
           msg.timestamp = ctx[inst].get_tick_ms ? ctx[inst].get_tick_ms() : 0;
-          FEB_UART_QUEUE_SEND(ctx[inst].rx_queue, &msg, 0); /* Non-blocking */
+          (void)FEB_UART_QUEUE_SEND(ctx[inst].rx_queue, &msg, 0); /* Non-blocking */
         }
         else
 #endif
