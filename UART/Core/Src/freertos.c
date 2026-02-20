@@ -75,8 +75,8 @@ const osThreadAttr_t uartRxTask03_attributes = {
 /* USER CODE END FunctionPrototypes */
 
 void StartFlashTask(void *argument);
-void StartUARTTxTask(void *argument);
-void StartUARTRxTask(void *argument);
+void StartUartTxTask(void *argument);
+void StartUartRxTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -111,10 +111,10 @@ void MX_FREERTOS_Init(void) {
   flashTaskHandle = osThreadNew(StartFlashTask, NULL, &flashTask_attributes);
 
   /* creation of uartTxTask */
-  uartTxTaskHandle = osThreadNew(StartUARTTxTask, NULL, &uartTxTask_attributes);
+  uartTxTaskHandle = osThreadNew(StartUartTxTask, NULL, &uartTxTask_attributes);
 
   /* creation of uartRxTask03 */
-  uartRxTask03Handle = osThreadNew(StartUARTRxTask, NULL, &uartRxTask03_attributes);
+  uartRxTask03Handle = osThreadNew(StartUartRxTask, NULL, &uartRxTask03_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -140,40 +140,40 @@ void StartFlashTask(void *argument)
   /* USER CODE END StartFlashTask */
 }
 
-/* USER CODE BEGIN Header_StartUARTTxTask */
+/* USER CODE BEGIN Header_StartUartTxTask */
 /**
 * @brief Function implementing the uartTxTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartUARTTxTask */
-__weak void StartUARTTxTask(void *argument)
+/* USER CODE END Header_StartUartTxTask */
+__weak void StartUartTxTask(void *argument)
 {
-  /* USER CODE BEGIN StartUARTTxTask */
+  /* USER CODE BEGIN StartUartTxTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartUARTTxTask */
+  /* USER CODE END StartUartTxTask */
 }
 
-/* USER CODE BEGIN Header_StartUARTRxTask */
+/* USER CODE BEGIN Header_StartUartRxTask */
 /**
 * @brief Function implementing the uartRxTask03 thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartUARTRxTask */
-__weak void StartUARTRxTask(void *argument)
+/* USER CODE END Header_StartUartRxTask */
+__weak void StartUartRxTask(void *argument)
 {
-  /* USER CODE BEGIN StartUARTRxTask */
+  /* USER CODE BEGIN StartUartRxTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartUARTRxTask */
+  /* USER CODE END StartUartRxTask */
 }
 
 /* Private application code --------------------------------------------------*/

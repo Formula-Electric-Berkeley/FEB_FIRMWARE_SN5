@@ -19,11 +19,6 @@ extern "C"
    */
   void FEB_Main_Setup(void);
 
-  /**
-   * @brief Application main loop - called repeatedly
-   */
-  void FEB_Main_Loop(void);
-
 #ifdef __cplusplus
 }
 #endif

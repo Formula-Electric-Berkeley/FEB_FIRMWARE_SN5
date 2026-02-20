@@ -9,7 +9,12 @@
 #include "TPS2482.h"
 #include "i2c.h"
 #include "cmsis_os.h"
-#include <stdio.h>
+#include "feb_uart_log.h"
+
+#define TAG_ADBMS "[ADBMS]"
+
+/* Temporarily disabled for UART isolation testing - uncomment to re-enable */
+#if 0
 
 /* ===== StartADBMSTask =====
    High-priority task for ADBMS6830B monitoring and control
@@ -23,7 +28,7 @@ void StartADBMSTask(void *argument)
   uint8_t init_attempts = 0;
   bool init_success = false;
 
-  printf("[ADBMS_TASK] Task Begun\r\n");
+  LOG_I(TAG_ADBMS, "Task Begun");
 
   /* === Initialization Phase === */
   while (init_attempts < MAX_INIT_RETRIES && !init_success)
@@ -54,7 +59,7 @@ void StartADBMSTask(void *argument)
   /* Handle initialization failure */
   if (!init_success)
   {
-    printf("[ADBMS_TASK] FATAL: Initialization failed after %d attempts\r\n", MAX_INIT_RETRIES);
+    LOG_E(TAG_ADBMS, "FATAL: Initialization failed after %d attempts", MAX_INIT_RETRIES);
     FEB_ADBMS_Update_Error_Type(ERROR_TYPE_INIT_FAILURE);
 
     /* Signal failure via LED blinking */
@@ -131,17 +136,17 @@ void StartTPSTask(void *argument)
   uint16_t id = 0;
   bool init_result = false;
 
-  printf("[TPS_TASK] Initializing TPS2482 at address 0x%02X\r\n", addr);
+  LOG_I(TAG_TPS, "Initializing TPS2482 at address 0x%02X", addr);
 
   TPS2482_Init(&hi2c1, &addr, &config, &id, &init_result, 1);
 
   if (!init_result)
   {
-    printf("[TPS_TASK] WARNING: TPS2482 initialization failed\r\n");
+    LOG_W(TAG_TPS, "TPS2482 initialization failed");
   }
   else
   {
-    printf("[TPS_TASK] TPS2482 initialized, ID: 0x%04X\r\n", id);
+    LOG_I(TAG_TPS, "TPS2482 initialized, ID: 0x%04X", id);
   }
 
   for (;;)
@@ -158,8 +163,10 @@ void StartTPSTask(void *argument)
     float current_A = (float)((int16_t)current_raw) * BMS_TPS_CURRENT_LSB;
     float voltage_V = (float)voltage_raw * TPS2482_CONV_VBUS;
 
-    printf("[TPS] V=%.2fV I=%.3fA\r\n", voltage_V, current_A);
+    LOG_D(TAG_TPS, "V=%.2fV I=%.3fA", voltage_V, current_A);
 
     osDelay(pdMS_TO_TICKS(1000)); // 1 Hz polling
   }
 }
+
+#endif /* Temporarily disabled */

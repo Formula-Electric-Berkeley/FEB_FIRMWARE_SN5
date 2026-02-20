@@ -28,6 +28,9 @@
 #include "bms_tasks.h"
 #include "i2c.h"
 #include "TPS2482.h"
+#include "FEB_BMS_Main.h"
+#include "feb_uart.h"
+#include "feb_console.h"
 #include <stdio.h>
 /* USER CODE END Includes */
 
@@ -50,11 +53,11 @@
 /* USER CODE BEGIN Variables */
 
 /* USER CODE END Variables */
-/* Definitions for defaultTask */
-osThreadId_t defaultTaskHandle;
-const osThreadAttr_t defaultTask_attributes = {
-  .name = "defaultTask",
-  .stack_size = 128 * 4,
+/* Definitions for uartTxTask */
+osThreadId_t uartTxTaskHandle;
+const osThreadAttr_t uartTxTask_attributes = {
+  .name = "uartTxTask",
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for ADBMSTask */
@@ -75,15 +78,22 @@ const osThreadAttr_t TPSTask_attributes = {
 osThreadId_t BMSTaskRxHandle;
 const osThreadAttr_t BMSTaskRx_attributes = {
   .name = "BMSTaskRx",
-  .stack_size = 128 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for BMSTaskTx */
 osThreadId_t BMSTaskTxHandle;
 const osThreadAttr_t BMSTaskTx_attributes = {
   .name = "BMSTaskTx",
-  .stack_size = 128 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for uartRxTask */
+osThreadId_t uartRxTaskHandle;
+const osThreadAttr_t uartRxTask_attributes = {
+  .name = "uartRxTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal1,
 };
 /* Definitions for ADBMSMutex */
 osMutexId_t ADBMSMutexHandle;
@@ -96,11 +106,12 @@ const osMutexAttr_t ADBMSMutex_attributes = {
 
 /* USER CODE END FunctionPrototypes */
 
-void StartDefaultTask(void *argument);
+void StartUartTxTask(void *argument);
 void StartADBMSTask(void *argument);
 void StartTPSTask(void *argument);
 void StartBMSTaskRx(void *argument);
 void StartBMSTaskTx(void *argument);
+void StartUartRxTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -134,8 +145,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of defaultTask */
-  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  /* creation of uartTxTask */
+  uartTxTaskHandle = osThreadNew(StartUartTxTask, NULL, &uartTxTask_attributes);
 
   /* creation of ADBMSTask */
   ADBMSTaskHandle = osThreadNew(StartADBMSTask, NULL, &ADBMSTask_attributes);
@@ -149,6 +160,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of BMSTaskTx */
   BMSTaskTxHandle = osThreadNew(StartBMSTaskTx, NULL, &BMSTaskTx_attributes);
 
+  /* creation of uartRxTask */
+  uartRxTaskHandle = osThreadNew(StartUartRxTask, NULL, &uartRxTask_attributes);
+
   /* USER CODE BEGIN RTOS_THREADS */
 
   /* USER CODE END RTOS_THREADS */
@@ -159,21 +173,24 @@ void MX_FREERTOS_Init(void) {
 
 }
 
-/* USER CODE BEGIN Header_StartDefaultTask */
+/* USER CODE BEGIN Header_StartUartTxTask */
 /**
-  * @brief  Function implementing the defaultTask thread.
+  * @brief  Function implementing the uartTxTask thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument)
+/* USER CODE END Header_StartUartTxTask */
+__weak void StartUartTxTask(void *argument)
 {
-  /* USER CODE BEGIN StartDefaultTask */
-  /* Infinite loop */
-  for (;;) {
-    
+  /* USER CODE BEGIN StartUartTxTask */
+  (void)argument;
+
+  /* TX task placeholder - TX happens via DMA from any task */
+  for (;;)
+  {
+    osDelay(100);
   }
-  /* USER CODE END StartDefaultTask */
+  /* USER CODE END StartUartTxTask */
 }
 
 /* USER CODE BEGIN Header_StartADBMSTask */
@@ -246,6 +263,25 @@ __weak void StartBMSTaskTx(void *argument)
     osDelay(1);
   }
   /* USER CODE END StartBMSTaskTx */
+}
+
+/* USER CODE BEGIN Header_StartUartRxTask */
+/**
+* @brief Function implementing the uartRxTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartUartRxTask */
+__weak void StartUartRxTask(void *argument)
+{
+  /* USER CODE BEGIN StartUartRxTask */
+  (void)argument;
+  /* Weak stub - override in FEB_BMS_Main.c with queue-based implementation */
+  for (;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartUartRxTask */
 }
 
 /* Private application code --------------------------------------------------*/

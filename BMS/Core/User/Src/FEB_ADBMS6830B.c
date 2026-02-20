@@ -546,7 +546,7 @@ float FEB_ADBMS_GET_ACC_MAX_Temp()
 
 float FEB_ADBMS_GET_Cell_Temperature(uint8_t bank, uint16_t cell)
 {
-  if (bank >= FEB_NBANKS || cell >= FEB_NUM_CELL_PER_BANK)
+  if (bank >= FEB_NBANKS || cell >= FEB_NUM_TEMP_SENSORS)
   {
     return -1.0f;
   }

@@ -77,16 +77,11 @@ void FEB_Main_Setup(void)
   FEB_Console_Printf("\r\n");
 }
 
-void FEB_Main_Loop(void)
-{
-  /* Queue mode: RX processing happens in StartUARTRxTask */
-}
-
 /* ============================================================================
  * FreeRTOS Task Implementations - Override weak stubs in freertos.c
  * ============================================================================ */
 
-void StartUARTRxTask(void *argument)
+void StartUartRxTask(void *argument)
 {
   (void)argument;
 
@@ -109,7 +104,7 @@ void StartUARTRxTask(void *argument)
   }
 }
 
-void StartUARTTxTask(void *argument)
+void StartUartTxTask(void *argument)
 {
   (void)argument;
   for (;;)

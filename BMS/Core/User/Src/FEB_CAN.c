@@ -21,9 +21,9 @@
 #include "feb_can_lib.h"
 #include "cmsis_os2.h"
 #include "main.h"
-#include <stdio.h>
-
-#define FEB_UART_USE_FREERTOS 1
+#include "feb_uart_log.h"
+#include "FEB_BMS_CAN_State.h"
+#include "FEB_CAN_PingPong.h"
 
 /* ========================== External HAL handles ========================== */
 extern CAN_HandleTypeDef hcan1;
@@ -39,13 +39,11 @@ static void BMS_CAN_RxCallback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB
                                const uint8_t *data, uint8_t length, void *user_data)
 {
   (void)instance;
-  (void)can_id;
   (void)id_type;
   (void)data;
-  (void)length;
   (void)user_data;
 
-  printf("hello can\r\n");
+  LOG_D(TAG_CAN, "RX: ID=0x%lX len=%d", can_id, length);
 }
 
 /* ========================== CAN Initialization ========================== */
@@ -99,6 +97,12 @@ void StartBMSTaskRx(void *argument)
 
   /* CAN init MUST occur after scheduler start */
   BMS_CAN_Init();
+
+  /* Initialize pingpong module */
+  FEB_CAN_PingPong_Init();
+
+  /* Signal that CAN is ready for state publishing */
+  FEB_BMS_CAN_State_SetReady();
 
   for (;;)
   {

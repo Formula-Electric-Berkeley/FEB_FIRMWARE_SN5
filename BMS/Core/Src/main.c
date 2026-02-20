@@ -20,6 +20,7 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "can.h"
+#include "dma.h"
 #include "i2c.h"
 #include "spi.h"
 #include "usart.h"
@@ -28,6 +29,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "FEB_ADBMS6830B.h"
+#include "FEB_BMS_CAN_State.h"
+#include "FEB_CAN_PingPong.h"
 #include "FEB_HW.h"
 /* USER CODE END Includes */
 
@@ -93,6 +96,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_SPI1_Init();
   MX_I2C1_Init();
@@ -214,7 +218,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
+  FEB_BMS_CAN_State_Tick();
 
+  /* PingPong tick every 100ms */
+  static uint16_t pingpong_divider = 0;
+  pingpong_divider++;
+  if (pingpong_divider >= 100)
+  {
+    pingpong_divider = 0;
+    FEB_CAN_PingPong_Tick();
+  }
   /* USER CODE END Callback 1 */
 }
 
