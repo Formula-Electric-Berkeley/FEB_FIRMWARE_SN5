@@ -35,18 +35,18 @@ void ui_init(void)
     ui_Screen1 = lv_obj_create(NULL);
 
     /* Background: Formula Electric Deep Blue */
-    lv_obj_set_style_bg_color(ui_Screen1, lv_color_hex(0x4242FF), 0);
+    lv_obj_set_style_bg_color(ui_Screen1, lv_color_hex(0x002676), 0);
     lv_obj_set_style_bg_opa(ui_Screen1, LV_OPA_COVER, 0);
 
     /* Create HELLO label */
     ui_LabelHello = lv_label_create(ui_Screen1);
-    lv_label_set_text(ui_LabelHello, "FORMULA ELECTRIC");
+    lv_label_set_text(ui_LabelHello, "LMAO");
     
     /* Bold + Large Font */
     lv_obj_set_style_text_font(ui_LabelHello, &lv_font_montserrat_48, 0);
     
     /* Bright Electric Green */
-    lv_obj_set_style_text_color(ui_LabelHello, lv_color_hex(0xFFCC12), 0);
+    lv_obj_set_style_text_color(ui_LabelHello, lv_color_hex(0xFDB515), 0);
 
     /* Center on Screen */
     lv_obj_center(ui_LabelHello);
