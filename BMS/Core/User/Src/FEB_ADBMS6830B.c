@@ -14,10 +14,18 @@
 #include <float.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include "defs.h"
 #include "stm32f4xx_hal.h"
 #include "cmsis_os.h"
-#include "bms_tasks.h"
+#include "feb_uart_log.h"
+
+/* External mutex from freertos.c */
+extern osMutexId_t ADBMSMutexHandle;
+
+/* Debug macros using UART logging */
+#define TAG_VOLTAGE "[VOLT]"
+#define TAG_TEMP "[TEMP]"
+#define DEBUG_VOLTAGE_PRINT(...) LOG_D(TAG_VOLTAGE, __VA_ARGS__)
+#define DEBUG_TEMP_PRINT(...) LOG_D(TAG_TEMP, __VA_ARGS__)
 
 // ********************************** Variables **********************************
 

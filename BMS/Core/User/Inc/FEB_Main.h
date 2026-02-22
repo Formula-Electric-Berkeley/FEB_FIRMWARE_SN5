@@ -1,13 +1,13 @@
 /**
  ******************************************************************************
- * @file           : FEB_BMS_Main.h
+ * @file           : FEB_Main.h
  * @brief          : BMS Application Header
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  */
 
-#ifndef FEB_BMS_MAIN_H
-#define FEB_BMS_MAIN_H
+#ifndef FEB_MAIN_H
+#define FEB_MAIN_H
 
 #ifdef __cplusplus
 extern "C"
@@ -15,12 +15,12 @@ extern "C"
 #endif
 
   /**
-   * @brief Application setup - called once at startup
+   * @brief Pre-kernel initialization - called from main() before osKernelStart()
    */
-  void FEB_Main_Setup(void);
+  void FEB_Init(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* FEB_BMS_MAIN_H */
+#endif /* FEB_MAIN_H */

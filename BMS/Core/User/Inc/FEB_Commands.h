@@ -1,13 +1,13 @@
 /**
  ******************************************************************************
- * @file           : FEB_BMS_Commands.h
+ * @file           : FEB_Commands.h
  * @brief          : BMS-specific console commands
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  */
 
-#ifndef FEB_BMS_COMMANDS_H
-#define FEB_BMS_COMMANDS_H
+#ifndef FEB_COMMANDS_H
+#define FEB_COMMANDS_H
 
 #include "feb_console.h"
 
@@ -22,4 +22,4 @@
  */
 void BMS_RegisterCommands(void);
 
-#endif /* FEB_BMS_COMMANDS_H */
+#endif /* FEB_COMMANDS_H */

@@ -29,9 +29,10 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "FEB_ADBMS6830B.h"
-#include "FEB_BMS_CAN_State.h"
+#include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
 #include "FEB_HW.h"
+#include "FEB_Main.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -103,23 +104,7 @@ int main(void)
   MX_CAN1_Init();
   /* USER CODE BEGIN 2 */
   printf("[BOOT] UART ready @115200 (USART2)\r\n");
-
-  printf("Starting I2C Scanning: \r\n");
-  uint8_t i = 0, ret;
-  for (i = 1; i < 128; i++)
-  {
-    ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i << 1), 3, 5);
-    if (ret != HAL_OK)
-    { /* No ACK Received At That Address */
-      printf(" - ");
-    }
-    else if (ret == HAL_OK)
-    {
-      printf("0x%X", i);
-    }
-  }
-  printf("Done! \r\n\r\n");
-
+  FEB_Init();
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -218,7 +203,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  FEB_BMS_CAN_State_Tick();
+  FEB_CAN_State_Tick();
 
   /* PingPong tick every 100ms */
   static uint16_t pingpong_divider = 0;

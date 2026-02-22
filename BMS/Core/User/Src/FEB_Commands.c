@@ -1,12 +1,12 @@
 /**
  ******************************************************************************
- * @file           : FEB_BMS_Commands.c
+ * @file           : FEB_Commands.c
  * @brief          : BMS-specific console commands
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  */
 
-#include "FEB_BMS_Commands.h"
+#include "FEB_Commands.h"
 #include "feb_console.h"
 #include "FEB_ADBMS6830B.h"
 #include "FEB_CAN_PingPong.h"

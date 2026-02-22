@@ -25,10 +25,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "bms_tasks.h"
+#include "FEB_Task_ADBMS.h"
+#include "FEB_Task_TPS.h"
+#include "FEB_Main.h"
 #include "i2c.h"
 #include "TPS2482.h"
-#include "FEB_BMS_Main.h"
 #include "feb_uart.h"
 #include "feb_console.h"
 #include <stdio.h>
@@ -276,7 +277,7 @@ __weak void StartUartRxTask(void *argument)
 {
   /* USER CODE BEGIN StartUartRxTask */
   (void)argument;
-  /* Weak stub - override in FEB_BMS_Main.c with queue-based implementation */
+  /* Weak stub - override in FEB_Main.c with queue-based implementation */
   for (;;)
   {
     osDelay(1);

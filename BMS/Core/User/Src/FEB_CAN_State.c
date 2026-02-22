@@ -1,9 +1,9 @@
 /**
- * @file FEB_BMS_CAN_State.c
+ * @file FEB_CAN_State.c
  * @brief BMS CAN state publishing module
  */
 
-#include "FEB_BMS_CAN_State.h"
+#include "FEB_CAN_State.h"
 #include "feb_can_lib.h"
 #include "feb_can.h"
 #include <stdbool.h>
@@ -15,17 +15,17 @@ static volatile bool can_ready = false;
 /* BMS state message data */
 static struct feb_can_bms_state_t bms_state_msg;
 
-void FEB_BMS_CAN_State_Init(void)
+void FEB_CAN_State_Init(void)
 {
   memset(&bms_state_msg, 0, sizeof(bms_state_msg));
 }
 
-void FEB_BMS_CAN_State_SetReady(void)
+void FEB_CAN_State_SetReady(void)
 {
   can_ready = true;
 }
 
-void FEB_BMS_CAN_State_Tick(void)
+void FEB_CAN_State_Tick(void)
 {
   /* Don't transmit until CAN is initialized */
   if (!can_ready)

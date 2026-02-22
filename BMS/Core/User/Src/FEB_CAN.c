@@ -22,7 +22,7 @@
 #include "cmsis_os2.h"
 #include "main.h"
 #include "feb_uart_log.h"
-#include "FEB_BMS_CAN_State.h"
+#include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
 
 /* ========================== External HAL handles ========================== */
@@ -102,7 +102,7 @@ void StartBMSTaskRx(void *argument)
   FEB_CAN_PingPong_Init();
 
   /* Signal that CAN is ready for state publishing */
-  FEB_BMS_CAN_State_SetReady();
+  FEB_CAN_State_SetReady();
 
   for (;;)
   {

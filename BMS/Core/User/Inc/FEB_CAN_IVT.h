@@ -16,7 +16,7 @@
 //     uint8_t valid;
 // } ivt_data_t;
 
-// // CAN message structure already defined in bms_tasks.h
+// // CAN message structure (if needed, define here)
 
 // /**
 //  * @brief Get pack voltage from IVT sensor (V1 measurement)
