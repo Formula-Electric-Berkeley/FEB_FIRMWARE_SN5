@@ -15,8 +15,6 @@ static uint8_t FEB_CAN_LVPDB_Filter(CAN_HandleTypeDef *hcan, unsigned char FIFO_
 
 CAN_TxHeaderTypeDef FEB_CAN_Tx_Header;
 
-static CAN_RxHeaderTypeDef FEB_CAN_Rx_Header;
-
 // Indiates that we're using extended ID
 uint32_t LVPDB_CAN_ID = 0;
 

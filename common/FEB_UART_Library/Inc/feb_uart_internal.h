@@ -34,6 +34,7 @@ extern "C"
 
 #if FEB_UART_USE_FREERTOS
 
+#include "FreeRTOS.h"
 #include "cmsis_os2.h"
 
   typedef osMutexId_t FEB_UART_Mutex_t;

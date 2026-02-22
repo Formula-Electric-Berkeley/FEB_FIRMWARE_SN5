@@ -21,6 +21,7 @@ add_compile_definitions(
     USE_HAL_DRIVER
     STM32F469xx
     $<$<CONFIG:Debug>:DEBUG>
+    FEB_UART_USE_FREERTOS=1
 )
 
 # ══════════════════════════════════════════════════════════════════════
@@ -86,6 +87,13 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FatFs")
     list(APPEND ALL_SOURCES ${FATFS_CORE} ${FATFS_OPTION})
 endif()
 
+# ── SN5 CAN library sources ───────────────────────────────────────────
+file(GLOB CAN_LIB_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.c"
+)
+list(APPEND ALL_SOURCES ${CAN_LIB_SOURCES})
+
 # ══════════════════════════════════════════════════════════════════════
 #  INCLUDE DIRECTORIES
 # ══════════════════════════════════════════════════════════════════════
@@ -128,6 +136,13 @@ endif()
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FatFs")
     list(APPEND BASE_INCLUDES Middlewares/Third_Party/FatFs/src)
 endif()
+
+# Common CAN library
+set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library")
+list(APPEND BASE_INCLUDES
+    "${CAN_LIB_DIR}/Inc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen"
+)
 
 # Auto-discover Core/User/Inc if it exists
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
