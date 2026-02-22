@@ -63,11 +63,6 @@ const osThreadAttr_t displayTask_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityHigh,
 };
-/* Definitions for FEB_I2C_Mutex */
-osMutexId_t FEB_I2C_MutexHandle;
-const osMutexAttr_t FEB_I2C_Mutex_attributes = {
-  .name = "FEB_I2C_Mutex"
-};
 /* Definitions for uartRxTask */
 osThreadId_t uartRxTaskHandle;
 const osThreadAttr_t uartRxTask_attributes = {
@@ -96,17 +91,23 @@ const osThreadAttr_t DASHTaskTx_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
+/* Definitions for FEB_I2C_Mutex */
+osMutexId_t FEB_I2C_MutexHandle;
+const osMutexAttr_t FEB_I2C_Mutex_attributes = {
+  .name = "FEB_I2C_Mutex"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-void StartUartRxTask(void *argument);
-void StartUartTxTask(void *argument);
-void StartDASHTaskRx(void *argument);
-void StartDASHTaskTx(void *argument);
+
 /* USER CODE END FunctionPrototypes */
 
 void StartBtnTxLoop(void *argument);
 void StartDisplayTask(void *argument);
+void StartUartRxTask(void *argument);
+void StartUartTxTask(void *argument);
+void StartDASHTaskRx(void *argument);
+void StartDASHTaskTx(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -191,7 +192,6 @@ void MX_FREERTOS_Init(void) {
   /* creation of displayTask */
   displayTaskHandle = osThreadNew(StartDisplayTask, NULL, &displayTask_attributes);
 
-  /* USER CODE BEGIN RTOS_THREADS */
   /* creation of uartRxTask */
   uartRxTaskHandle = osThreadNew(StartUartRxTask, NULL, &uartRxTask_attributes);
 
@@ -203,6 +203,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of DASHTaskTx */
   DASHTaskTxHandle = osThreadNew(StartDASHTaskTx, NULL, &DASHTaskTx_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -247,42 +250,80 @@ __weak void StartDisplayTask(void *argument)
   /* USER CODE END StartDisplayTask */
 }
 
-/* Private application code --------------------------------------------------*/
-/* USER CODE BEGIN Application */
+/* USER CODE BEGIN Header_StartUartRxTask */
+/**
+* @brief Function implementing the uartRxTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartUartRxTask */
 __weak void StartUartRxTask(void *argument)
 {
-  (void)argument;
-  for (;;)
+  /* USER CODE BEGIN StartUartRxTask */
+  /* Infinite loop */
+  for(;;)
   {
     osDelay(1);
   }
+  /* USER CODE END StartUartRxTask */
 }
 
+/* USER CODE BEGIN Header_StartUartTxTask */
+/**
+* @brief Function implementing the uartTxTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartUartTxTask */
 __weak void StartUartTxTask(void *argument)
 {
-  (void)argument;
-  for (;;)
+  /* USER CODE BEGIN StartUartTxTask */
+  /* Infinite loop */
+  for(;;)
   {
-    osDelay(100);
+    osDelay(1);
   }
+  /* USER CODE END StartUartTxTask */
 }
 
+/* USER CODE BEGIN Header_StartDASHTaskRx */
+/**
+* @brief Function implementing the DASHTaskRx thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartDASHTaskRx */
 __weak void StartDASHTaskRx(void *argument)
 {
-  (void)argument;
-  for (;;)
+  /* USER CODE BEGIN StartDASHTaskRx */
+  /* Infinite loop */
+  for(;;)
   {
     osDelay(1);
   }
+  /* USER CODE END StartDASHTaskRx */
 }
 
+/* USER CODE BEGIN Header_StartDASHTaskTx */
+/**
+* @brief Function implementing the DASHTaskTx thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartDASHTaskTx */
 __weak void StartDASHTaskTx(void *argument)
 {
-  (void)argument;
-  for (;;)
+  /* USER CODE BEGIN StartDASHTaskTx */
+  /* Infinite loop */
+  for(;;)
   {
     osDelay(1);
   }
+  /* USER CODE END StartDASHTaskTx */
 }
+
+/* Private application code --------------------------------------------------*/
+/* USER CODE BEGIN Application */
+
 /* USER CODE END Application */
 

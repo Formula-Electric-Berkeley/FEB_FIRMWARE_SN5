@@ -16,8 +16,10 @@
 
 /* External HAL handles from CubeMX-generated code */
 extern UART_HandleTypeDef huart3;
+extern DMA_HandleTypeDef hdma_usart3_rx;
+extern DMA_HandleTypeDef hdma_usart3_tx;
 
-/* UART buffers - polling mode (no DMA) */
+/* UART buffers */
 static uint8_t uart_tx_buf[512];
 static uint8_t uart_rx_buf[256];
 
@@ -27,11 +29,11 @@ static uint8_t uart_rx_buf[256];
 
 void FEB_Init(void)
 {
-  /* Initialize UART library - polling mode (no DMA handles) */
+  /* Initialize UART library with DMA */
   FEB_UART_Config_t cfg = {
       .huart = &huart3,
-      .hdma_tx = NULL, /* No DMA for TX */
-      .hdma_rx = NULL, /* No DMA for RX */
+      .hdma_tx = &hdma_usart3_tx,
+      .hdma_rx = &hdma_usart3_rx,
       .tx_buffer = uart_tx_buf,
       .tx_buffer_size = sizeof(uart_tx_buf),
       .rx_buffer = uart_rx_buf,
