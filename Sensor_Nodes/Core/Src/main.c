@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include "FEB_GPS.h"
+#include "FEB_STEER.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -33,6 +34,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define GPS_CAN_STD_ID 0x26U
+#define STEER_CAN_STD_ID 0x27U
+#define STEER_TX_PERIOD_MS 20U
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -57,6 +60,10 @@ UART_HandleTypeDef huart2;
 char gps_line[FEB_GPS_LINE_MAX_LEN];
 FEB_GPS_Fix_t gps_fix;
 uint8_t gps_can_payload[8];
+FEB_STEER_Data_t steer_data;
+uint8_t steer_can_payload[8];
+uint32_t steer_can_counter = 0U;
+uint32_t steer_last_tx_ms = 0U;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -70,7 +77,7 @@ static void MX_I2C3_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_UART4_Init(void);
 /* USER CODE BEGIN PFP */
-static HAL_StatusTypeDef GPS_CAN_SendPayload(const uint8_t *payload, uint8_t len);
+static HAL_StatusTypeDef FEB_CAN_SendStdPayload(uint32_t std_id, const uint8_t *payload, uint8_t len);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -120,6 +127,13 @@ int main(void)
     Error_Handler();
   }
 
+  FEB_STEER_Init(&htim3);
+  if (FEB_STEER_Start() != HAL_OK)
+  {
+    Error_Handler();
+  }
+  FEB_STEER_SetZero();
+
   FEB_GPS_Init(&huart4, GPS_EN_GPIO_Port, GPS_EN_Pin);
   if (FEB_GPS_Start() != HAL_OK)
   {
@@ -134,13 +148,25 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    FEB_STEER_Update();
+    if ((HAL_GetTick() - steer_last_tx_ms) >= STEER_TX_PERIOD_MS)
+    {
+      steer_last_tx_ms = HAL_GetTick();
+      if (FEB_STEER_GetData(&steer_data))
+      {
+        FEB_STEER_PackCanPayload(&steer_data, steer_can_counter, 0U, steer_can_payload);
+        (void)FEB_CAN_SendStdPayload(STEER_CAN_STD_ID, steer_can_payload, 8U);
+        steer_can_counter++;
+      }
+    }
+
     if (FEB_GPS_ReadLine(gps_line, sizeof(gps_line)))
     {
       (void)FEB_GPS_ProcessLine(gps_line);
       if (FEB_GPS_GetLastFix(&gps_fix))
       {
         FEB_GPS_FixToBytes(&gps_fix, gps_can_payload);
-        (void)GPS_CAN_SendPayload(gps_can_payload, 8U);
+        (void)FEB_CAN_SendStdPayload(GPS_CAN_STD_ID, gps_can_payload, 8U);
       }
 
       size_t len = strlen(gps_line);
@@ -537,7 +563,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-static HAL_StatusTypeDef GPS_CAN_SendPayload(const uint8_t *payload, uint8_t len)
+static HAL_StatusTypeDef FEB_CAN_SendStdPayload(uint32_t std_id, const uint8_t *payload, uint8_t len)
 {
   CAN_TxHeaderTypeDef tx_header = {0};
   uint32_t tx_mailbox = 0U;
@@ -559,7 +585,7 @@ static HAL_StatusTypeDef GPS_CAN_SendPayload(const uint8_t *payload, uint8_t len
   }
 
   (void)memcpy(tx_data, payload, len);
-  tx_header.StdId = GPS_CAN_STD_ID;
+  tx_header.StdId = std_id;
   tx_header.IDE = CAN_ID_STD;
   tx_header.RTR = CAN_RTR_DATA;
   tx_header.DLC = len;
