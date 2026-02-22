@@ -23,6 +23,7 @@
 #include "main.h"
 #include "feb_uart_log.h"
 #include "FEB_CAN_State.h"
+#include "FEB_CAN_PingPong.h"
 
 /* ========================== External HAL handles ========================== */
 extern CAN_HandleTypeDef hcan1;
@@ -99,6 +100,7 @@ void StartDASHTaskRx(void *argument)
 
   /* CAN init MUST occur after scheduler start */
   DASH_CAN_Init();
+  FEB_CAN_PingPong_Init();
 
   /* Signal that CAN is ready for state publishing */
   FEB_CAN_State_SetReady();

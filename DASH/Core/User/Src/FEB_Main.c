@@ -12,6 +12,7 @@
 #include "feb_uart_config.h"
 #include "feb_console.h"
 #include "FEB_CAN_State.h"
+#include "FEB_Commands.h"
 #include "cmsis_os2.h"
 
 /* External HAL handles from CubeMX-generated code */
@@ -55,6 +56,7 @@ void FEB_Init(void)
 
   /* Initialize console (registers built-in commands: echo, help, version, uptime, reboot, log) */
   FEB_Console_Init();
+  DASH_RegisterCommands();
 
   /* Initialize CAN state publisher */
   FEB_CAN_State_Init();

@@ -26,8 +26,10 @@ typedef struct
   int32_t last_rx_counter;
   uint32_t tx_count;
   uint32_t rx_count;
+  uint32_t tx_fail_count;
   int32_t rx_handle;
   bool pending_rx_log;
+  bool pending_tx_fail_log;
 } PingPong_Channel_t;
 
 static PingPong_Channel_t channels[FEB_PINGPONG_NUM_CHANNELS];
@@ -76,8 +78,17 @@ static void pingpong_rx_callback(uint8_t channel_idx, const uint8_t *data, uint8
     tx_data[2] = (uint8_t)((response >> 16) & 0xFF);
     tx_data[3] = (uint8_t)((response >> 24) & 0xFF);
 
-    FEB_CAN_TX_SendFromISR(FEB_CAN_INSTANCE_1, frame_ids[channel_idx], FEB_CAN_ID_STD, tx_data, 8);
-    ch->tx_count++;
+    FEB_CAN_Status_t status =
+        FEB_CAN_TX_SendFromISR(FEB_CAN_INSTANCE_1, frame_ids[channel_idx], FEB_CAN_ID_STD, tx_data, 8);
+    if (status == FEB_CAN_OK)
+    {
+      ch->tx_count++;
+    }
+    else
+    {
+      ch->tx_fail_count++;
+      ch->pending_tx_fail_log = true;
+    }
   }
 }
 
@@ -183,7 +194,9 @@ void FEB_CAN_PingPong_SetMode(uint8_t channel, FEB_PingPong_Mode_t mode)
     ch->tx_counter = 0;
     ch->tx_count = 0;
     ch->rx_count = 0;
+    ch->tx_fail_count = 0;
     ch->last_rx_counter = 0;
+    ch->pending_tx_fail_log = false;
     ch->mode = mode;
   }
 }
@@ -210,6 +223,13 @@ void FEB_CAN_PingPong_Tick(void)
       ch->pending_rx_log = false;
     }
 
+    /* Deferred TX failure logging (from PONG mode in RX callback) */
+    if (ch->pending_tx_fail_log)
+    {
+      LOG_W(TAG_PING, "PONG ch%d TX failed (total fails: %lu)", i + 1, (unsigned long)ch->tx_fail_count);
+      ch->pending_tx_fail_log = false;
+    }
+
     if (ch->mode == PINGPONG_MODE_PING)
     {
       /* Pack and send the counter */
@@ -221,12 +241,19 @@ void FEB_CAN_PingPong_Tick(void)
       tx_data[3] = (uint8_t)((ch->tx_counter >> 24) & 0xFF);
 
       /* Single TX attempt from ISR - no retry loop (HAL_GetTick won't advance in ISR) */
-      (void)FEB_CAN_TX_SendFromISR(FEB_CAN_INSTANCE_1, frame_ids[i], FEB_CAN_ID_STD, tx_data, 8);
+      FEB_CAN_Status_t status = FEB_CAN_TX_SendFromISR(FEB_CAN_INSTANCE_1, frame_ids[i], FEB_CAN_ID_STD, tx_data, 8);
 
-      LOG_D(TAG_PING, "TX ch%d ID:0x%02X cnt:%ld", i + 1, (unsigned int)frame_ids[i], (long)ch->tx_counter);
-
-      ch->tx_counter++;
-      ch->tx_count++;
+      if (status == FEB_CAN_OK)
+      {
+        LOG_D(TAG_PING, "TX ch%d ID:0x%02X cnt:%ld", i + 1, (unsigned int)frame_ids[i], (long)ch->tx_counter);
+        ch->tx_counter++;
+        ch->tx_count++;
+      }
+      else
+      {
+        LOG_W(TAG_PING, "TX ch%d FAIL: %s", i + 1, FEB_CAN_StatusToString(status));
+        ch->tx_fail_count++;
+      }
     }
   }
 }
@@ -247,6 +274,15 @@ uint32_t FEB_CAN_PingPong_GetRxCount(uint8_t channel)
     return 0;
   }
   return channels[channel - 1].rx_count;
+}
+
+uint32_t FEB_CAN_PingPong_GetTxFailCount(uint8_t channel)
+{
+  if (channel < 1 || channel > FEB_PINGPONG_NUM_CHANNELS)
+  {
+    return 0;
+  }
+  return channels[channel - 1].tx_fail_count;
 }
 
 int32_t FEB_CAN_PingPong_GetLastCounter(uint8_t channel)
