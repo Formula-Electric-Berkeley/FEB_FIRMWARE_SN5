@@ -44,9 +44,6 @@ file(GLOB_RECURSE LVGL_SOURCES Drivers/lvgl/src/*.c)
 # Collect LVGL HAL Sources
 file(GLOB_RECURSE LVGL_HAL_SOURCES Drivers/hal_stm_lvgl/*.c)
 
-# Collect SquareLine UI Sources
-file(GLOB_RECURSE SQUARELINE_SOURCES Drivers/SquareLine_UI/*.c)
-
 # Combine base sources
 set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES} ${LVGL_SOURCES} ${LVGL_HAL_SOURCES} ${SQUARELINE_SOURCES})
 
@@ -55,6 +52,7 @@ list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_S
 
 list(APPEND ALL_SOURCES
     Core/User/Src/FEB_UI.c
+    Core/User/Src/FEB_UI_Helpers.c
 
     # BSP
     Drivers/BSP/STM32469I-Discovery/stm32469i_discovery.c
@@ -161,9 +159,6 @@ list(APPEND BASE_INCLUDES
     # LVGL + HAL
     Drivers/lvgl
     Drivers/hal_stm_lvgl
-
-    # SquareLine UI
-    Drivers/SquareLine_UI
 
     # Fonts & Utilities
     Drivers/Utilities/Fonts

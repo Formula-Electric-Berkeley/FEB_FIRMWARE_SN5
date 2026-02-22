@@ -13,7 +13,6 @@
 #include "lvgl.h"
 #include "screen_driver.h"
 #include "touch_sensor_driver.h"
-#include "ui.h"
 
 #include "stm32f4xx_hal.h"
 

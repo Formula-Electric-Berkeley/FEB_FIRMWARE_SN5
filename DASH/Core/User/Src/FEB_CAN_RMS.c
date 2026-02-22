@@ -1,11 +1,12 @@
 /**
  ******************************************************************************
  * @file           : FEB_CAN_RMS.c
- * @brief          : CAN RMS Recieving Module Implementation
+ * @brief          : CAN RMS Receiving Module Implementation
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  */
 
+#include "FEB_CAN_RMS.h"
 #include "feb_can.h"
 #include "feb_can_lib.h"
 #include "feb_uart.h"
@@ -30,19 +31,17 @@ RMS_State_t state = {.torque = 0xFF, .direction = 0xFF, .enabled = 0xFF};
  * RX Callback Handlers
  * ============================================================================ */
 
-// clang-format: off
-//
-// FEB_CAN_RMS_COMMAND_FRAME_ID, Byte_0, Byte_1, Byte_2, Byte_3, Byte_4,   Byte_5, Byte_6, Byte_7
-// ID                            Torque========                  Direction Enabled
-//
-// clang-format: on
+// FEB_CAN_RMS_COMMAND_FRAME_ID:
+// Byte_0-1: Torque (int16_t)
+// Byte_4:   Direction
+// Byte_5:   Enabled
 
 static void rx_callback_ch1(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                             const uint8_t *data, uint8_t length, void *user_data)
 {
-  memcopy(&state.torque, &data[0], sizeof(int16_t));
-  state.torque = data[4];
-  state.torque = data[5];
+  memcpy(&state.torque, &data[0], sizeof(int16_t));
+  state.direction = data[4];
+  state.enabled = data[5];
 }
 
 /* ============================================================================
@@ -75,5 +74,5 @@ int8_t FEB_CAN_RMS_GetLastDirection(void)
 
 int8_t FEB_CAN_RMS_GetLastEnabled(void)
 {
-  return state.direction;
+  return state.enabled;
 }
