@@ -1,5 +1,9 @@
 #include "FEB_CAN_BMS.h"
 #include "feb_uart_log.h"
+#include <stdbool.h>
+
+/* Timeout for BMS CAN communication (ms) */
+#define BMS_STATE_TIMEOUT_MS 500
 
 /* Global BMS message data */
 BMS_MESSAGE_TYPE BMS_MESSAGE;
@@ -139,4 +143,20 @@ void FEB_CAN_BMS_ProcessHeartbeat(void)
     LOG_D(TAG_BMS, "Processing deferred heartbeat (state=%d, ping_ack=%d)", BMS_MESSAGE.state, BMS_MESSAGE.ping_ack);
     FEB_CAN_HEARTBEAT_Transmit();
   }
+}
+
+bool FEB_CAN_BMS_InDriveState(void)
+{
+  // Check for recent BMS communication
+  if (BMS_MESSAGE.last_rx_timestamp == 0)
+  {
+    return false; // Never received BMS data
+  }
+
+  if (HAL_GetTick() - BMS_MESSAGE.last_rx_timestamp > BMS_STATE_TIMEOUT_MS)
+  {
+    return false; // BMS communication timeout
+  }
+
+  return BMS_MESSAGE.state == FEB_SM_ST_DRIVE;
 }
