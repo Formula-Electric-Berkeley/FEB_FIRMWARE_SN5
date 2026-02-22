@@ -32,7 +32,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define GPS_CAN_STD_ID 0x26U
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -70,7 +70,7 @@ static void MX_I2C3_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_UART4_Init(void);
 /* USER CODE BEGIN PFP */
-
+static HAL_StatusTypeDef GPS_CAN_SendPayload(const uint8_t *payload, uint8_t len);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -115,6 +115,11 @@ int main(void)
   MX_TIM3_Init();
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
+  if (HAL_CAN_Start(&hcan1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
   FEB_GPS_Init(&huart4, GPS_EN_GPIO_Port, GPS_EN_Pin);
   if (FEB_GPS_Start() != HAL_OK)
   {
@@ -135,6 +140,7 @@ int main(void)
       if (FEB_GPS_GetLastFix(&gps_fix))
       {
         FEB_GPS_FixToBytes(&gps_fix, gps_can_payload);
+        (void)GPS_CAN_SendPayload(gps_can_payload, 8U);
       }
 
       size_t len = strlen(gps_line);
@@ -531,6 +537,37 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+static HAL_StatusTypeDef GPS_CAN_SendPayload(const uint8_t *payload, uint8_t len)
+{
+  CAN_TxHeaderTypeDef tx_header = {0};
+  uint32_t tx_mailbox = 0U;
+  uint8_t tx_data[8] = {0};
+
+  if ((payload == NULL) || (len == 0U))
+  {
+    return HAL_ERROR;
+  }
+
+  if (len > 8U)
+  {
+    len = 8U;
+  }
+
+  if (HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) == 0U)
+  {
+    return HAL_BUSY;
+  }
+
+  (void)memcpy(tx_data, payload, len);
+  tx_header.StdId = GPS_CAN_STD_ID;
+  tx_header.IDE = CAN_ID_STD;
+  tx_header.RTR = CAN_RTR_DATA;
+  tx_header.DLC = len;
+  tx_header.TransmitGlobalTime = DISABLE;
+
+  return HAL_CAN_AddTxMessage(&hcan1, &tx_header, tx_data, &tx_mailbox);
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   FEB_GPS_UART_RxCpltCallback(huart);
