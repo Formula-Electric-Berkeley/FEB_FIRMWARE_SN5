@@ -3,7 +3,7 @@
 #include "FEB_CAN_BMS.h"
 #include "FEB_CAN_RMS.h"
 #include "FEB_RMS_Config.h"
-#include "FEB_Debug.h"
+#include "feb_uart_log.h"
 #include "FEB_Regen.h"
 #include "main.h"
 

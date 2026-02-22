@@ -21,7 +21,6 @@ add_compile_definitions(
     USE_HAL_DRIVER
     STM32F446xx
     $<$<CONFIG:Debug>:DEBUG>
-    $<$<CONFIG:Debug>:DEBUG_ENABLE>
 )
 
 # ══════════════════════════════════════════════════════════════════════

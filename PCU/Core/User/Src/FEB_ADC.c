@@ -13,7 +13,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "FEB_ADC.h"
-#include "FEB_Debug.h"
+#include "feb_uart_log.h"
 extern UART_HandleTypeDef huart2;
 
 /* Private typedef -----------------------------------------------------------*/
@@ -187,6 +187,7 @@ ADC_StatusTypeDef FEB_ADC_Init(void)
   memset(&adc_runtime, 0, sizeof(adc_runtime));
   adc_runtime.initialized = true;
 
+  LOG_I(TAG_ADC, "ADC initialized");
   return ADC_STATUS_OK;
 }
 
@@ -205,11 +206,15 @@ ADC_StatusTypeDef FEB_ADC_Start(ADC_ModeTypeDef mode)
   /* Start DMA-based continuous conversion with proper buffer sizes */
   hal_status = HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc1_dma_buffer, 3 * ADC_DMA_BUFFER_SIZE);
   if (hal_status != HAL_OK)
+  {
+    LOG_E(TAG_ADC, "Failed to start ADC1 DMA");
     return ADC_STATUS_ERROR;
+  }
 
   hal_status = HAL_ADC_Start_DMA(&hadc2, (uint32_t *)adc2_dma_buffer, 3 * ADC_DMA_BUFFER_SIZE);
   if (hal_status != HAL_OK)
   {
+    LOG_E(TAG_ADC, "Failed to start ADC2 DMA");
     HAL_ADC_Stop_DMA(&hadc1);
     return ADC_STATUS_ERROR;
   }
@@ -217,11 +222,13 @@ ADC_StatusTypeDef FEB_ADC_Start(ADC_ModeTypeDef mode)
   hal_status = HAL_ADC_Start_DMA(&hadc3, (uint32_t *)adc3_dma_buffer, 4 * ADC_DMA_BUFFER_SIZE);
   if (hal_status != HAL_OK)
   {
+    LOG_E(TAG_ADC, "Failed to start ADC3 DMA");
     HAL_ADC_Stop_DMA(&hadc1);
     HAL_ADC_Stop_DMA(&hadc2);
     return ADC_STATUS_ERROR;
   }
 
+  LOG_I(TAG_ADC, "ADC DMA started");
   return ADC_STATUS_OK;
 }
 
@@ -460,6 +467,15 @@ ADC_StatusTypeDef FEB_ADC_GetAPPSData(APPS_DataTypeDef *apps_data)
   apps_data->short_circuit = (voltage1 < APPS_SHORT_CIRCUIT_DETECT_MV) || (voltage2 < APPS_SHORT_CIRCUIT_DETECT_MV);
   apps_data->open_circuit = (voltage1 > APPS_OPEN_CIRCUIT_DETECT_MV) || (voltage2 > APPS_OPEN_CIRCUIT_DETECT_MV);
 
+  if (apps_data->short_circuit)
+  {
+    LOG_E(TAG_ADC, "APPS short circuit detected: V1=%.0fmV V2=%.0fmV", voltage1, voltage2);
+  }
+  if (apps_data->open_circuit)
+  {
+    LOG_E(TAG_ADC, "APPS open circuit detected: V1=%.0fmV V2=%.0fmV", voltage1, voltage2);
+  }
+
   // OVERRIDE: Allow operation with single APPS sensor for testing
   // if (apps_data->short_circuit || apps_data->open_circuit)
   // {
@@ -492,6 +508,8 @@ ADC_StatusTypeDef FEB_ADC_GetAPPSData(APPS_DataTypeDef *apps_data)
   if (deviation >= APPS_PLAUSIBILITY_TOLERANCE)
   {
     apps_data->plausible = false;
+    LOG_W(TAG_ADC, "APPS implausible: deviation=%.1f%% (P1=%.1f%% P2=%.1f%%)", deviation, apps_data->position1,
+          apps_data->position2);
   }
   else
   {
@@ -780,6 +798,7 @@ bool FEB_ADC_CheckAPPSPlausibility(void)
     uint32_t elapsed = HAL_GetTick() - apps_data.implausibility_time;
     if (elapsed > APPS_IMPLAUSIBILITY_TIME_MS)
     {
+      LOG_E(TAG_ADC, "APPS implausibility fault: persisted for %lums", (unsigned long)elapsed);
       active_faults |= FAULT_APPS_IMPLAUSIBILITY;
       return false;
     }
@@ -822,6 +841,7 @@ bool FEB_ADC_CheckBrakePlausibility(void)
 
     if (adc_runtime.brake_plausibility_timer > BRAKE_PLAUSIBILITY_TIME_MS)
     {
+      LOG_E(TAG_ADC, "Brake plausibility fault: brake pressed + throttle >25%%");
       active_faults |= FAULT_BRAKE_PLAUSIBILITY;
       return false;
     }
