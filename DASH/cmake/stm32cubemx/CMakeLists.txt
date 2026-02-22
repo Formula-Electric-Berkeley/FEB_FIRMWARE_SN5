@@ -122,7 +122,9 @@ set(MX_LINK_DIRS
 set(MX_LINK_LIBS 
     STM32_Drivers
     ${TOOLCHAIN_LINK_LIBRARIES}
-    FreeRTOS	FatFs	
+    FreeRTOS
+	FatFs
+	
 )
 # Interface library for includes and symbols
 add_library(stm32cubemx INTERFACE)
