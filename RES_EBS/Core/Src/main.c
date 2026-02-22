@@ -24,6 +24,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "FEB_Main.h"
 
 /* USER CODE END Includes */
 
@@ -92,6 +93,7 @@ int main(void)
   MX_CAN2_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+  FEB_Main_Setup();
 
   /* USER CODE END 2 */
 
@@ -99,6 +101,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    FEB_Main_While();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
