@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <string.h>
+#include "FEB_GPS.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,7 +54,9 @@ UART_HandleTypeDef huart4;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
+char gps_line[FEB_GPS_LINE_MAX_LEN];
+FEB_GPS_Fix_t gps_fix;
+uint8_t gps_can_payload[8];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -112,7 +115,11 @@ int main(void)
   MX_TIM3_Init();
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
-
+  FEB_GPS_Init(&huart4, GPS_EN_GPIO_Port, GPS_EN_Pin);
+  if (FEB_GPS_Start() != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -122,6 +129,18 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    if (FEB_GPS_ReadLine(gps_line, sizeof(gps_line)))
+    {
+      (void)FEB_GPS_ProcessLine(gps_line);
+      if (FEB_GPS_GetLastFix(&gps_fix))
+      {
+        FEB_GPS_FixToBytes(&gps_fix, gps_can_payload);
+      }
+
+      size_t len = strlen(gps_line);
+      (void)HAL_UART_Transmit(&huart2, (uint8_t *)gps_line, (uint16_t)len, HAL_MAX_DELAY);
+      (void)HAL_UART_Transmit(&huart2, (uint8_t *)"\r\n", 2U, HAL_MAX_DELAY);
+    }
   }
   /* USER CODE END 3 */
 }
@@ -405,7 +424,7 @@ static void MX_UART4_Init(void)
 
   /* USER CODE END UART4_Init 1 */
   huart4.Instance = UART4;
-  huart4.Init.BaudRate = 115200;
+  huart4.Init.BaudRate = 9600;
   huart4.Init.WordLength = UART_WORDLENGTH_8B;
   huart4.Init.StopBits = UART_STOPBITS_1;
   huart4.Init.Parity = UART_PARITY_NONE;
@@ -512,6 +531,18 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  FEB_GPS_UART_RxCpltCallback(huart);
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+  if (huart == &huart4)
+  {
+    (void)FEB_GPS_Start();
+  }
+}
 
 /* USER CODE END 4 */
 
