@@ -27,6 +27,11 @@
         "--query-driver=/opt/ST/STM32CubeCLT_*/GNU-tools-for-STM32/bin/arm-none-eabi-g++",
         "--compile-commands-dir=${workspaceFolder}/build/Debug",
     ],
+    "clangd.arguments": [
+        "--query-driver=/opt/ST/STM32CubeCLT_*/GNU-tools-for-STM32/bin/arm-none-eabi-gcc",
+        "--query-driver=/opt/ST/STM32CubeCLT_*/GNU-tools-for-STM32/bin/arm-none-eabi-g++",
+        "--compile-commands-dir=${workspaceFolder}/build/Debug",
+    ],
     "cmake.configureArgs": [
         "-DCMAKE_COMMAND=cube-cmake"
     ],
