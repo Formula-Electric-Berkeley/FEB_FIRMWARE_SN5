@@ -10,7 +10,7 @@
  */
 
 #include "FEB_Regen.h"
-#include "FEB_Debug.h"
+#include "feb_uart_log.h"
 
 /* External references to RMS and BMS data */
 extern RMS_MESSAGE_TYPE RMS_MESSAGE;
@@ -34,11 +34,15 @@ float FEB_Regen_GetElecMaxRegenTorque(void)
   // Avoid division by zero at very low speeds
   if (motor_speed_rads < 1.0f)
   {
+    LOG_D(TAG_RMS, "Regen disabled: motor speed too low (%.2f rad/s)", motor_speed_rads);
     return 0.0f;
   }
 
   // Calculate max torque: P = V*I, and P = τ*ω, so τ = V*I/ω
   float max_torque = MIN(MAX_TORQUE_REGEN, (accumulator_voltage * PEAK_CURRENT_REGEN) / motor_speed_rads);
+
+  LOG_D(TAG_RMS, "Regen max torque: %.1f Nm (V=%.1fV, ω=%.1f rad/s)", max_torque, accumulator_voltage,
+        motor_speed_rads);
 
   return max_torque;
 }
@@ -114,7 +118,13 @@ float FEB_Regen_FilterTemp(float unfiltered_regen_torque)
   // No regen if coefficient goes negative (over temp)
   if (k_temp < 0.0f)
   {
+    LOG_W(TAG_RMS, "Regen disabled: cell temp %.1fC exceeds limit", hottest_cell_temp_C);
     return 0.0f;
+  }
+
+  if (k_temp < 0.9f)
+  {
+    LOG_D(TAG_RMS, "Regen temp limited: k=%.2f at %.1fC", k_temp, hottest_cell_temp_C);
   }
 
   return k_temp * unfiltered_regen_torque;
@@ -166,5 +176,10 @@ bool FEB_Regen_IsAllowedByBMS(void)
 
   // Allow regen in DRIVE or DRIVE_REGEN states
   // TODO: Define FEB_SM_ST_DRIVE_REGEN state in BMS state machine
-  return (current_state == FEB_SM_ST_DRIVE);
+  bool allowed = (current_state == FEB_SM_ST_DRIVE);
+  if (!allowed)
+  {
+    LOG_D(TAG_RMS, "Regen not allowed: BMS state=%d", current_state);
+  }
+  return allowed;
 }
