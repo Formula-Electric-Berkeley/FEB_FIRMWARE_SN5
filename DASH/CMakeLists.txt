@@ -45,7 +45,7 @@ file(GLOB_RECURSE LVGL_SOURCES Drivers/lvgl/src/*.c)
 file(GLOB_RECURSE LVGL_HAL_SOURCES Drivers/hal_stm_lvgl/*.c)
 
 # Combine base sources
-set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES} ${LVGL_SOURCES} ${LVGL_HAL_SOURCES} ${SQUARELINE_SOURCES})
+set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES} ${LVGL_SOURCES} ${LVGL_HAL_SOURCES})
 
 # CAN library generated source (from common submodule)
 list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can.c")
@@ -102,9 +102,10 @@ set(BASE_INCLUDES
     Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
     Drivers/CMSIS/Device/ST/STM32F4xx/Include
     Drivers/CMSIS/Include
+    Drivers/lvgl
 )
 
-# # Auto-discover Core/User/Inc if it exists
+# Auto-discover Core/User/Inc if it exists
 # if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
 #     list(APPEND BASE_INCLUDES Core/User/Inc)
 # endif()

@@ -24,9 +24,9 @@ extern UART_HandleTypeDef huart3;
 
 // const char* HV_STATUS_LABELS[] = {"HV OFF", "HV ON"};
 // const int HV_STATUS_COLORS[] = {0xFF0000, 0xFF8A00};
-uint8_t iter;
+// uint8_t iter;
 
-#define NUM_SOC_POINTS 21
+// #define NUM_SOC_POINTS 21
 
 // typedef struct {
 //     uint8_t soc;
@@ -67,7 +67,10 @@ void FEB_UI_Init(void)
   // Critical section only for initialization that truly requires it
   // LVGL operations don't need critical sections - they're designed to be thread-safe
 
-  lv_init();            // LVGL core
+  lv_init(); // LVGL core
+
+  lv_tick_set_cb(HAL_GetTick);
+
   screen_driver_init(); // LCD + Framebuffer
 
   ui_init();
@@ -85,7 +88,7 @@ void StartDisplayTask(void *argument)
 
   for (;;)
   {
-    FEB_UI_Update();
+    // FEB_UI_Update();
 
     if (lv_tick_get() - last_blink >= 1000)
     {

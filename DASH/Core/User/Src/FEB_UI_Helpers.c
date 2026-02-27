@@ -6,11 +6,6 @@
 #include "FEB_UI_Helpers.h"
 #include "FEB_CAN_PCU.h"
 #include "lvgl.h"
-#include "src/core/lv_obj_pos.h"
-#include "src/core/lv_obj_style.h"
-#include "src/draw/lv_draw_rect.h"
-#include "src/misc/lv_area.h"
-#include <stdio.h>
 #include <string.h>
 
 #define UI_DOT_COUNT 21
@@ -77,14 +72,14 @@ void ui_init(void)
   // ── "FORMULA ELECTRIC" title ──────────────────────────────────────
   ui_Title = lv_label_create(ui_Screen1);
   lv_label_set_text(ui_Title, "FORMULA ELECTRIC");
-  lv_obj_set_style_text_font(ui_Title, &lv_font_montserrat_48, 0);
+  // lv_obj_set_style_text_font(ui_Title, &lv_font_montserrat_48, 0);
   lv_obj_set_style_text_color(ui_Title, lv_color_hex(0xFDB515), 0); // Cal Gold
   lv_obj_align(ui_Title, LV_ALIGN_TOP_MID, 0, 20);
 
   // ── "BERKELEY" subheader ──────────────────────────────────────────
   ui_Berkeley = lv_label_create(ui_Screen1);
-  lv_label_set_text(ui_Berkeley, "BERKELEY");
-  lv_obj_set_style_text_font(ui_Berkeley, &lv_font_montserrat_24, 0);
+  lv_label_set_text(ui_Berkeley, "AT BERKELEY");
+  // lv_obj_set_style_text_font(ui_Berkeley, &lv_font_montserrat_24, 0);
   lv_obj_set_style_text_color(ui_Berkeley, lv_color_hex(0x4A90D9), 0); // electric blue
   lv_obj_align(ui_Berkeley, LV_ALIGN_TOP_MID, 0, 80);
 
@@ -98,21 +93,21 @@ void ui_init(void)
   // ── "TORQUE" caption ─────────────────────────────────────────────
   ui_TorqueLabel = lv_label_create(ui_Screen1);
   lv_label_set_text(ui_TorqueLabel, "TORQUE");
-  lv_obj_set_style_text_font(ui_TorqueLabel, &lv_font_montserrat_24, 0);
+  // lv_obj_set_style_text_font(ui_TorqueLabel, &lv_font_montserrat_24, 0);
   lv_obj_set_style_text_color(ui_TorqueLabel, lv_color_hex(0xAAAAAA), 0); // grey
   lv_obj_align(ui_TorqueLabel, LV_ALIGN_CENTER, 0, -40);
 
   // ── Live torque value ─────────────────────────────────────────────
   ui_TorqueValue = lv_label_create(ui_Screen1);
   lv_label_set_text(ui_TorqueValue, "---");
-  lv_obj_set_style_text_font(ui_TorqueValue, &lv_font_montserrat_48, 0);
+  // lv_obj_set_style_text_font(ui_TorqueValue, &lv_font_montserrat_48, 0);
   lv_obj_set_style_text_color(ui_TorqueValue, lv_color_hex(0xFFFFFF), 0);
   lv_obj_align(ui_TorqueValue, LV_ALIGN_CENTER, 0, 10);
 
   // ── "Nm" unit label ───────────────────────────────────────────────
   ui_TorqueUnit = lv_label_create(ui_Screen1);
   lv_label_set_text(ui_TorqueUnit, "Nm");
-  lv_obj_set_style_text_font(ui_TorqueUnit, &lv_font_montserrat_24, 0);
+  // lv_obj_set_style_text_font(ui_TorqueUnit, &lv_font_montserrat_24, 0);
   lv_obj_set_style_text_color(ui_TorqueUnit, lv_color_hex(0x4A90D9), 0);
   lv_obj_align(ui_TorqueUnit, LV_ALIGN_CENTER, 0, 60);
 
@@ -123,7 +118,13 @@ void ui_init(void)
 // ── ui_update ─────────────────────────────────────────────────────────
 void ui_update(void)
 {
-  ui_set_torque(FEB_CAN_PCU_GetLastTorque());
+  // ui_set_torque(FEB_CAN_PCU_GetLastTorque());
+  static int16_t fake_torque = 0;
+  fake_torque += 5;
+  if (fake_torque > 300)
+    fake_torque = -100;
+
+  ui_set_torque(fake_torque);
   lv_timer_handler();
 }
 
