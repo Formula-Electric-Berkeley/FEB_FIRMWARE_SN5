@@ -127,9 +127,8 @@ static inline void FEB_spi_write_read(uint8_t *tx_data, uint16_t tx_len, uint8_t
   {
     // Fallback for unexpectedly large transfers (should not happen in normal BMS op)
     // Note: This split method is technically incorrect for some SPI devices but avoids stack overflow.
-    HAL_StatusTypeDef tx_status = HAL_SPI_Transmit(FEB_ACTIVE_SPI, tx_data, tx_len, FEB_SPI_TIMEOUT_MS);
-    HAL_StatusTypeDef rx_status = HAL_SPI_Receive(FEB_ACTIVE_SPI, rx_data, rx_len, FEB_SPI_TIMEOUT_MS);
-    printf("[SPI] HAL TX=%d RX=%d (fallback)\r\n", tx_status, rx_status);
+    (void)HAL_SPI_Transmit(FEB_ACTIVE_SPI, tx_data, tx_len, FEB_SPI_TIMEOUT_MS);
+    (void)HAL_SPI_Receive(FEB_ACTIVE_SPI, rx_data, rx_len, FEB_SPI_TIMEOUT_MS);
     return;
   }
 
@@ -150,9 +149,7 @@ static inline void FEB_spi_write_read(uint8_t *tx_data, uint16_t tx_len, uint8_t
 
   // Perform single full-duplex transaction
   // This sends the command while ignoring RX, then sends dummy while capturing RX
-  HAL_StatusTypeDef hal_status =
-      HAL_SPI_TransmitReceive(FEB_ACTIVE_SPI, tx_buf, rx_buf, tx_len + rx_len, FEB_SPI_TIMEOUT_MS);
-  printf("[SPI] HAL status=%d\r\n", hal_status);
+  (void)HAL_SPI_TransmitReceive(FEB_ACTIVE_SPI, tx_buf, rx_buf, tx_len + rx_len, FEB_SPI_TIMEOUT_MS);
 
   // Extract RX data: [Garbage during CMD] [Actual Data]
   for (int i = 0; i < rx_len; i++)

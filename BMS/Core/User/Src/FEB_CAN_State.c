@@ -12,17 +12,51 @@
 /* CAN ready flag - prevents transmission before CAN is initialized */
 static volatile bool can_ready = false;
 
+/* Current BMS state - volatile for ISR/task access */
+static volatile BMS_State_t current_state = BMS_STATE_BOOT;
+
 /* BMS state message data */
 static struct feb_can_bms_state_t bms_state_msg;
+
+/* State name lookup table */
+static const char *state_names[] = {
+    "BOOT",  "ORIGIN", "LV_POWER", "BUS_HEALTH_CHECK", "PRECHARGE", "ENERGIZED",
+    "DRIVE", "FAULT",  "CHARGING", "BATTERY_FREE",     "BALANCE",
+};
 
 void FEB_CAN_State_Init(void)
 {
   memset(&bms_state_msg, 0, sizeof(bms_state_msg));
+  current_state = BMS_STATE_BOOT;
 }
 
 void FEB_CAN_State_SetReady(void)
 {
   can_ready = true;
+}
+
+BMS_State_t FEB_CAN_State_GetState(void)
+{
+  return current_state;
+}
+
+int FEB_CAN_State_SetState(BMS_State_t state)
+{
+  if (state >= BMS_STATE_COUNT)
+  {
+    return -1;
+  }
+  current_state = state;
+  return 0;
+}
+
+const char *FEB_CAN_State_GetStateName(BMS_State_t state)
+{
+  if (state >= BMS_STATE_COUNT)
+  {
+    return "UNKNOWN";
+  }
+  return state_names[state];
 }
 
 void FEB_CAN_State_Tick(void)
@@ -41,11 +75,8 @@ void FEB_CAN_State_Tick(void)
   {
     state_divider = 0;
 
-    /* TODO: Wire to actual BMS state when state machine is implemented */
-    /* bms_state_msg.bms_state = current_state; */
-    /* bms_state_msg.relay_state = relay_status; */
-    /* bms_state_msg.gpio_sense = gpio_reading; */
-    /* bms_state_msg.ping_lv_nodes = ping_value; */
+    /* Update message with current state */
+    bms_state_msg.bms_state = (uint8_t)current_state;
 
     /* Pack and send */
     uint8_t tx_data[FEB_CAN_BMS_STATE_LENGTH];

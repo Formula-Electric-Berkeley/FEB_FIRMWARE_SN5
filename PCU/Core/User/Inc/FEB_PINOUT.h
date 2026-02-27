@@ -129,6 +129,9 @@ extern "C"
 /* Default Calibration Values - Used until runtime calibration is performed */
 /* These are DEFAULTS only - actual values are stored in calibration structs */
 
+/* Single APPS Sensor Mode - for testing only, not FSAE compliant */
+#define SINGLE_APPS_MODE 1 /* Set to 1 to use only APPS1 sensor */
+
 /* Accelerator Pedal Default Calibration (APPS) */
 /* Calibrated values based on actual measurements with safety margin */
 #define APPS1_DEFAULT_MIN_VOLTAGE_MV 2500 /* Calibrated min for APPS1 (0% position) - measured: 2500 mV */

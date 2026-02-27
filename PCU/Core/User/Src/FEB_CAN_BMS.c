@@ -74,7 +74,7 @@ void FEB_CAN_BMS_Init(void)
 
   BMS_MESSAGE.temperature = 0;
   BMS_MESSAGE.voltage = 0;
-  BMS_MESSAGE.state = FEB_SM_ST_DEFAULT;
+  BMS_MESSAGE.state = FEB_SM_ST_BOOT;
   BMS_MESSAGE.ping_ack = FEB_HB_NULL;
   BMS_MESSAGE.max_temperature = 0.0f;
   BMS_MESSAGE.accumulator_voltage = 0.0f;
@@ -106,7 +106,7 @@ static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
     BMS_MESSAGE.ping_ack = (data[0] & 0xE0) >> 5;
 
     /* Defer heartbeat TX to main loop - do NOT transmit from ISR */
-    if (BMS_MESSAGE.state == FEB_SM_ST_HEALTH_CHECK || BMS_MESSAGE.ping_ack == FEB_HB_PCU)
+    if (BMS_MESSAGE.state == FEB_SM_ST_BUS_HEALTH_CHECK || BMS_MESSAGE.ping_ack == FEB_HB_PCU)
     {
       heartbeat_pending = true;
     }

@@ -59,10 +59,9 @@ void StartTPSTask(void *argument)
     /* Convert to physical units */
     /* Current: raw * current_LSB (in Amps) */
     /* Voltage: raw * 1.25mV/LSB = raw * 0.00125 V */
-    float current_A = (float)((int16_t)current_raw) * BMS_TPS_CURRENT_LSB;
-    float voltage_V = (float)voltage_raw * TPS2482_CONV_VBUS;
-
-    LOG_D(TAG_TPS, "V=%.2fV I=%.3fA", voltage_V, current_A);
+    (void)((float)((int16_t)current_raw) * BMS_TPS_CURRENT_LSB);
+    (void)((float)voltage_raw * TPS2482_CONV_VBUS);
+    // LOG_D(TAG_TPS, "V=%.2fV I=%.3fA", voltage_V, current_A);
 
     osDelay(pdMS_TO_TICKS(1000)); /* 1 Hz polling */
   }

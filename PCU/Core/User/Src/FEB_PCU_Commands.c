@@ -76,32 +76,38 @@ static void cmd_status(void)
   const char *state_str;
   switch (bms_state)
   {
-  case FEB_SM_ST_OFF:
-    state_str = "OFF";
+  case FEB_SM_ST_BOOT:
+    state_str = "BOOT";
     break;
-  case FEB_SM_ST_IDLE:
-    state_str = "IDLE";
+  case FEB_SM_ST_ORIGIN:
+    state_str = "ORIGIN";
+    break;
+  case FEB_SM_ST_LV_POWER:
+    state_str = "LV_POWER";
+    break;
+  case FEB_SM_ST_BUS_HEALTH_CHECK:
+    state_str = "HEALTH_CHECK";
     break;
   case FEB_SM_ST_PRECHARGE:
     state_str = "PRECHARGE";
     break;
+  case FEB_SM_ST_ENERGIZED:
+    state_str = "ENERGIZED";
+    break;
   case FEB_SM_ST_DRIVE:
     state_str = "DRIVE";
     break;
-  case FEB_SM_ST_CHARGE:
-    state_str = "CHARGE";
+  case FEB_SM_ST_FAULT:
+    state_str = "FAULT";
     break;
-  case FEB_SM_ST_FAULT_BMS:
-    state_str = "FAULT_BMS";
+  case FEB_SM_ST_CHARGING:
+    state_str = "CHARGING";
     break;
-  case FEB_SM_ST_FAULT_BSPD:
-    state_str = "FAULT_BSPD";
+  case FEB_SM_ST_BATTERY_FREE:
+    state_str = "BATTERY_FREE";
     break;
-  case FEB_SM_ST_FAULT_IMD:
-    state_str = "FAULT_IMD";
-    break;
-  case FEB_SM_ST_HEALTH_CHECK:
-    state_str = "HEALTH_CHECK";
+  case FEB_SM_ST_BALANCE:
+    state_str = "BALANCE";
     break;
   default:
     state_str = "UNKNOWN";
@@ -202,32 +208,38 @@ static void cmd_bms(void)
   FEB_Console_Printf("State: ");
   switch (bms_state)
   {
-  case FEB_SM_ST_OFF:
-    FEB_Console_Printf("OFF\r\n");
+  case FEB_SM_ST_BOOT:
+    FEB_Console_Printf("BOOT\r\n");
     break;
-  case FEB_SM_ST_IDLE:
-    FEB_Console_Printf("IDLE\r\n");
+  case FEB_SM_ST_ORIGIN:
+    FEB_Console_Printf("ORIGIN\r\n");
+    break;
+  case FEB_SM_ST_LV_POWER:
+    FEB_Console_Printf("LV_POWER\r\n");
+    break;
+  case FEB_SM_ST_BUS_HEALTH_CHECK:
+    FEB_Console_Printf("HEALTH_CHECK\r\n");
     break;
   case FEB_SM_ST_PRECHARGE:
     FEB_Console_Printf("PRECHARGE\r\n");
     break;
+  case FEB_SM_ST_ENERGIZED:
+    FEB_Console_Printf("ENERGIZED\r\n");
+    break;
   case FEB_SM_ST_DRIVE:
     FEB_Console_Printf("DRIVE\r\n");
     break;
-  case FEB_SM_ST_CHARGE:
-    FEB_Console_Printf("CHARGE\r\n");
+  case FEB_SM_ST_FAULT:
+    FEB_Console_Printf("FAULT\r\n");
     break;
-  case FEB_SM_ST_FAULT_BMS:
-    FEB_Console_Printf("FAULT_BMS\r\n");
+  case FEB_SM_ST_CHARGING:
+    FEB_Console_Printf("CHARGING\r\n");
     break;
-  case FEB_SM_ST_FAULT_BSPD:
-    FEB_Console_Printf("FAULT_BSPD\r\n");
+  case FEB_SM_ST_BATTERY_FREE:
+    FEB_Console_Printf("BATTERY_FREE\r\n");
     break;
-  case FEB_SM_ST_FAULT_IMD:
-    FEB_Console_Printf("FAULT_IMD\r\n");
-    break;
-  case FEB_SM_ST_HEALTH_CHECK:
-    FEB_Console_Printf("HEALTH_CHECK\r\n");
+  case FEB_SM_ST_BALANCE:
+    FEB_Console_Printf("BALANCE\r\n");
     break;
   default:
     FEB_Console_Printf("UNKNOWN (%d)\r\n", bms_state);

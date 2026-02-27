@@ -21,11 +21,13 @@
 /* External mutex from freertos.c */
 extern osMutexId_t ADBMSMutexHandle;
 
-/* Debug macros using UART logging */
+/* Debug macros using UART logging - commented out to reduce log spam */
 #define TAG_VOLTAGE "[VOLT]"
 #define TAG_TEMP "[TEMP]"
-#define DEBUG_VOLTAGE_PRINT(...) LOG_D(TAG_VOLTAGE, __VA_ARGS__)
-#define DEBUG_TEMP_PRINT(...) LOG_D(TAG_TEMP, __VA_ARGS__)
+// #define DEBUG_VOLTAGE_PRINT(...) LOG_D(TAG_VOLTAGE, __VA_ARGS__)
+// #define DEBUG_TEMP_PRINT(...) LOG_D(TAG_TEMP, __VA_ARGS__)
+#define DEBUG_VOLTAGE_PRINT(...) ((void)0)
+#define DEBUG_TEMP_PRINT(...) ((void)0)
 
 // ********************************** Variables **********************************
 
@@ -571,42 +573,42 @@ void FEB_ADBMS_Print_Accumulator(void)
 {
   osMutexAcquire(ADBMSMutexHandle, osWaitForever);
 
-  printf("\r\n========== ACCUMULATOR STATUS ==========\r\n");
-  printf("Pack Total Voltage: %.3fV\r\n", FEB_ACC.total_voltage_V);
-  printf("Pack Min Voltage: %.3fV\r\n", FEB_ACC.pack_min_voltage_V);
-  printf("Pack Max Voltage: %.3fV\r\n", FEB_ACC.pack_max_voltage_V);
-  printf("Pack Min Temp: %.1f°C\r\n", FEB_ACC.pack_min_temp);
-  printf("Pack Max Temp: %.1f°C\r\n", FEB_ACC.pack_max_temp);
-  printf("Pack Avg Temp: %.1f°C\r\n", FEB_ACC.average_pack_temp);
-  printf("Error Type: 0x%02X\r\n", FEB_ACC.error_type);
+  // printf("\r\n========== ACCUMULATOR STATUS ==========\r\n");
+  // printf("Pack Total Voltage: %.3fV\r\n", FEB_ACC.total_voltage_V);
+  // printf("Pack Min Voltage: %.3fV\r\n", FEB_ACC.pack_min_voltage_V);
+  // printf("Pack Max Voltage: %.3fV\r\n", FEB_ACC.pack_max_voltage_V);
+  // printf("Pack Min Temp: %.1f°C\r\n", FEB_ACC.pack_min_temp);
+  // printf("Pack Max Temp: %.1f°C\r\n", FEB_ACC.pack_max_temp);
+  // printf("Pack Avg Temp: %.1f°C\r\n", FEB_ACC.average_pack_temp);
+  // printf("Error Type: 0x%02X\r\n", FEB_ACC.error_type);
 
-  for (uint8_t bank = 0; bank < FEB_NBANKS; bank++)
-  {
-    printf("\r\n--- Bank %d ---\r\n", bank);
-    printf("  Total Voltage: %.3fV\r\n", FEB_ACC.banks[bank].total_voltage_V);
-    printf("  Min Voltage: %.3fV, Max Voltage: %.3fV\r\n", FEB_ACC.banks[bank].min_voltage_V,
-           FEB_ACC.banks[bank].max_voltage_V);
-    printf("  Avg Temp: %.1f°C, Min Temp: %.1f°C, Max Temp: %.1f°C\r\n", FEB_ACC.banks[bank].avg_temp_C,
-           FEB_ACC.banks[bank].min_temp_C, FEB_ACC.banks[bank].max_temp_C);
-    printf("  Volt Reads: %d, Temp Reads: %d, Bad Volt Reads: %d\r\n", FEB_ACC.banks[bank].voltRead,
-           FEB_ACC.banks[bank].tempRead, FEB_ACC.banks[bank].badReadV);
+  // for (uint8_t bank = 0; bank < FEB_NBANKS; bank++)
+  // {
+  //   printf("\r\n--- Bank %d ---\r\n", bank);
+  //   printf("  Total Voltage: %.3fV\r\n", FEB_ACC.banks[bank].total_voltage_V);
+  //   printf("  Min Voltage: %.3fV, Max Voltage: %.3fV\r\n", FEB_ACC.banks[bank].min_voltage_V,
+  //          FEB_ACC.banks[bank].max_voltage_V);
+  //   printf("  Avg Temp: %.1f°C, Min Temp: %.1f°C, Max Temp: %.1f°C\r\n", FEB_ACC.banks[bank].avg_temp_C,
+  //          FEB_ACC.banks[bank].min_temp_C, FEB_ACC.banks[bank].max_temp_C);
+  //   printf("  Volt Reads: %d, Temp Reads: %d, Bad Volt Reads: %d\r\n", FEB_ACC.banks[bank].voltRead,
+  //          FEB_ACC.banks[bank].tempRead, FEB_ACC.banks[bank].badReadV);
 
-    printf("  Cell Voltages: ");
-    for (uint16_t cell = 0; cell < FEB_NUM_CELL_PER_BANK; cell++)
-    {
-      printf("%.3f ", FEB_ACC.banks[bank].cells[cell].voltage_V);
-    }
-    printf("\r\n");
+  //   printf("  Cell Voltages: ");
+  //   for (uint16_t cell = 0; cell < FEB_NUM_CELL_PER_BANK; cell++)
+  //   {
+  //     printf("%.3f ", FEB_ACC.banks[bank].cells[cell].voltage_V);
+  //   }
+  //   printf("\r\n");
 
-    printf("  Cell Temps: ");
-    for (uint16_t cell = 0; cell < FEB_NUM_TEMP_SENSORS; cell++)
-    {
-      printf("%.1f ", FEB_ACC.banks[bank].temp_sensor_readings_V[cell]);
-    }
-    printf("\r\n");
-  }
+  //   printf("  Cell Temps: ");
+  //   for (uint16_t cell = 0; cell < FEB_NUM_TEMP_SENSORS; cell++)
+  //   {
+  //     printf("%.1f ", FEB_ACC.banks[bank].temp_sensor_readings_V[cell]);
+  //   }
+  //   printf("\r\n");
+  // }
 
-  printf("==========================================\r\n");
+  // printf("==========================================\r\n");
 
   osMutexRelease(ADBMSMutexHandle);
 }

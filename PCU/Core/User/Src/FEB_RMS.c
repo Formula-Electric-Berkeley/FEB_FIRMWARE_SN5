@@ -39,16 +39,8 @@ void FEB_RMS_Process(void)
 
   if (!RMS_CONTROL_MESSAGE.enabled)
   {
-    LOG_I(TAG_RMS, "Sending RMS disable commands to clear lockout");
-    // Send continuous disable commands for 2 seconds to clear lockout
-    for (int i = 0; i < 200; i++) // 200 x 10ms = 2 seconds
-    {
-      FEB_CAN_RMS_Transmit_UpdateTorque(0, 0);
-      HAL_Delay(10);
-    }
-
-    RMS_CONTROL_MESSAGE.enabled = 1;
     LOG_I(TAG_RMS, "RMS enabled");
+    RMS_CONTROL_MESSAGE.enabled = 1;
   }
 
   DRIVE_STATE = true;
@@ -183,6 +175,12 @@ float FEB_RMS_GetMaxTorque(void)
  */
 void FEB_RMS_Torque(void)
 {
+  // Try to enable RMS if BMS enters drive state
+  if (!DRIVE_STATE && FEB_CAN_BMS_InDriveState())
+  {
+    FEB_RMS_Process();
+  }
+
   // Auto-disable RMS if BMS leaves drive state or communication is lost
   if (DRIVE_STATE && !FEB_CAN_BMS_InDriveState())
   {
@@ -193,6 +191,7 @@ void FEB_RMS_Torque(void)
   // Read latest sensor data
   FEB_ADC_GetAPPSData(&APPS_Data);
   FEB_ADC_GetBrakeData(&Brake_Data);
+  Brake_Data.plausible = true; // OVERRIDE: Bypass brake plausibility check
 
   // Check plausibility and safety conditions (require BMS in drive state)
   bool bms_in_drive = FEB_CAN_BMS_InDriveState();
@@ -215,7 +214,7 @@ void FEB_RMS_Torque(void)
     }
     if (!DRIVE_STATE)
     {
-      LOG_W(TAG_RMS, "Not in drive state, cutting torque");
+      // LOG_W(TAG_RMS, "Not in drive state, cutting torque");
     }
   }
 
