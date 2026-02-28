@@ -37,7 +37,7 @@ void ui_set_torque(int16_t torque)
 
   for (int i = 0; i < UI_DOT_COUNT; i++)
   {
-    bool filled = i <= (150 * 21 / MAX_TORQUE);
+    bool filled = i <= (torque * 21 / MAX_TORQUE);
     if (i < 12)
     {
       lv_obj_set_style_bg_color(ui_TorqueCircles[i], filled ? lv_color_hex(0x00FF00) : lv_color_hex(0x004D00),
@@ -83,7 +83,7 @@ void ui_init(void)
 
   // ── "BERKELEY" subheader ──────────────────────────────────────────
   ui_Berkeley = lv_label_create(ui_Screen1);
-  lv_label_set_text(ui_Berkeley, "BERKELEY");
+  lv_label_set_text(ui_Berkeley, "AT BERKELEY");
   lv_obj_set_style_text_font(ui_Berkeley, &lv_font_montserrat_24, 0);
   lv_obj_set_style_text_color(ui_Berkeley, lv_color_hex(0x4A90D9), 0); // electric blue
   lv_obj_align(ui_Berkeley, LV_ALIGN_TOP_MID, 0, 80);
@@ -121,9 +121,15 @@ void ui_init(void)
 }
 
 // ── ui_update ─────────────────────────────────────────────────────────
+static int16_t fake_torque = 0;
 void ui_update(void)
 {
-  ui_set_torque(FEB_CAN_PCU_GetLastTorque());
+  fake_torque += 11;
+  if (fake_torque > 300)
+    fake_torque = -100;
+
+  ui_set_torque(fake_torque);
+  // ui_set_torque(FEB_CAN_PCU_GetLastTorque());
   lv_timer_handler();
 }
 

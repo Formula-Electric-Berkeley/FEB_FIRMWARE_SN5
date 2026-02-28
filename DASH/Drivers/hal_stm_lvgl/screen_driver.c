@@ -30,6 +30,7 @@ extern DMA2D_HandleTypeDef hdma2d;
  * Global variables
  */
 lv_disp_drv_t lv_display_driver;
+__attribute__((section(".framebuffer"))) lv_color_t screen_buffer[FRAMEBUFFER_SIZE];
 __attribute__((section(".framebuffer"))) lv_color_t framebuffer_1[FRAMEBUFFER_SIZE];
 __attribute__((section(".framebuffer"))) lv_color_t framebuffer_2[FRAMEBUFFER_SIZE];
 
@@ -52,7 +53,7 @@ void screen_driver_init(void)
     BSP_LCD_Init();
 
     /* Initialize framebuffer_1 as the LTDC layer */
-    BSP_LCD_LayerDefaultInit(0, (uint32_t)framebuffer_1);
+    BSP_LCD_LayerDefaultInit(0, (uint32_t)screen_buffer);
     BSP_LCD_SelectLayer(0);
     BSP_LCD_DisplayOn();
 
@@ -65,7 +66,7 @@ void screen_driver_init(void)
     layer_cfg.WindowY1 = LCD_SCREEN_HEIGHT;  // 480
 
     layer_cfg.PixelFormat    = LTDC_PIXEL_FORMAT_RGB565;
-    layer_cfg.FBStartAdress  = (uint32_t)framebuffer_1;
+    layer_cfg.FBStartAdress  = (uint32_t)screen_buffer;
 
     /* Stride defined implicitly by width and pixel format */
     layer_cfg.Alpha = 255;
@@ -85,13 +86,13 @@ void screen_driver_init(void)
 
     /* ---- LVGL init ---- */
     static lv_disp_draw_buf_t draw_buf;
-    lv_disp_draw_buf_init(&draw_buf, framebuffer_1, framebuffer_2, FRAMEBUFFER_SIZE);
+    lv_disp_draw_buf_init(&draw_buf, framebuffer_1, NULL, FRAMEBUFFER_SIZE);
 
     lv_disp_drv_init(&lv_display_driver);
     lv_display_driver.hor_res = LCD_SCREEN_WIDTH;
     lv_display_driver.ver_res = LCD_SCREEN_HEIGHT;
     lv_display_driver.draw_buf = &draw_buf;
-    lv_display_driver.full_refresh = true;
+    lv_display_driver.full_refresh = false;
     lv_display_driver.flush_cb = my_stm32_flush_cb;
     lv_disp_drv_register(&lv_display_driver);
 }
@@ -99,14 +100,11 @@ void screen_driver_init(void)
 
 
 void my_stm32_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p) {
-    /* Use the active framebuffer that LTDC is displaying */
-    uint16_t *fb = (uint16_t *)framebuffer_1;
-
     /* Copy the LVGL draw area into the framebuffer */
     for(int y = area->y1; y <= area->y2; y++) {
         uint32_t fb_index = y * LCD_SCREEN_WIDTH + area->x1;
         uint32_t copy_pixels = (area->x2 - area->x1 + 1);
-        memcpy(&fb[fb_index], color_p, copy_pixels * sizeof(lv_color_t));
+        memcpy(&screen_buffer[fb_index], color_p, copy_pixels * sizeof(lv_color_t));
         color_p += copy_pixels;
     }
 
@@ -134,10 +132,10 @@ void stm32_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *
 
 	// Determine source and destination of transfer
 	dma_xfer_src = (uint16_t *)color_p;
-	if(color_p == framebuffer_1){
-		dma_xfer_dst = (uint16_t *)framebuffer_2;
-	}else{
+	if(color_p == screen_buffer){
 		dma_xfer_dst = (uint16_t *)framebuffer_1;
+	}else{
+		dma_xfer_dst = (uint16_t *)screen_buffer;
 	}
 
 	for(size_t i = 0; i < disp->inv_p; i++){
