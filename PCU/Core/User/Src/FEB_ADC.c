@@ -469,11 +469,11 @@ ADC_StatusTypeDef FEB_ADC_GetAPPSData(APPS_DataTypeDef *apps_data)
 
   if (apps_data->short_circuit)
   {
-    LOG_E(TAG_ADC, "APPS short circuit detected: V1=%.0fmV V2=%.0fmV", voltage1, voltage2);
+    // LOG_E(TAG_ADC, "APPS short circuit detected: V1=%.0fmV V2=%.0fmV", voltage1, voltage2);
   }
   if (apps_data->open_circuit)
   {
-    LOG_E(TAG_ADC, "APPS open circuit detected: V1=%.0fmV V2=%.0fmV", voltage1, voltage2);
+    // LOG_E(TAG_ADC, "APPS open circuit detected: V1=%.0fmV V2=%.0fmV", voltage1, voltage2);
   }
 
   // OVERRIDE: Allow operation with single APPS sensor for testing
@@ -500,6 +500,12 @@ ADC_StatusTypeDef FEB_ADC_GetAPPSData(APPS_DataTypeDef *apps_data)
   apps_data->position1 = FEB_ADC_ApplyDeadzone(apps_data->position1, APPS_DEADZONE_PERCENT);
   apps_data->position2 = FEB_ADC_ApplyDeadzone(apps_data->position2, APPS_DEADZONE_PERCENT);
 
+#if SINGLE_APPS_MODE
+  /* Single sensor mode: use APPS1 only, bypass dual-sensor plausibility check */
+  apps_data->position2 = apps_data->position1;
+  apps_data->acceleration = apps_data->position1;
+  apps_data->plausible = true;
+#else
   /* Calculate average */
   apps_data->acceleration = (apps_data->position1 + apps_data->position2) / 2.0f;
 
@@ -515,6 +521,7 @@ ADC_StatusTypeDef FEB_ADC_GetAPPSData(APPS_DataTypeDef *apps_data)
   {
     apps_data->plausible = true;
   }
+#endif
 
   if (!apps_data->plausible)
   {

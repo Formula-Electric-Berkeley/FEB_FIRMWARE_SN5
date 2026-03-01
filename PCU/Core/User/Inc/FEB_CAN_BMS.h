@@ -6,27 +6,24 @@
 #include "feb_can_lib.h"
 #include "feb_can.h"
 
-// BMS States
+// BMS States - values must match BMS_State_t in BMS/Core/User/Inc/FEB_CAN_State.h
 typedef enum
 {
-  FEB_SM_ST_OFF = 0,
-  FEB_SM_ST_IDLE,
-  FEB_SM_ST_BOOT,
-  FEB_SM_ST_LV,
-  FEB_SM_ST_HEALTH_CHECK,
-  FEB_SM_ST_PRECHARGE,
-  FEB_SM_ST_ENERGIZED,
-  FEB_SM_ST_DRIVE,
-  FEB_SM_ST_FREE,
-  FEB_SM_ST_CHARGER_PRECHARGE,
-  FEB_SM_ST_CHARGE,
-  FEB_SM_ST_CHARGING,
-  FEB_SM_ST_BALANCE,
-  FEB_SM_ST_FAULT_BMS,
-  FEB_SM_ST_FAULT_BSPD,
-  FEB_SM_ST_FAULT_IMD,
-  FEB_SM_ST_FAULT_CHARGING,
-  FEB_SM_ST_DEFAULT
+  FEB_SM_ST_BOOT = 0,
+  FEB_SM_ST_LV_POWER,          // 1 - LV in SN4
+  FEB_SM_ST_BUS_HEALTH_CHECK,  // 2 - HEALTH_CHECK in SN4
+  FEB_SM_ST_PRECHARGE,         // 3
+  FEB_SM_ST_ENERGIZED,         // 4
+  FEB_SM_ST_DRIVE,             // 5
+  FEB_SM_ST_BATTERY_FREE,      // 6 - FREE in SN4
+  FEB_SM_ST_CHARGER_PRECHARGE, // 7
+  FEB_SM_ST_CHARGING,          // 8
+  FEB_SM_ST_BALANCE,           // 9
+  FEB_SM_ST_FAULT_BMS,         // 10
+  FEB_SM_ST_FAULT_BSPD,        // 11
+  FEB_SM_ST_FAULT_IMD,         // 12
+  FEB_SM_ST_FAULT_CHARGING,    // 13
+  FEB_SM_ST_COUNT
 } FEB_SM_ST_t;
 
 // Heart Beat

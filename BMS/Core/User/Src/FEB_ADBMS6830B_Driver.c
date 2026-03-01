@@ -457,14 +457,19 @@ void ADBMS6830B_rdcfga(uint8_t total_ic, // The number of ICs being written to
   }
 
   transmitCMDR(RDCFGA, cell_data, 8 * total_ic);
+
+  /* Parse data and validate PEC for each IC individually */
   for (int bank = 0; bank < total_ic; bank++)
   {
-    memcpy(&(ic[bank].configa.rx_data), cell_data + bank * TxSize, (size_t)8);
+    uint8_t *ic_data = cell_data + bank * TxSize;
+    memcpy(&(ic[bank].configa.rx_data), ic_data, 6);
+
+    /* Calculate PEC for this IC's 6 data bytes */
+    int16_t calc_pec = pec10_calc(6, ic_data);
+    int16_t rx_pec = (int16_t)(ic_data[6] | (ic_data[7] << 8));
+    ic[bank].configa.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
-  int16_t c_data_pec = pec10_calc(TxSize - 2, cell_data);
-  int16_t c_rx_pec = *(uint16_t *)(cell_data + TxSize - 2);
-  for (int bank = 0; bank < total_ic; bank++)
-    ic[bank].configa.rx_pec_match = c_data_pec - c_rx_pec;
+
   vPortFree(cell_data);
 }
 
@@ -507,10 +512,18 @@ void ADBMS6830B_rdcfgb(uint8_t total_ic, // The number of ICs being written to
   }
   transmitCMDR(RDCFGB, cell_data, 8 * total_ic);
 
+  /* Parse data and validate PEC for each IC individually */
   for (int bank = 0; bank < total_ic; bank++)
   {
-    memcpy(&(ic[bank].configb.rx_data), cell_data + bank * TxSize, (size_t)8);
+    uint8_t *ic_data = cell_data + bank * TxSize;
+    memcpy(&(ic[bank].configb.rx_data), ic_data, 6);
+
+    /* Calculate PEC for this IC's 6 data bytes */
+    int16_t calc_pec = pec10_calc(6, ic_data);
+    int16_t rx_pec = (int16_t)(ic_data[6] | (ic_data[7] << 8));
+    ic[bank].configb.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
+
   vPortFree(cell_data);
 }
 
@@ -612,19 +625,36 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
                          cell_asic *ic     // Array of the parsed cell codes
 )
 {
-  int8_t pec_error = 0;
+  uint8_t pec_error = 0;
   uint8_t *cell_data;
   cell_data = (uint8_t *)pvPortMalloc((NUM_RX_BYT * total_ic) * sizeof(uint8_t));
   if (cell_data == NULL)
   {
-    return -1; // Memory allocation failed
+    return 1; // Memory allocation failed
   }
   transmitCMDR(RDAUXA, cell_data, NUM_RX_BYT * total_ic);
+
+  /* Parse data and validate PEC for each IC */
   for (int i = 0; i < total_ic; i++)
-    memcpy(&(ic[i].aux.a_codes), cell_data + i * NUM_RX_BYT, NUM_RX_BYT);
-  // ADBMS6830B_check_pec(total_ic, CELL, ic);
+  {
+    uint8_t *ic_data = cell_data + i * NUM_RX_BYT;
+
+    /* Copy aux data (6 bytes) */
+    memcpy(&(ic[i].aux.a_codes), ic_data, 6);
+
+    /* Calculate and validate PEC for this IC's data */
+    int16_t calc_pec = pec10_calc(6, ic_data);
+    int16_t rx_pec = (int16_t)(ic_data[6] | (ic_data[7] << 8));
+    ic[i].aux.pec_match[0] = (calc_pec != rx_pec) ? 1 : 0;
+
+    if (ic[i].aux.pec_match[0] != 0)
+    {
+      pec_error++;
+    }
+  }
+
   vPortFree(cell_data);
-  return (pec_error);
+  return pec_error;
 }
 
 /*
