@@ -3,6 +3,8 @@
 #include "stm32f4xx_hal_def.h"
 #include <stdio.h>
 #include <string.h>
+#include <FEB_MAIN.h>
+#include <FEB_IMU.h>
 
 stmdev_ctx_t lis3mdl_ctx;
 extern I2C_HandleTypeDef hi2c1;
@@ -11,20 +13,6 @@ static int16_t data_raw_magnetic[3];
 static float_t magnetic_mG[3];
 
 static uint8_t tx_buffer[1000];
-
-int32_t platform_write(void *handle, uint8_t devaddress, uint8_t reg, const uint8_t *bufp, uint16_t len)
-{
-  HAL_StatusTypeDef ret;
-  ret = HAL_I2C_Mem_Write(handle, devaddress << 1, reg, I2C_MEMADD_SIZE_8BIT, (uint8_t *)bufp, len, HAL_MAX_DELAY);
-  return (ret == HAL_OK) ? 0 : -1;
-}
-
-int32_t platform_read(void *handle, uint8_t devaddress, uint8_t reg, uint8_t *bufp, uint16_t len)
-{
-  HAL_StatusTypeDef ret;
-  ret = HAL_I2C_Mem_Read(handle, devaddress << 1, reg, I2C_MEMADD_SIZE_8BIT, (uint8_t *)bufp, len, HAL_MAX_DELAY);
-  return (ret == HAL_OK) ? 0 : -1;
-}
 
 int32_t lis3mdl_read(void *handle, uint8_t reg, uint8_t *bufp, uint16_t len)
 {
