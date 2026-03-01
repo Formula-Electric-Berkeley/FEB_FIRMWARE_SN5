@@ -3,55 +3,62 @@
 #include "FEB_CAN_PCU.h"
 #include "FEB_i2c_protected.h"
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 
 // /* ------------------- External handles ------------------- */
 extern I2C_HandleTypeDef hi2c1;
 extern UART_HandleTypeDef huart3;
 
 // /* ------------------- State variables ------------------- */
-static uint32_t rtd_press_start_time;
-static uint32_t rtd_buzzer_start_time = 0;
-static uint8_t set_rtd_buzzer = 1;
-static uint8_t r2d = 0;
+// static uint32_t rtd_press_start_time;
+// static uint32_t rtd_buzzer_start_time = 0;
+// static uint8_t set_rtd_buzzer = 1;
+// static uint8_t r2d = 0;
 
-// static FEB_SM_ST_t bms_state;
-// static FEB_SM_ST_t prev_state;
+// // static FEB_SM_ST_t bms_state;
+// // static FEB_SM_ST_t prev_state;
 
-static uint8_t entered_drive = 0;
-static uint8_t exited_drive = 0;
-static uint32_t exit_buzzer_start_time = 0;
+// static uint8_t entered_drive = 0;
+// static uint8_t exited_drive = 0;
+// static uint32_t exit_buzzer_start_time = 0;
 
-static IO_State_t state = {.switch_coolant_pump_radiator_fan = false,
-                           .switch_accumulator_fans = true,
-                           .button_ready_to_drive = false,
-                           .switch_logging = false};
+static IO_Switch_States_t state = {.switch_coolant_pump_radiator_fan = false,
+                                   .switch_accumulator_fans = false,
+                                   .button_ready_to_drive = false,
+                                   .switch_logging = false};
+
+static uint8_t buzzer_enabled = 0;
 
 // /* ------------------- Initialization ------------------- */
 void FEB_IO_Init(void)
 {
-  uint8_t init_val = 0xF;
-  FEB_I2C_Master_Transmit(&hi2c1, IOEXP_ADDR << 1, &init_val, 1, HAL_MAX_DELAY);
+  uint8_t init_val[2];
+  memset(init_val, 0xFF, sizeof(init_val));
+  FEB_I2C_Master_Transmit(&hi2c1, IOEXP_ADDR << 1, init_val, 2, HAL_MAX_DELAY);
+  printf("Initializing I2C");
   // bms_state = FEB_CAN_BMS_Get_State();
 }
 
 // /* ------------------- Reset ------------------- */
-void FEB_IO_Reset_All(void)
-{
-  rtd_press_start_time = 0;
-  rtd_buzzer_start_time = 0;
-  set_rtd_buzzer = 1;
-  r2d = 0;
+// void FEB_IO_Reset_All(void)
+// {
+//   rtd_press_start_time = 0;
+//   rtd_buzzer_start_time = 0;
+//   set_rtd_buzzer = 1;
+//   r2d = 0;
 
-  entered_drive = 0;
-  exited_drive = 0;
-  exit_buzzer_start_time = 0;
-}
+//   entered_drive = 0;
+//   exited_drive = 0;
+//   exit_buzzer_start_time = 0;
+// }
 
 // /* ------------------- Ready To Drive Button ------------------- */
 void FEB_IO_HandleRTDButton(void)
 {
-  uint8_t received_data = 0x00;
-  FEB_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, &received_data, 1, HAL_MAX_DELAY);
+  // uint8_t received_data = 0x00;
+  // FEB_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, &received_data, 1, HAL_MAX_DELAY);
 
   uint8_t brake_pressure = FEB_CAN_PCU_GetLastBreakPosition();
   uint8_t inv_enabled = FEB_CAN_PCU_GetLastRMSEnabled();
@@ -120,22 +127,37 @@ void FEB_IO_HandleRTDButton(void)
   // }
 }
 
+static int counter = 0;
 // /* ------------------- Switches ------------------- */
-void FEB_IO_Handle_Switches(void)
+void FEB_IO_Handle_GPIO(void)
 {
-  uint8_t received_data = 0x00;
-  FEB_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, &received_data, 1, HAL_MAX_DELAY);
+  uint8_t received_data[2];
+  memset(received_data, 0x00, sizeof(received_data));
+
+  FEB_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, received_data, 2, HAL_MAX_DELAY);
+
+  printf("[%d] %X %X\n", counter, received_data[0], received_data[1]);
+  counter++;
 
   //   00010010 received_data
   //   00010000 (1 << 5)
   // & 00010000 -> (bool) -> true
 
-  state.switch_logging = (bool)(received_data & (1 << 6));
-  state.switch_coolant_pump_radiator_fan = (bool)(received_data & (1 << 5));
-  state.switch_accumulator_fans = (bool)(received_data & (1 << 7));
+  state.switch_logging = !(bool)(received_data[1] & (1 << 0));
+  state.switch_coolant_pump_radiator_fan = !(bool)(received_data[1] & (1 << 1));
+  state.switch_accumulator_fans = !(bool)(received_data[1] & (1 << 2));
 }
 
 // /* ------------------- Buzzer ------------------- */
+
+void FEB_IO_Buzzer_Update(bool new_state)
+{
+  buzzer_enabled = new_state;
+
+  uint8_t transmit_rtd = 0b11111110 + buzzer_enabled;
+  FEB_I2C_Master_Transmit(&hi2c1, IOEXP_ADDR << 1, &transmit_rtd, 1, HAL_MAX_DELAY);
+}
+
 // void FEB_IO_HandleBuzzer(void)
 // {
 //   uint8_t inv_enabled = FEB_CAN_APPS_Get_Enabled();
@@ -181,7 +203,7 @@ void FEB_IO_Handle_Switches(void)
 //   FEB_CAN_ICS_Transmit_Button_State(IO_state);
 // }
 
-IO_State_t FEB_IO_GetLastIOStates(void)
+IO_Switch_States_t FEB_IO_GetLastIOStates(void)
 {
   return state;
 }

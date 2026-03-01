@@ -15,6 +15,7 @@
 #include <string.h>
 #include "UI_Elements/FEB_UI_Torque.h"
 #include "UI_Elements/FEB_UI_IO_States.h"
+#include "FEB_IO.h"
 
 // ── UI objects ────────────────────────────────────────────────────────
 lv_obj_t *ui_Screen1;
@@ -22,6 +23,10 @@ lv_obj_t *ui_Screen1;
 // ── ui_init ───────────────────────────────────────────────────────────
 void ui_init(void)
 {
+  FEB_IO_Init();
+  printf("initializing screen");
+  FEB_IO_Buzzer_Update(false);
+
   // ── Screen ───────────────────────────────────────────────────────
   ui_Screen1 = lv_obj_create(NULL);
   lv_obj_set_style_bg_color(ui_Screen1, lv_color_hex(0x000000), 0); // near-black deep blue
@@ -35,12 +40,19 @@ void ui_init(void)
 }
 
 // ── ui_update ─────────────────────────────────────────────────────────
-static double fake_torque = 0;
+static int fake_torque = 0;
 void ui_update(void)
 {
-  fake_torque += 0.05;
+  fake_torque += 1;
 
-  FEB_UI_Update_Torque(sin(fake_torque) * 3000);
+  FEB_IO_Buzzer_Update((fake_torque / 50) % 2 == 0 ? true : false);
+
+  FEB_UI_Update_Torque(FEB_CAN_PCU_GetLastTorque());
+
+  if (fake_torque % 15 == 0)
+  {
+    FEB_IO_Handle_GPIO();
+  }
   FEB_UI_Update_IO_States();
 
   lv_timer_handler();

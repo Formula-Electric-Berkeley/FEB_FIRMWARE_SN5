@@ -34,7 +34,7 @@ void FEB_UI_Update_Torque(int16_t torque)
 
   for (int i = 0; i < UI_DOT_COUNT; i++)
   {
-    bool filled = torque >= 0 ? (i <= (torque * 21 / MAX_MOTOR_TORQUE))                   // Positive torques
+    bool filled = torque >= 0 ? (i < (torque * 21 / MAX_MOTOR_TORQUE))                    // Positive torques
                               : i >= UI_DOT_COUNT - (torque * 21 / MAX_REGEN_TORQUE) - 1; // Negative torques
 
     lv_obj_set_style_bg_opa(ui_TorqueCircles[i],

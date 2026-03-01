@@ -16,11 +16,9 @@ void FEB_IO_Init(void);
 void FEB_IO_Reset_All(void);
 
 /* Modular handlers */
-void FEB_IO_HandleTSSI_IMD(void);
+// void FEB_IO_HandleTSSI_IMD(void);
 void FEB_IO_HandleRTDButton(void);
-void FEB_IO_HandleDataLoggerButton(void);
-void FEB_IO_HandleSwitches(void);
-void FEB_IO_HandleBuzzer(void);
+void FEB_IO_Handle_GPIO(void);
 
 /* Utilities & accessors */
 uint8_t set_n_bit(uint8_t x, uint8_t n, uint8_t bit_value);
@@ -37,8 +35,10 @@ typedef struct
 
   // Button states
   bool button_ready_to_drive;
-} IO_State_t;
+} IO_Switch_States_t;
 
-IO_State_t FEB_IO_GetLastIOStates(void);
+IO_Switch_States_t FEB_IO_GetLastIOStates(void);
+
+void FEB_IO_Buzzer_Update(bool new_state);
 
 #endif
