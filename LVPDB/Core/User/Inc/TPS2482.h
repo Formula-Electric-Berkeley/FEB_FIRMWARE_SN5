@@ -176,4 +176,4 @@ void TPS2482_GPIO_Read(GPIO_TypeDef **GPIOx, uint16_t *GPIO_Pin, GPIO_PinState *
 
 void TPS2482_Enable(GPIO_TypeDef **GPIOx, uint16_t *GPIO_Pin, uint8_t *en_dis, bool *result, uint8_t messageCount);
 
-#endif /* INC_FEB_TPS2482_H_ */
+#endif /* INC_TPS2482_H_ */
