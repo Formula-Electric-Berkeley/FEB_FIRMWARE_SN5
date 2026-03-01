@@ -13,6 +13,7 @@
 #include "feb_console.h"
 #include "FEB_Commands.h"
 #include "FEB_CAN_State.h"
+#include "FEB_SM.h"
 #include "cmsis_os2.h"
 
 /* External HAL handles from CubeMX-generated code */
@@ -63,6 +64,9 @@ void FEB_Init(void)
   /* Initialize CAN state publisher */
   FEB_CAN_State_Init();
 
+  /* Initialize state machine (sets relays to safe state, transitions to LV_POWER) */
+  FEB_SM_Init();
+
   /* Startup banner */
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("========================================\r\n");
@@ -96,14 +100,5 @@ void StartUartRxTask(void *argument)
     {
       FEB_Console_ProcessLine(line_buf, line_len);
     }
-  }
-}
-
-void StartUartTxTask(void *argument)
-{
-  (void)argument;
-  for (;;)
-  {
-    osDelay(100); /* TX task placeholder - currently unused */
   }
 }

@@ -65,8 +65,12 @@ static void start_adc_cell_voltage_measurements()
 {
   DEBUG_VOLTAGE_PRINT("Starting ADC cell voltage measurements");
   ADBMS6830B_adcv(1, 0, 1, 0, OWVR);
-  osDelay(pdMS_TO_TICKS(1));
-  // ADBMS6830B_pollAdc();
+  /* Note: Using osDelay instead of ADBMS6830B_pollAdc() because:
+   * - pollAdc() uses busy-wait which blocks the RTOS task scheduler
+   * - ADBMS6830B typical ADC conversion time is ~500µs to 1ms
+   * - 2ms delay provides sufficient margin and allows other tasks to run
+   */
+  osDelay(pdMS_TO_TICKS(2));
   DEBUG_VOLTAGE_PRINT("ADC cell voltage measurement command sent");
 }
 
@@ -263,9 +267,10 @@ static void configure_gpio_bits(uint8_t channel)
 static void start_aux_voltage_measurements()
 {
   DEBUG_TEMP_PRINT("Starting aux voltage measurements");
+  /* Note: Using osDelay instead of ADBMS6830B_pollAdc() - see comment in
+   * start_adc_cell_voltage_measurements() for rationale */
   ADBMS6830B_adax(AUX_OW_OFF, PUP_DOWN, 1);
   osDelay(pdMS_TO_TICKS(2));
-  // ADBMS6830B_pollAdc();
   DEBUG_TEMP_PRINT("Aux measurement 1 complete");
   ADBMS6830B_adax(AUX_OW_OFF, PUP_DOWN, 2);
   osDelay(pdMS_TO_TICKS(2));
@@ -337,8 +342,8 @@ static void store_cell_temps(uint8_t channel)
 static void validate_temps()
 {
   DEBUG_TEMP_PRINT("Validating temperatures");
-  uint16_t tMax = FEB_Config_Get_Cell_Max_Temperature_dC();
-  uint16_t tMin = FEB_Config_Get_Cell_Min_Temperature_dC();
+  int16_t tMax = (int16_t)FEB_Config_Get_Cell_Max_Temperature_dC();
+  int16_t tMin = (int16_t)FEB_Config_Get_Cell_Min_Temperature_dC();
   DEBUG_TEMP_PRINT("Temperature limits: Min=%.1f°C Max=%.1f°C", tMin / 10.0f, tMax / 10.0f);
   int totalReads = 0;
 
@@ -409,25 +414,25 @@ static void determineMinV()
 
 // ********************************** Functions **********************************
 
-void FEB_ADBMS_Init()
+bool FEB_ADBMS_Init(void)
 {
-
   printf("[ADBMS] Initializing ADBMS\r\n");
   for (uint8_t bank = 0; bank < FEB_NBANKS; bank++)
   {
     FEB_ACC.banks[bank].badReadV = 0;
     FEB_ACC.banks[bank].tempRead = 0;
     FEB_ACC.banks[bank].total_voltage_V = 0;
-    for (uint8_t ic = 0; ic < FEB_NUM_ICPBANK; ic++)
+    for (uint8_t cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
     {
-      for (uint8_t cell = 0; cell < FEB_NUM_CELLS_PER_IC; cell++)
-      {
-        FEB_ACC.banks[bank].cells[cell].voltage_V = 0;
-        FEB_ACC.banks[bank].cells[cell].voltage_S = 0;
-        FEB_ACC.banks[bank].cells[cell].violations = 0;
-        FEB_ACC.banks[bank].cells[cell].discharging = 0;
-        FEB_ACC.banks[bank].temp_violations[cell] = 0;
-      }
+      FEB_ACC.banks[bank].cells[cell].voltage_V = 0;
+      FEB_ACC.banks[bank].cells[cell].voltage_S = 0;
+      FEB_ACC.banks[bank].cells[cell].violations = 0;
+      FEB_ACC.banks[bank].cells[cell].discharging = 0;
+    }
+    for (uint8_t sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
+    {
+      FEB_ACC.banks[bank].temp_violations[sensor] = 0;
+      FEB_ACC.banks[bank].temp_sensor_readings_V[sensor] = 0;
     }
   }
 
@@ -435,10 +440,34 @@ void FEB_ADBMS_Init()
   ADBMS6830B_rdsid(FEB_NUM_IC, IC_Config);
   osDelay(pdMS_TO_TICKS(1));
   printf("[ADBMS] Serial IDs read for %d ICs\r\n", FEB_NUM_IC);
+
+  // Validate serial IDs - check that at least one IC has a valid (non-zero, non-0xFF) serial ID
+  uint8_t valid_ic_count = 0;
   for (uint8_t i = 0; i < FEB_NUM_IC; i++)
   {
     printf("[ADBMS] IC%d SID: %02X:%02X:%02X:%02X:%02X:%02X\r\n", i, IC_Config[i].sid[0], IC_Config[i].sid[1],
            IC_Config[i].sid[2], IC_Config[i].sid[3], IC_Config[i].sid[4], IC_Config[i].sid[5]);
+
+    // Check if serial ID is valid (not all zeros and not all 0xFF)
+    bool all_zero = true;
+    bool all_ff = true;
+    for (uint8_t j = 0; j < 6; j++)
+    {
+      if (IC_Config[i].sid[j] != 0x00)
+        all_zero = false;
+      if (IC_Config[i].sid[j] != 0xFF)
+        all_ff = false;
+    }
+    if (!all_zero && !all_ff)
+    {
+      valid_ic_count++;
+    }
+  }
+
+  if (valid_ic_count != FEB_NUM_IC)
+  {
+    printf("[ADBMS] ERROR: Only %d/%d ICs have valid serial IDs\r\n", valid_ic_count, FEB_NUM_IC);
+    return false;
   }
 
   printf("[ADBMS] Initializing ADBMS Configuration\r\n");
@@ -452,6 +481,8 @@ void FEB_ADBMS_Init()
   printf("[ADBMS] Writing ADBMS Configuration to ICs\r\n");
   ADBMS6830B_wrALL(FEB_NUM_IC, IC_Config);
   printf("[ADBMS] ADBMS Configuration Initialized\r\n");
+
+  return true;
 }
 
 void FEB_ADBMS_Voltage_Process()

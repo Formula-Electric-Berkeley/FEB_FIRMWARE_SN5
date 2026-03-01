@@ -77,7 +77,11 @@ typedef enum
 
 // ********************************** Functions **********************************
 
-void FEB_ADBMS_Init(void);
+/**
+ * @brief Initialize ADBMS6830B chips and validate communication
+ * @return true if all ICs initialized successfully, false if validation failed
+ */
+bool FEB_ADBMS_Init(void);
 
 void FEB_ADBMS_Voltage_Process(void);
 void FEB_ADBMS_Temperature_Process(void);

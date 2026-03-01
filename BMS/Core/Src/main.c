@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "adc.h"
 #include "can.h"
 #include "dma.h"
 #include "i2c.h"
@@ -33,6 +34,7 @@
 #include "FEB_CAN_PingPong.h"
 #include "FEB_HW.h"
 #include "FEB_Main.h"
+#include "FEB_SM.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -102,6 +104,8 @@ int main(void)
   MX_SPI1_Init();
   MX_I2C1_Init();
   MX_CAN1_Init();
+  MX_ADC1_Init();
+  MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
   printf("[BOOT] UART ready @115200 (USART2)\r\n");
   FEB_Init();
@@ -203,6 +207,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
+  /* State machine processing (every 1ms) */
+  FEB_SM_Process();
+
+  /* CAN state publishing (every 100ms via internal divider) */
   FEB_CAN_State_Tick();
 
   /* PingPong tick every 100ms */

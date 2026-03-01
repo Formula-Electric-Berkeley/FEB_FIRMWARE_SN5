@@ -12,7 +12,9 @@
 #include "FEB_CAN_PingPong.h"
 #include "FEB_CAN_State.h"
 #include "FEB_Const.h"
+#include "FEB_SM.h"
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -100,17 +102,43 @@ static const FEB_Console_Cmd_t bms_cmd_temps = {
 /* ============================================================================
  * Command: balance - Show/control cell balancing
  * ============================================================================ */
+
+/**
+ * @brief Check if balancing is allowed in the current state
+ * @return true if balancing can be started/running
+ *
+ * Balancing is only safe when the vehicle is not in motion and not energized
+ * for driving. Allowed states:
+ * - BATTERY_FREE: Accumulator isolated, safest for balancing
+ * - BALANCE: Explicit balancing state
+ */
+static bool is_balancing_allowed(void)
+{
+  BMS_State_t state = FEB_SM_Get_Current_State();
+  return (state == BMS_STATE_BATTERY_FREE || state == BMS_STATE_BALANCE);
+}
+
 static void cmd_balance(int argc, char *argv[])
 {
   if (argc < 2)
   {
     FEB_Console_Printf("Balancing: %s\r\n", FEB_Cell_Balancing_Status() ? "ON" : "OFF");
+    FEB_Console_Printf("State: %s\r\n", FEB_CAN_State_GetStateName(FEB_SM_Get_Current_State()));
     FEB_Console_Printf("Usage: balance|on  or  balance|off\r\n");
+    FEB_Console_Printf("Note: Balancing only allowed in BATTERY_FREE or BALANCE states\r\n");
     return;
   }
 
   if (argv[1][0] == 'o' && argv[1][1] == 'n')
   {
+    /* Safety check: only allow balancing in safe states */
+    if (!is_balancing_allowed())
+    {
+      FEB_Console_Printf("Error: Balancing not allowed in %s state\r\n",
+                         FEB_CAN_State_GetStateName(FEB_SM_Get_Current_State()));
+      FEB_Console_Printf("Allowed states: BATTERY_FREE, BALANCE\r\n");
+      return;
+    }
     FEB_Cell_Balance_Start();
     FEB_Console_Printf("Balancing started\r\n");
   }
@@ -150,18 +178,58 @@ static const FEB_Console_Cmd_t bms_cmd_dump = {
 };
 
 /* ============================================================================
- * Command: state - Show/set BMS state
+ * Command: state - Show/set BMS state (with safety restrictions)
  * ============================================================================ */
+
+/**
+ * @brief Check if a state transition is allowed via console command
+ * @param current Current BMS state
+ * @param target Target BMS state
+ * @return true if transition is allowed
+ *
+ * Allowed transitions:
+ * - Any fault state (FAULT_BMS, FAULT_BSPD, FAULT_IMD, FAULT_CHARGING)
+ * - ENERGIZED <-> DRIVE (overrides R2D signal)
+ * - -> BATTERY_FREE (battery free request)
+ */
+static bool is_state_transition_allowed(BMS_State_t current, BMS_State_t target)
+{
+  /* Always allow entering fault states */
+  if (target >= BMS_STATE_FAULT_BMS && target <= BMS_STATE_FAULT_CHARGING)
+  {
+    return true;
+  }
+
+  /* Allow R2D override: ENERGIZED <-> DRIVE */
+  if ((current == BMS_STATE_ENERGIZED && target == BMS_STATE_DRIVE) ||
+      (current == BMS_STATE_DRIVE && target == BMS_STATE_ENERGIZED))
+  {
+    return true;
+  }
+
+  /* Allow battery-free request from any state */
+  if (target == BMS_STATE_BATTERY_FREE)
+  {
+    return true;
+  }
+
+  return false;
+}
+
 static void cmd_state(int argc, char *argv[])
 {
+  BMS_State_t current_state = FEB_CAN_State_GetState();
+
   if (argc < 2)
   {
-    BMS_State_t state = FEB_CAN_State_GetState();
-    FEB_Console_Printf("BMS State: %s (%d)\r\n", FEB_CAN_State_GetStateName(state), state);
-    FEB_Console_Printf("Usage: state <name|number>\r\n");
-    FEB_Console_Printf("States: boot(0), origin(1), lv_power(2), bus_health(3),\r\n");
-    FEB_Console_Printf("        precharge(4), energized(5), drive(6), fault(7),\r\n");
-    FEB_Console_Printf("        charging(8), battery_free(9), balance(10)\r\n");
+    /* Read-only: always allowed */
+    FEB_Console_Printf("BMS State: %s (%d)\r\n", FEB_CAN_State_GetStateName(current_state), current_state);
+    FEB_Console_Printf("\r\nUsage: state <name|number>\r\n");
+    FEB_Console_Printf("States: boot(0), lv_power(1), bus_health(2), precharge(3),\r\n");
+    FEB_Console_Printf("        energized(4), drive(5), battery_free(6), charger_pre(7),\r\n");
+    FEB_Console_Printf("        charging(8), balance(9), fault_bms(10), fault_bspd(11),\r\n");
+    FEB_Console_Printf("        fault_imd(12), fault_charging(13)\r\n");
+    FEB_Console_Printf("\r\nSafe transitions only: ENERGIZED<->DRIVE, ->BATTERY_FREE, ->FAULT_*\r\n");
     return;
   }
 
@@ -184,8 +252,6 @@ static void cmd_state(int argc, char *argv[])
     /* Try name match */
     if (strcasecmp_local(arg, "boot") == 0)
       new_state = BMS_STATE_BOOT;
-    else if (strcasecmp_local(arg, "origin") == 0)
-      new_state = BMS_STATE_ORIGIN;
     else if (strcasecmp_local(arg, "lv_power") == 0 || strcasecmp_local(arg, "lv") == 0)
       new_state = BMS_STATE_LV_POWER;
     else if (strcasecmp_local(arg, "bus_health") == 0 || strcasecmp_local(arg, "bus") == 0)
@@ -196,14 +262,22 @@ static void cmd_state(int argc, char *argv[])
       new_state = BMS_STATE_ENERGIZED;
     else if (strcasecmp_local(arg, "drive") == 0)
       new_state = BMS_STATE_DRIVE;
-    else if (strcasecmp_local(arg, "fault") == 0)
-      new_state = BMS_STATE_FAULT;
-    else if (strcasecmp_local(arg, "charging") == 0 || strcasecmp_local(arg, "charge") == 0)
-      new_state = BMS_STATE_CHARGING;
     else if (strcasecmp_local(arg, "battery_free") == 0 || strcasecmp_local(arg, "free") == 0)
       new_state = BMS_STATE_BATTERY_FREE;
+    else if (strcasecmp_local(arg, "charger_precharge") == 0 || strcasecmp_local(arg, "charger_pre") == 0)
+      new_state = BMS_STATE_CHARGER_PRECHARGE;
+    else if (strcasecmp_local(arg, "charging") == 0 || strcasecmp_local(arg, "charge") == 0)
+      new_state = BMS_STATE_CHARGING;
     else if (strcasecmp_local(arg, "balance") == 0 || strcasecmp_local(arg, "bal") == 0)
       new_state = BMS_STATE_BALANCE;
+    else if (strcasecmp_local(arg, "fault_bms") == 0 || strcasecmp_local(arg, "fault") == 0)
+      new_state = BMS_STATE_FAULT_BMS;
+    else if (strcasecmp_local(arg, "fault_bspd") == 0)
+      new_state = BMS_STATE_FAULT_BSPD;
+    else if (strcasecmp_local(arg, "fault_imd") == 0)
+      new_state = BMS_STATE_FAULT_IMD;
+    else if (strcasecmp_local(arg, "fault_charging") == 0)
+      new_state = BMS_STATE_FAULT_CHARGING;
     else
     {
       FEB_Console_Printf("Unknown state: %s\r\n", arg);
@@ -211,10 +285,18 @@ static void cmd_state(int argc, char *argv[])
     }
   }
 
-  BMS_State_t old_state = FEB_CAN_State_GetState();
+  /* Check if transition is allowed */
+  if (!is_state_transition_allowed(current_state, new_state))
+  {
+    FEB_Console_Printf("Error: Transition %s -> %s not allowed via command\r\n",
+                       FEB_CAN_State_GetStateName(current_state), FEB_CAN_State_GetStateName(new_state));
+    FEB_Console_Printf("Allowed: ENERGIZED<->DRIVE, ->BATTERY_FREE, ->FAULT_*\r\n");
+    return;
+  }
+
   if (FEB_CAN_State_SetState(new_state) == 0)
   {
-    FEB_Console_Printf("State: %s -> %s\r\n", FEB_CAN_State_GetStateName(old_state),
+    FEB_Console_Printf("State: %s -> %s\r\n", FEB_CAN_State_GetStateName(current_state),
                        FEB_CAN_State_GetStateName(new_state));
   }
   else
@@ -225,7 +307,7 @@ static void cmd_state(int argc, char *argv[])
 
 static const FEB_Console_Cmd_t bms_cmd_state = {
     .name = "state",
-    .help = "Show/set BMS state: state <name|0-10>",
+    .help = "Show/set BMS state (safe transitions only)",
     .handler = cmd_state,
 };
 

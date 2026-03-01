@@ -9,22 +9,26 @@
 #include <stdint.h>
 
 /**
- * @brief BMS state machine states
+ * @brief BMS state machine states (aligned with SN4)
  * @note Values match CAN bms_state signal (5-bit, 0-31 valid range)
+ * @note Values must match FEB_SM_ST_t in PCU/Core/User/Inc/FEB_CAN_BMS.h
  */
 typedef enum
 {
   BMS_STATE_BOOT = 0,
-  BMS_STATE_ORIGIN,
-  BMS_STATE_LV_POWER,
-  BMS_STATE_BUS_HEALTH_CHECK,
-  BMS_STATE_PRECHARGE,
-  BMS_STATE_ENERGIZED,
-  BMS_STATE_DRIVE,
-  BMS_STATE_FAULT,
-  BMS_STATE_CHARGING,
-  BMS_STATE_BATTERY_FREE,
-  BMS_STATE_BALANCE,
+  BMS_STATE_LV_POWER,          // 1 - LV in SN4
+  BMS_STATE_BUS_HEALTH_CHECK,  // 2 - HEALTH_CHECK in SN4
+  BMS_STATE_PRECHARGE,         // 3
+  BMS_STATE_ENERGIZED,         // 4
+  BMS_STATE_DRIVE,             // 5
+  BMS_STATE_BATTERY_FREE,      // 6 - FREE in SN4
+  BMS_STATE_CHARGER_PRECHARGE, // 7
+  BMS_STATE_CHARGING,          // 8
+  BMS_STATE_BALANCE,           // 9
+  BMS_STATE_FAULT_BMS,         // 10
+  BMS_STATE_FAULT_BSPD,        // 11
+  BMS_STATE_FAULT_IMD,         // 12
+  BMS_STATE_FAULT_CHARGING,    // 13
   BMS_STATE_COUNT
 } BMS_State_t;
 
@@ -64,5 +68,15 @@ int FEB_CAN_State_SetState(BMS_State_t state);
  * @return String representation of state, or "UNKNOWN" if invalid
  */
 const char *FEB_CAN_State_GetStateName(BMS_State_t state);
+
+/**
+ * @brief Process automatic state transitions based on R2D signal
+ * @note Call from 1ms timer callback
+ *
+ * Handles:
+ * - ENERGIZED -> DRIVE when R2D active
+ * - DRIVE -> ENERGIZED when R2D inactive/timeout
+ */
+void FEB_CAN_State_ProcessTransitions(void);
 
 #endif /* FEB_CAN_STATE_H */

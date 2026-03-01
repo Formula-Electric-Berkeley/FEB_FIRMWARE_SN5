@@ -1,85 +1,95 @@
-// #ifndef INC_FEB_SM_H_
-// #define INC_FEB_SM_H_
+/**
+ * @file FEB_SM.h
+ * @brief BMS State Machine Interface
+ * @author Formula Electric @ Berkeley
+ *
+ * State machine for Battery Management System control.
+ * Manages transitions between operational states and controls
+ * high-voltage relays (AIR+, precharge) based on system conditions.
+ *
+ * States:
+ * - BOOT: Initial startup
+ * - LV_POWER: Low voltage power OK, waiting for HV enable
+ * - BUS_HEALTH_CHECK: Verifying shutdown loop and accumulator health
+ * - PRECHARGE: Precharge relay closed, monitoring bus voltage
+ * - ENERGIZED: HV bus energized, waiting for R2D
+ * - DRIVE: Vehicle in drive mode
+ * - BATTERY_FREE: Accumulator disconnected
+ * - CHARGER_PRECHARGE: Precharging for charging mode
+ * - CHARGING: Active charging
+ * - BALANCE: Cell balancing active
+ * - FAULT_*: Various fault states
+ */
 
-// // ********************************** State Machine Definitions ******************
-// // Stub file for BMS state machine definitions
-// // Based on the state diagram provided, this defines the BMS operational states
+#ifndef INC_FEB_SM_H_
+#define INC_FEB_SM_H_
 
-// #include <stdint.h>
-// #include <stdbool.h>
+#include "FEB_CAN_State.h"
+#include <stdbool.h>
+#include <stdint.h>
 
-// typedef enum {
-//     BMS_STATE_BOOT = 0,
-//     BMS_STATE_ORIGIN,
-//     BMS_STATE_LV_POWER,
-//     BMS_STATE_BUS_HEALTH_CHECK,
-//     BMS_STATE_PRECHARGE,
-//     BMS_STATE_ENERGIZED,
-//     BMS_STATE_DRIVE,
-//     BMS_STATE_FAULT,
-//     // Charger states
-//     BMS_STATE_CHARGING,
-//     BMS_STATE_BATTERY_FREE,
-//     BMS_STATE_BALANCE
-// } bms_state_t;
+/* ============================================================================
+ * State Machine Interface
+ * ============================================================================ */
 
-// // Fault state types
-// typedef enum {
-//     BMS_FAULT_NONE = 0,
-//     BMS_FAULT_BMS = 9,
-//     BMS_FAULT_BSPD = 10,
-//     BMS_FAULT_IMD = 11,
-//     BMS_FAULT_BMS_CHARGING = 12
-// } bms_fault_t;
+/**
+ * @brief Initialize the state machine
+ * @note Call from main before scheduler starts
+ * - Sets initial state to BOOT
+ * - Opens all relays (safe state)
+ * - Closes BMS shutdown relay (enables HV path)
+ */
+void FEB_SM_Init(void);
 
-// // Additional state definitions for ADBMS compatibility
-// typedef enum {
-//     FEB_SM_ST_INIT = BMS_STATE_BOOT,
-//     FEB_SM_ST_IDLE = BMS_STATE_ORIGIN,
-//     FEB_SM_ST_PRECHARGE = BMS_STATE_PRECHARGE,
-//     FEB_SM_ST_ACTIVE = BMS_STATE_ENERGIZED,
-//     FEB_SM_ST_BALANCING = BMS_STATE_BALANCE,
-//     FEB_SM_ST_CHARGING = BMS_STATE_CHARGING,
-//     FEB_SM_ST_FAULT_BMS = BMS_STATE_FAULT
-// } FEB_SM_State_t;
+/**
+ * @brief Get current state machine state
+ * @return Current BMS_State_t value
+ */
+BMS_State_t FEB_SM_Get_Current_State(void);
 
-// // Transition result codes
-// typedef enum {
-//     FEB_SM_TRANS_OK = 0,
-//     FEB_SM_TRANS_INVALID,
-//     FEB_SM_TRANS_BLOCKED,
-//     FEB_SM_TRANS_ERROR
-// } FEB_SM_TransResult_t;
+/**
+ * @brief Request a state transition
+ * @param next_state Target state to transition to
+ * @note Calls the appropriate transition function for current state
+ */
+void FEB_SM_Transition(BMS_State_t next_state);
 
-// // Global state variables (extern - define in implementation file)
-// extern bms_state_t current_bms_state;
-// extern bms_fault_t current_bms_fault;
+/**
+ * @brief Process state machine periodic checks
+ * @note Call from 1ms timer or periodic task
+ * - Checks transition conditions for current state
+ * - Handles automatic transitions (e.g., precharge complete)
+ * - Monitors safety conditions (shutdown loop, AIR sense)
+ */
+void FEB_SM_Process(void);
 
-// /**
-//  * @brief Initialize the state machine
-//  * @note Should be called before scheduler starts
-//  */
-// void FEB_SM_Init(void);
+/**
+ * @brief Enter fault state with specified fault type
+ * @param fault_type One of BMS_STATE_FAULT_BMS, BMS_STATE_FAULT_BSPD,
+ *                   BMS_STATE_FAULT_IMD, or BMS_STATE_FAULT_CHARGING
+ */
+void FEB_SM_Fault(BMS_State_t fault_type);
 
-// /**
-//  * @brief Attempt to transition to a new state
-//  * @param new_state The target state to transition to
-//  * @return Transition result code
-//  * @note STUB: Always returns success for now
-//  */
-// FEB_SM_TransResult_t FEB_SM_Transition(FEB_SM_State_t new_state);
+/* ============================================================================
+ * State Query Functions
+ * ============================================================================ */
 
-// /**
-//  * @brief Get the current state of the state machine
-//  * @return Current state
-//  */
-// FEB_SM_State_t FEB_SM_Get_Current_State(void);
+/**
+ * @brief Check if system is in a fault state
+ * @return true if current state is any FAULT_* state
+ */
+bool FEB_SM_Is_Faulted(void);
 
-// /**
-//  * @brief Get state name as string (for debugging)
-//  * @param state The state to get the name of
-//  * @return String representation of the state
-//  */
-// const char* FEB_SM_Get_State_Name(FEB_SM_State_t state);
+/**
+ * @brief Check if HV bus is energized
+ * @return true if in ENERGIZED, DRIVE, CHARGING, or BALANCE state
+ */
+bool FEB_SM_Is_HV_Active(void);
 
-// #endif /* INC_FEB_SM_H_ */
+/**
+ * @brief Check if drive mode is allowed
+ * @return true if in ENERGIZED or DRIVE state
+ */
+bool FEB_SM_Is_Drive_Ready(void);
+
+#endif /* INC_FEB_SM_H_ */
