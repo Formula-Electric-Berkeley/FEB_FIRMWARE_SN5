@@ -28,4 +28,17 @@ bool is_r2d(void);
 void enable_r2d(void);
 void disable_r2d(void);
 
+typedef struct
+{
+  // Switch states
+  bool switch_coolant_pump_radiator_fan;
+  bool switch_accumulator_fans;
+  bool switch_logging;
+
+  // Button states
+  bool button_ready_to_drive;
+} IO_State_t;
+
+IO_State_t FEB_IO_GetLastIOStates(void);
+
 #endif

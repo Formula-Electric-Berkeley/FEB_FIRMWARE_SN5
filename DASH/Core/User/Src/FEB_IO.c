@@ -12,7 +12,6 @@ extern UART_HandleTypeDef huart3;
 static uint32_t rtd_press_start_time;
 static uint32_t rtd_buzzer_start_time = 0;
 static uint8_t set_rtd_buzzer = 1;
-static uint8_t IO_state = 0xFF;
 static uint8_t r2d = 0;
 
 // static FEB_SM_ST_t bms_state;
@@ -22,46 +21,10 @@ static uint8_t entered_drive = 0;
 static uint8_t exited_drive = 0;
 static uint32_t exit_buzzer_start_time = 0;
 
-typedef struct
-{
-  // Switch states
-  bool coolant_pump_radiator_fan;
-  bool accumulator_fans;
-
-  // Button states
-  bool ready_to_drive;
-
-  // State states
-  bool driving;
-  bool logging;
-  bool buzzer;
-} IO_State_t;
-
-IO_State_t state = {.coolant_pump_radiator_fan = 0,
-                    .accumulator_fans = 0,
-                    .ready_to_drive = 0,
-                    .driving = 0,
-                    .logging = 0,
-                    .buzzer = 0};
-
-// /* ------------------- Utilities ------------------- */
-// uint8_t set_n_bit(uint8_t x, uint8_t n, uint8_t bit_value)
-// {
-//   return (x & (~(1 << n))) | (bit_value << n);
-// }
-
-// void enable_r2d(void)
-// {
-//   r2d = 1;
-// }
-// void disable_r2d(void)
-// {
-//   r2d = 0;
-// }
-// bool is_r2d(void)
-// {
-//   return r2d == 1;
-// }
+static IO_State_t state = {.switch_coolant_pump_radiator_fan = false,
+                           .switch_accumulator_fans = true,
+                           .button_ready_to_drive = false,
+                           .switch_logging = false};
 
 // /* ------------------- Initialization ------------------- */
 void FEB_IO_Init(void)
@@ -167,9 +130,9 @@ void FEB_IO_Handle_Switches(void)
   //   00010000 (1 << 5)
   // & 00010000 -> (bool) -> true
 
-  state.logging = (bool)(received_data & (1 << 6));
-  state.coolant_pump_radiator_fan = (bool)(received_data & (1 << 5));
-  state.accumulator_fans = (bool)(received_data & (1 << 7));
+  state.switch_logging = (bool)(received_data & (1 << 6));
+  state.switch_coolant_pump_radiator_fan = (bool)(received_data & (1 << 5));
+  state.switch_accumulator_fans = (bool)(received_data & (1 << 7));
 }
 
 // /* ------------------- Buzzer ------------------- */
@@ -217,3 +180,8 @@ void FEB_IO_Handle_Switches(void)
 
 //   FEB_CAN_ICS_Transmit_Button_State(IO_state);
 // }
+
+IO_State_t FEB_IO_GetLastIOStates(void)
+{
+  return state;
+}

@@ -51,8 +51,8 @@ set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES} ${LVGL_SOURCES} ${
 list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can.c")
 
 list(APPEND ALL_SOURCES
-    Core/User/Src/FEB_UI.c
-    Core/User/Src/FEB_UI_Helpers.c
+    Core/User/Src
+    Core/User/Src/UI_Elements
 
     # BSP
     Drivers/BSP/STM32469I-Discovery/stm32469i_discovery.c
