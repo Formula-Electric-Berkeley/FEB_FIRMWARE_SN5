@@ -6,6 +6,7 @@
 
 stmdev_ctx_t lsm6dsox_ctx;
 extern I2C_HandleTypeDef hi2c1;
+#define LSM6DSOX_I2C_ADDR 0x6A
 
 static int16_t data_raw_acceleration[3];
 static float_t acceleration_mg[3];
@@ -28,14 +29,15 @@ int32_t platform_read(void *handle, uint8_t devaddress, uint8_t reg, uint8_t *bu
   ret = HAL_I2C_Mem_Read(handle, devaddress << 1, reg, I2C_MEMADD_SIZE_8BIT, (uint8_t *)bufp, len, HAL_MAX_DELAY);
   return (ret == HAL_OK) ? 0 : -1;
 }
+// 0x6a or 0x6b
 
 int32_t lsm6dsox_read(void *handle, uint8_t reg, uint8_t *bufp, uint16_t len)
 {
-  return platform_read(handle, 0x47, reg, bufp, len); // TODO: adjust Devaddress
+  return platform_read(handle, LSM6DSOX_I2C_ADDR, reg, bufp, len); // TODO: adjust Devaddress
 }
 int32_t lsm6dsox_write(void *handle, uint8_t reg, const uint8_t *bufp, uint16_t len)
 {
-  return platform_write(handle, 0x6A, reg, bufp, len); // TODO: adjust Devaddress
+  return platform_write(handle, LSM6DSOX_I2C_ADDR, reg, bufp, len); // TODO: adjust Devaddress
 }
 
 void lsm6dsox_init()
