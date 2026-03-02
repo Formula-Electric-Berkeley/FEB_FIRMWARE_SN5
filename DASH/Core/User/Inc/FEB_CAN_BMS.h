@@ -28,12 +28,9 @@ typedef enum
   BMS_STATE_FAULT_IMD,         // 12
   BMS_STATE_FAULT_CHARGING,    // 13
   BMS_STATE_COUNT
-} BMS_State_Enum_t;
+} BMS_State_t;
 
 void FEB_CAN_BMS_Init(void);
-int16_t FEB_CAN_BMS_GetLastTorque(void);
-int8_t FEB_CAN_BMS_GetLastDirection(void);
-int8_t FEB_CAN_BMS_GetLastRMSEnabled(void);
-uint16_t FEB_CAN_BMS_GetLastBreakPosition(void);
+BMS_State_t FEB_CAN_BMS_GetLastState(void);
 
 #endif /* FEB_CAN_BMS_H */
