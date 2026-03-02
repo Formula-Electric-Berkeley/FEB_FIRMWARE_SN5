@@ -14,6 +14,7 @@
 #include "FEB_CAN_State.h"
 #include "FEB_Commands.h"
 #include "cmsis_os2.h"
+#include "FEB_CAN_BMS.h"
 
 /* External HAL handles from CubeMX-generated code */
 extern UART_HandleTypeDef huart3;
@@ -69,6 +70,8 @@ void FEB_Init(void)
   FEB_Console_Printf("Use | as delimiter: echo|hello world\r\n");
   FEB_Console_Printf("Type 'help' for available commands\r\n");
   FEB_Console_Printf("\r\n");
+
+  FEB_CAN_BMS_Init();
 }
 
 /* ============================================================================
