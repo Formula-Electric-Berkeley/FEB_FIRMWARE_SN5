@@ -18,9 +18,12 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "stm32f4xx_hal.h"
+#include <stdio.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "FEB_Main.h"
 
 /* USER CODE END Includes */
 
@@ -73,6 +76,7 @@ static void MX_UART4_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+
 /* USER CODE END 0 */
 
 /**
@@ -112,17 +116,22 @@ int main(void)
   MX_TIM3_Init();
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
-
+ FEB_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    FEB_Update();
+    HAL_Delay(100);
     /* USER CODE END WHILE */
+  }
+
+
 
     /* USER CODE BEGIN 3 */
-  }
+  
   /* USER CODE END 3 */
 }
 

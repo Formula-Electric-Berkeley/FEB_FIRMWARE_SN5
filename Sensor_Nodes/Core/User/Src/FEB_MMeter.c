@@ -7,7 +7,7 @@
 #include <FEB_IMU.h>
 
 stmdev_ctx_t lis3mdl_ctx;
-extern I2C_HandleTypeDef hi2c1;
+extern I2C_HandleTypeDef hi2c3;
 
 static int16_t data_raw_magnetic[3];
 static float_t magnetic_mG[3];
@@ -28,7 +28,7 @@ void lis3mdl_init()
   lis3mdl_ctx.write_reg = lis3mdl_write;
   lis3mdl_ctx.read_reg = lis3mdl_read;
   lis3mdl_ctx.mdelay = HAL_Delay;
-  lis3mdl_ctx.handle = &hi2c1;
+  lis3mdl_ctx.handle = &hi2c3;
 }
 
 void read_Magnetic_Field_Data()
