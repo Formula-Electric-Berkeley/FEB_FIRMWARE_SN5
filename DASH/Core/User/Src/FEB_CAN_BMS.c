@@ -21,7 +21,20 @@
  * ============================================================================
  */
 
+typedef struct BMS_MESSAGE_TYPE
+{
+  volatile uint16_t temperature;       // Updated in ISR, read in main loop
+  volatile uint16_t voltage;           // Updated in ISR, read in main loop (in 0.1V units)
+  volatile FEB_SM_ST_t state;          // Updated in ISR, read in main loop
+  volatile FEB_HB_t ping_ack;          // Updated in ISR, read in main loop
+  volatile float max_temperature;      // Max accumulator temperature in C
+  volatile float accumulator_voltage;  // Accumulator voltage in V
+  volatile uint32_t last_rx_timestamp; // 0 = never received, else HAL_GetTick() when last RX
+} BMS_Message_t;
+
 static BMS_State_t state = 0;
+static BMS_Message_t message = {};
+uint16_t BMS_Temperature = -1; // negative value indicates uninitialized state lol
 
 /* ============================================================================
  * RX Callback Handlers
@@ -34,7 +47,7 @@ static BMS_State_t state = 0;
 static void rx_callback_bms_state(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                   const uint8_t *data, uint8_t length, void *user_data)
 {
-  printf("[BMS] %X\n", data[0]);
+  state = data[0] >> 3;
 }
 
 /* ============================================================================
@@ -61,4 +74,9 @@ void FEB_CAN_BMS_Init(void)
 BMS_State_t FEB_CAN_BMS_GetLastState(void)
 {
   return state;
+}
+
+uint16_t FEB_CAN_BMS_getTemp(void)
+{
+  return message.temperature;
 }

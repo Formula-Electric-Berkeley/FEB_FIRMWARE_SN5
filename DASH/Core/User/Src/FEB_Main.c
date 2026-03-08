@@ -7,6 +7,7 @@
  */
 
 #include "FEB_Main.h"
+#include "FEB_CAN_PCU.h"
 #include "main.h"
 #include "feb_uart.h"
 #include "feb_uart_config.h"
@@ -61,6 +62,8 @@ void FEB_Init(void)
 
   /* Initialize CAN state publisher */
   FEB_CAN_State_Init();
+  FEB_CAN_BMS_Init();
+  FEB_CAN_PCU_Init();
 
   /* Startup banner */
   FEB_Console_Printf("\r\n");
@@ -70,8 +73,6 @@ void FEB_Init(void)
   FEB_Console_Printf("Use | as delimiter: echo|hello world\r\n");
   FEB_Console_Printf("Type 'help' for available commands\r\n");
   FEB_Console_Printf("\r\n");
-
-  FEB_CAN_BMS_Init();
 }
 
 /* ============================================================================

@@ -6,6 +6,8 @@
 #ifndef FEB_UI_BMS_STATE_H
 #define FEB_UI_BMS_STATE_H
 
+#include "FEB_CAN_BMS.h"
+
 // ── API ───────────────────────────────────────────────────────────────
 void FEB_UI_Update_BMS_State(void);
 void FEB_UI_Init_BMS_State(lv_obj_t *ui_Screen);
