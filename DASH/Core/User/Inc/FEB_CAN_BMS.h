@@ -32,5 +32,7 @@ typedef enum
 
 void FEB_CAN_BMS_Init(void);
 BMS_State_t FEB_CAN_BMS_GetLastState(void);
+int16_t FEB_CAN_BMS_GetLastCellMaxTemperature(void);
+uint16_t FEB_CAN_BMS_GetLastAccumulator_total_voltage(void);
 
 #endif /* FEB_CAN_BMS_H */

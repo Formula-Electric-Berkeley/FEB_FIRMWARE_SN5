@@ -21,20 +21,10 @@
  * ============================================================================
  */
 
-typedef struct BMS_MESSAGE_TYPE
-{
-  volatile uint16_t temperature;       // Updated in ISR, read in main loop
-  volatile uint16_t voltage;           // Updated in ISR, read in main loop (in 0.1V units)
-  volatile FEB_SM_ST_t state;          // Updated in ISR, read in main loop
-  volatile FEB_HB_t ping_ack;          // Updated in ISR, read in main loop
-  volatile float max_temperature;      // Max accumulator temperature in C
-  volatile float accumulator_voltage;  // Accumulator voltage in V
-  volatile uint32_t last_rx_timestamp; // 0 = never received, else HAL_GetTick() when last RX
-} BMS_Message_t;
-
 static BMS_State_t state = 0;
-static BMS_Message_t message = {};
-uint16_t BMS_Temperature = -1; // negative value indicates uninitialized state lol
+
+static int16_t cell_max_temperature = 0;
+static uint16_t accumulator_total_voltage = 0;
 
 /* ============================================================================
  * RX Callback Handlers
@@ -48,6 +38,18 @@ static void rx_callback_bms_state(FEB_CAN_Instance_t instance, uint32_t can_id, 
                                   const uint8_t *data, uint8_t length, void *user_data)
 {
   state = data[0] >> 3;
+}
+
+static void rx_callback_bms_temperature(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
+                                        const uint8_t *data, uint8_t length, void *user_data)
+{
+  memcpy(&cell_max_temperature, &data[4], sizeof(int16_t));
+}
+
+static void rx_callback_bms_voltage(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
+                                    const uint8_t *data, uint8_t length, void *user_data)
+{
+  memcpy(&accumulator_total_voltage, &data[0], sizeof(uint16_t));
 }
 
 /* ============================================================================
@@ -68,7 +70,31 @@ void FEB_CAN_BMS_Init(void)
       .user_data = NULL,
   };
 
+  FEB_CAN_RX_Params_t rx_params_bms_temperature = {
+      .instance = FEB_CAN_INSTANCE_1,
+      .can_id = FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID,
+      .id_type = FEB_CAN_ID_STD,
+      .filter_type = FEB_CAN_FILTER_EXACT,
+      .mask = 0x7FF,
+      .fifo = FEB_CAN_FIFO_0,
+      .callback = rx_callback_bms_temperature,
+      .user_data = NULL,
+  };
+
+  FEB_CAN_RX_Params_t rx_params_bms_voltage = {
+      .instance = FEB_CAN_INSTANCE_1,
+      .can_id = FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID,
+      .id_type = FEB_CAN_ID_STD,
+      .filter_type = FEB_CAN_FILTER_EXACT,
+      .mask = 0x7FF,
+      .fifo = FEB_CAN_FIFO_0,
+      .callback = rx_callback_bms_voltage,
+      .user_data = NULL,
+  };
+
   FEB_CAN_RX_Register(&rx_params_bms_state);
+  FEB_CAN_RX_Register(&rx_params_bms_temperature);
+  FEB_CAN_RX_Register(&rx_params_bms_voltage);
 }
 
 BMS_State_t FEB_CAN_BMS_GetLastState(void)
@@ -76,7 +102,12 @@ BMS_State_t FEB_CAN_BMS_GetLastState(void)
   return state;
 }
 
-uint16_t FEB_CAN_BMS_getTemp(void)
+int16_t FEB_CAN_BMS_GetLastCellMaxTemperature(void)
 {
-  return message.temperature;
+  return cell_max_temperature;
+}
+
+uint16_t FEB_CAN_BMS_GetLastAccumulatorTotalVoltage(void)
+{
+  return accumulator_total_voltage;
 }
