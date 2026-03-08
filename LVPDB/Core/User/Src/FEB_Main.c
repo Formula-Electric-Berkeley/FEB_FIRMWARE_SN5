@@ -232,19 +232,27 @@ void FEB_Main_Setup(void)
   HAL_TIM_Base_Start_IT(&htim1);
 }
 
+#define MAIN_LOOP_POLL_INTERVAL_MS 10
+
 void FEB_Main_Loop(void)
 {
+  static uint32_t last_poll_tick = 0;
+  uint32_t now = HAL_GetTick();
+  if (now - last_poll_tick >= MAIN_LOOP_POLL_INTERVAL_MS)
+  {
+    last_poll_tick = now;
+    TPS2482_Poll_Current(&hi2c1, tps2482_i2c_addresses, tps2482_current_raw, NUM_TPS2482);
+    TPS2482_Poll_Bus_Voltage(&hi2c1, tps2482_i2c_addresses, tps2482_bus_voltage_raw, NUM_TPS2482);
+    TPS2482_Poll_Shunt_Voltage(&hi2c1, tps2482_i2c_addresses, tps2482_shunt_voltage_raw, NUM_TPS2482);
+
+    FEB_Variable_Conversion();
+  }
+
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1); // Process any received UART commands
 }
 
 void FEB_1ms_Callback(void)
 {
-  TPS2482_Poll_Current(&hi2c1, tps2482_i2c_addresses, tps2482_current_raw, NUM_TPS2482);
-  TPS2482_Poll_Bus_Voltage(&hi2c1, tps2482_i2c_addresses, tps2482_bus_voltage_raw, NUM_TPS2482);
-  TPS2482_Poll_Shunt_Voltage(&hi2c1, tps2482_i2c_addresses, tps2482_shunt_voltage_raw, NUM_TPS2482);
-
-  FEB_Variable_Conversion();
-
   // Process CAN ping/pong every 100ms
   static uint16_t ping_divider = 0;
   ping_divider++;
@@ -257,7 +265,7 @@ void FEB_1ms_Callback(void)
   // Process CAN tps reading every 100ms
   static uint16_t tps_divider = 0;
   tps_divider++;
-  if (tps_divider >= 67)
+  if (tps_divider >= 100)
   {
     tps_divider = 0;
     FEB_CAN_TPS_Tick(tps2482_current_raw, tps2482_bus_voltage_raw, NUM_TPS2482);

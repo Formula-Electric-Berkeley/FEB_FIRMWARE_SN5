@@ -105,6 +105,12 @@ FEB_Relay_State_t FEB_HW_IMD_Sense(void);
  */
 FEB_Relay_State_t FEB_HW_TSMS_Sense(void);
 
+/**
+ * @brief Read BMS reset button state
+ * @return true if button is pressed (active low)
+ */
+bool FEB_HW_Reset_Button_Pressed(void);
+
 /* ============================================================================
  * Utility Functions
  * ============================================================================ */

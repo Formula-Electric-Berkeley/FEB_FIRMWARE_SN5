@@ -91,6 +91,12 @@ FEB_Relay_State_t FEB_HW_TSMS_Sense(void)
   return (FEB_Relay_State_t)HAL_GPIO_ReadPin(SHS_TSMS_GPIO_Port, SHS_TSMS_Pin);
 }
 
+bool FEB_HW_Reset_Button_Pressed(void)
+{
+  /* Assuming active-low button with pull-up */
+  return (HAL_GPIO_ReadPin(BMS_RESET_GPIO_Port, BMS_RESET_Pin) == GPIO_PIN_RESET);
+}
+
 /* ============================================================================
  * Utility Functions
  * ============================================================================ */

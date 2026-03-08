@@ -19,8 +19,12 @@
 #include "FEB_CAN_DASH.h"
 #include "FEB_ADBMS6830B.h"
 #include "FEB_CAN_IVT.h"
+#include "feb_uart_log.h"
 #include "stm32f4xx_hal.h"
 #include <stdbool.h>
+
+/* Logging tag for state machine */
+#define TAG_SM "[SM]"
 
 /* Critical section macros for ISR/task shared variables */
 #define SM_ENTER_CRITICAL()                                                                                            \
@@ -68,6 +72,11 @@ static volatile uint32_t charging_delay_start = 0;
 static volatile uint32_t precharge_start_time = 0;
 static volatile uint32_t charger_precharge_start_time = 0;
 
+/* Reset button state tracking */
+static volatile bool reset_button_last_state = false;
+static volatile uint32_t reset_button_debounce_tick = 0;
+#define RESET_BUTTON_DEBOUNCE_MS 50
+
 /* Special DEFAULT value for transition function calls during FEB_SM_Process */
 #define BMS_STATE_DEFAULT BMS_STATE_COUNT
 
@@ -78,6 +87,7 @@ static volatile uint32_t charger_precharge_start_time = 0;
 static bool isFaultState(BMS_State_t state);
 static void fault_begin(BMS_State_t fault_type);
 static bool fault_process(void);
+static void check_reset_button(void);
 
 /* ============================================================================
  * Forward Declarations - Transition Functions
@@ -130,7 +140,13 @@ static BMS_State_t updateStateProtected(BMS_State_t next_state)
   {
     return BMS_STATE_FAULT_BMS;
   }
+
+  BMS_State_t prev_state = SM_Current_State;
   SM_Current_State = next_state;
+
+  /* Log state transition */
+  LOG_I(TAG_SM, "%s -> %s", FEB_CAN_State_GetStateName(prev_state), FEB_CAN_State_GetStateName(next_state));
+
   /* Update CAN-published state */
   FEB_CAN_State_SetState(next_state);
   return next_state;
@@ -148,11 +164,14 @@ static void fault_begin(BMS_State_t fault_type)
     return;
   }
 
+  LOG_E(TAG_SM, "FAULT ENTRY: %s", FEB_CAN_State_GetStateName(fault_type));
+
   SM_Current_State = fault_type;
   FEB_CAN_State_SetState(fault_type);
 
   /* Open BMS shutdown relay immediately (disables HV path) */
   FEB_HW_BMS_Shutdown_Set(false);
+  LOG_W(TAG_SM, "BMS shutdown relay opened");
 
   /* Turn on fault indicator */
   FEB_HW_Fault_Indicator_Set(true);
@@ -181,6 +200,7 @@ static bool fault_process(void)
     FEB_HW_AIR_Plus_Set(false);
     FEB_HW_Precharge_Set(false);
     fault_pending = false;
+    LOG_W(TAG_SM, "Fault settling complete, contactors opened");
     return true;
   }
 
@@ -196,17 +216,51 @@ static bool isFaultState(BMS_State_t state)
           state == BMS_STATE_FAULT_CHARGING);
 }
 
+/**
+ * @brief Check reset button state with debouncing
+ */
+static void check_reset_button(void)
+{
+  bool current_state = FEB_HW_Reset_Button_Pressed();
+
+  /* Debounce: only register change if stable for debounce period */
+  if (current_state != reset_button_last_state)
+  {
+    if ((HAL_GetTick() - reset_button_debounce_tick) >= RESET_BUTTON_DEBOUNCE_MS)
+    {
+      reset_button_last_state = current_state;
+      reset_button_debounce_tick = HAL_GetTick();
+
+      if (current_state)
+      {
+        LOG_I(TAG_SM, "RESET BUTTON PRESSED");
+      }
+      else
+      {
+        LOG_D(TAG_SM, "Reset button released");
+      }
+    }
+  }
+  else
+  {
+    reset_button_debounce_tick = HAL_GetTick();
+  }
+}
+
 /* ============================================================================
  * Public Interface
  * ============================================================================ */
 
 void FEB_SM_Init(void)
 {
+  LOG_I(TAG_SM, "State machine initializing");
+
   SM_Current_State = BMS_STATE_BOOT;
 
   /* Open AIR+ and precharge relays (safe state) */
   FEB_HW_AIR_Plus_Set(false);
   FEB_HW_Precharge_Set(false);
+  LOG_D(TAG_SM, "AIR+ and precharge relays opened");
 
   /* Reset indicators */
   FEB_HW_BMS_Indicator_Set(false);
@@ -214,11 +268,13 @@ void FEB_SM_Init(void)
 
   /* Close BMS shutdown relay (enables HV path when shutdown loop complete) */
   FEB_HW_BMS_Shutdown_Set(true);
+  LOG_D(TAG_SM, "BMS shutdown relay closed");
 
   /* Update CAN state */
   FEB_CAN_State_SetState(BMS_STATE_BOOT);
 
   /* Transition to LV_POWER */
+  LOG_I(TAG_SM, "Init complete, transitioning to LV_POWER");
   FEB_SM_Transition(BMS_STATE_LV_POWER);
 }
 
@@ -237,6 +293,9 @@ void FEB_SM_Transition(BMS_State_t next_state)
 
 void FEB_SM_Process(void)
 {
+  /* Check reset button */
+  check_reset_button();
+
   /* Process pending fault delay first */
   fault_process();
 
@@ -376,6 +435,11 @@ static void HealthCheckTransition(BMS_State_t next_state)
     updateStateProtected(next_state);
     break;
 
+  case BMS_STATE_BATTERY_FREE:
+    LOG_I(TAG_SM, "Entering BATTERY_FREE from BUS_HEALTH_CHECK");
+    updateStateProtected(next_state);
+    break;
+
   case BMS_STATE_PRECHARGE:
     /* Should be open but included for redundancy */
     FEB_HW_AIR_Plus_Set(false);
@@ -387,6 +451,7 @@ static void HealthCheckTransition(BMS_State_t next_state)
     /* Go back to LV if shutdown not completed */
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN)
     {
+      LOG_W(TAG_SM, "Shutdown open during health check, returning to LV_POWER");
       HealthCheckTransition(BMS_STATE_LV_POWER);
       break;
     }
@@ -439,6 +504,7 @@ static void PrechargeTransition(BMS_State_t next_state)
     /* Safety check: go back to LV if shutdown or AIR- opens */
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN || FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
     {
+      LOG_W(TAG_SM, "Shutdown/AIR- open during precharge, returning to LV_POWER");
       PrechargeTransition(BMS_STATE_LV_POWER);
       break;
     }
@@ -449,6 +515,7 @@ static void PrechargeTransition(BMS_State_t next_state)
       if (precharge_start_time == 0)
       {
         precharge_start_time = HAL_GetTick();
+        LOG_D(TAG_SM, "Precharge started");
       }
       SM_EXIT_CRITICAL();
     }
@@ -462,6 +529,7 @@ static void PrechargeTransition(BMS_State_t next_state)
       if ((HAL_GetTick() - start_time) >= PRECHARGE_TIMEOUT_MS)
       {
         /* Precharge failed - enter fault state */
+        LOG_E(TAG_SM, "Precharge timeout (%dms), entering fault", PRECHARGE_TIMEOUT_MS);
         fault_begin(BMS_STATE_FAULT_BMS);
         SM_ENTER_CRITICAL();
         precharge_start_time = 0;
@@ -481,6 +549,7 @@ static void PrechargeTransition(BMS_State_t next_state)
     float pack_voltage = FEB_ADBMS_GET_ACC_Total_Voltage();
     if (pack_voltage > 0.0f && ivt_voltage >= PRECHARGE_THRESHOLD_PCT * pack_voltage)
     {
+      LOG_I(TAG_SM, "Precharge complete: IVT=%.1fV Pack=%.1fV", ivt_voltage, pack_voltage);
       SM_ENTER_CRITICAL();
       precharge_start_time = 0; /* Reset timer */
       SM_EXIT_CRITICAL();
@@ -523,6 +592,7 @@ static void EnergizedTransition(BMS_State_t next_state)
     /* Safety check: go back to LV if shutdown or AIR- opens */
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN || FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
     {
+      LOG_W(TAG_SM, "Shutdown/AIR- open while energized, returning to LV_POWER");
       EnergizedTransition(BMS_STATE_LV_POWER);
       break;
     }
@@ -530,6 +600,7 @@ static void EnergizedTransition(BMS_State_t next_state)
     /* Check for ready-to-drive signal from DASH */
     if (FEB_CAN_DASH_IsReadyToDrive(R2D_TIMEOUT_MS))
     {
+      LOG_I(TAG_SM, "R2D signal received, entering DRIVE");
       EnergizedTransition(BMS_STATE_DRIVE);
     }
     break;
@@ -569,6 +640,7 @@ static void DriveTransition(BMS_State_t next_state)
     /* Safety check: go back to LV if shutdown or AIR- opens */
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN || FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
     {
+      LOG_W(TAG_SM, "Shutdown/AIR- open while driving, returning to LV_POWER");
       DriveTransition(BMS_STATE_LV_POWER);
       break;
     }
@@ -576,6 +648,7 @@ static void DriveTransition(BMS_State_t next_state)
     /* If driver no longer requests R2D, go back to energized */
     if (!FEB_CAN_DASH_IsReadyToDrive(R2D_TIMEOUT_MS))
     {
+      LOG_I(TAG_SM, "R2D signal lost, returning to ENERGIZED");
       DriveTransition(BMS_STATE_ENERGIZED);
     }
     break;

@@ -10,11 +10,15 @@
 #include "main.h"
 #include "feb_uart.h"
 #include "feb_uart_config.h"
+#include "feb_uart_log.h"
 #include "feb_console.h"
 #include "FEB_Commands.h"
 #include "FEB_CAN_State.h"
 #include "FEB_SM.h"
 #include "cmsis_os2.h"
+
+/* Logging tag */
+#define TAG_MAIN "[MAIN]"
 
 /* External HAL handles from CubeMX-generated code */
 extern UART_HandleTypeDef huart2;
@@ -67,12 +71,15 @@ void FEB_Init(void)
   /* Initialize state machine (sets relays to safe state, transitions to LV_POWER) */
   FEB_SM_Init();
 
+  /* Log after all subsystems initialized */
+  LOG_I(TAG_MAIN, "BMS initialization complete");
+
   /* Startup banner */
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("========================================\r\n");
   FEB_Console_Printf("        BMS Console Ready\r\n");
   FEB_Console_Printf("========================================\r\n");
-  FEB_Console_Printf("Use | as delimiter: echo|hello world\r\n");
+  FEB_Console_Printf("Use | as delimiter: BMS|status\r\n");
   FEB_Console_Printf("Type 'help' for available commands\r\n");
   FEB_Console_Printf("\r\n");
 }

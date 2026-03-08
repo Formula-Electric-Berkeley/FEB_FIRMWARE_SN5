@@ -52,7 +52,7 @@ void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, INDICATOR_Pin|BMS_IND_Pin|BMS_A_Pin|PC_AIR_Pin
-                          |SPI1_CS_Pin|SPI2_CS_Pin|SHS_IMD_Pin|SHS_TSMS_Pin, GPIO_PIN_RESET);
+                          |SPI1_CS_Pin|SPI2_CS_Pin|SHS_TSMS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(BUZZER_EN_GPIO_Port, BUZZER_EN_Pin, GPIO_PIN_RESET);
@@ -64,9 +64,9 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(PC_RELAY_GPIO_Port, PC_RELAY_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : INDICATOR_Pin BMS_IND_Pin BMS_A_Pin PC_AIR_Pin
-                           SPI1_CS_Pin SPI2_CS_Pin SHS_IMD_Pin SHS_TSMS_Pin */
+                           SPI1_CS_Pin SPI2_CS_Pin SHS_TSMS_Pin */
   GPIO_InitStruct.Pin = INDICATOR_Pin|BMS_IND_Pin|BMS_A_Pin|PC_AIR_Pin
-                          |SPI1_CS_Pin|SPI2_CS_Pin|SHS_IMD_Pin|SHS_TSMS_Pin;
+                          |SPI1_CS_Pin|SPI2_CS_Pin|SHS_TSMS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -80,9 +80,9 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(BUZZER_EN_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : AIR_M_SENSE_Pin AIR_P_SENSE_Pin WAKE2_Pin INT2_Pin
-                           SHS_IN_Pin */
+                           SHS_IMD_Pin SHS_IN_Pin */
   GPIO_InitStruct.Pin = AIR_M_SENSE_Pin|AIR_P_SENSE_Pin|WAKE2_Pin|INT2_Pin
-                          |SHS_IN_Pin;
+                          |SHS_IMD_Pin|SHS_IN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
