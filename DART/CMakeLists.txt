@@ -14,79 +14,79 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 project(${PROJ_NAME} C CXX ASM)
+
+# Override root-level M4 flags — DART is Cortex-M0, no FPU
+set(DART_CPU_FLAGS "-mcpu=cortex-m0 -mthumb")
+string(REPLACE "-mcpu=cortex-m4" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+string(REPLACE "-mfpu=fpv4-sp-d16" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+string(REPLACE "-mfloat-abi=hard" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+string(REPLACE "-mcpu=cortex-m4" "" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
+string(REPLACE "-mfpu=fpv4-sp-d16" "" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
+string(REPLACE "-mfloat-abi=hard" "" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
+string(REPLACE "-mcpu=cortex-m4" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+string(REPLACE "-mfpu=fpv4-sp-d16" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+string(REPLACE "-mfloat-abi=hard" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${DART_CPU_FLAGS}")
+set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${DART_CPU_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${DART_CPU_FLAGS}")
+
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-# ── Compile definitions ──────────────────────────────────────────────
-add_compile_definitions(
-    USE_HAL_DRIVER
-    STM32F446xx
-    $<$<CONFIG:Debug>:DEBUG>
+# ══════════════════════════════════════════════════════════════════════
+#  EXECUTABLE TARGET (must be created before subdirectories)
+# ══════════════════════════════════════════════════════════════════════
+
+add_executable(${PROJECT_NAME})
+
+# ── User application sources (FEB files) ─────────────────────────────
+target_sources(${PROJECT_NAME} PRIVATE
+    Core/User/Src/FEB_CAN.c
+    Core/User/Src/FEB_CAN_BMS.c
+    Core/User/Src/FEB_Fan.c
+    Core/User/Src/FEB_main.c
 )
 
-# ══════════════════════════════════════════════════════════════════════
-#  SOURCE COLLECTION
-# ══════════════════════════════════════════════════════════════════════
-
-# Core application sources (CubeMX-generated + user code)
-file(GLOB_RECURSE CORE_SOURCES "Core/*.c")
-
-# Startup assembly
-file(GLOB STARTUP_ASM "startup_*.s")
-
-# HAL/LL driver sources (safe: HAL_MODULE_ENABLED guards; exclude templates)
-file(GLOB HAL_SOURCES "Drivers/STM32F4xx_HAL_Driver/Src/*.c")
-list(FILTER HAL_SOURCES EXCLUDE REGEX "_template\\.c$")
-
-# Combine base sources
-set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES})
-
-# ══════════════════════════════════════════════════════════════════════
-#  INCLUDE DIRECTORIES
-# ══════════════════════════════════════════════════════════════════════
-
-set(BASE_INCLUDES
-    Core/Inc
-    Drivers/STM32F4xx_HAL_Driver/Inc
-    Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
-    Drivers/CMSIS/Device/ST/STM32F4xx/Include
-    Drivers/CMSIS/Include
+# ── Include directories ───────────────────────────────────────────────
+target_include_directories(${PROJECT_NAME} PRIVATE
+    Core/User/Inc
 )
 
-# Auto-discover Core/User/Inc if it exists
-if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
-    list(APPEND BASE_INCLUDES Core/User/Inc)
-endif()
+# Common CAN library includes
+set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4")
+target_include_directories(${PROJECT_NAME} PRIVATE
+    "${CAN_LIB_DIR}/.."       # resolves #include "FEB_CAN_Library_SN4/gen/feb_can.h"
+    "${CAN_LIB_DIR}/gen"      # resolves #include "feb_can.h" directly
+)
 
-# ══════════════════════════════════════════════════════════════════════
-#  EXECUTABLE TARGET
-# ══════════════════════════════════════════════════════════════════════
+# CAN library generated source
+target_sources(${PROJECT_NAME} PRIVATE
+    "${CAN_LIB_DIR}/gen/feb_can.c"
+)
 
-add_executable(${PROJECT_NAME} ${ALL_SOURCES})
+# ── Bring in CubeMX-generated HAL + application sources ──────────────
+add_subdirectory(cmake/stm32cubemx)
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
-
+# ── Link libraries ────────────────────────────────────────────────────
 target_link_libraries(${PROJECT_NAME} PRIVATE m)
 
-# Enable floating-point printf/scanf for newlib-nano
-target_link_options(${PROJECT_NAME} PRIVATE
-    "LINKER:-u,_printf_float"
-    "LINKER:-u,_scanf_float"
-)
-
-# Linker script and map file (project-specific, not in shared toolchain)
-file(GLOB LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/STM32F4*_FLASH.ld")
+# ── Linker script ─────────────────────────────────────────────────────
+file(GLOB LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/STM32F0*_FLASH.ld")
 if(LINKER_SCRIPT)
     list(GET LINKER_SCRIPT 0 LINKER_SCRIPT)
     target_link_options(${PROJECT_NAME} PRIVATE -T "${LINKER_SCRIPT}")
 endif()
+
 target_link_options(${PROJECT_NAME} PRIVATE
+    --specs=nano.specs
     -Wl,-Map=$<TARGET_FILE_DIR:${PROJECT_NAME}>/${PROJECT_NAME}.map
+    -Wl,--gc-sections
+    -Wl,--print-memory-usage
 )
 
 # Remove wrong libob.a dependency
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
-# ── Post-build: .bin, .hex, size ─────────────────────────────────────
+# ── Post-build: .bin, .hex, size ──────────────────────────────────────
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${PROJECT_NAME}>
             ${PROJECT_NAME}.bin
