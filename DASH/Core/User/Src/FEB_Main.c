@@ -8,6 +8,7 @@
 
 #include "FEB_Main.h"
 #include "FEB_CAN_PCU.h"
+#include "FEB_CAN_PingPong.h"
 #include "main.h"
 #include "feb_uart.h"
 #include "feb_uart_config.h"
