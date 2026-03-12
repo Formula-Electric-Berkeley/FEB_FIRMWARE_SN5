@@ -21,7 +21,7 @@
 /* External mutex from freertos.c */
 extern osMutexId_t ADBMSMutexHandle;
 
-/* Debug macros using UART logging - commented out to reduce log spam */
+/* Debug macros using UART logging */
 #define TAG_VOLTAGE "[VOLT]"
 #define TAG_TEMP "[TEMP]"
 // #define DEBUG_VOLTAGE_PRINT(...) LOG_D(TAG_VOLTAGE, __VA_ARGS__)
@@ -41,7 +41,7 @@ uint8_t ERROR_TYPE = 0; // HEXDIGIT 1 voltage faults; HEXDIGIT 2 temp faults; HE
 
 // ********************************** Config Bits ********************************
 
-static bool refon = 0;
+static bool refon = 1;
 static bool cth_bits[3] = {1, 1, 1};
 static bool gpio_bits[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
 static bool dcto_bits[6] = {1, 1, 1, 1, 1, 1};
@@ -302,13 +302,17 @@ static void store_cell_temps(uint8_t channel)
     {
       uint16_t mux1 = IC_Config[FEB_NUM_ICPBANK * bank + icn].aux.a_codes[0];
       uint16_t mux2 = IC_Config[FEB_NUM_ICPBANK * bank + icn].aux.a_codes[1];
+
+      // DEBUG: Print raw a_codes before conversion
+      DEBUG_TEMP_PRINT("Bank %d IC %d: RAW a_codes[0]=0x%04X a_codes[1]=0x%04X", bank, icn, mux1, mux2);
+
       float V1 = (convert_voltage(mux1) * 1000);
       float V2 = (convert_voltage(mux2) * 1000);
 
       float T1 = FEB_Cell_Temp_LUT_Get_Temp_100mC((int)V1) * 0.1f;
       float T2 = FEB_Cell_Temp_LUT_Get_Temp_100mC((int)V2) * 0.1f;
 
-      DEBUG_TEMP_PRINT("Bank %d IC %d: V1=%.1fmV V2=%.1fmV T1=%.1f°C T2=%.1f°C", bank, icn, V1, V2, T1, T2);
+      DEBUG_TEMP_PRINT("Bank %d IC %d: V1=%.1fmV V2=%.1fmV T1=%.1fC T2=%.1fC", bank, icn, V1, V2, T1, T2);
 
       FEB_ACC.banks[bank].temp_sensor_readings_V[icn * FEB_NUM_TEMP_SENSE_PER_IC + channel] = T1;
       FEB_ACC.banks[bank].temp_sensor_readings_V[icn * FEB_NUM_TEMP_SENSE_PER_IC + channel + 5] = T2;
@@ -330,8 +334,8 @@ static void store_cell_temps(uint8_t channel)
     FEB_ACC.pack_min_temp = min_temp_C;
     FEB_ACC.pack_max_temp = max_temp_C;
     FEB_ACC.average_pack_temp = total_temp_C / (double)temp_count;
-    DEBUG_TEMP_PRINT("Channel %d temps stored: Count=%d Min=%.1f°C Max=%.1f°C Avg=%.1f°C", channel, temp_count,
-                     min_temp_C, max_temp_C, FEB_ACC.average_pack_temp);
+    DEBUG_TEMP_PRINT("Channel %d temps stored: Count=%d Min=%.1fC Max=%.1fC Avg=%.1fC", channel, temp_count, min_temp_C,
+                     max_temp_C, FEB_ACC.average_pack_temp);
   }
   else
   {
@@ -344,7 +348,7 @@ static void validate_temps()
   DEBUG_TEMP_PRINT("Validating temperatures");
   int16_t tMax = (int16_t)FEB_Config_Get_Cell_Max_Temperature_dC();
   int16_t tMin = (int16_t)FEB_Config_Get_Cell_Min_Temperature_dC();
-  DEBUG_TEMP_PRINT("Temperature limits: Min=%.1f°C Max=%.1f°C", tMin / 10.0f, tMax / 10.0f);
+  DEBUG_TEMP_PRINT("Temperature limits: Min=%.1fC Max=%.1fC", tMin / 10.0f, tMax / 10.0f);
   int totalReads = 0;
 
   for (uint8_t bank = 0; bank < FEB_NBANKS; bank++)
@@ -355,7 +359,7 @@ static void validate_temps()
       float temp = FEB_ACC.banks[bank].temp_sensor_readings_V[cell] * 10;
 
       // Check if temperature is within physically reasonable range
-      // Valid range: -40°C to +85°C (typical automotive operating range)
+      // Valid range: -40C to +85C (typical automotive operating range)
       if (temp >= TEMP_VALID_MIN_DC && temp <= TEMP_VALID_MAX_DC)
       {
         FEB_ACC.banks[bank].tempRead += 1;
@@ -363,19 +367,19 @@ static void validate_temps()
       else
       {
         // Invalid reading - outside physically reasonable range
-        DEBUG_TEMP_PRINT("Invalid temp reading: Bank %d Cell %d Temp=%.1f°C (outside valid range)", bank, cell,
+        DEBUG_TEMP_PRINT("Invalid temp reading: Bank %d Cell %d Temp=%.1fC (outside valid range)", bank, cell,
                          temp / 10.0f);
         continue;
       }
 
       if (temp > tMax || temp < (float)tMin)
       {
-        DEBUG_TEMP_PRINT("Temperature violation: Bank %d Cell %d Temp=%.1f°C violations=%d", bank, cell, temp / 10.0f,
+        DEBUG_TEMP_PRINT("Temperature violation: Bank %d Cell %d Temp=%.1fC violations=%d", bank, cell, temp / 10.0f,
                          FEB_ACC.banks[bank].temp_violations[cell] + 1);
         FEB_ACC.banks[bank].temp_violations[cell]++;
         if (FEB_ACC.banks[bank].temp_violations[cell] == FEB_TEMP_ERROR_THRESH)
         {
-          printf("[ADBMS] FAULT: Cell temperature out of range - Bank %d Sensor %d: %.1f°C (limits: %.1f-%.1f°C)\r\n",
+          printf("[ADBMS] FAULT: Cell temperature out of range - Bank %d Sensor %d: %.1fC (limits: %.1f-%.1fC)\r\n",
                  bank, cell, temp / 10.0f, tMin / 10.0f, tMax / 10.0f);
           FEB_ADBMS_Update_Error_Type(ERROR_TYPE_TEMP_VIOLATION);
           // FEB_SM_Transition(FEB_SM_ST_FAULT_BMS);
@@ -436,7 +440,20 @@ bool FEB_ADBMS_Init(void)
     }
   }
 
-  // Read the Serial ID for each ADBMS IC in the daisy chain
+  // Initialize ADBMS configuration FIRST (matching SN4 sequence)
+  printf("[ADBMS] Initializing ADBMS Configuration\r\n");
+  FEB_cs_high();
+  printf("[ADBMS] High CS\r\n");
+  ADBMS6830B_init_cfg(FEB_NUM_IC, IC_Config);
+  printf("[ADBMS] Resetting ADBMS CRC Count\r\n");
+  ADBMS6830B_reset_crc_count(FEB_NUM_IC, IC_Config);
+  printf("[ADBMS] Initializing ADBMS Register Limits\r\n");
+  ADBMS6830B_init_reg_limits(FEB_NUM_IC, IC_Config);
+  printf("[ADBMS] Writing ADBMS Configuration to ICs\r\n");
+  ADBMS6830B_wrALL(FEB_NUM_IC, IC_Config);
+  printf("[ADBMS] ADBMS Configuration Initialized\r\n");
+
+  // Read the Serial ID AFTER configuration is established
   ADBMS6830B_rdsid(FEB_NUM_IC, IC_Config);
   osDelay(pdMS_TO_TICKS(1));
   printf("[ADBMS] Serial IDs read for %d ICs\r\n", FEB_NUM_IC);
@@ -470,23 +487,12 @@ bool FEB_ADBMS_Init(void)
     return false;
   }
 
-  printf("[ADBMS] Initializing ADBMS Configuration\r\n");
-  FEB_cs_high();
-  printf("[ADBMS] High CS\r\n");
-  ADBMS6830B_init_cfg(FEB_NUM_IC, IC_Config);
-  printf("[ADBMS] Resetting ADBMS CRC Count\r\n");
-  ADBMS6830B_reset_crc_count(FEB_NUM_IC, IC_Config);
-  printf("[ADBMS] Initializing ADBMS Register Limits\r\n");
-  ADBMS6830B_init_reg_limits(FEB_NUM_IC, IC_Config);
-  printf("[ADBMS] Writing ADBMS Configuration to ICs\r\n");
-  ADBMS6830B_wrALL(FEB_NUM_IC, IC_Config);
-  printf("[ADBMS] ADBMS Configuration Initialized\r\n");
-
   return true;
 }
 
 void FEB_ADBMS_Voltage_Process()
 {
+  // Note: Caller must hold ADBMSMutexHandle (acquired in FEB_Task_ADBMS.c)
   DEBUG_VOLTAGE_PRINT("=== Voltage Process Started ===");
   start_adc_cell_voltage_measurements();
   read_cell_voltages();
@@ -497,9 +503,11 @@ void FEB_ADBMS_Voltage_Process()
 
 void FEB_ADBMS_Temperature_Process()
 {
+  // Note: Caller must hold ADBMSMutexHandle (acquired in FEB_Task_ADBMS.c)
   DEBUG_TEMP_PRINT("=== Temperature Process Started ===");
   gpio_bits[9] ^= 0b1;
   DEBUG_TEMP_PRINT("Toggled gpio_bits[9] to %d", gpio_bits[9]);
+
   for (uint8_t channel = 0; channel < 5; channel++)
   {
     DEBUG_TEMP_PRINT("--- Processing channel %d ---", channel);
@@ -510,6 +518,7 @@ void FEB_ADBMS_Temperature_Process()
     DEBUG_TEMP_PRINT("--- Channel %d complete ---", channel);
   }
   validate_temps();
+
   DEBUG_TEMP_PRINT("=== Temperature Process Completed ===");
 }
 
@@ -608,9 +617,9 @@ void FEB_ADBMS_Print_Accumulator(void)
   // printf("Pack Total Voltage: %.3fV\r\n", FEB_ACC.total_voltage_V);
   // printf("Pack Min Voltage: %.3fV\r\n", FEB_ACC.pack_min_voltage_V);
   // printf("Pack Max Voltage: %.3fV\r\n", FEB_ACC.pack_max_voltage_V);
-  // printf("Pack Min Temp: %.1f°C\r\n", FEB_ACC.pack_min_temp);
-  // printf("Pack Max Temp: %.1f°C\r\n", FEB_ACC.pack_max_temp);
-  // printf("Pack Avg Temp: %.1f°C\r\n", FEB_ACC.average_pack_temp);
+  // printf("Pack Min Temp: %.1fC\r\n", FEB_ACC.pack_min_temp);
+  // printf("Pack Max Temp: %.1fC\r\n", FEB_ACC.pack_max_temp);
+  // printf("Pack Avg Temp: %.1fC\r\n", FEB_ACC.average_pack_temp);
   // printf("Error Type: 0x%02X\r\n", FEB_ACC.error_type);
 
   // for (uint8_t bank = 0; bank < FEB_NBANKS; bank++)
@@ -619,7 +628,7 @@ void FEB_ADBMS_Print_Accumulator(void)
   //   printf("  Total Voltage: %.3fV\r\n", FEB_ACC.banks[bank].total_voltage_V);
   //   printf("  Min Voltage: %.3fV, Max Voltage: %.3fV\r\n", FEB_ACC.banks[bank].min_voltage_V,
   //          FEB_ACC.banks[bank].max_voltage_V);
-  //   printf("  Avg Temp: %.1f°C, Min Temp: %.1f°C, Max Temp: %.1f°C\r\n", FEB_ACC.banks[bank].avg_temp_C,
+  //   printf("  Avg Temp: %.1fC, Min Temp: %.1fC, Max Temp: %.1fC\r\n", FEB_ACC.banks[bank].avg_temp_C,
   //          FEB_ACC.banks[bank].min_temp_C, FEB_ACC.banks[bank].max_temp_C);
   //   printf("  Volt Reads: %d, Temp Reads: %d, Bad Volt Reads: %d\r\n", FEB_ACC.banks[bank].voltRead,
   //          FEB_ACC.banks[bank].tempRead, FEB_ACC.banks[bank].badReadV);
@@ -732,7 +741,8 @@ bool FEB_Cell_Balancing_Status(void)
   }
 
   const float delta_v = max_v - min_v;
-  if (delta_v >= FEB_MIN_SLIPPAGE_V)
+  // delta_v is in millivolts, FEB_MIN_SLIPPAGE_V is in volts (0.03V = 30mV)
+  if (delta_v >= FEB_MIN_SLIPPAGE_V * 1000.0f)
   {
     return true;
   }

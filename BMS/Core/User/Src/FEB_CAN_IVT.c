@@ -13,11 +13,7 @@
 #include "cmsis_compiler.h"
 #include <stddef.h>
 
-/* Critical section macros for ISR/task shared data */
-#define IVT_ENTER_CRITICAL()                                                                                           \
-  uint32_t _primask = __get_PRIMASK();                                                                                 \
-  __disable_irq()
-#define IVT_EXIT_CRITICAL() __set_PRIMASK(_primask)
+/* Note: Critical sections removed - float reads are atomic on ARM Cortex-M4 */
 
 /* ============================================================================
  * Constants
@@ -161,34 +157,19 @@ float FEB_CAN_IVT_GetVoltage(void)
     return 0.0f;
   }
 
-  /* Read voltage atomically to prevent torn reads */
-  IVT_ENTER_CRITICAL();
-  float voltage_mV = ivt_data.voltage_1_mV;
-  IVT_EXIT_CRITICAL();
-
   /* Convert mV to V */
-  return voltage_mV * 0.001f;
+  return ivt_data.voltage_1_mV * 0.001f;
 }
 
 float FEB_CAN_IVT_GetCurrent(void)
 {
-  /* Read current atomically to prevent torn reads */
-  IVT_ENTER_CRITICAL();
-  float current_mA = ivt_data.current_mA;
-  IVT_EXIT_CRITICAL();
-
   /* Convert mA to A */
-  return current_mA * 0.001f;
+  return ivt_data.current_mA * 0.001f;
 }
 
 float FEB_CAN_IVT_GetTemperature(void)
 {
-  /* Read temperature atomically to prevent torn reads */
-  IVT_ENTER_CRITICAL();
-  float temp = ivt_data.temperature_C;
-  IVT_EXIT_CRITICAL();
-
-  return temp;
+  return ivt_data.temperature_C;
 }
 
 bool FEB_CAN_IVT_IsDataFresh(uint32_t timeout_ms)

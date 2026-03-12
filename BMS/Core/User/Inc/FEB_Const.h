@@ -7,7 +7,7 @@
 #define FEB_NUM_ICPBANK 2
 
 // Number of banks in the system
-#define FEB_NBANKS 4
+#define FEB_NBANKS 1
 
 // Total number of ICs in the daisy chain
 #define FEB_NUM_IC (FEB_NUM_ICPBANK * FEB_NBANKS)

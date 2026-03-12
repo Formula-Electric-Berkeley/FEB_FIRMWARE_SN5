@@ -465,8 +465,9 @@ void ADBMS6830B_rdcfga(uint8_t total_ic, // The number of ICs being written to
     memcpy(&(ic[bank].configa.rx_data), ic_data, 6);
 
     /* Calculate PEC for this IC's 6 data bytes */
-    int16_t calc_pec = pec10_calc(6, ic_data);
-    int16_t rx_pec = (int16_t)(ic_data[6] | (ic_data[7] << 8));
+    /* PEC is big-endian: ic_data[6] is MSB, ic_data[7] is LSB */
+    uint16_t calc_pec = Pec10_calc(false, 6, ic_data);
+    uint16_t rx_pec = ((uint16_t)ic_data[6] << 8) | ic_data[7];
     ic[bank].configa.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
 
@@ -519,8 +520,9 @@ void ADBMS6830B_rdcfgb(uint8_t total_ic, // The number of ICs being written to
     memcpy(&(ic[bank].configb.rx_data), ic_data, 6);
 
     /* Calculate PEC for this IC's 6 data bytes */
-    int16_t calc_pec = pec10_calc(6, ic_data);
-    int16_t rx_pec = (int16_t)(ic_data[6] | (ic_data[7] << 8));
+    /* PEC is big-endian: ic_data[6] is MSB, ic_data[7] is LSB */
+    uint16_t calc_pec = Pec10_calc(false, 6, ic_data);
+    uint16_t rx_pec = ((uint16_t)ic_data[6] << 8) | ic_data[7];
     ic[bank].configb.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
 
@@ -533,7 +535,7 @@ void ADBMS6830B_adax(uint8_t OW,  // Open Wire Detection
                      uint8_t CH   // GPIO Channels to be measured
 )
 {
-  uint8_t cmd[4];
+  uint8_t cmd[2];
 
   cmd[0] = OW + 0x04;
   cmd[1] = (PUP << 7) + ((CH & 0x10) << 2) + (CH & 0xF) + 0x10;
@@ -630,29 +632,14 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
   cell_data = (uint8_t *)pvPortMalloc((NUM_RX_BYT * total_ic) * sizeof(uint8_t));
   if (cell_data == NULL)
   {
-    return 1; // Memory allocation failed
+    return 1;
   }
   transmitCMDR(RDAUXA, cell_data, NUM_RX_BYT * total_ic);
 
-  /* Parse data and validate PEC for each IC */
   for (int i = 0; i < total_ic; i++)
   {
-    uint8_t *ic_data = cell_data + i * NUM_RX_BYT;
-
-    /* Copy aux data (6 bytes) */
-    memcpy(&(ic[i].aux.a_codes), ic_data, 6);
-
-    /* Calculate and validate PEC for this IC's data */
-    int16_t calc_pec = pec10_calc(6, ic_data);
-    int16_t rx_pec = (int16_t)(ic_data[6] | (ic_data[7] << 8));
-    ic[i].aux.pec_match[0] = (calc_pec != rx_pec) ? 1 : 0;
-
-    if (ic[i].aux.pec_match[0] != 0)
-    {
-      pec_error++;
-    }
+    memcpy(&(ic[i].aux.a_codes), cell_data + i * NUM_RX_BYT, NUM_RX_BYT);
   }
-
   vPortFree(cell_data);
   return pec_error;
 }
@@ -679,9 +666,19 @@ uint8_t ADBMS6830B_rdsid(uint8_t total_ic, // The number of ICs in the system
 
   for (int i = 0; i < total_ic; i++)
   {
+    uint8_t *ic_data = sid_data + (i * NUM_RX_BYT);
+
     // Copy 6 bytes of SID data (bytes 0-5 of each IC's response)
-    // Bytes 6-7 are PEC which we skip
-    memcpy(ic[i].sid, sid_data + (i * NUM_RX_BYT), 6);
+    memcpy(ic[i].sid, ic_data, 6);
+
+    // Validate PEC for this IC (6 data bytes + 2 PEC bytes)
+    // PEC is big-endian: ic_data[6] is MSB, ic_data[7] is LSB
+    uint16_t calc_pec = Pec10_calc(false, 6, ic_data);
+    uint16_t rx_pec = ((uint16_t)ic_data[6] << 8) | ic_data[7];
+    if (calc_pec != rx_pec)
+    {
+      pec_error++;
+    }
   }
 
   vPortFree(sid_data);

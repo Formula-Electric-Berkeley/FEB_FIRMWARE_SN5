@@ -118,52 +118,23 @@ static inline void FEB_spi_write_array(uint16_t len, uint8_t *data)
 // SPI Write Then Read Function
 static inline void FEB_spi_write_read(uint8_t *tx_data, uint16_t tx_len, uint8_t *rx_data, uint16_t rx_len)
 {
-  // Combine TX and RX into a single transaction for standard SPI "Read after Write"
-  // Using a local buffer to ensure continuous clock and CS low state.
-  // Max size typically: 4 bytes CMD + (8 ICs * 8 bytes data) = 68 bytes.
-  // Using 256 bytes to be safe for stack allocation.
-
-  if ((uint32_t)(tx_len + rx_len) > 256)
+  HAL_SPI_Transmit(FEB_ACTIVE_SPI, tx_data, tx_len, HAL_MAX_DELAY);
+  if (HAL_SPI_Receive(FEB_ACTIVE_SPI, rx_data, rx_len, HAL_MAX_DELAY) != HAL_OK)
   {
-    // Fallback for unexpectedly large transfers (should not happen in normal BMS op)
-    // Note: This split method is technically incorrect for some SPI devices but avoids stack overflow.
-    (void)HAL_SPI_Transmit(FEB_ACTIVE_SPI, tx_data, tx_len, FEB_SPI_TIMEOUT_MS);
-    (void)HAL_SPI_Receive(FEB_ACTIVE_SPI, rx_data, rx_len, FEB_SPI_TIMEOUT_MS);
-    return;
-  }
-
-  uint8_t tx_buf[256];
-  uint8_t rx_buf[256];
-
-  // Prepare TX buffer: [Command Bytes] [Dummy Bytes for RX]
-  // Copy command bytes
-  for (int i = 0; i < tx_len; i++)
-  {
-    tx_buf[i] = tx_data[i];
-  }
-  // Fill dummy bytes for the read phase (usually 0xFF or 0x00, 0xFF is common for idle MOSI)
-  for (int i = 0; i < rx_len; i++)
-  {
-    tx_buf[tx_len + i] = 0xFF;
-  }
-
-  // Perform single full-duplex transaction
-  // This sends the command while ignoring RX, then sends dummy while capturing RX
-  (void)HAL_SPI_TransmitReceive(FEB_ACTIVE_SPI, tx_buf, rx_buf, tx_len + rx_len, FEB_SPI_TIMEOUT_MS);
-
-  // Extract RX data: [Garbage during CMD] [Actual Data]
-  for (int i = 0; i < rx_len; i++)
-  {
-    rx_data[i] = rx_buf[tx_len + i];
+    // catch error
   }
 }
 
 // SPI Read Single Byte Function
-static inline uint8_t FEB_spi_read_byte(uint8_t dummy_byte)
+static inline uint8_t FEB_spi_read_byte(uint8_t tx_data)
 {
-  uint8_t rx_byte = 0;
-  HAL_SPI_TransmitReceive(FEB_ACTIVE_SPI, &dummy_byte, &rx_byte, 1, FEB_SPI_TIMEOUT_MS);
-  return rx_byte;
+  (void)tx_data;
+  uint8_t data;
+  if (HAL_SPI_Receive(FEB_ACTIVE_SPI, &data, 1, 100) != HAL_OK)
+  {
+    // catch error
+  }
+  return data;
 }
 
 // ********************************** isoSPI Wake-Up Function *********************

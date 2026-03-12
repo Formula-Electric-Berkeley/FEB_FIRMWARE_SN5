@@ -12,10 +12,15 @@
 #include "feb_console.h"
 #include "feb_uart_log.h"
 #include "FEB_ADBMS6830B.h"
+#include "FEB_CAN_IVT.h"
 #include "FEB_CAN_PingPong.h"
 #include "FEB_CAN_State.h"
 #include "FEB_Const.h"
+#include "FEB_HW_Relay.h"
 #include "FEB_SM.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "cmsis_os.h"
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -23,6 +28,13 @@
 
 /* Logging tag */
 #define TAG_BMS "[BMS]"
+
+/* External task handles for stack monitoring */
+extern osThreadId_t uartRxTaskHandle;
+extern osThreadId_t ADBMSTaskHandle;
+extern osThreadId_t TPSTaskHandle;
+extern osThreadId_t BMSTaskRxHandle;
+extern osThreadId_t BMSTaskTxHandle;
 
 /* Forward declaration */
 static int strcasecmp_local(const char *s1, const char *s2);
@@ -284,6 +296,255 @@ static void subcmd_state(int argc, char *argv[])
 }
 
 /* ============================================================================
+ * Subcommand: gpio - Show hardware I/O status
+ * ============================================================================ */
+static void subcmd_gpio(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  FEB_Console_Printf("\r\n=== GPIO Status ===\r\n");
+
+  FEB_Console_Printf("Outputs:\r\n");
+  FEB_Console_Printf("  AIR+ Command:    %s\r\n", FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
+  FEB_Console_Printf("  Precharge Cmd:   %s\r\n",
+                     FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
+
+  FEB_Console_Printf("\r\nSense Inputs:\r\n");
+  FEB_Console_Printf("  AIR- Sense:      %s\r\n",
+                     FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
+  FEB_Console_Printf("  AIR+ Sense:      %s\r\n", FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
+  FEB_Console_Printf("  Shutdown Loop:   %s\r\n", FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
+  FEB_Console_Printf("  IMD Status:      %s\r\n", FEB_HW_IMD_Sense() == FEB_RELAY_STATE_CLOSE ? "OK" : "FAULT");
+  FEB_Console_Printf("  TSMS Status:     %s\r\n", FEB_HW_TSMS_Sense() == FEB_RELAY_STATE_CLOSE ? "ACTIVE" : "INACTIVE");
+  FEB_Console_Printf("  Reset Button:    %s\r\n", FEB_HW_Reset_Button_Pressed() ? "PRESSED" : "NOT_PRESSED");
+
+  FEB_Console_Printf("\r\nHV Safe: %s\r\n", FEB_HW_Is_HV_Safe() ? "YES" : "NO");
+}
+
+/* ============================================================================
+ * Subcommand: ivt - Show IVT sensor data
+ * ============================================================================ */
+static void subcmd_ivt(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  const FEB_CAN_IVT_Data_t *ivt = FEB_CAN_IVT_GetData();
+  uint32_t now = HAL_GetTick();
+  uint32_t age = now - ivt->last_rx_tick;
+  bool fresh = FEB_CAN_IVT_IsDataFresh(1000);
+
+  FEB_Console_Printf("\r\n=== IVT Sensor Data ===\r\n");
+  FEB_Console_Printf("Pack Current:  %.2f A\r\n", ivt->current_mA / 1000.0f);
+  FEB_Console_Printf("Pack Voltage:  %.2f V (V1)\r\n", ivt->voltage_1_mV / 1000.0f);
+  FEB_Console_Printf("Voltage 2:     %.2f V\r\n", ivt->voltage_2_mV / 1000.0f);
+  FEB_Console_Printf("Voltage 3:     %.2f V\r\n", ivt->voltage_3_mV / 1000.0f);
+  FEB_Console_Printf("Temperature:   %.1f C\r\n", ivt->temperature_C);
+  FEB_Console_Printf("Data Age:      %lu ms (%s)\r\n", (unsigned long)age, fresh ? "FRESH" : "STALE");
+}
+
+/* ============================================================================
+ * Subcommand: tasks - Show FreeRTOS task stats
+ * ============================================================================ */
+static void subcmd_tasks(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  FEB_Console_Printf("\r\n=== Task Stack Usage ===\r\n");
+  FEB_Console_Printf("%-12s %-18s %s\r\n", "Task", "Stack Free (words)", "Status");
+  FEB_Console_Printf("------------ ------------------ ------\r\n");
+
+  struct
+  {
+    const char *name;
+    osThreadId_t handle;
+    uint32_t stack_size;
+  } tasks[] = {
+      {"uartRxTask", uartRxTaskHandle, 512}, {"ADBMSTask", ADBMSTaskHandle, 2048}, {"TPSTask", TPSTaskHandle, 256},
+      {"BMSTaskRx", BMSTaskRxHandle, 512},   {"BMSTaskTx", BMSTaskTxHandle, 512},
+  };
+
+  for (size_t i = 0; i < sizeof(tasks) / sizeof(tasks[0]); i++)
+  {
+    if (tasks[i].handle != NULL)
+    {
+      UBaseType_t hwm = uxTaskGetStackHighWaterMark((TaskHandle_t)tasks[i].handle);
+      const char *status = (hwm < 50) ? "LOW!" : "OK";
+      FEB_Console_Printf("%-12s %-18u %s\r\n", tasks[i].name, (unsigned int)hwm, status);
+    }
+  }
+}
+
+/* ============================================================================
+ * Subcommand: mem - Show memory usage
+ * ============================================================================ */
+static void subcmd_mem(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  size_t total = configTOTAL_HEAP_SIZE;
+  size_t free_heap = xPortGetFreeHeapSize();
+  size_t min_free = xPortGetMinimumEverFreeHeapSize();
+  size_t used = total - free_heap;
+  uint32_t percent = (used * 100) / total;
+
+  FEB_Console_Printf("\r\n=== Memory Usage ===\r\n");
+  FEB_Console_Printf("Total Heap:    %u bytes\r\n", (unsigned int)total);
+  FEB_Console_Printf("Free Heap:     %u bytes\r\n", (unsigned int)free_heap);
+  FEB_Console_Printf("Min Free Ever: %u bytes\r\n", (unsigned int)min_free);
+  FEB_Console_Printf("Used:          %u bytes (%u%%)\r\n", (unsigned int)used, (unsigned int)percent);
+}
+
+/* ============================================================================
+ * Subcommand: cell - Show single cell details
+ * ============================================================================ */
+static void subcmd_cell(int argc, char *argv[])
+{
+  if (argc < 3)
+  {
+    FEB_Console_Printf("Usage: BMS|cell|<bank>|<cell>\r\n");
+    FEB_Console_Printf("Banks: 0-%d, Cells: 0-%d\r\n", FEB_NBANKS - 1, FEB_NUM_CELLS_PER_BANK - 1);
+    return;
+  }
+
+  int bank = atoi(argv[1]);
+  int cell = atoi(argv[2]);
+
+  if (bank < 0 || bank >= FEB_NBANKS)
+  {
+    FEB_Console_Printf("Error: Bank must be 0-%d\r\n", FEB_NBANKS - 1);
+    return;
+  }
+
+  if (cell < 0 || cell >= FEB_NUM_CELLS_PER_BANK)
+  {
+    FEB_Console_Printf("Error: Cell must be 0-%d\r\n", FEB_NUM_CELLS_PER_BANK - 1);
+    return;
+  }
+
+  float voltage = FEB_ADBMS_GET_Cell_Voltage((uint8_t)bank, (uint16_t)cell);
+  float temp = FEB_ADBMS_GET_Cell_Temperature((uint8_t)bank, (uint16_t)cell);
+
+  FEB_Console_Printf("\r\n=== Cell [Bank %d, Cell %d] ===\r\n", bank, cell);
+  FEB_Console_Printf("Voltage:       %.3f V\r\n", voltage);
+  FEB_Console_Printf("Temperature:   %.1f C\r\n", temp);
+}
+
+/* ============================================================================
+ * Subcommand: spi - Show isoSPI status
+ * ============================================================================ */
+static void subcmd_spi(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  const char *mode_str;
+  switch (ISOSPI_MODE)
+  {
+  case ISOSPI_MODE_REDUNDANT:
+    mode_str = "REDUNDANT";
+    break;
+  case ISOSPI_MODE_SPI1_ONLY:
+    mode_str = "SPI1_ONLY";
+    break;
+  case ISOSPI_MODE_SPI2_ONLY:
+    mode_str = "SPI2_ONLY";
+    break;
+  default:
+    mode_str = "UNKNOWN";
+    break;
+  }
+
+  FEB_Console_Printf("\r\n=== isoSPI Status ===\r\n");
+  FEB_Console_Printf("Mode:             %s\r\n", mode_str);
+  FEB_Console_Printf("Primary Channel:  SPI%d\r\n", ISOSPI_PRIMARY_CHANNEL);
+  FEB_Console_Printf("Failover Thresh:  %d PEC errors\r\n", ISOSPI_FAILOVER_PEC_THRESHOLD);
+}
+
+/* ============================================================================
+ * Subcommand: errors - Show error summary
+ * ============================================================================ */
+static void subcmd_errors(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  uint8_t err = FEB_ADBMS_Get_Error_Type();
+  BMS_State_t state = FEB_SM_Get_Current_State();
+  bool faulted = FEB_SM_Is_Faulted();
+
+  const char *err_str;
+  switch (err)
+  {
+  case 0x00:
+    err_str = "None";
+    break;
+  case ERROR_TYPE_TEMP_VIOLATION:
+    err_str = "Temperature Violation";
+    break;
+  case ERROR_TYPE_LOW_TEMP_READS:
+    err_str = "Low Temp Reads";
+    break;
+  case ERROR_TYPE_VOLTAGE_VIOLATION:
+    err_str = "Voltage Violation";
+    break;
+  case ERROR_TYPE_INIT_FAILURE:
+    err_str = "Init Failure";
+    break;
+  default:
+    err_str = "Unknown";
+    break;
+  }
+
+  FEB_Console_Printf("\r\n=== Error Summary ===\r\n");
+  FEB_Console_Printf("Error Type:     0x%02X (%s)\r\n", err, err_str);
+  FEB_Console_Printf("Current State:  %s\r\n", FEB_CAN_State_GetStateName(state));
+  FEB_Console_Printf("Faulted:        %s\r\n", faulted ? "YES" : "NO");
+  FEB_Console_Printf("HV Active:      %s\r\n", FEB_SM_Is_HV_Active() ? "YES" : "NO");
+}
+
+/* ============================================================================
+ * Subcommand: config - Show configuration constants
+ * ============================================================================ */
+static void subcmd_config(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  const char *mode_str;
+  switch (ISOSPI_MODE)
+  {
+  case ISOSPI_MODE_REDUNDANT:
+    mode_str = "REDUNDANT";
+    break;
+  case ISOSPI_MODE_SPI1_ONLY:
+    mode_str = "SPI1_ONLY";
+    break;
+  case ISOSPI_MODE_SPI2_ONLY:
+    mode_str = "SPI2_ONLY";
+    break;
+  default:
+    mode_str = "UNKNOWN";
+    break;
+  }
+
+  FEB_Console_Printf("\r\n=== Configuration ===\r\n");
+  FEB_Console_Printf("Banks:            %d\r\n", FEB_NBANKS);
+  FEB_Console_Printf("ICs per Bank:     %d\r\n", FEB_NUM_ICPBANK);
+  FEB_Console_Printf("Cells per Bank:   %d\r\n", FEB_NUM_CELLS_PER_BANK);
+  FEB_Console_Printf("Temp Sensors:     %d\r\n", FEB_NUM_TEMP_SENSORS);
+  FEB_Console_Printf("Total Cells:      %d\r\n", FEB_NBANKS * FEB_NUM_CELLS_PER_BANK);
+  FEB_Console_Printf("isoSPI Mode:      %s\r\n", mode_str);
+  FEB_Console_Printf("Max Cell V:       %.3f V\r\n", FEB_CELL_MAX_VOLTAGE_MV / 1000.0f);
+  FEB_Console_Printf("Min Cell V:       %.3f V\r\n", FEB_CELL_MIN_VOLTAGE_MV / 1000.0f);
+  FEB_Console_Printf("Max Cell Temp:    %.1f C\r\n", FEB_CELL_MAX_TEMP_DC / 10.0f);
+  FEB_Console_Printf("Min Cell Temp:    %.1f C\r\n", FEB_CELL_MIN_TEMP_DC / 10.0f);
+}
+
+/* ============================================================================
  * CAN Ping/Pong Subcommands
  * ============================================================================ */
 
@@ -403,6 +664,16 @@ static void print_bms_help(void)
   FEB_Console_Printf("  BMS|balance|on/off      - Control cell balancing\r\n");
   FEB_Console_Printf("  BMS|dump                - Full accumulator status\r\n");
   FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("Diagnostics:\r\n");
+  FEB_Console_Printf("  BMS|gpio                - Show hardware I/O status\r\n");
+  FEB_Console_Printf("  BMS|ivt                 - Show IVT sensor data\r\n");
+  FEB_Console_Printf("  BMS|tasks               - Show FreeRTOS task stats\r\n");
+  FEB_Console_Printf("  BMS|mem                 - Show memory usage\r\n");
+  FEB_Console_Printf("  BMS|cell|<b>|<c>        - Show single cell details\r\n");
+  FEB_Console_Printf("  BMS|spi                 - Show isoSPI status\r\n");
+  FEB_Console_Printf("  BMS|errors              - Show error summary\r\n");
+  FEB_Console_Printf("  BMS|config              - Show configuration\r\n");
+  FEB_Console_Printf("\r\n");
   FEB_Console_Printf("CAN Ping/Pong:\r\n");
   FEB_Console_Printf("  BMS|ping|<ch>           - Start ping mode (1-4)\r\n");
   FEB_Console_Printf("  BMS|pong|<ch>           - Start pong mode (1-4)\r\n");
@@ -467,6 +738,39 @@ static void cmd_bms(int argc, char *argv[])
   else if (strcasecmp_local(subcmd, "canstatus") == 0)
   {
     subcmd_canstatus(argc - 1, argv + 1);
+  }
+  /* Diagnostic commands */
+  else if (strcasecmp_local(subcmd, "gpio") == 0)
+  {
+    subcmd_gpio(argc - 1, argv + 1);
+  }
+  else if (strcasecmp_local(subcmd, "ivt") == 0)
+  {
+    subcmd_ivt(argc - 1, argv + 1);
+  }
+  else if (strcasecmp_local(subcmd, "tasks") == 0)
+  {
+    subcmd_tasks(argc - 1, argv + 1);
+  }
+  else if (strcasecmp_local(subcmd, "mem") == 0)
+  {
+    subcmd_mem(argc - 1, argv + 1);
+  }
+  else if (strcasecmp_local(subcmd, "cell") == 0)
+  {
+    subcmd_cell(argc - 1, argv + 1);
+  }
+  else if (strcasecmp_local(subcmd, "spi") == 0)
+  {
+    subcmd_spi(argc - 1, argv + 1);
+  }
+  else if (strcasecmp_local(subcmd, "errors") == 0)
+  {
+    subcmd_errors(argc - 1, argv + 1);
+  }
+  else if (strcasecmp_local(subcmd, "config") == 0)
+  {
+    subcmd_config(argc - 1, argv + 1);
   }
   else
   {

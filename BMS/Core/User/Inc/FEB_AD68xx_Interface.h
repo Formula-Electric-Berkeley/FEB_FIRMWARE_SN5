@@ -4,6 +4,7 @@
 // ********************************** Includes ***********************************
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "main.h"
 
 // ********************************** Functions **********************************
@@ -18,8 +19,18 @@ uint16_t pec15_calc(uint8_t len,  //!< The length of the data array being passed
 );
 
 /*!
- Calculates  and returns the CRC15
- @returns The calculated pec15 as an unsigned int
+ Calculates and returns the CRC10 with optional command counter support
+ @param bIsRxCmd If true, includes command counter in calculation (for RX validation)
+ @param nLength The length of the data array
+ @param pDataBuf The data array to calculate PEC from
+ @returns The calculated pec10 as an unsigned int (10-bit, masked to 0x3FF)
+  */
+uint16_t Pec10_calc(bool bIsRxCmd, uint8_t nLength, uint8_t *pDataBuf);
+
+/*!
+ Calculates and returns the CRC10 (legacy wrapper, assumes RX command)
+ @deprecated Use Pec10_calc() instead
+ @returns The calculated pec10 as an unsigned int
   */
 uint16_t pec10_calc(uint8_t len,  //!< The length of the data array being passed to the function
                     uint8_t *data //!< The array of data that the PEC will be generated from

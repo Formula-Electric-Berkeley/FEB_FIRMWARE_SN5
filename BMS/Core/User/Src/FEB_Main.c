@@ -14,8 +14,11 @@
 #include "feb_console.h"
 #include "FEB_Commands.h"
 #include "FEB_CAN_State.h"
+#include "FEB_CAN_PingPong.h"
 #include "FEB_SM.h"
 #include "cmsis_os2.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 /* Logging tag */
 #define TAG_MAIN "[MAIN]"
@@ -106,6 +109,32 @@ void StartUartRxTask(void *argument)
     if (FEB_UART_QueueReceiveLine(FEB_UART_INSTANCE_1, line_buf, sizeof(line_buf), &line_len, 10))
     {
       FEB_Console_ProcessLine(line_buf, line_len);
+    }
+  }
+}
+
+void StartSMTask(void *argument)
+{
+  (void)argument;
+  static uint16_t pingpong_divider = 0;
+
+  for (;;)
+  {
+    /* Wait for notification from ISR (1ms tick) */
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+    /* State machine processing */
+    FEB_SM_Process();
+
+    /* CAN state publishing (every 100ms via internal divider in function) */
+    FEB_CAN_State_Tick();
+
+    /* PingPong tick every 100ms */
+    pingpong_divider++;
+    if (pingpong_divider >= 100)
+    {
+      pingpong_divider = 0;
+      FEB_CAN_PingPong_Tick();
     }
   }
 }

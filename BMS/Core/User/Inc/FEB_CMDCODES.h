@@ -47,10 +47,10 @@
 #define CMD_READ_S_VOLTAGE_ALL 0x0011   // Read all S voltages
 
 // ****************** Auxiliary Register Read Commands ******************
-#define CMD_READ_AUX_REG_GROUP_A 0x0016 // GPIO1-3, VREF2
-#define CMD_READ_AUX_REG_GROUP_B 0x0017 // GPIO4-6, VD
-#define CMD_READ_AUX_REG_GROUP_C 0x0018 // GPIO7-9, VA
-#define CMD_READ_AUX_REG_GROUP_D 0x0019 // GPIO10, ITEMP, etc.
+#define CMD_READ_AUX_REG_GROUP_A 0x0019 // GPIO1-3, VREF2
+#define CMD_READ_AUX_REG_GROUP_B 0x001A // GPIO4-6, VD
+#define CMD_READ_AUX_REG_GROUP_C 0x001B // GPIO7-9, VA
+#define CMD_READ_AUX_REG_GROUP_D 0x001F // GPIO10, ITEMP, etc.
 
 // ****************** Status Register Read Commands ******************
 #define CMD_READ_STATUS_REG_GROUP_A 0x0030

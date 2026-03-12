@@ -12,11 +12,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-/* Critical section macros for ISR/task shared data */
-#define STATE_ENTER_CRITICAL()                                                                                         \
-  uint32_t _primask = __get_PRIMASK();                                                                                 \
-  __disable_irq()
-#define STATE_EXIT_CRITICAL() __set_PRIMASK(_primask)
+/* Note: Critical sections removed - current_state is volatile and 1 byte (atomic on ARM) */
 
 /* R2D timeout for state transitions */
 #define R2D_TIMEOUT_MS 500
@@ -61,10 +57,7 @@ void FEB_CAN_State_SetReady(void)
 
 BMS_State_t FEB_CAN_State_GetState(void)
 {
-  STATE_ENTER_CRITICAL();
-  BMS_State_t state = current_state;
-  STATE_EXIT_CRITICAL();
-  return state;
+  return current_state;
 }
 
 int FEB_CAN_State_SetState(BMS_State_t state)
@@ -73,9 +66,7 @@ int FEB_CAN_State_SetState(BMS_State_t state)
   {
     return -1;
   }
-  STATE_ENTER_CRITICAL();
   current_state = state;
-  STATE_EXIT_CRITICAL();
   return 0;
 }
 
@@ -104,11 +95,8 @@ void FEB_CAN_State_Tick(void)
   {
     state_divider = 0;
 
-    /* Update message with current state - protected read */
-    STATE_ENTER_CRITICAL();
-    BMS_State_t state_snapshot = current_state;
-    STATE_EXIT_CRITICAL();
-    bms_state_msg.bms_state = (uint8_t)state_snapshot;
+    /* Use authoritative state from FEB_SM so PCU always gets most recent state */
+    bms_state_msg.bms_state = (uint8_t)FEB_SM_Get_Current_State();
 
     /* Pack and send */
     uint8_t tx_data[FEB_CAN_BMS_STATE_LENGTH];

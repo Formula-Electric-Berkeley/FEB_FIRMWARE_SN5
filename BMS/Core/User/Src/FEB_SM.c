@@ -77,6 +77,10 @@ static volatile bool reset_button_last_state = false;
 static volatile uint32_t reset_button_debounce_tick = 0;
 #define RESET_BUTTON_DEBOUNCE_MS 50
 
+/* Shutdown sense debounce - require multiple consecutive readings to filter transients */
+static volatile uint8_t shutdown_open_count = 0;
+#define SHUTDOWN_DEBOUNCE_COUNT 3 /* Require 3 consecutive OPEN readings */
+
 /* Special DEFAULT value for transition function calls during FEB_SM_Process */
 #define BMS_STATE_DEFAULT BMS_STATE_COUNT
 
@@ -501,41 +505,38 @@ static void PrechargeTransition(BMS_State_t next_state)
     break;
 
   case BMS_STATE_DEFAULT:
-    /* Safety check: go back to LV if shutdown or AIR- opens */
+    /* Safety check with debounce: require multiple consecutive OPEN readings to filter transients */
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN || FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
     {
-      LOG_W(TAG_SM, "Shutdown/AIR- open during precharge, returning to LV_POWER");
-      PrechargeTransition(BMS_STATE_LV_POWER);
-      break;
-    }
-
-    /* Start precharge timer on first entry - protected for ISR/task access */
-    {
-      SM_ENTER_CRITICAL();
-      if (precharge_start_time == 0)
+      shutdown_open_count++;
+      if (shutdown_open_count >= SHUTDOWN_DEBOUNCE_COUNT)
       {
-        precharge_start_time = HAL_GetTick();
-        LOG_D(TAG_SM, "Precharge started");
-      }
-      SM_EXIT_CRITICAL();
-    }
-
-    /* Check precharge timeout - protected for ISR/task access */
-    {
-      SM_ENTER_CRITICAL();
-      uint32_t start_time = precharge_start_time;
-      SM_EXIT_CRITICAL();
-
-      if ((HAL_GetTick() - start_time) >= PRECHARGE_TIMEOUT_MS)
-      {
-        /* Precharge failed - enter fault state */
-        LOG_E(TAG_SM, "Precharge timeout (%dms), entering fault", PRECHARGE_TIMEOUT_MS);
-        fault_begin(BMS_STATE_FAULT_BMS);
-        SM_ENTER_CRITICAL();
-        precharge_start_time = 0;
-        SM_EXIT_CRITICAL();
+        LOG_W(TAG_SM, "Shutdown/AIR- open during precharge, returning to LV_POWER");
+        shutdown_open_count = 0;
+        PrechargeTransition(BMS_STATE_LV_POWER);
         break;
       }
+    }
+    else
+    {
+      shutdown_open_count = 0; /* Reset counter on good reading */
+    }
+
+    /* Start precharge timer on first entry */
+    if (precharge_start_time == 0)
+    {
+      precharge_start_time = HAL_GetTick();
+      LOG_I(TAG_SM, "Precharge started");
+    }
+
+    /* Check precharge timeout */
+    if ((HAL_GetTick() - precharge_start_time) >= PRECHARGE_TIMEOUT_MS)
+    {
+      /* Precharge failed - enter fault state */
+      LOG_E(TAG_SM, "Precharge timeout (%dms), entering fault", PRECHARGE_TIMEOUT_MS);
+      fault_begin(BMS_STATE_FAULT_BMS);
+      precharge_start_time = 0;
+      break;
     }
 
     /* Keep AIR+ open for redundancy */
@@ -545,16 +546,17 @@ static void PrechargeTransition(BMS_State_t next_state)
     FEB_HW_Precharge_Set(true);
 
     /* Check precharge completion: IVT voltage >= 90% of pack voltage */
-    float ivt_voltage = FEB_CAN_IVT_GetVoltage();
-    float pack_voltage = FEB_ADBMS_GET_ACC_Total_Voltage();
-    if (pack_voltage > 0.0f && ivt_voltage >= PRECHARGE_THRESHOLD_PCT * pack_voltage)
-    {
-      LOG_I(TAG_SM, "Precharge complete: IVT=%.1fV Pack=%.1fV", ivt_voltage, pack_voltage);
-      SM_ENTER_CRITICAL();
-      precharge_start_time = 0; /* Reset timer */
-      SM_EXIT_CRITICAL();
-      PrechargeTransition(BMS_STATE_ENERGIZED);
-    }
+    // {
+    //   float ivt_voltage = FEB_CAN_IVT_GetVoltage();
+    //   float pack_voltage = FEB_ADBMS_GET_ACC_Total_Voltage();
+    //   if (pack_voltage > 0.0f && ivt_voltage >= PRECHARGE_THRESHOLD_PCT * pack_voltage)
+    //   {
+    //     LOG_I(TAG_SM, "Precharge complete: IVT=%.1fV Pack=%.1fV", ivt_voltage, pack_voltage);
+    //     precharge_start_time = 0;
+    //     shutdown_open_count = 0;  /* Reset debounce counter */
+    PrechargeTransition(BMS_STATE_ENERGIZED);
+    //   }
+    // }
     break;
 
   default:
@@ -598,11 +600,11 @@ static void EnergizedTransition(BMS_State_t next_state)
     }
 
     /* Check for ready-to-drive signal from DASH */
-    if (FEB_CAN_DASH_IsReadyToDrive(R2D_TIMEOUT_MS))
-    {
-      LOG_I(TAG_SM, "R2D signal received, entering DRIVE");
-      EnergizedTransition(BMS_STATE_DRIVE);
-    }
+    // if (FEB_CAN_DASH_IsReadyToDrive(R2D_TIMEOUT_MS))
+    // {
+    LOG_I(TAG_SM, "R2D signal received, entering DRIVE");
+    EnergizedTransition(BMS_STATE_DRIVE);
+    // }
     break;
 
   default:
@@ -646,11 +648,11 @@ static void DriveTransition(BMS_State_t next_state)
     }
 
     /* If driver no longer requests R2D, go back to energized */
-    if (!FEB_CAN_DASH_IsReadyToDrive(R2D_TIMEOUT_MS))
-    {
-      LOG_I(TAG_SM, "R2D signal lost, returning to ENERGIZED");
-      DriveTransition(BMS_STATE_ENERGIZED);
-    }
+    // if (!FEB_CAN_DASH_IsReadyToDrive(R2D_TIMEOUT_MS))
+    // {
+    //   LOG_I(TAG_SM, "R2D signal lost, returning to ENERGIZED");
+    // DriveTransition(BMS_STATE_ENERGIZED);
+    // }
     break;
 
   default:
@@ -728,37 +730,23 @@ static void ChargingPrechargeTransition(BMS_State_t next_state)
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN)
     {
       ChargingPrechargeTransition(BMS_STATE_BATTERY_FREE);
-      SM_ENTER_CRITICAL();
       charger_precharge_start_time = 0;
-      SM_EXIT_CRITICAL();
       break;
     }
 
-    /* Start precharge timer on first entry - protected for ISR/task access */
+    /* Start precharge timer on first entry */
+    if (charger_precharge_start_time == 0)
     {
-      SM_ENTER_CRITICAL();
-      if (charger_precharge_start_time == 0)
-      {
-        charger_precharge_start_time = HAL_GetTick();
-      }
-      SM_EXIT_CRITICAL();
+      charger_precharge_start_time = HAL_GetTick();
     }
 
-    /* Check precharge timeout - protected for ISR/task access */
+    /* Check precharge timeout */
+    if ((HAL_GetTick() - charger_precharge_start_time) >= PRECHARGE_TIMEOUT_MS)
     {
-      SM_ENTER_CRITICAL();
-      uint32_t start_time = charger_precharge_start_time;
-      SM_EXIT_CRITICAL();
-
-      if ((HAL_GetTick() - start_time) >= PRECHARGE_TIMEOUT_MS)
-      {
-        /* Precharge failed - enter fault state */
-        fault_begin(BMS_STATE_FAULT_CHARGING);
-        SM_ENTER_CRITICAL();
-        charger_precharge_start_time = 0;
-        SM_EXIT_CRITICAL();
-        break;
-      }
+      /* Precharge failed - enter fault state */
+      fault_begin(BMS_STATE_FAULT_CHARGING);
+      charger_precharge_start_time = 0;
+      break;
     }
 
     /* Keep AIR+ open for redundancy */
@@ -772,9 +760,7 @@ static void ChargingPrechargeTransition(BMS_State_t next_state)
     float pack_voltage = FEB_ADBMS_GET_ACC_Total_Voltage();
     if (pack_voltage > 0.0f && ivt_voltage >= PRECHARGE_THRESHOLD_PCT * pack_voltage)
     {
-      SM_ENTER_CRITICAL();
-      charger_precharge_start_time = 0; /* Reset timer */
-      SM_EXIT_CRITICAL();
+      charger_precharge_start_time = 0;
       ChargingPrechargeTransition(BMS_STATE_CHARGING);
     }
     break;
