@@ -25,8 +25,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdio.h>
-#include <string.h>
+#include "FEB_CAN_PingPong.h"
+#include "FEB_RES_EBS_Commands.h"
+#include "feb_can_lib.h"
+#include "feb_console.h"
+#include "feb_uart.h"
 
 /* USER CODE END Includes */
 
@@ -48,95 +51,69 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-static CAN_TxHeaderTypeDef can_test_header = {
-    .StdId = 0x321,
-    .IDE = CAN_ID_STD,
-    .RTR = CAN_RTR_DATA,
-    .DLC = 8,
-    .TransmitGlobalTime = DISABLE,
-};
-
-static uint8_t can_test_payload[8] = {'R', 'E', 'S', '_', 'E', 'B', 'S', 0};
+static uint8_t uart2_tx_buffer[512];
+static uint8_t uart2_rx_buffer[256];
+static uint32_t pingpong_tick_last_ms = 0U;
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-static void CAN_TestInit(void);
-static void CAN_TestTick(void);
-static void UART_TestPrint(const char *message);
+static void Console_Init(void);
+static void CAN_Library_Init(void);
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-static void UART_TestPrint(const char *message)
+static void Console_Init(void)
 {
-  if (HAL_UART_Transmit(&huart2, (uint8_t *)message, (uint16_t)strlen(message), 100) != HAL_OK)
-  {
-    Error_Handler();
-  }
-}
-
-static void CAN_TestInit(void)
-{
-  CAN_FilterTypeDef filter = {
-      .FilterBank = 0,
-      .FilterMode = CAN_FILTERMODE_IDMASK,
-      .FilterScale = CAN_FILTERSCALE_32BIT,
-      .FilterIdHigh = 0,
-      .FilterIdLow = 0,
-      .FilterMaskIdHigh = 0,
-      .FilterMaskIdLow = 0,
-      .FilterFIFOAssignment = CAN_FILTER_FIFO0,
-      .FilterActivation = ENABLE,
-      .SlaveStartFilterBank = 14,
+  FEB_UART_Config_t uart_cfg = {
+      .huart = &huart2,
+      .hdma_tx = NULL,
+      .hdma_rx = &hdma_usart2_rx,
+      .tx_buffer = uart2_tx_buffer,
+      .tx_buffer_size = sizeof(uart2_tx_buffer),
+      .rx_buffer = uart2_rx_buffer,
+      .rx_buffer_size = sizeof(uart2_rx_buffer),
+      .log_level = FEB_UART_LOG_INFO,
+      .enable_colors = false,
+      .enable_timestamps = false,
+      .get_tick_ms = HAL_GetTick,
   };
 
-  if (HAL_CAN_ConfigFilter(&hcan1, &filter) != HAL_OK)
+  if (FEB_UART_Init(FEB_UART_INSTANCE_1, &uart_cfg) != 0)
   {
     Error_Handler();
   }
 
-  filter.FilterBank = 14;
-  if (HAL_CAN_ConfigFilter(&hcan2, &filter) != HAL_OK)
+  FEB_Console_Init();
+  if (RES_EBS_RegisterCommands() != 0)
   {
     Error_Handler();
   }
-
-  if (HAL_CAN_Start(&hcan1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  if (HAL_CAN_Start(&hcan2) != HAL_OK)
-  {
-    Error_Handler();
-  }
+  FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
 }
 
-static void CAN_TestTick(void)
+static void CAN_Library_Init(void)
 {
-  static uint8_t counter = 0;
-  uint32_t tx_mailbox = 0;
-  char uart_message[96];
+  FEB_CAN_Config_t can_cfg = {
+      .hcan1 = &hcan1,
+      .hcan2 = NULL,
+      .get_tick_ms = HAL_GetTick,
+  };
 
-  can_test_payload[7] = counter;
-
-  if (HAL_CAN_AddTxMessage(&hcan1, &can_test_header, can_test_payload, &tx_mailbox) != HAL_OK)
+  if (FEB_CAN_Init(&can_cfg) != FEB_CAN_OK)
   {
-    snprintf(uart_message, sizeof(uart_message), "CAN1 TX failed, error=0x%08lX\r\n", HAL_CAN_GetError(&hcan1));
-    UART_TestPrint(uart_message);
-    return;
+    Error_Handler();
   }
 
-  snprintf(uart_message, sizeof(uart_message),
-           "UART OK | CAN1 TX id=0x%03lX data=%02X %02X %02X %02X %02X %02X %02X %02X\r\n", can_test_header.StdId,
-           can_test_payload[0], can_test_payload[1], can_test_payload[2], can_test_payload[3], can_test_payload[4],
-           can_test_payload[5], can_test_payload[6], can_test_payload[7]);
-  UART_TestPrint(uart_message);
-  counter++;
+  if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_ERROR_WARNING | CAN_IT_ERROR_PASSIVE | CAN_IT_BUSOFF |
+                                               CAN_IT_LAST_ERROR_CODE | CAN_IT_ERROR) != HAL_OK)
+  {
+    Error_Handler();
+  }
 }
 
 /* USER CODE END 0 */
@@ -171,12 +148,15 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_CAN1_Init();
-  MX_CAN2_Init();
   MX_I2C1_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-  CAN_TestInit();
-  UART_TestPrint("RES_EBS autonomous CAN/UART bring-up test\r\n");
+  Console_Init();
+  CAN_Library_Init();
+  FEB_CAN_PingPong_Init();
+  pingpong_tick_last_ms = HAL_GetTick();
+  FEB_Console_Printf("RES_EBS CAN ping/pong ready\r\n");
+  FEB_Console_Printf("Type help or pingpong|status\r\n");
 
   /* USER CODE END 2 */
 
@@ -187,8 +167,18 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    CAN_TestTick();
-    HAL_Delay(1000);
+    FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
+    FEB_CAN_TX_Process();
+    FEB_CAN_TX_ProcessPeriodic();
+    FEB_CAN_RX_Process();
+
+    if ((HAL_GetTick() - pingpong_tick_last_ms) >= 100U)
+    {
+      pingpong_tick_last_ms += 100U;
+      FEB_CAN_PingPong_Tick();
+    }
+
+    HAL_Delay(1);
   }
   /* USER CODE END 3 */
 }

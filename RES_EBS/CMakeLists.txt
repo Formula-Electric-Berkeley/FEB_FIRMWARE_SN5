@@ -48,7 +48,7 @@ endif()
 add_executable(${PROJECT_NAME} ${ALL_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
-target_link_libraries(${PROJECT_NAME} PRIVATE m)
+target_link_libraries(${PROJECT_NAME} PRIVATE m feb_console feb_can)
 
 target_link_options(${PROJECT_NAME} PRIVATE
     "LINKER:-u,_printf_float"
