@@ -26,10 +26,12 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "FEB_CAN_PingPong.h"
+#include "FEB_RES_EBS_Board.h"
 #include "FEB_RES_EBS_Commands.h"
 #include "feb_can_lib.h"
 #include "feb_console.h"
 #include "feb_uart.h"
+#include "feb_uart_log.h"
 
 /* USER CODE END Includes */
 
@@ -152,11 +154,12 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   Console_Init();
+  RES_EBS_Board_Init();
   CAN_Library_Init();
   FEB_CAN_PingPong_Init();
   pingpong_tick_last_ms = HAL_GetTick();
-  FEB_Console_Printf("RES_EBS CAN ping/pong ready\r\n");
-  FEB_Console_Printf("Type help or pingpong|status\r\n");
+  LOG_I(TAG_MAIN, "RES_EBS CAN ping/pong ready");
+  LOG_I(TAG_MAIN, "Console: help, pingpong|status, tps|status, relay|status");
 
   /* USER CODE END 2 */
 

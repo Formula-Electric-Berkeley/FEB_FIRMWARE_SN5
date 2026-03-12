@@ -59,6 +59,8 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define TS_Activation_Pin GPIO_PIN_14
 #define TS_Activation_GPIO_Port GPIOB
+#define Driverless_System_Relay_Pin GPIO_PIN_9
+#define Driverless_System_Relay_GPIO_Port GPIOC
 #define B_Gate_Pin GPIO_PIN_8
 #define B_Gate_GPIO_Port GPIOA
 #define Y_Gate_Pin GPIO_PIN_9
