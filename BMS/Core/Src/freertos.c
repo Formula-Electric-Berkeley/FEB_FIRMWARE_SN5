@@ -89,13 +89,6 @@ const osThreadAttr_t BMSTaskTx_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
-/* Definitions for SMTask */
-osThreadId_t SMTaskHandle;
-const osThreadAttr_t SMTask_attributes = {
-  .name = "SMTask",
-  .stack_size = 2048 * 4,  /* Increased from 1024*4 to prevent stack overflow during precharge */
-  .priority = (osPriority_t) osPriorityHigh,
-};
 /* Definitions for ADBMSMutex */
 osMutexId_t ADBMSMutexHandle;
 const osMutexAttr_t ADBMSMutex_attributes = {
@@ -112,9 +105,20 @@ void StartADBMSTask(void *argument);
 void StartTPSTask(void *argument);
 void StartBMSTaskRx(void *argument);
 void StartBMSTaskTx(void *argument);
-void StartSMTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+/* Hook prototypes */
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
+
+/* USER CODE BEGIN 4 */
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
+{
+   /* Run time stack overflow checking is performed if
+   configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
+   called if a stack overflow is detected. */
+}
+/* USER CODE END 4 */
 
 /**
   * @brief  FreeRTOS initialization
@@ -160,9 +164,6 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of BMSTaskTx */
   BMSTaskTxHandle = osThreadNew(StartBMSTaskTx, NULL, &BMSTaskTx_attributes);
-
-  /* creation of SMTask */
-  SMTaskHandle = osThreadNew(StartSMTask, NULL, &SMTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
 

@@ -84,7 +84,7 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = AIR_M_SENSE_Pin|AIR_P_SENSE_Pin|WAKE2_Pin|INT2_Pin
                           |SHS_IMD_Pin|SHS_IN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;  /* Pull-up to prevent noise during relay transients */
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : WAKE1_Pin INT1_Pin BMS_RESET_Pin PG_Pin
