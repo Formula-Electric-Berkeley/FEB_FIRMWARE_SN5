@@ -66,7 +66,7 @@ jobs:
 
       - name: Upload release artifacts
         if: steps.check.outputs.skip != 'true'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.project }}-release
           path: |
@@ -85,7 +85,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: release-artifacts
 
