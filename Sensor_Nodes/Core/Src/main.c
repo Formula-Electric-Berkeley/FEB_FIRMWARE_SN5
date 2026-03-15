@@ -109,8 +109,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    FEB_Update();
-    HAL_Delay(100);
+
+    FEB_Main_Loop();
     /* USER CODE END WHILE */
   }
     /* USER CODE BEGIN 3 */

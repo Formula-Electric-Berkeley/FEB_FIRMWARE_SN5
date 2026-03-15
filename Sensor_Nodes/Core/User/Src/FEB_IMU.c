@@ -6,7 +6,7 @@
 #include <string.h>
 
 stmdev_ctx_t lsm6dsox_ctx;
-extern I2C_HandleTypeDef hi2c3;
+extern I2C_HandleTypeDef hi2c1;
 #define LSM6DSOX_I2C_ADDR 0x6A
 extern UART_HandleTypeDef huart2;
 
@@ -16,7 +16,7 @@ static float_t acceleration_mg[3];
 static int16_t data_raw_angular_rate[3];
 static float_t angular_rate_mdps[3];
 
-static uint8_t tx_buffer[1000];
+// static uint8_t tx_buffer[1000];
 
 int32_t platform_write(void *handle, uint8_t devaddress, uint8_t reg, const uint8_t *bufp, uint16_t len)
 {
@@ -47,7 +47,7 @@ void lsm6dsox_init(void)
   lsm6dsox_ctx.write_reg = lsm6dsox_write;
   lsm6dsox_ctx.read_reg = lsm6dsox_read;
   lsm6dsox_ctx.mdelay = HAL_Delay;
-  lsm6dsox_ctx.handle = &hi2c3;
+  lsm6dsox_ctx.handle = &hi2c1;
 }
 
 void read_Acceleration(void)
@@ -60,9 +60,7 @@ void read_Acceleration(void)
   acceleration_mg[1] = lsm6dsox_from_fs2_to_mg(data_raw_acceleration[1]);
   acceleration_mg[2] = lsm6dsox_from_fs2_to_mg(data_raw_acceleration[2]);
 
-  snprintf((char *)tx_buffer, sizeof(tx_buffer), "Acceleration [mg]:%4.2f\t%4.2f\t%4.2f\r\n", acceleration_mg[0],
-           acceleration_mg[1], acceleration_mg[2]);
-  HAL_UART_Transmit(&huart2, tx_buffer, strlen((char *)tx_buffer), HAL_MAX_DELAY);
+  printf("Acceleration [mg]: %4.2f\t%4.2f\t%4.2f\r\n", acceleration_mg[0], acceleration_mg[1], acceleration_mg[2]);
 }
 
 void read_Angular_Rate(void)
@@ -75,7 +73,6 @@ void read_Angular_Rate(void)
   angular_rate_mdps[1] = lsm6dsox_from_fs2000_to_mdps(data_raw_angular_rate[1]);
   angular_rate_mdps[2] = lsm6dsox_from_fs2000_to_mdps(data_raw_angular_rate[2]);
 
-  snprintf((char *)tx_buffer, sizeof(tx_buffer), "Angular rate [mdps]:%4.2f\t%4.2f\t%4.2f\r\n", angular_rate_mdps[0],
-           angular_rate_mdps[1], angular_rate_mdps[2]);
-  HAL_UART_Transmit(&huart2, tx_buffer, strlen((char *)tx_buffer), HAL_MAX_DELAY);
+  printf("Angular Rate [mdps]: %4.2f\t%4.2f\t%4.2f\r\n", angular_rate_mdps[0], angular_rate_mdps[1],
+         angular_rate_mdps[2]);
 }

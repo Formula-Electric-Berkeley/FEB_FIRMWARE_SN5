@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
-extern I2C_HandleTypeDef hi2c3;
+extern I2C_HandleTypeDef hi2c1;
 
 static int32_t ping_pong_counter = 0;
 
@@ -23,26 +23,29 @@ void FEB_Update()
   // Send ping pong counter for testing
   FEB_CAN_PingPong_Send(FEB_CAN_BUS_1, 0, ping_pong_counter++);
 
-  // read_Acceleration();
-  // read_Angular_Rate();
-  // read_Magnetic_Field_Data();
-  // read_TPS();
-  printf("Starting I2C Scanning: \r\n");
+  read_Acceleration();
+  read_Angular_Rate();
+  read_Magnetic_Field_Data();
+  read_TPS();
+  printf("\r\n");
 
-  uint8_t i = 0, ret;
-  for (i = 1; i < 128; i++)
-  {
-    ret = HAL_I2C_IsDeviceReady(&hi2c3, (uint16_t)(i << 1), 3, 5);
-    if (ret != HAL_OK)
-    { /* No ACK Received At That Address */
-      printf(" - ");
-    }
-    else if (ret == HAL_OK)
-    {
-      printf("0x%X", i);
-    }
-  }
-  printf("Done! \r\n\r\n");
+  // printf("Starting I2C Scanning: \r\n");
+
+  // uint8_t i = 0, ret;
+  // for (i = 1; i < 128; i++)
+  // {
+  //   ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i << 1), 3, 5);
+  //   if (ret != HAL_OK)
+  //   { /* No ACK Received At That Address */
+  //     printf(" - ");
+  //   }
+  //   else if (ret == HAL_OK)
+  //   {
+  //     printf("0x%X", i);
+  //     // address: 0x40 w hi2c1, nothing with hi2c3
+  //   }
+  // }
+  // printf("Done! \r\n\r\n");
 }
 
 void FEB_Init(void)
@@ -57,5 +60,12 @@ void FEB_Init(void)
   // Initialize sensors
   lsm6dsox_init();
   lis3mdl_init();
-  // tps_init();
+  tps_init();
+}
+
+void FEB_Main_Loop(void)
+{
+  // Update sensor readings and send CAN messages
+  FEB_Update();
+  HAL_Delay(100);
 }
