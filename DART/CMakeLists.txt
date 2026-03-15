@@ -77,10 +77,7 @@ if(LINKER_SCRIPT)
 endif()
 
 target_link_options(${PROJECT_NAME} PRIVATE
-    --specs=nano.specs
     -Wl,-Map=$<TARGET_FILE_DIR:${PROJECT_NAME}>/${PROJECT_NAME}.map
-    -Wl,--gc-sections
-    -Wl,--print-memory-usage
 )
 
 # Remove wrong libob.a dependency
