@@ -30,6 +30,7 @@ file(GLOB HAL_SOURCES "Drivers/STM32F4xx_HAL_Driver/Src/*.c")
 list(FILTER HAL_SOURCES EXCLUDE REGEX "_template\\.c$")
 
 set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES})
+list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can.c")
 
 # Include directories
 set(BASE_INCLUDES
@@ -43,6 +44,12 @@ set(BASE_INCLUDES
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
     list(APPEND BASE_INCLUDES Core/User/Inc)
 endif()
+
+set(CAN_GEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4")
+list(APPEND BASE_INCLUDES
+    "${CAN_GEN_DIR}/.."
+    "${CAN_GEN_DIR}/gen"
+)
 
 # Executable target
 add_executable(${PROJECT_NAME} ${ALL_SOURCES})

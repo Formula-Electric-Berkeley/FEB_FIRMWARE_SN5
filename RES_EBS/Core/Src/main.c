@@ -28,6 +28,7 @@
 #include "FEB_CAN_PingPong.h"
 #include "FEB_RES_EBS_BMS.h"
 #include "FEB_RES_EBS_Board.h"
+#include "FEB_RES_EBS_CAN_Status.h"
 #include "FEB_RES_EBS_Commands.h"
 #include "FEB_RES_EBS_Safety.h"
 #include "feb_can_lib.h"
@@ -163,6 +164,10 @@ int main(void)
   {
     Error_Handler();
   }
+  if (RES_EBS_CAN_Status_Init() != 0)
+  {
+    Error_Handler();
+  }
   FEB_CAN_PingPong_Init();
   pingpong_tick_last_ms = HAL_GetTick();
   LOG_I(TAG_MAIN, "RES_EBS CAN ping/pong ready");
@@ -183,6 +188,7 @@ int main(void)
     FEB_CAN_RX_Process();
     RES_EBS_BMS_Tick();
     RES_EBS_Safety_Tick();
+    RES_EBS_CAN_Status_Tick();
 
     if ((HAL_GetTick() - pingpong_tick_last_ms) >= 100U)
     {
