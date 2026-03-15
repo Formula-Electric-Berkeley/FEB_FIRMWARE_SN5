@@ -34,10 +34,12 @@
 #include "usart.h"
 #include "gpio.h"
 #include "fmc.h"
-
+#include "FEB_CAN_BMS.h"
+#include "feb_uart.h"
+#include "FEB_Console.h"
+#include <stdio.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdio.h>
 #include "FEB_Main.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"

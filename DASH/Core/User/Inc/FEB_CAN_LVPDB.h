@@ -6,5 +6,13 @@
  ******************************************************************************
  */
 
-static void rx_callback_lv_temperature(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
-                                       const uint8_t *data, uint8_t length, void *user_data);
+#ifndef FEB_CAN_LVPDB_H
+#define FEB_CAN_LVPDB_H
+
+#include <stdint.h>
+
+void FEB_CAN_LVPDB_Init(void);
+uint16_t FEB_CAN_LVPDB_GetLast24VVoltage(void);
+uint16_t FEB_CAN_LVPDB_GetLast12VVoltage(void);
+
+#endif /* FEB_CAN_LVPDB_H */
