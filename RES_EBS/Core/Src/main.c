@@ -26,8 +26,10 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "FEB_CAN_PingPong.h"
+#include "FEB_RES_EBS_BMS.h"
 #include "FEB_RES_EBS_Board.h"
 #include "FEB_RES_EBS_Commands.h"
+#include "FEB_RES_EBS_Safety.h"
 #include "feb_can_lib.h"
 #include "feb_console.h"
 #include "feb_uart.h"
@@ -155,11 +157,16 @@ int main(void)
   /* USER CODE BEGIN 2 */
   Console_Init();
   RES_EBS_Board_Init();
+  RES_EBS_Safety_Init();
   CAN_Library_Init();
+  if (RES_EBS_BMS_Init() != 0)
+  {
+    Error_Handler();
+  }
   FEB_CAN_PingPong_Init();
   pingpong_tick_last_ms = HAL_GetTick();
   LOG_I(TAG_MAIN, "RES_EBS CAN ping/pong ready");
-  LOG_I(TAG_MAIN, "Console: help, pingpong|status, tps|status, relay|status");
+  LOG_I(TAG_MAIN, "Console: help, pingpong|status, tps|status, relay|status, bms|status, safety|status");
 
   /* USER CODE END 2 */
 
@@ -174,6 +181,8 @@ int main(void)
     FEB_CAN_TX_Process();
     FEB_CAN_TX_ProcessPeriodic();
     FEB_CAN_RX_Process();
+    RES_EBS_BMS_Tick();
+    RES_EBS_Safety_Tick();
 
     if ((HAL_GetTick() - pingpong_tick_last_ms) >= 100U)
     {

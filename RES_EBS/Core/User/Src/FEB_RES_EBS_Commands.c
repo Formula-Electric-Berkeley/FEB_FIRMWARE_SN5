@@ -8,7 +8,9 @@
 #include "FEB_RES_EBS_Commands.h"
 
 #include "FEB_CAN_PingPong.h"
+#include "FEB_RES_EBS_BMS.h"
 #include "FEB_RES_EBS_Board.h"
+#include "FEB_RES_EBS_Safety.h"
 #include "feb_console.h"
 #include "feb_uart.h"
 #include "feb_uart_log.h"
@@ -57,6 +59,19 @@ static void print_relay_help(void)
   LOG_RAW("  relay|on                Drive %s high\r\n", RES_EBS_Relay_GetName());
   LOG_RAW("  relay|off               Drive %s low\r\n", RES_EBS_Relay_GetName());
   LOG_RAW("  relay|status            Show relay output and %s input\r\n", RES_EBS_TSActivation_GetName());
+}
+
+static void print_bms_help(void)
+{
+  LOG_RAW("bms commands:\r\n");
+  LOG_RAW("  bms|status              Show BMS state/fault view used by RES_EBS shutdown logic\r\n");
+}
+
+static void print_safety_help(void)
+{
+  LOG_RAW("safety commands:\r\n");
+  LOG_RAW("  safety|status           Show shutdown/open safe-state status\r\n");
+  LOG_RAW("  safety|clear            Clear latched shutdown/open emergency when TS_Activation is high\r\n");
 }
 
 static const char *log_level_to_string(FEB_UART_LogLevel_t level)
@@ -308,6 +323,16 @@ static void cmd_relay(int argc, char *argv[])
 
   if (strcasecmp_local(argv[1], "on") == 0)
   {
+    if (!RES_EBS_BMS_RelayEnableAllowed())
+    {
+      LOG_RAW("Relay enable blocked: BMS critical shutdown active\r\n");
+      return;
+    }
+    if (!RES_EBS_Safety_RelayEnableAllowed())
+    {
+      LOG_RAW("Relay enable blocked: shutdown permissive missing or emergency latched\r\n");
+      return;
+    }
     RES_EBS_Relay_Set(true);
     LOG_RAW("Relay ON via %s\r\n", RES_EBS_Relay_GetName());
   }
@@ -318,14 +343,82 @@ static void cmd_relay(int argc, char *argv[])
   }
   else if (strcasecmp_local(argv[1], "status") == 0)
   {
-    LOG_RAW("Relay %s via %s, %s=%u\r\n", RES_EBS_Relay_Get() ? "ON" : "OFF", RES_EBS_Relay_GetName(),
-            RES_EBS_TSActivation_GetName(), (unsigned int)RES_EBS_TSActivation_Get());
+    LOG_RAW("Relay %s via %s, %s=%u, bms_critical=%u, safety_latched=%u\r\n", RES_EBS_Relay_Get() ? "ON" : "OFF",
+            RES_EBS_Relay_GetName(), RES_EBS_TSActivation_GetName(), (unsigned int)RES_EBS_TSActivation_Get(),
+            (unsigned int)RES_EBS_BMS_CriticalShutdownActive(), (unsigned int)RES_EBS_Safety_EmergencyLatched());
   }
   else
   {
     LOG_RAW("Unknown relay subcommand: %s\r\n", argv[1]);
     print_relay_help();
   }
+}
+
+static void cmd_safety(int argc, char *argv[])
+{
+  RES_EBS_Safety_Status_t status;
+
+  if (argc < 2)
+  {
+    print_safety_help();
+    return;
+  }
+
+  if (strcasecmp_local(argv[1], "status") == 0)
+  {
+    RES_EBS_Safety_GetStatus(&status);
+    LOG_RAW("Safety %s=%u seen_high=%u shutdown_open_fault=%u emergency_latched=%u relay_allowed=%u last_change_ms=%lu\r\n",
+            RES_EBS_TSActivation_GetName(), (unsigned int)status.ts_activation, (unsigned int)status.activation_seen_high,
+            (unsigned int)status.shutdown_open_fault, (unsigned int)status.emergency_latched,
+            (unsigned int)status.relay_enable_allowed, (unsigned long)status.last_change_ms);
+    return;
+  }
+
+  if (strcasecmp_local(argv[1], "clear") == 0)
+  {
+    if (RES_EBS_Safety_ClearLatchedEmergency())
+    {
+      LOG_RAW("Safety latch cleared\r\n");
+    }
+    else
+    {
+      LOG_RAW("Safety latch clear blocked: %s is low\r\n", RES_EBS_TSActivation_GetName());
+    }
+    return;
+  }
+
+  LOG_RAW("Unknown safety subcommand: %s\r\n", argv[1]);
+  print_safety_help();
+}
+
+static void cmd_bms(int argc, char *argv[])
+{
+  RES_EBS_BMS_Status_t status;
+
+  if (argc < 2)
+  {
+    print_bms_help();
+    return;
+  }
+
+  if (strcasecmp_local(argv[1], "status") != 0)
+  {
+    LOG_RAW("Unknown bms subcommand: %s\r\n", argv[1]);
+    print_bms_help();
+    return;
+  }
+
+  RES_EBS_BMS_GetStatus(&status);
+
+  LOG_RAW("BMS state_rx=%u faults_rx=%u state=%s(%u) ping=%u relay=%u gpio=%u\r\n",
+          (unsigned int)status.bms_state_received, (unsigned int)status.accumulator_faults_received,
+          RES_EBS_BMS_StateToString(status.bms_state), (unsigned int)status.bms_state, (unsigned int)status.ping_lv_nodes,
+          (unsigned int)status.relay_state, (unsigned int)status.gpio_sense);
+  LOG_RAW("BMS faults: bms_fault=%u imd_fault=%u critical_state=%u critical_flags=%u critical_shutdown=%u\r\n",
+          (unsigned int)status.bms_fault, (unsigned int)status.imd_fault, (unsigned int)status.critical_from_state,
+          (unsigned int)status.critical_from_fault_flags, (unsigned int)status.critical_shutdown_active);
+  LOG_RAW("BMS last_rx_ms: state=%lu faults=%lu\r\n", (unsigned long)status.last_bms_state_rx_ms,
+          (unsigned long)status.last_accumulator_faults_rx_ms);
 }
 
 static void cmd_loge(int argc, char *argv[])
@@ -416,6 +509,18 @@ static const FEB_Console_Cmd_t relay_cmd = {
     .handler = cmd_relay,
 };
 
+static const FEB_Console_Cmd_t bms_cmd = {
+    .name = "bms",
+    .help = "BMS shutdown view: bms|status",
+    .handler = cmd_bms,
+};
+
+static const FEB_Console_Cmd_t safety_cmd = {
+    .name = "safety",
+    .help = "Shutdown/open safe state: safety|status, safety|clear",
+    .handler = cmd_safety,
+};
+
 static const FEB_Console_Cmd_t loge_cmd = {
     .name = "loge",
     .help = "Set UART log level to error",
@@ -457,6 +562,14 @@ int RES_EBS_RegisterCommands(void)
     return -1;
   }
   if (FEB_Console_Register(&relay_cmd) != 0)
+  {
+    return -1;
+  }
+  if (FEB_Console_Register(&bms_cmd) != 0)
+  {
+    return -1;
+  }
+  if (FEB_Console_Register(&safety_cmd) != 0)
   {
     return -1;
   }
