@@ -100,44 +100,44 @@ echo $CUBE_BUNDLE_PATH   # should print your CubeCLT path
 
 The repository scripts are bash-based and work with Git Bash (included with [Git for Windows](https://git-scm.com/download/win)).
 
-**Setup:**
+**Quick Setup:**
 
 1. **Install Git for Windows** -- includes Git Bash terminal
-2. **Install STM32CubeCLT** -- bundles ARM GCC, CMake, Ninja, and STM32_Programmer_CLI
+2. **Install STM32CubeCLT** to default location (`C:\ST\STM32CubeCLT`)
    - Download from [ST website](https://www.st.com/en/development-tools/stm32cubeclt.html)
-   - Default install location: `C:\ST\STM32CubeCLT`
-3. **Add tools to PATH** (System Environment Variables):
-   ```
-   C:\ST\STM32CubeCLT\GNU-tools-for-STM32\bin
-   C:\ST\STM32CubeCLT\CMake\bin
-   C:\ST\STM32CubeCLT\Ninja\bin
-   C:\ST\STM32CubeCLT\STM32CubeProgrammer\bin
-   ```
-4. **Set CUBE_BUNDLE_PATH** environment variable to `C:\ST\STM32CubeCLT`
-5. **Configure Git Bash PATH** -- Git Bash may not inherit Windows PATH. Add to `~/.bashrc`:
+3. **Run setup script** in Git Bash:
    ```bash
-   # STM32CubeCLT tools (adjust path if installed elsewhere)
-   export PATH="/c/ST/STM32CubeCLT/GNU-tools-for-STM32/bin:$PATH"
-   export PATH="/c/ST/STM32CubeCLT/CMake/bin:$PATH"
-   export PATH="/c/ST/STM32CubeCLT/Ninja/bin:$PATH"
-   export PATH="/c/ST/STM32CubeCLT/STM32CubeProgrammer/bin:$PATH"
-   export CUBE_BUNDLE_PATH="/c/ST/STM32CubeCLT"
+   ./scripts/setup.sh
    ```
-   Then restart Git Bash or run `source ~/.bashrc`
-6. **Verify tools are found:**
-   ```bash
-   ninja --version
-   arm-none-eabi-gcc --version
-   cmake --version
-   ```
+   The script will detect STM32CubeCLT and offer to configure your PATH automatically.
 
-**Running Scripts:**
+**Manual Setup (if needed):**
 
-Open Git Bash and run scripts as normal:
+If the automatic setup doesn't work, manually add to `~/.bashrc`:
 ```bash
-./scripts/setup.sh
-./scripts/build.sh -b LVPDB
-./scripts/flash.sh
+# STM32CubeCLT tools (adjust path if installed elsewhere)
+export PATH="/c/ST/STM32CubeCLT/GNU-tools-for-STM32/bin:$PATH"
+export PATH="/c/ST/STM32CubeCLT/CMake/bin:$PATH"
+export PATH="/c/ST/STM32CubeCLT/Ninja/bin:$PATH"
+export PATH="/c/ST/STM32CubeCLT/STM32CubeProgrammer/bin:$PATH"
+export CUBE_BUNDLE_PATH="/c/ST/STM32CubeCLT"
+```
+
+If `~/.bash_profile` doesn't exist, create it to source `~/.bashrc`:
+```bash
+# ~/.bash_profile
+if [ -f "$HOME/.bashrc" ]; then
+    source "$HOME/.bashrc"
+fi
+```
+
+Then restart Git Bash or run `source ~/.bashrc`.
+
+**Verify tools are found:**
+```bash
+ninja --version
+arm-none-eabi-gcc --version
+cmake --version
 ```
 
 **Alternative:** Use [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) with Ubuntu for a native Linux development experience on Windows.

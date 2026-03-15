@@ -219,6 +219,17 @@ configure_windows_path() {
         return 1
     fi
 
+    # Create ~/.bash_profile if it doesn't exist (Git Bash sources this for login shells)
+    if [ ! -f "$HOME/.bash_profile" ]; then
+        log_step "Creating ~/.bash_profile to source ~/.bashrc..."
+        cat > "$HOME/.bash_profile" << 'PROFILE_EOF'
+# Load .bashrc if it exists
+if [ -f "$HOME/.bashrc" ]; then
+    source "$HOME/.bashrc"
+fi
+PROFILE_EOF
+    fi
+
     # Append to bashrc
     cat >> "$bashrc" << BASHRC_EOF
 
