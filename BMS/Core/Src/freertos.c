@@ -89,6 +89,13 @@ const osThreadAttr_t BMSTaskTx_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
+/* Definitions for SMTask */
+osThreadId_t SMTaskHandle;
+const osThreadAttr_t SMTask_attributes = {
+  .name = "SMTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 /* Definitions for ADBMSMutex */
 osMutexId_t ADBMSMutexHandle;
 const osMutexAttr_t ADBMSMutex_attributes = {
@@ -105,6 +112,7 @@ void StartADBMSTask(void *argument);
 void StartTPSTask(void *argument);
 void StartBMSTaskRx(void *argument);
 void StartBMSTaskTx(void *argument);
+void StartSMTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -112,12 +120,7 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
 
 /* USER CODE BEGIN 4 */
-void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
-{
-   /* Run time stack overflow checking is performed if
-   configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
-   called if a stack overflow is detected. */
-}
+
 /* USER CODE END 4 */
 
 /**
@@ -164,6 +167,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of BMSTaskTx */
   BMSTaskTxHandle = osThreadNew(StartBMSTaskTx, NULL, &BMSTaskTx_attributes);
+
+  /* creation of SMTask */
+  SMTaskHandle = osThreadNew(StartSMTask, NULL, &SMTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
 
@@ -266,14 +272,32 @@ __weak void StartBMSTaskTx(void *argument)
   /* USER CODE END StartBMSTaskTx */
 }
 
+/* USER CODE BEGIN Header_StartSMTask */
+/**
+* @brief Function implementing the SMTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartSMTask */
+__weak void StartSMTask(void *argument)
+{
+  /* USER CODE BEGIN StartSMTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartSMTask */
+}
+
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 
 /* Stack overflow hook - called when stack overflow is detected */
-void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
 {
   (void)xTask;
-  printf("STACK OVERFLOW: %s\r\n", pcTaskName);
+  printf("STACK OVERFLOW: %s\r\n", (char *)pcTaskName);
   /* Halt for debugging - allows inspection with debugger */
   __disable_irq();
   while(1);
