@@ -11,6 +11,59 @@
     "tasks": [
         {
             "type": "shell",
+            "label": "STM Serial: Show port",
+            "command": "${workspaceFolder}/scripts/stm_serial.sh",
+            "args": ["path"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "focus": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "STM Serial: List matching ports",
+            "command": "${workspaceFolder}/scripts/stm_serial.sh",
+            "args": ["list"],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "focus": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "STM Serial: Monitor RES_EBS",
+            "command": "python3",
+            "args": [
+                "${workspaceFolder}/scripts/stm_serial_console.py",
+                "--baud",
+                "115200",
+                "--local-echo"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "focus": true
+            },
+            "runOptions": {
+                "reevaluateOnRerun": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
             "label": "Build BMS",
             "command": "cmake",
             "args": ["--build", "build/Debug", "--target", "BMS"],

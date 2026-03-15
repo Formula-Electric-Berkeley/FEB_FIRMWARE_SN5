@@ -27,6 +27,7 @@
     "cmake.configureArgs": [
         "-DCMAKE_COMMAND=cube-cmake"
     ],
+    "serial-monitor.defaultBaud": "115200",
     "[c]": {
         "editor.defaultFormatter": "ms-vscode.cpptools",
         "editor.formatOnSave": true

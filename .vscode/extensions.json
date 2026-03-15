@@ -3,6 +3,7 @@
     "ms-vscode.cpptools",
     "ms-vscode.cmake-tools",
     "stmicroelectronics.stm32-vscode-extension",
+    "eclipse-cdt.serial-monitor",
     "ms-python.python",
     "marus25.cortex-debug",
     "dan-c-underwood.arm",
@@ -10,5 +11,8 @@
     "eamodio.gitlens",
     "github.vscode-github-actions",
     "ms-vsliveshare.vsliveshare"
+  ],
+  "unwantedRecommendations": [
+    "ms-vscode.vscode-serial-monitor"
   ]
 }
