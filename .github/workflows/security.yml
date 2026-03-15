@@ -55,7 +55,7 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         uses: carlosperate/arm-none-eabi-gcc-action@v1
         with:
-          release: latest
+          release: '14.2.Rel1'
 
       - name: Install Ninja
         if: steps.check.outputs.skip != 'true'
@@ -90,7 +90,7 @@ jobs:
           fetch-depth: 0
 
       - name: TruffleHog OSS
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@v3.88.0
         with:
           path: ./
           extra_args: --only-verified

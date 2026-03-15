@@ -13,6 +13,7 @@ Firmware for the FEB SN5 Formula E vehicle. Each subdirectory corresponds to a b
 | `DCU/` | Data Control Unit | STM32F446RE | |
 | `PCU/` | Powertrain Control Unit | STM32F446RE | |
 | `Sensor_Nodes/` | Sensor Nodes | STM32F446RE | |
+| `UART/` | UART Communication Board | STM32F446RE | FreeRTOS |
 | `UART_TEST/` | UART/Console Test Board | STM32U575ZI | Test platform for UART/Console libraries |
 
 All boards are fully buildable with CMake.
@@ -94,6 +95,52 @@ cmake --version    # 3.22+
 ninja --version
 echo $CUBE_BUNDLE_PATH   # should print your CubeCLT path
 ```
+
+### Windows Development
+
+The repository scripts are bash-based and work with Git Bash (included with [Git for Windows](https://git-scm.com/download/win)).
+
+**Setup:**
+
+1. **Install Git for Windows** -- includes Git Bash terminal
+2. **Install STM32CubeCLT** -- bundles ARM GCC, CMake, Ninja, and STM32_Programmer_CLI
+   - Download from [ST website](https://www.st.com/en/development-tools/stm32cubeclt.html)
+   - Default install location: `C:\ST\STM32CubeCLT`
+3. **Add tools to PATH** (System Environment Variables):
+   ```
+   C:\ST\STM32CubeCLT\GNU-tools-for-STM32\bin
+   C:\ST\STM32CubeCLT\CMake\bin
+   C:\ST\STM32CubeCLT\Ninja\bin
+   C:\ST\STM32CubeCLT\STM32CubeProgrammer\bin
+   ```
+4. **Set CUBE_BUNDLE_PATH** environment variable to `C:\ST\STM32CubeCLT`
+5. **Configure Git Bash PATH** -- Git Bash may not inherit Windows PATH. Add to `~/.bashrc`:
+   ```bash
+   # STM32CubeCLT tools (adjust path if installed elsewhere)
+   export PATH="/c/ST/STM32CubeCLT/GNU-tools-for-STM32/bin:$PATH"
+   export PATH="/c/ST/STM32CubeCLT/CMake/bin:$PATH"
+   export PATH="/c/ST/STM32CubeCLT/Ninja/bin:$PATH"
+   export PATH="/c/ST/STM32CubeCLT/STM32CubeProgrammer/bin:$PATH"
+   export CUBE_BUNDLE_PATH="/c/ST/STM32CubeCLT"
+   ```
+   Then restart Git Bash or run `source ~/.bashrc`
+6. **Verify tools are found:**
+   ```bash
+   ninja --version
+   arm-none-eabi-gcc --version
+   cmake --version
+   ```
+
+**Running Scripts:**
+
+Open Git Bash and run scripts as normal:
+```bash
+./scripts/setup.sh
+./scripts/build.sh -b LVPDB
+./scripts/flash.sh
+```
+
+**Alternative:** Use [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) with Ubuntu for a native Linux development experience on Windows.
 
 ## Code Formatting
 
@@ -294,7 +341,7 @@ GitHub Actions runs on pushes and pull requests to `main`:
 
 | Workflow | Trigger | Description |
 |----------|---------|-------------|
-| **Build** (`build.yml`) | Push/PR to main | Matrix build of all 7 boards. Skips boards missing `CMakeLists.txt` or `Core/`. |
+| **Build** (`build.yml`) | Push/PR to main | Matrix build of all 9 boards. Skips boards missing `CMakeLists.txt` or `Core/`. |
 | **Code Quality** (`quality.yml`) | Push/PR to main | `clang-format` on `Core/User/` files, `cppcheck` static analysis. |
 | **CAN Validation** (`can-validate.yml`) | Push/PR to main | Checks submodule is up-to-date with upstream, validates generated files match definitions. |
 | **Firmware Size** (`size.yml`) | Push/PR to main | Tracks Flash/RAM usage per board. Warns at 90%, fails at 98%. |
@@ -323,7 +370,7 @@ Pre-built firmware binaries are available from [GitHub Releases](https://github.
 - **Versioned Releases**: Stable releases are tagged with version numbers (e.g., `v1.0.0`).
 
 Each release includes:
-- `.elf`, `.bin`, and `.hex` files for all 7 boards
+- `.elf`, `.bin`, and `.hex` files for all 9 boards
 - `FEB_Firmware_{version}.zip` - Complete firmware package with bundled `flash.sh`
 - `SHA256SUMS.txt` - Checksums for individual firmware files
 - `.zip.sha256` - Checksum for the release archive
