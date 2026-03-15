@@ -145,7 +145,7 @@ void FEB_Fan_TACH_Callback(TIM_HandleTypeDef *htim)
 
           char str[512];
 
-          sprintf(str, "Fan %u: %u\n\r", i + 1, frequency[i]);
+          sprintf(str, "Fan %zu: %zu\n\r", i + 1, frequency[i]);
 
           HAL_UART_Transmit(&huart2, (uint8_t *)str, strlen(str), 100);
 
