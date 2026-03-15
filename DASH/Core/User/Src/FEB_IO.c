@@ -127,7 +127,7 @@ void FEB_IO_HandleRTDButton(void)
   // }
 }
 
-static int counter = 0;
+// static int counter = 0;
 // /* ------------------- Switches ------------------- */
 void FEB_IO_Handle_GPIO(void)
 {
@@ -136,8 +136,8 @@ void FEB_IO_Handle_GPIO(void)
 
   FEB_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, received_data, 2, HAL_MAX_DELAY);
 
-  printf("[%d] %X %X\n", counter, received_data[0], received_data[1]);
-  counter++;
+  // printf("[%d] %X %X\n", counter, received_data[0], received_data[1]);
+  // counter++;
 
   //   00010010 received_data
   //   00010000 (1 << 5)
