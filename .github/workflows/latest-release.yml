@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes, UART_TEST]
+        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes, UART, UART_TEST]
 
     name: Build ${{ matrix.project }}
 
@@ -39,7 +39,7 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         uses: carlosperate/arm-none-eabi-gcc-action@v1
         with:
-          release: latest
+          release: '14.2.Rel1'
 
       - name: Install Ninja
         if: steps.check.outputs.skip != 'true'
@@ -70,7 +70,7 @@ jobs:
 
       - name: Upload release artifacts
         if: steps.check.outputs.skip != 'true'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.project }}-latest
           path: |
@@ -89,14 +89,14 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: release-artifacts
 
       - name: Organize artifacts by board
         run: |
           mkdir -p release-package
-          for board in BMS PCU DASH LVPDB DART DCU Sensor_Nodes UART_TEST; do
+          for board in BMS PCU DASH LVPDB DART DCU Sensor_Nodes UART UART_TEST; do
             mkdir -p "release-package/$board"
             find release-artifacts -name "$board-*" -type f \( -name "*.elf" -o -name "*.bin" -o -name "*.hex" \) -exec cp {} "release-package/$board/" \; 2>/dev/null || true
           done
@@ -189,6 +189,7 @@ jobs:
           - DART
           - DCU (Data Control Unit)
           - Sensor_Nodes
+          - UART (UART Communication Board)
           - UART_TEST (UART/Console Test Board)
 
           ### Files

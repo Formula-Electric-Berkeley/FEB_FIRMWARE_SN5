@@ -35,6 +35,7 @@
 #include "FEB_HW.h"
 #include "FEB_Main.h"
 #include "FEB_SM.h"
+#include "task.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,7 +56,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+extern osThreadId_t SMTaskHandle;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -207,20 +208,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  /* State machine processing (every 1ms) */
-  FEB_SM_Process();
-
-  /* CAN state publishing (every 100ms via internal divider) */
-  FEB_CAN_State_Tick();
-
-  /* PingPong tick every 100ms */
-  static uint16_t pingpong_divider = 0;
-  pingpong_divider++;
-  if (pingpong_divider >= 100)
+  /* All processing happens in SMTask (safe task context) */
+  if (SMTaskHandle != NULL)
   {
-    pingpong_divider = 0;
-    FEB_CAN_PingPong_Tick();
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    vTaskNotifyGiveFromISR((TaskHandle_t)SMTaskHandle, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
   }
+  /* NOTE: FEB_SM_Process(), FEB_CAN_State_Tick(), FEB_CAN_PingPong_Tick()
+     are called from SMTask, not from ISR - they use blocking operations */
   /* USER CODE END Callback 1 */
 }
 

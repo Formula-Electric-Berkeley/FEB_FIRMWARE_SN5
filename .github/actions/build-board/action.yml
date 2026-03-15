@@ -3,7 +3,7 @@ description: 'Builds a single STM32 board firmware with ARM GCC toolchain'
 
 inputs:
   board:
-    description: 'Board name (BMS, DASH, DART, DCU, LVPDB, PCU, Sensor_Nodes)'
+    description: 'Board name (BMS, DASH, DART, DCU, LVPDB, PCU, Sensor_Nodes, UART, UART_TEST)'
     required: true
   build-type:
     description: 'Build type (Debug or Release)'
@@ -50,7 +50,7 @@ runs:
       if: steps.check.outputs.skip != 'true'
       uses: carlosperate/arm-none-eabi-gcc-action@v1
       with:
-        release: latest
+        release: '14.2.Rel1'
 
     - name: Install Ninja
       if: steps.check.outputs.skip != 'true'
@@ -82,7 +82,7 @@ runs:
 
     - name: Upload artifacts
       if: steps.check.outputs.skip != 'true' && inputs.upload-artifacts == 'true'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: ${{ inputs.board }}-firmware${{ inputs.artifact-suffix }}
         path: |

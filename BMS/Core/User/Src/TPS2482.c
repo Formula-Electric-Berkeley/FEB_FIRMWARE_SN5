@@ -31,7 +31,7 @@ void TPS2482_Init(I2C_HandleTypeDef *hi2c, uint8_t *addresses, TPS2482_Configura
   TPS2482_Write_Mask(hi2c, addresses, masks, messageCount);
   TPS2482_Write_Alert_Limit(hi2c, addresses, alert_limits, messageCount);
 
-  HAL_Delay(100);
+  // HAL_Delay(100);
 
   // Read back configurations
   TPS2482_Get_Config(hi2c, addresses, configs_res, messageCount);

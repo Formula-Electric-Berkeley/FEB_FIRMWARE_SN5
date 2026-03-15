@@ -130,7 +130,7 @@ uint16_t pec10_calc(uint8_t nLength, uint8_t *pDataBuf)
     /* Bring the next byte into the remainder. */
     nRemainder ^= (uint16_t)((uint16_t)pDataBuf[nByteIndex] << 2u);
 
-    /* Perform modulo-2 division, a bit at a time. */
+    /* Perform modulo-2 division, a bit at a time.*/
     for (nBitIndex = 8u; nBitIndex > 0u; --nBitIndex)
     {
       /* Try to divide the current data bit. */

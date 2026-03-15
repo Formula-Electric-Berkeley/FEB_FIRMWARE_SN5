@@ -45,7 +45,7 @@ static void BMS_CAN_RxCallback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB
   (void)data;
   (void)user_data;
 
-  LOG_D(TAG_CAN, "RX: ID=0x%lX len=%d", can_id, length);
+  /* Removed: per-message RX logging was too verbose */
 }
 
 /* ========================== CAN Initialization ========================== */
