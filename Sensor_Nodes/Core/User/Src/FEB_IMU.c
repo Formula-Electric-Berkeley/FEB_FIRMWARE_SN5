@@ -4,6 +4,7 @@
 #include "FEB_IMU.h"
 #include <stdio.h>
 #include <string.h>
+#include "FEB_Main.h"
 
 stmdev_ctx_t lsm6dsox_ctx;
 extern I2C_HandleTypeDef hi2c1;
@@ -60,7 +61,7 @@ void read_Acceleration(void)
   acceleration_mg[1] = lsm6dsox_from_fs2_to_mg(data_raw_acceleration[1]);
   acceleration_mg[2] = lsm6dsox_from_fs2_to_mg(data_raw_acceleration[2]);
 
-  printf("Acceleration [mg]: %4.2f\t%4.2f\t%4.2f\r\n", acceleration_mg[0], acceleration_mg[1], acceleration_mg[2]);
+  LOGV("Acceleration [mg]: %4.2f\t%4.2f\t%4.2f\r\n", acceleration_mg[0], acceleration_mg[1], acceleration_mg[2]);
 }
 
 void read_Angular_Rate(void)
@@ -73,6 +74,6 @@ void read_Angular_Rate(void)
   angular_rate_mdps[1] = lsm6dsox_from_fs2000_to_mdps(data_raw_angular_rate[1]);
   angular_rate_mdps[2] = lsm6dsox_from_fs2000_to_mdps(data_raw_angular_rate[2]);
 
-  printf("Angular Rate [mdps]: %4.2f\t%4.2f\t%4.2f\r\n", angular_rate_mdps[0], angular_rate_mdps[1],
-         angular_rate_mdps[2]);
+  LOGV("Angular Rate [mdps]: %4.2f\t%4.2f\t%4.2f\r\n", angular_rate_mdps[0], angular_rate_mdps[1],
+       angular_rate_mdps[2]);
 }

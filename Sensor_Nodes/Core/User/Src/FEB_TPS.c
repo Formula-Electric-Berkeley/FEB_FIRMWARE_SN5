@@ -2,6 +2,7 @@
 #include "stm32f4xx_hal.h"
 #include <stdio.h>
 #include <string.h>
+#include "FEB_Main.h"
 
 extern I2C_HandleTypeDef hi2c1;
 extern UART_HandleTypeDef huart2;
@@ -24,7 +25,14 @@ static TPS2482_Configuration tps_config = {
 void tps_init(void)
 {
   TPS2482_Init(&hi2c1, &tps_address, &tps_config, &tps_id, &tps_init_res, 1);
-  printf("[TPS] Init %s  ID: 0x%04X  ADDR: 0x%02X\r\n", tps_init_res ? "OK" : "FAIL", tps_id, tps_address);
+  if (tps_init_res)
+  {
+    LOGV("[TPS] Init OK  ID: 0x%04X  ADDR: 0x%02X", tps_id, tps_address);
+  }
+  else
+  {
+    LOGC("[TPS] Init FAIL  ID: 0x%04X  ADDR: 0x%02X", tps_id, tps_address);
+  }
 }
 
 void read_TPS(void)
@@ -38,5 +46,5 @@ void read_TPS(void)
   tps_shunt_voltage = SIGN_MAGNITUDE(shunt_voltage_raw) * TPS2482_CONV_VSHUNT;
   tps_current = SIGN_MAGNITUDE(current_raw) * FEB_TPS_CURRENT_LSB;
 
-  printf("TPS: Vbus=%4.2fV  Vshunt=%4.3fmV  I=%4.3fA\r\n", tps_bus_voltage, tps_shunt_voltage, tps_current);
+  LOGV("TPS: Vbus=%4.2fV  Vshunt=%4.3fmV  I=%4.3fA\r\n", tps_bus_voltage, tps_shunt_voltage, tps_current);
 }

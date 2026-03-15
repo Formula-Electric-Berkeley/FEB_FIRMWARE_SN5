@@ -5,6 +5,7 @@
 #include "main.h"
 #include <stdio.h>
 #include <string.h>
+#include "FEB_Main.h"
 
 extern I2C_HandleTypeDef hi2c1;
 
@@ -29,33 +30,33 @@ void FEB_Update()
   read_TPS();
   printf("\r\n");
 
-  // printf("Starting I2C Scanning: \r\n");
+  LOGI("Starting I2C Scanning: \r\n");
 
-  // uint8_t i = 0, ret;
-  // for (i = 1; i < 128; i++)
-  // {
-  //   ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i << 1), 3, 5);
-  //   if (ret != HAL_OK)
-  //   { /* No ACK Received At That Address */
-  //     printf(" - ");
-  //   }
-  //   else if (ret == HAL_OK)
-  //   {
-  //     printf("0x%X", i);
-  //     // address: 0x40 w hi2c1, nothing with hi2c3
-  //   }
-  // }
-  // printf("Done! \r\n\r\n");
+  uint8_t i = 0, ret;
+  for (i = 1; i < 128; i++)
+  {
+    ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i << 1), 3, 5);
+    if (ret != HAL_OK)
+    { /* No ACK Received At That Address */
+      printf("-");
+    }
+    else if (ret == HAL_OK)
+    {
+      printf("0x%X", i);
+      // address: 0x40 w hi2c1, nothing with hi2c3
+    }
+  }
+  printf("Done! \r\n\r\n");
 }
 
 void FEB_Init(void)
 {
   // Initialize printf redirect (already enabled by __io_putchar)
-  printf("[SETUP] Sensor Node Starting...\r\n");
+  LOGI("[SETUP] Sensor Node Starting...\r\n");
 
   // Initialize CAN (both CAN1 and CAN2)
   FEB_CAN_Init(FEB_CAN_Rx_Callback);
-  printf("[SETUP] CAN initialized\r\n");
+  LOGI("[SETUP] CAN initialized\r\n");
 
   // Initialize sensors
   lsm6dsox_init();
