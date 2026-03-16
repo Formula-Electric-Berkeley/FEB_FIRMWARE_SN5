@@ -87,6 +87,12 @@ uint16_t tps2482_pg_pins[NUM_TPS2482];
 FEB_LVPDB_CAN_Data can_data;
 bool bus_voltage_healthy = true;
 
+/**
+ * Route TPS library log messages into the platform logging system with level mapping.
+ *
+ * @param level Log level provided by the TPS library.
+ * @param msg   Null-terminated log message to forward.
+ */
 static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg)
 {
   switch (level)
@@ -108,9 +114,14 @@ static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg)
   }
 }
 
-/* ============================================================================
- * TPS Device Initialization
- * ============================================================================ */
+/**
+ * Initialize the TPS subsystem, populate exported device mappings, and register all TPS2482 devices.
+ *
+ * This initializes the TPS library, fills public arrays used by the console (I2C addresses,
+ * enable pins, and power-good pins), and registers each device into `tps_handles`.
+ *
+ * @returns `true` if all devices were registered successfully, `false` if any registration failed.
+ */
 
 static bool FEB_TPS_Init_Devices(void)
 {
@@ -169,6 +180,15 @@ static bool FEB_TPS_Init_Devices(void)
   return all_success;
 }
 
+/**
+ * Enable or disable all TPS2482 devices except the LV rail.
+ *
+ * Skips device index 0 (LV) because it does not have an enable pin; attempts to set the enable
+ * state for each other registered TPS device and logs failures for devices that expose an EN pin.
+ *
+ * @param enable `true` to enable devices, `false` to disable them.
+ * @returns `true` if every attempted enable/disable operation succeeded, `false` if any failed.
+ */
 static bool FEB_TPS_Enable_All(bool enable)
 {
   bool all_success = true;
@@ -187,6 +207,15 @@ static bool FEB_TPS_Enable_All(bool enable)
   return all_success;
 }
 
+/**
+ * Verify TPS devices' power-good signals and report LV failure.
+ *
+ * Checks the power-good state for each configured TPS device and logs a warning
+ * if the LV rail (device index 0) reports not power-good.
+ *
+ * @returns `true` if all devices' power-good states are considered healthy,
+ *          `false` otherwise (returns `false` when LV (index 0) power-good is not set).
+ */
 static bool FEB_TPS_Check_Power_Good(void)
 {
   bool all_good = true;
@@ -211,9 +240,15 @@ static bool FEB_TPS_Check_Power_Good(void)
   return all_good;
 }
 
-/* ============================================================================
- * Main Setup and Loop
- * ============================================================================ */
+/**
+ * Perform board startup sequence and configure main subsystems.
+ *
+ * Initializes UART and console, scans the I2C bus for attached devices,
+ * initializes and configures TPS2482 power-management devices (including
+ * disabling all non-LV rails and verifying power-good signals), initializes
+ * the CAN subsystem and its ping/pong module, configures the brake-light GPIO
+ * to off, and starts the 1 kHz timer interrupt for regular system ticks.
+ */
 
 void FEB_Main_Setup(void)
 {
@@ -310,6 +345,11 @@ void FEB_Main_Setup(void)
 
 #define MAIN_LOOP_POLL_INTERVAL_MS 10
 
+/**
+ * Main periodic loop executed from the scheduler; performs periodic TPS sampling and UART receive processing.
+ *
+ * On each invocation, if at least MAIN_LOOP_POLL_INTERVAL_MS has elapsed since the last poll, triggers a batch poll of all TPS devices to update raw bus/shunt/currents and then runs variable conversion to update scaled values. Always processes pending UART RX for the primary UART instance.
+ */
 void FEB_Main_Loop(void)
 {
   static uint32_t last_poll_tick = 0;
@@ -328,6 +368,13 @@ void FEB_Main_Loop(void)
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
 }
 
+/**
+ * Handle periodic work driven by the 1 kHz system tick.
+ *
+ * Called from the 1 kHz timer interrupt; maintains internal 1 ms counters and, every 100 ms,
+ * invokes the CAN ping/pong maintenance tick and the CAN TPS polling tick using the
+ * tps2482_current_raw and tps2482_bus_voltage_raw arrays for all devices (NUM_TPS2482).
+ */
 void FEB_1ms_Callback(void)
 {
   // Process CAN ping/pong every 100ms
@@ -355,6 +402,19 @@ void FEB_1ms_Callback(void)
 
 #define ADC_FILTER_EXPONENT 2
 
+/**
+ * Apply a per-element IIR low-pass filter to an array of input samples.
+ *
+ * For each index up to `length`, initialize the internal filter state on first use
+ * and otherwise update the filter using a fixed-exponent IIR: filters[i] += data_in[i] - (filters[i] >> ADC_FILTER_EXPONENT),
+ * then set data_out[i] to the scaled filter value (filters[i] >> ADC_FILTER_EXPONENT).
+ *
+ * @param data_in Pointer to the array of new input samples.
+ * @param data_out Pointer to the array where filtered output samples are written.
+ * @param filters Pointer to the array holding internal fixed-point filter accumulators (must be at least `length` elements).
+ * @param length Number of elements to process.
+ * @param filter_initialized Boolean array indicating per-index whether the corresponding filter accumulator has been initialized; on first use the accumulator and output are initialized from the input.
+ */
 static void FEB_Current_IIR(int16_t *data_in, int16_t *data_out, int32_t *filters, uint8_t length,
                             bool *filter_initialized)
 {
@@ -374,6 +434,18 @@ static void FEB_Current_IIR(int16_t *data_in, int16_t *data_out, int32_t *filter
   }
 }
 
+/**
+ * Convert raw TPS2482 sensor readings into scaled engineering units and apply current filtering.
+ *
+ * Converts per-device raw bus and shunt ADC readings into bus voltage (volts) and shunt voltage (millivolts)
+ * using FEB_TPS_CONV_VBUS_V_PER_LSB and FEB_TPS_CONV_VSHUNT_MV_PER_LSB, converts raw current counts into
+ * currents using each device's CURRENT_LSB constant, then smooths the resulting current array with an IIR filter.
+ *
+ * Notes:
+ * - Input arrays (raw values) are expected to be sign-corrected by FEB_TPS_PollAllRaw.
+ * - The function updates tps2482_bus_voltage, tps2482_shunt_voltage, and tps2482_current in place, and advances
+ *   tps2482_current_filter state via FEB_Current_IIR.
+ */
 static void FEB_Variable_Conversion(void)
 {
   // Convert bus voltage and shunt voltage using library constants

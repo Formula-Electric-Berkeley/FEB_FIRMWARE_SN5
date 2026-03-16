@@ -51,8 +51,10 @@ static int strcasecmp_local(const char *s1, const char *s2)
 }
 
 /**
- * @brief Get chip index from name or numeric string
- * @return Chip index (0-6) or -1 if invalid
+ * Resolve a TPS2482 chip index from a name or a numeric string.
+ *
+ * @param name Chip identifier as either a numeric string ("0".."6") or a case-insensitive chip name.
+ * @returns Index in the range 0..NUM_TPS2482-1 if the identifier is valid, `-1` otherwise.
  */
 static int get_chip_index(const char *name)
 {
@@ -96,8 +98,11 @@ static const RegInfo_t registers[] = {
 #define NUM_REGISTERS (sizeof(registers) / sizeof(registers[0]))
 
 /**
- * @brief Get register info from name
- * @return Pointer to RegInfo_t or NULL if not found
+ * Find register metadata by name.
+ *
+ * Performs a case-insensitive lookup of the register table for the given name.
+ * @param name Register name to look up (case-insensitive).
+ * @returns Pointer to the matching RegInfo_t, or NULL if no register with that name exists.
  */
 static const RegInfo_t *get_register_info(const char *name)
 {
@@ -114,7 +119,15 @@ static const RegInfo_t *get_register_info(const char *name)
  * ============================================================================ */
 
 /**
- * @brief Read a 16-bit register from TPS2482 via I2C
+ * Read a 16-bit TPS2482 register over I2C and store its MSB-first value.
+ *
+ * Reads two bytes from the device at `i2c_addr` starting at register `reg` and,
+ * on success, writes the assembled 16-bit value (MSB first) into `*value`.
+ *
+ * @param i2c_addr 7-bit I2C address of the TPS2482 device.
+ * @param reg      8-bit register address to read.
+ * @param value    Pointer to storage for the 16-bit register value; updated only on success.
+ * @returns HAL_OK if the read succeeded and `*value` was updated, otherwise the HAL error status.
  */
 static HAL_StatusTypeDef tps_read_reg(uint8_t i2c_addr, uint8_t reg, uint16_t *value)
 {
@@ -129,7 +142,11 @@ static HAL_StatusTypeDef tps_read_reg(uint8_t i2c_addr, uint8_t reg, uint16_t *v
 }
 
 /**
- * @brief Write a 16-bit register to TPS2482 via I2C
+ * Write a 16-bit value to a TPS2482 register over I2C.
+ * @param i2c_addr 7-bit I2C address of the TPS2482 device.
+ * @param reg 8-bit TPS2482 register address.
+ * @param value 16-bit value to write to the register.
+ * @returns HAL_StatusTypeDef HAL status: `HAL_OK` on success, otherwise an error code.
  */
 static HAL_StatusTypeDef tps_write_reg(uint8_t i2c_addr, uint8_t reg, uint16_t value)
 {
@@ -165,6 +182,12 @@ static void print_lvpdb_help(void)
   FEB_Console_Printf("CAN Channels: 1 (0xE0), 2 (0xE1), 3 (0xE2), 4 (0xE3)\r\n");
 }
 
+/**
+ * Print TPS2482 chips status to the console.
+ *
+ * Reads each chip's power-good and enable states and prints a table showing
+ * ID, Name, EN, PG, Vbus(mV), and I(mA). The LV chip (ID 0) is always reported as ON.
+ */
 static void cmd_status(void)
 {
   GPIO_PinState pg_states[NUM_TPS2482];
@@ -203,6 +226,18 @@ static void cmd_status(void)
   }
 }
 
+/**
+ * Enable a specified TPS2482 chip by name or numeric index and report the outcome.
+ *
+ * Expects a chip identifier in argv[1]; if missing prints usage. Resolves the chip index,
+ * rejects attempts to control the LV (index 0) and prints an error for unknown chips.
+ * For controllable chips, asserts the corresponding enable GPIO and reads it back:
+ * on successful readback prints "<Name> enabled", otherwise prints a warning that
+ * the enable command was sent but readback failed.
+ *
+ * @param argc Number of arguments (expects at least 2).
+ * @param argv Argument vector where argv[1] is the chip name or numeric index.
+ */
 static void cmd_enable(int argc, char *argv[])
 {
   if (argc < 2)
@@ -241,6 +276,17 @@ static void cmd_enable(int argc, char *argv[])
   }
 }
 
+/**
+ * Disable the specified TPS2482 chip (except LV) and report the result.
+ *
+ * Writes the chip's enable GPIO low, verifies the pin state by readback,
+ * and prints a confirmation message on success or a warning if the readback
+ * still shows the chip enabled. If the chip identifier is invalid or refers
+ * to the LV rail (index 0), an error message is printed instead.
+ *
+ * @param argc Number of arguments; expects at least 2 (subcommand + chip).
+ * @param argv Argument vector where argv[1] is the chip name or numeric index.
+ */
 static void cmd_disable(int argc, char *argv[])
 {
   if (argc < 2)
@@ -279,6 +325,19 @@ static void cmd_disable(int argc, char *argv[])
   }
 }
 
+/**
+ * Read a TPS register for a specified chip and print the result to the console.
+ *
+ * Expects two arguments after the command: a chip identifier (index or name) and a
+ * register name. On success prints "<Chip> <Register> = 0xXXXX (decimal)". On error
+ * prints usage when arguments are missing, an "Unknown chip" or "Unknown register"
+ * message for invalid inputs, or an "I2C read failed" message if the device read fails.
+ *
+ * @param argc Number of arguments (including subcommand). Must be at least 3.
+ * @param argv Argument vector where argv[1] is the chip (index or name) and argv[2] is
+ *             the register name (one of: config, shunt, bus, power, current, cal,
+ *             mask, alert, id).
+ */
 static void cmd_read(int argc, char *argv[])
 {
   if (argc < 3)
@@ -315,6 +374,17 @@ static void cmd_read(int argc, char *argv[])
   }
 }
 
+/**
+ * Write a 16-bit value to a TPS2482 register for a specified chip and verify by readback.
+ *
+ * Parses arguments as: argv[1]=chip (name or index), argv[2]=register name, argv[3]=value (supports 0x hex).
+ * Validates the chip and register (rejects read-only registers), performs an I2C write of the 16-bit value,
+ * then attempts an I2C readback and prints success or error messages to the console.
+ *
+ * @param argc Number of arguments; must be at least 4 (command, chip, register, value).
+ * @param argv Argument vector where argv[1] is the chip identifier, argv[2] is the register name,
+ *             and argv[3] is the value to write.
+ */
 static void cmd_write(int argc, char *argv[])
 {
   if (argc < 4)

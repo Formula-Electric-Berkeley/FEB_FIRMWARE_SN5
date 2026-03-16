@@ -436,13 +436,12 @@ const char *FEB_TPS_StatusToString(FEB_TPS_Status_t status);
 const char *FEB_TPS_GetDeviceName(FEB_TPS_Handle_t handle);
 
 /**
- * @brief Convert raw register value to signed using sign-magnitude format
+ * Convert a 16-bit sign-magnitude register value into a signed 16-bit integer.
  *
- * TPS2482 uses sign-magnitude: bit 15 = sign, bits 14:0 = magnitude.
- * This is provided for users who want to do custom processing.
+ * Interprets bit 15 as the sign (1 = negative) and bits 14:0 as the magnitude.
  *
- * @param raw Raw 16-bit register value
- * @return Signed 16-bit value
+ * @param raw Raw 16-bit sign-magnitude register value.
+ * @return Signed 16-bit integer with sign applied (negative if input bit 15 is set).
  */
 static inline int16_t FEB_TPS_SignMagnitude(uint16_t raw) {
     if (raw & 0x8000) {

@@ -68,7 +68,15 @@ void FEB_TPS_Log(uint8_t level, const char *fmt, ...) {
  * ============================================================================ */
 
 /**
- * @brief Read a 16-bit register from TPS2482
+ * Read a 16-bit register value from a TPS2482 device over I2C.
+ *
+ * On success stores the register's 16-bit value (MSB first / big-endian) into `value`.
+ *
+ * @param hi2c Pointer to the HAL I2C handle used for the transaction.
+ * @param i2c_addr 7-bit I2C address of the TPS2482 device.
+ * @param reg 8-bit register address to read.
+ * @param value Output pointer that receives the 16-bit register value on success.
+ * @return HAL_OK if the read succeeded, otherwise the HAL error status. 
  */
 static HAL_StatusTypeDef feb_tps_read_reg(I2C_HandleTypeDef *hi2c,
                                            uint8_t i2c_addr,
@@ -90,7 +98,13 @@ static HAL_StatusTypeDef feb_tps_read_reg(I2C_HandleTypeDef *hi2c,
 }
 
 /**
- * @brief Write a 16-bit register to TPS2482
+ * Write a 16-bit value to a TPS2482 register over I2C, sending MSB first.
+ *
+ * @param i2c_addr 7-bit I2C device address.
+ * @param reg      8-bit register address within the TPS2482.
+ * @param value    16-bit register value to write (MSB transmitted first).
+ * @returns HAL status code: `HAL_OK` on success, otherwise an error code such as
+ *          `HAL_ERROR`, `HAL_BUSY`, or `HAL_TIMEOUT`.
  */
 static HAL_StatusTypeDef feb_tps_write_reg(I2C_HandleTypeDef *hi2c,
                                             uint8_t i2c_addr,
@@ -108,7 +122,13 @@ static HAL_StatusTypeDef feb_tps_write_reg(I2C_HandleTypeDef *hi2c,
 }
 
 /**
- * @brief Compute calibration values for a device
+ * Compute and update a device's measurement LSBs and calibration register from its shunt
+ * resistance and configured maximum current.
+ *
+ * This updates the device fields `current_lsb`, `power_lsb`, and `cal_reg` using the
+ * device's `i_max_amps` and `r_shunt_ohms` values.
+ *
+ * @param dev Pointer to the device to update; `i_max_amps` and `r_shunt_ohms` must be set. 
  */
 static void feb_tps_compute_calibration(FEB_TPS_Device_t *dev) {
     dev->current_lsb = FEB_TPS_CALC_CURRENT_LSB(dev->i_max_amps);
@@ -116,9 +136,22 @@ static void feb_tps_compute_calibration(FEB_TPS_Device_t *dev) {
     dev->cal_reg = FEB_TPS_CALC_CAL(dev->current_lsb, dev->r_shunt_ohms);
 }
 
-/* ============================================================================
- * Library Initialization
- * ============================================================================ */
+/**
+ * Initialize the FEB TPS2482 library with an optional configuration.
+ *
+ * If `config` is provided, its `i2c_timeout_ms` overrides the default I2C timeout,
+ * and `log_func`/`log_level` are registered for library logging. The call allocates
+ * an internal I2C mutex and initializes global library state.
+ *
+ * @param config Optional pointer to library configuration; may be NULL.
+ *               - If non-NULL and `i2c_timeout_ms > 0` that value is used;
+ *                 otherwise the default timeout is applied.
+ *               - If `log_func` is non-NULL it will be used for library logging;
+ *                 `log_level` defaults to `FEB_TPS_LOG_INFO` when zero.
+ *
+ * @returns FEB_TPS_OK if the library is successfully initialized or was already initialized.
+ * @returns FEB_TPS_ERR_NOT_INIT if initialization failed due to mutex creation failure (FreeRTOS build).
+ */
 
 FEB_TPS_Status_t FEB_TPS_Init(const FEB_TPS_LibConfig_t *config) {
     if (feb_tps_ctx.initialized) {
@@ -159,6 +192,12 @@ FEB_TPS_Status_t FEB_TPS_Init(const FEB_TPS_LibConfig_t *config) {
     return FEB_TPS_OK;
 }
 
+/**
+ * Deinitializes the FEB TPS library, unregistering all devices and resetting internal state.
+ *
+ * Clears registered device entries, deletes the I2C mutex, and resets the library's global
+ * context so the library returns to an uninitialized state.
+ */
 void FEB_TPS_DeInit(void) {
     if (!feb_tps_ctx.initialized) {
         return;
@@ -174,13 +213,32 @@ void FEB_TPS_DeInit(void) {
     memset(&feb_tps_ctx, 0, sizeof(feb_tps_ctx));
 }
 
+/**
+ * Query whether the FEB TPS library has been initialized.
+ *
+ * @returns `true` if the library is initialized, `false` otherwise.
+ */
 bool FEB_TPS_IsInitialized(void) {
     return feb_tps_ctx.initialized;
 }
 
-/* ============================================================================
- * Device Management
- * ============================================================================ */
+/**
+ * Register a TPS2482 device instance and program its configuration and calibration over I2C.
+ *
+ * Copies the provided device configuration into an internal slot, computes calibration
+ * values, writes required registers (CONFIG, CAL and optionally MASK and ALERT_LIM),
+ * reads the device ID (non-fatal), marks the device initialized and returns a handle.
+ *
+ * @param config Pointer to the device configuration to register (must be non-NULL, with valid I2C handle,
+ *               positive shunt resistance and positive maximum current).
+ * @param handle  Output pointer that will receive the device handle on success (must be non-NULL).
+ *
+ * @returns FEB_TPS_OK on successful registration and configuration.
+ * @returns FEB_TPS_ERR_NOT_INIT if the library has not been initialized.
+ * @returns FEB_TPS_ERR_INVALID_ARG if any required argument or configuration field is invalid.
+ * @returns FEB_TPS_ERR_MAX_DEVICES if the maximum number of device slots is already registered.
+ * @returns FEB_TPS_ERR_I2C if one of the required I2C register writes fails.
+ */
 
 FEB_TPS_Status_t FEB_TPS_DeviceRegister(const FEB_TPS_DeviceConfig_t *config,
                                          FEB_TPS_Handle_t *handle) {
@@ -292,6 +350,13 @@ cleanup:
     return status;
 }
 
+/**
+ * Unregisters a previously registered TPS device.
+ *
+ * Removes the device identified by `handle` from the library's internal device list. If removal succeeds the device array is compacted (last device moved into the freed slot) and the device count is decremented. The call is a no-op if `handle` is NULL or the device is not found.
+ *
+ * @param handle Handle returned by FEB_TPS_DeviceRegister identifying the device to remove.
+ */
 void FEB_TPS_DeviceUnregister(FEB_TPS_Handle_t handle) {
     if (handle == NULL) {
         return;
@@ -324,6 +389,12 @@ void FEB_TPS_DeviceUnregister(FEB_TPS_Handle_t handle) {
     TPS_LOG_I("Unregistered device at index %d", dev_index);
 }
 
+/**
+ * Get a registered device handle by its zero-based index.
+ *
+ * @param index Zero-based device index to retrieve.
+ * @returns Pointer to the device handle at the given index, or `NULL` if the index is out of range or the device is not initialized.
+ */
 FEB_TPS_Handle_t FEB_TPS_DeviceGetByIndex(uint8_t index) {
     if (index >= feb_tps_ctx.device_count) {
         return NULL;
@@ -336,13 +407,32 @@ FEB_TPS_Handle_t FEB_TPS_DeviceGetByIndex(uint8_t index) {
     return &feb_tps_ctx.devices[index];
 }
 
+/**
+ * Get number of registered TPS2482 devices.
+ *
+ * @returns Number of currently registered devices. */
 uint8_t FEB_TPS_DeviceGetCount(void) {
     return feb_tps_ctx.device_count;
 }
 
-/* ============================================================================
- * Measurement API
- * ============================================================================ */
+/**
+ * Polls a registered TPS2482 device and fills a measurement snapshot.
+ *
+ * Reads bus voltage, current (sign-magnitude), shunt voltage (sign-magnitude),
+ * and power from the device over I2C and converts raw register values into
+ * physical units which are stored in @p measurement. If an I2C error occurs
+ * during any register read, the function stops and returns the error; fields
+ * read before the failure remain populated.
+ *
+ * @param handle Handle to the device previously returned by DeviceRegister.
+ * @param measurement Pointer to a FEB_TPS_Measurement_t structure that will be
+ *        filled with raw and converted measurement values.
+ *
+ * @returns FEB_TPS_OK if all registers were read and converted successfully,
+ *          FEB_TPS_ERR_INVALID_ARG if @p handle or @p measurement is NULL,
+ *          FEB_TPS_ERR_NOT_INIT if the library or device is not initialized,
+ *          FEB_TPS_ERR_I2C if an I2C transaction failed (partial results may be present).
+ */
 
 FEB_TPS_Status_t FEB_TPS_Poll(FEB_TPS_Handle_t handle,
                                FEB_TPS_Measurement_t *measurement) {
@@ -413,6 +503,18 @@ cleanup:
     return status;
 }
 
+/**
+ * Read a device measurement and convert the results into scaled metric units.
+ *
+ * @param handle Handle of the registered TPS device to poll.
+ * @param scaled If non-NULL and the poll succeeds, receives converted values:
+ *        - bus_voltage_mv: bus voltage in millivolts
+ *        - current_ma: current in milliamps (signed)
+ *        - shunt_voltage_uv: shunt voltage in microvolts (signed)
+ *        - power_mw: power in milliwatts
+ * @returns FEB_TPS_Status_t `FEB_TPS_OK` if the measurement was read and conversion applied,
+ *          otherwise an error status indicating why the poll failed.
+ */
 FEB_TPS_Status_t FEB_TPS_PollScaled(FEB_TPS_Handle_t handle,
                                      FEB_TPS_MeasurementScaled_t *scaled) {
     FEB_TPS_Measurement_t meas;
@@ -428,6 +530,20 @@ FEB_TPS_Status_t FEB_TPS_PollScaled(FEB_TPS_Handle_t handle,
     return status;
 }
 
+/**
+ * Read the device bus voltage and provide it in volts.
+ *
+ * Reads the TPS device BUS_VOLT register over I2C, converts the raw value to
+ * volts using the library conversion constant, and stores the result at
+ * *voltage_v.
+ *
+ * @param handle Device handle previously returned by FEB_TPS_DeviceRegister.
+ * @param voltage_v Pointer to a float that will receive the bus voltage in volts.
+ * @returns FEB_TPS_OK on success.
+ *          FEB_TPS_ERR_NOT_INIT if the library or the specified device is not initialized.
+ *          FEB_TPS_ERR_INVALID_ARG if `handle` or `voltage_v` is NULL.
+ *          FEB_TPS_ERR_I2C if the I2C register read fails.
+ */
 FEB_TPS_Status_t FEB_TPS_PollBusVoltage(FEB_TPS_Handle_t handle, float *voltage_v) {
     if (!feb_tps_ctx.initialized) {
         return FEB_TPS_ERR_NOT_INIT;
@@ -457,6 +573,16 @@ FEB_TPS_Status_t FEB_TPS_PollBusVoltage(FEB_TPS_Handle_t handle, float *voltage_
     return FEB_TPS_OK;
 }
 
+/**
+ * Read the device current register and provide the measured current in amperes.
+ *
+ * @param handle Handle to the registered TPS device.
+ * @param current_a Pointer to store the measured current in amperes.
+ * @returns FEB_TPS_OK on success.
+ * @returns FEB_TPS_ERR_NOT_INIT if the library or device is not initialized.
+ * @returns FEB_TPS_ERR_INVALID_ARG if `handle` or `current_a` is NULL.
+ * @returns FEB_TPS_ERR_I2C if an I2C transfer error occurred while reading the register.
+ */
 FEB_TPS_Status_t FEB_TPS_PollCurrent(FEB_TPS_Handle_t handle, float *current_a) {
     if (!feb_tps_ctx.initialized) {
         return FEB_TPS_ERR_NOT_INIT;
@@ -486,6 +612,27 @@ FEB_TPS_Status_t FEB_TPS_PollCurrent(FEB_TPS_Handle_t handle, float *current_a) 
     return FEB_TPS_OK;
 }
 
+/**
+ * Read raw register values from a TPS device.
+ *
+ * Retrieves the raw 16-bit BUS_VOLT register and the signed (sign-magnitude)
+ * raw values of the CURRENT and SHUNT_VOLT registers as requested.
+ *
+ * @param handle Device handle obtained from FEB_TPS_DeviceRegister.
+ * @param bus_v_raw If non-NULL, receives the raw BUS_VOLT register value (16-bit).
+ *                  If NULL, the BUS_VOLT register is not read.
+ * @param current_raw If non-NULL, receives the signed raw CURRENT value after
+ *                    sign-magnitude conversion. If NULL, the CURRENT register
+ *                    is not read.
+ * @param shunt_v_raw If non-NULL, receives the signed raw SHUNT_VOLT value after
+ *                    sign-magnitude conversion. If NULL, the SHUNT_VOLT register
+ *                    is not read.
+ *
+ * @returns `FEB_TPS_OK` on success,
+ *          `FEB_TPS_ERR_INVALID_ARG` if the library is uninitialized or `handle` is NULL,
+ *          `FEB_TPS_ERR_NOT_INIT` if the device is not initialized,
+ *          `FEB_TPS_ERR_I2C` if an I2C register read fails.
+ */
 FEB_TPS_Status_t FEB_TPS_PollRaw(FEB_TPS_Handle_t handle,
                                   uint16_t *bus_v_raw,
                                   int16_t *current_raw,
@@ -541,9 +688,13 @@ cleanup:
     return status;
 }
 
-/* ============================================================================
- * Batch Operations
- * ============================================================================ */
+/**
+ * Polls registered TPS devices and fills the provided measurements array.
+ *
+ * @param measurements Output array that will be populated with each device's measurement; must have space for at least `count` entries.
+ * @param count Maximum number of devices to poll (and maximum entries to write into `measurements`).
+ * @returns The number of devices successfully polled and written into `measurements` (0 if the library is not initialized or `measurements` is NULL). 
+ */
 
 uint8_t FEB_TPS_PollAll(FEB_TPS_Measurement_t *measurements, uint8_t count) {
     if (!feb_tps_ctx.initialized || measurements == NULL) {
@@ -566,6 +717,17 @@ uint8_t FEB_TPS_PollAll(FEB_TPS_Measurement_t *measurements, uint8_t count) {
     return success_count;
 }
 
+/**
+ * Polls up to `count` registered devices and fills `scaled` with scaled measurements.
+ *
+ * For each device up to min(count, registered device count), attempts to read and
+ * scale measurements via FEB_TPS_PollScaled and store them into the corresponding
+ * element of `scaled`.
+ *
+ * @param scaled Pointer to an array that will be filled with scaled measurements; must not be NULL.
+ * @param count  Number of entries available in `scaled`.
+ * @returns Number of devices successfully polled and written into `scaled`. Returns `0` if the library is not initialized or `scaled` is NULL.
+ */
 uint8_t FEB_TPS_PollAllScaled(FEB_TPS_MeasurementScaled_t *scaled, uint8_t count) {
     if (!feb_tps_ctx.initialized || scaled == NULL) {
         return 0;
@@ -587,6 +749,19 @@ uint8_t FEB_TPS_PollAllScaled(FEB_TPS_MeasurementScaled_t *scaled, uint8_t count
     return success_count;
 }
 
+/**
+ * Read raw BUS_VOLT, CURRENT, and SHUNT_VOLT register values for up to `count` devices.
+ *
+ * For each registered device (by index) up to `count`, this fills the corresponding
+ * element in the provided arrays with the raw register value. Any measurement pointer
+ * may be NULL to skip that field. Devices that are not initialized are skipped.
+ *
+ * @param bus_v_raw  Buffer to receive BUS_VOLT raw values indexed by device; may be NULL.
+ * @param current_raw Buffer to receive SIGN-MAGNITUDE CURRENT values indexed by device; may be NULL.
+ * @param shunt_v_raw Buffer to receive SIGN-MAGNITUDE SHUNT_VOLT values indexed by device; may be NULL.
+ * @param count      Maximum number of devices to poll (size of the provided buffers).
+ * @returns Number of devices for which all requested fields were successfully read; returns 0 if the library is not initialized.
+ */
 uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
                             int16_t *shunt_v_raw, uint8_t count) {
     if (!feb_tps_ctx.initialized) {
@@ -649,9 +824,16 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
     return success_count;
 }
 
-/* ============================================================================
- * GPIO Control
- * ============================================================================ */
+/**
+ * Control the device enable GPIO for a registered TPS device.
+ *
+ * Sets or clears the device's enable pin according to `enable`.
+ *
+ * @param handle Pointer to a registered FEB TPS device handle.
+ * @param enable `true` to set (enable) the pin, `false` to reset (disable) it.
+ * @returns `FEB_TPS_OK` on success, `FEB_TPS_ERR_INVALID_ARG` if `handle` is NULL
+ *          or the device does not have an enable GPIO configured.
+ */
 
 FEB_TPS_Status_t FEB_TPS_Enable(FEB_TPS_Handle_t handle, bool enable) {
     if (handle == NULL) {
@@ -672,6 +854,15 @@ FEB_TPS_Status_t FEB_TPS_Enable(FEB_TPS_Handle_t handle, bool enable) {
     return FEB_TPS_OK;
 }
 
+/**
+ * Read the device's power-good (PG) GPIO state.
+ *
+ * Sets *pg_state to `true` when the PG pin is high (GPIO_PIN_SET) and `false` when low.
+ *
+ * @param handle Device handle returned by FEB_TPS_DeviceRegister.
+ * @param pg_state Pointer to a bool that will be updated with the PG state.
+ * @returns FEB_TPS_OK on success, FEB_TPS_ERR_INVALID_ARG if `handle` or `pg_state` is NULL or the device has no PG GPIO configured.
+ */
 FEB_TPS_Status_t FEB_TPS_ReadPowerGood(FEB_TPS_Handle_t handle, bool *pg_state) {
     if (handle == NULL || pg_state == NULL) {
         return FEB_TPS_ERR_INVALID_ARG;
@@ -690,6 +881,13 @@ FEB_TPS_Status_t FEB_TPS_ReadPowerGood(FEB_TPS_Handle_t handle, bool *pg_state) 
     return FEB_TPS_OK;
 }
 
+/**
+ * Read the device's alert pin and report whether an alert is active.
+ *
+ * @param handle Pointer to the registered device handle.
+ * @param alert_active Output set to `true` if the device's alert is active (alert pin is active-low), `false` otherwise.
+ * @returns `FEB_TPS_OK` on success, `FEB_TPS_ERR_INVALID_ARG` if `handle` or `alert_active` is NULL or the device has no alert GPIO configured.
+ */
 FEB_TPS_Status_t FEB_TPS_ReadAlert(FEB_TPS_Handle_t handle, bool *alert_active) {
     if (handle == NULL || alert_active == NULL) {
         return FEB_TPS_ERR_INVALID_ARG;
@@ -709,6 +907,10 @@ FEB_TPS_Status_t FEB_TPS_ReadAlert(FEB_TPS_Handle_t handle, bool *alert_active) 
     return FEB_TPS_OK;
 }
 
+/**
+ * Set the enable GPIO pin for all registered devices that have an enable GPIO configured.
+ * @param enable `true` to set the enable pin (enable device), `false` to reset the pin (disable device).
+ * @returns Number of devices whose enable GPIO pin was written. */
 uint8_t FEB_TPS_EnableAll(bool enable) {
     uint8_t count = 0;
 
@@ -724,6 +926,19 @@ uint8_t FEB_TPS_EnableAll(bool enable) {
     return count;
 }
 
+/**
+ * Read the power-good (PG) input state for up to `count` registered devices.
+ *
+ * Populates `pg_states` with the PG boolean for each device index (true = PG asserted,
+ * false = PG not asserted). If a device is not initialized or does not have a PG GPIO
+ * configured, its entry is set to false.
+ *
+ * @param pg_states Pointer to an array where PG states will be written; must have at least
+ *                  `count` elements.
+ * @param count     Maximum number of device entries to read from (reads at most the number
+ *                  of currently registered devices).
+ * @returns         Number of devices for which a PG GPIO was present and read successfully.
+ */
 uint8_t FEB_TPS_ReadAllPowerGood(bool *pg_states, uint8_t count) {
     if (pg_states == NULL) {
         return 0;
@@ -748,9 +963,11 @@ uint8_t FEB_TPS_ReadAllPowerGood(bool *pg_states, uint8_t count) {
     return success_count;
 }
 
-/* ============================================================================
- * Configuration/Calibration
- * ============================================================================ */
+/**
+ * Retrieve the current LSB (amperes per least-significant bit) configured for a device.
+ * @param handle Pointer to a registered FEB TPS device handle; may be NULL.
+ * @returns The device's `current_lsb` value (A/LSB). Returns `0.0f` if `handle` is NULL.
+ */
 
 float FEB_TPS_GetCurrentLSB(FEB_TPS_Handle_t handle) {
     if (handle == NULL) {
@@ -761,6 +978,11 @@ float FEB_TPS_GetCurrentLSB(FEB_TPS_Handle_t handle) {
     return dev->current_lsb;
 }
 
+/**
+ * Get the stored calibration register value for a TPS device.
+ * @param handle Device handle returned by FEB_TPS_DeviceRegister.
+ * @returns The device's calibration register value (uint16_t); `0` if `handle` is NULL.
+ */
 uint16_t FEB_TPS_GetCalibration(FEB_TPS_Handle_t handle) {
     if (handle == NULL) {
         return 0;
@@ -770,6 +992,16 @@ uint16_t FEB_TPS_GetCalibration(FEB_TPS_Handle_t handle) {
     return dev->cal_reg;
 }
 
+/**
+ * Read the TPS2482 device ID register for a registered device.
+ *
+ * @param handle Handle to the registered device; must refer to an initialized device.
+ * @param id Pointer to a uint16_t that will be set to the device ID on success.
+ * @returns FEB_TPS_OK if the ID was read and stored in `*id`,
+ *          FEB_TPS_ERR_INVALID_ARG if `handle` or `id` is NULL,
+ *          FEB_TPS_ERR_NOT_INIT if the provided handle is not initialized,
+ *          FEB_TPS_ERR_I2C if an I2C transaction failed.
+ */
 FEB_TPS_Status_t FEB_TPS_ReadID(FEB_TPS_Handle_t handle, uint16_t *id) {
     if (handle == NULL || id == NULL) {
         return FEB_TPS_ERR_INVALID_ARG;
@@ -790,6 +1022,21 @@ FEB_TPS_Status_t FEB_TPS_ReadID(FEB_TPS_Handle_t handle, uint16_t *id) {
     return (hal_status == HAL_OK) ? FEB_TPS_OK : FEB_TPS_ERR_I2C;
 }
 
+/**
+ * Reconfigure a registered device's shunt resistor and maximum current and apply the updated calibration.
+ *
+ * Updates the device's stored r_shunt_ohms and i_max_amps, recomputes calibration values, and writes the new
+ * calibration register to the device over I2C.
+ *
+ * @param handle Pointer to the device handle previously returned by FEB_TPS_DeviceRegister.
+ * @param r_shunt_ohms Shunt resistor value in ohms (must be > 0).
+ * @param i_max_amps Maximum expected current in amperes (must be > 0).
+ *
+ * @returns FEB_TPS_OK if the calibration was updated and written to the device successfully,
+ *          FEB_TPS_ERR_INVALID_ARG if any argument is invalid,
+ *          FEB_TPS_ERR_NOT_INIT if the device is not initialized/registered,
+ *          FEB_TPS_ERR_I2C if the I2C write of the calibration register failed.
+ */
 FEB_TPS_Status_t FEB_TPS_Reconfigure(FEB_TPS_Handle_t handle,
                                       float r_shunt_ohms,
                                       float i_max_amps) {
@@ -822,9 +1069,11 @@ FEB_TPS_Status_t FEB_TPS_Reconfigure(FEB_TPS_Handle_t handle,
     return (hal_status == HAL_OK) ? FEB_TPS_OK : FEB_TPS_ERR_I2C;
 }
 
-/* ============================================================================
- * Utility Functions
- * ============================================================================ */
+/**
+ * Convert a FEB_TPS_Status_t value to a human-readable string.
+ * @param status Status value to convert.
+ * @returns A null-terminated string describing the status (e.g. "OK", "Invalid argument", "I2C error", "Not initialized", "Config mismatch", "Max devices exceeded", "Timeout", or "Unknown").
+ */
 
 const char *FEB_TPS_StatusToString(FEB_TPS_Status_t status) {
     switch (status) {
@@ -839,6 +1088,12 @@ const char *FEB_TPS_StatusToString(FEB_TPS_Status_t status) {
     }
 }
 
+/**
+ * Get the human-readable name for a TPS device handle.
+ *
+ * @param handle Device handle returned by FEB_TPS_DeviceRegister; may be NULL.
+ * @returns Pointer to the device name string, or "Unknown" if the handle is NULL or the device name is not set.
+ */
 const char *FEB_TPS_GetDeviceName(FEB_TPS_Handle_t handle) {
     if (handle == NULL) {
         return "Unknown";

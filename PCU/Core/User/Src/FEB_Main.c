@@ -21,6 +21,15 @@ static uint8_t uart_rx_buf[256];
  */
 static uint8_t tps_i2c_address;
 
+/**
+ * Initialize and configure primary hardware subsystems and start the system timer.
+ *
+ * Performs board-level initialization required at startup: configures UART (including RX/TX buffers,
+ * DMA and console callback), initializes the console and registers PCU commands, initializes CAN
+ * controllers, starts ADC in DMA mode, initializes RMS and BMS subsystems (including an initial
+ * RMS process call to clear lockout), initializes TPS power-monitoring state, and starts the
+ * base timer (TIM1) with interrupt.
+ */
 void FEB_Main_Setup(void)
 {
   // Initialize UART library first (before any LOG calls)
@@ -88,6 +97,12 @@ void FEB_Main_Setup(void)
   HAL_TIM_Base_Start_IT(&htim1);
 }
 
+/**
+ * Perform the application's main-loop tasks.
+ *
+ * Processes UART RX data, polls the TPS power monitor at approximately 10 Hz and transmits TPS updates,
+ * and services CAN transmit queues (normal and periodic).
+ */
 void FEB_Main_Loop(void)
 {
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
@@ -109,6 +124,13 @@ void FEB_Main_Loop(void)
   // NOTE: FEB_RMS_Torque() and diagnostics run from FEB_1ms_Callback every 10-20ms
 }
 
+/**
+ * Handle periodic tasks driven by the 1 ms system tick.
+ *
+ * Processes the BMS heartbeat on every invocation, triggers the RMS torque
+ * update at a 10 ms cadence, and transmits brake and APPS diagnostics at a
+ * 20 ms cadence.
+ */
 void FEB_1ms_Callback(void)
 {
   static uint16_t torque_divider = 0;

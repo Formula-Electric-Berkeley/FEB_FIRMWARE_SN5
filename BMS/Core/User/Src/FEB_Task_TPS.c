@@ -22,6 +22,14 @@
 /* Device handle */
 static FEB_TPS_Handle_t bms_tps_handle = NULL;
 
+/**
+ * Forward TPS library log messages to the application logger with level mapping.
+ *
+ * Maps FEB_TPS log levels to the system LOG_* macros and logs the provided message.
+ *
+ * @param level Log level from the FEB_TPS library.
+ * @param msg   Null-terminated message string to be logged.
+ */
 static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg)
 {
   switch (level)
@@ -43,10 +51,15 @@ static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg)
   }
 }
 
-/* ===== StartTPSTask =====
-   Low-priority task for TPS2482 power monitoring
-   - Monitors LV bus voltage and current
-   - Single TPS2482 with A0=GND, A1=GND */
+/**
+ * Start the TPS power-monitoring task.
+ *
+ * Initializes the TPS monitoring library, registers the BMS TPS2482 device
+ * (A0=GND, A1=GND), and continuously polls bus voltage, shunt voltage,
+ * current, and power at approximately 1 Hz.
+ *
+ * @param argument FreeRTOS task argument (unused).
+ */
 void StartTPSTask(void *argument)
 {
   (void)argument;

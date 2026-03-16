@@ -11,6 +11,14 @@ TPS_MESSAGE_TYPE TPS_MESSAGE;
 /* Device handle */
 static FEB_TPS_Handle_t pcu_tps_handle = NULL;
 
+/**
+ * Route TPS library log messages to the system logger with matching severity.
+ *
+ * Maps the provided FEB_TPS_LogLevel_t to the corresponding system log call and emits the given message.
+ *
+ * @param level Log level from the TPS library indicating severity.
+ * @param msg   Null-terminated message string to log.
+ */
 static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg)
 {
   switch (level)
@@ -32,6 +40,12 @@ static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg)
   }
 }
 
+/**
+ * Initialize TPS CAN subsystem state.
+ *
+ * Sets the global TPS_MESSAGE fields (bus_voltage_mv, current_ma, shunt_voltage_uv) to zero
+ * and logs that the TPS CAN component has been initialized.
+ */
 void FEB_CAN_TPS_Init(void)
 {
   /* Initialize TPS message structure */
@@ -48,6 +62,18 @@ void FEB_CAN_TPS_GetData(FEB_CAN_TPS_Data_t *data)
   data->shunt_voltage_uv = TPS_MESSAGE.shunt_voltage_uv;
 }
 
+/**
+ * Initialize the TPS device on first call, poll scaled measurements, and update the global TPS_MESSAGE.
+ *
+ * If the TPS device has not been registered, this function registers it using the provided I2C handle
+ * and the first address from `i2c_addresses`. It then polls the device for scaled measurements and
+ * writes the measured `bus_voltage_mv`, `current_ma`, and `shunt_voltage_uv` into the global
+ * `TPS_MESSAGE`. Errors during registration or polling are logged and cause an early return.
+ *
+ * @param hi2c Pointer to the I2C peripheral handle used to communicate with the TPS device.
+ * @param i2c_addresses Array of candidate I2C addresses; the first element is used to register the device.
+ * @param num_devices Number of entries in `i2c_addresses`.
+ */
 void FEB_CAN_TPS_Update(I2C_HandleTypeDef *hi2c, uint8_t *i2c_addresses, uint8_t num_devices)
 {
   /* Initialize library and register device on first call */
@@ -94,6 +120,13 @@ void FEB_CAN_TPS_Update(I2C_HandleTypeDef *hi2c, uint8_t *i2c_addresses, uint8_t
   LOG_D(TAG_TPS, "TPS update: Voltage=%d mV, Current=%d mA", TPS_MESSAGE.bus_voltage_mv, TPS_MESSAGE.current_ma);
 }
 
+/**
+ * Pack the latest TPS bus voltage and current into a CAN payload and transmit it.
+ *
+ * The function places bus voltage (millivolts) into bytes 0-1 and current (milliamps) into bytes 2-3
+ * of an 8-byte CAN payload, then sends a 4-byte CAN frame on the PCU TPS CAN ID.
+ * On transmission failure an error is logged; on success a debug message is logged.
+ */
 void FEB_CAN_TPS_Transmit(void)
 {
   uint8_t data[8] = {0};
