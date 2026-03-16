@@ -123,7 +123,7 @@ typedef struct {
     uint8_t device_count;                            /**< Number of registered devices */
     FEB_TPS_Mutex_t i2c_mutex;                       /**< I2C access mutex */
     uint32_t i2c_timeout_ms;                         /**< I2C timeout */
-    void *log_func;                                  /**< User logging callback (FEB_TPS_LogFunc_t) */
+    FEB_TPS_LogFunc_t log_func;                      /**< User logging callback */
     uint8_t log_level;                               /**< Minimum log level (FEB_TPS_LogLevel_t) */
     bool initialized;                                /**< Library initialized flag */
 } FEB_TPS_Context_t;

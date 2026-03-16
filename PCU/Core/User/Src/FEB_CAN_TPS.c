@@ -85,7 +85,12 @@ void FEB_CAN_TPS_Update(I2C_HandleTypeDef *hi2c, uint8_t *i2c_addresses, uint8_t
         .log_func = tps_log_callback,
         .log_level = FEB_TPS_LOG_INFO,
     };
-    FEB_TPS_Init(&lib_cfg);
+    FEB_TPS_Status_t init_status = FEB_TPS_Init(&lib_cfg);
+    if (init_status != FEB_TPS_OK)
+    {
+      LOG_E(TAG_TPS, "TPS library init failed: %s", FEB_TPS_StatusToString(init_status));
+      return;
+    }
 
     FEB_TPS_DeviceConfig_t cfg = {
         .hi2c = hi2c,
@@ -167,7 +172,9 @@ void FEB_CAN_TPS_Transmit(void)
 {
   uint8_t data[8] = {0};
 
-  /* Pack voltage (bytes 0-1) and current (bytes 2-3) */
+  /* Pack voltage (bytes 0-1) and current (bytes 2-3)
+   * Note: Uses host byte order (little-endian on ARM Cortex-M).
+   * Receivers must expect little-endian format. */
   memcpy(&data[0], &TPS_MESSAGE.bus_voltage_mv, sizeof(uint16_t));
   memcpy(&data[2], &TPS_MESSAGE.current_ma, sizeof(int16_t));
 

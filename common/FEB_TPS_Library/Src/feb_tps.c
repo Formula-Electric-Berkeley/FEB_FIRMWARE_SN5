@@ -59,8 +59,7 @@ void FEB_TPS_Log(uint8_t level, const char *fmt, ...) {
     va_end(args);
 
     /* Call user's logging callback */
-    FEB_TPS_LogFunc_t callback = (FEB_TPS_LogFunc_t)feb_tps_ctx.log_func;
-    callback((FEB_TPS_LogLevel_t)level, buffer);
+    feb_tps_ctx.log_func((FEB_TPS_LogLevel_t)level, buffer);
 }
 
 /* ============================================================================
@@ -169,7 +168,7 @@ FEB_TPS_Status_t FEB_TPS_Init(const FEB_TPS_LibConfig_t *config) {
 
     /* Set logging configuration */
     if (config && config->log_func != NULL) {
-        feb_tps_ctx.log_func = (void *)config->log_func;
+        feb_tps_ctx.log_func = config->log_func;
         feb_tps_ctx.log_level = (config->log_level != 0) ?
                                  config->log_level : FEB_TPS_LOG_INFO;
     }
@@ -791,7 +790,9 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
 
     FEB_TPS_MUTEX_LOCK(feb_tps_ctx.i2c_mutex);
 
-    for (uint8_t i = 0; i < actual_count; i++) {
+    /* Use logical indexing (same as FEB_TPS_PollAll via DeviceGetByIndex) */
+    uint8_t logical_index = 0;
+    for (uint8_t i = 0; i < FEB_TPS_MAX_DEVICES && logical_index < actual_count; i++) {
         FEB_TPS_Device_t *dev = &feb_tps_ctx.devices[i];
         if (!dev->in_use || !dev->initialized) {
             continue;
@@ -805,7 +806,7 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
             hal_status = feb_tps_read_reg(dev->hi2c, dev->i2c_addr,
                                            FEB_TPS_REG_BUS_VOLT, &raw);
             if (hal_status == HAL_OK) {
-                bus_v_raw[i] = raw;
+                bus_v_raw[logical_index] = raw;
             } else {
                 success = false;
             }
@@ -815,7 +816,7 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
             hal_status = feb_tps_read_reg(dev->hi2c, dev->i2c_addr,
                                            FEB_TPS_REG_CURRENT, &raw);
             if (hal_status == HAL_OK) {
-                current_raw[i] = feb_tps_sign_magnitude(raw);
+                current_raw[logical_index] = feb_tps_sign_magnitude(raw);
             } else {
                 success = false;
             }
@@ -825,7 +826,7 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
             hal_status = feb_tps_read_reg(dev->hi2c, dev->i2c_addr,
                                            FEB_TPS_REG_SHUNT_VOLT, &raw);
             if (hal_status == HAL_OK) {
-                shunt_v_raw[i] = feb_tps_sign_magnitude(raw);
+                shunt_v_raw[logical_index] = feb_tps_sign_magnitude(raw);
             } else {
                 success = false;
             }
@@ -834,6 +835,7 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
         if (success) {
             success_count++;
         }
+        logical_index++;
     }
 
     FEB_TPS_MUTEX_UNLOCK(feb_tps_ctx.i2c_mutex);

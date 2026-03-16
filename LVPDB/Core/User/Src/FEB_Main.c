@@ -130,7 +130,12 @@ static bool FEB_TPS_Init_Devices(void)
       .log_func = tps_log_callback,
       .log_level = FEB_TPS_LOG_INFO,
   };
-  FEB_TPS_Init(&lib_cfg);
+  FEB_TPS_Status_t init_status = FEB_TPS_Init(&lib_cfg);
+  if (init_status != FEB_TPS_OK)
+  {
+    LOG_E(TAG_MAIN, "TPS library init failed: %s", FEB_TPS_StatusToString(init_status));
+    return false;
+  }
 
   // Populate exported arrays for console commands
   for (uint8_t i = 0; i < NUM_TPS2482; i++)
@@ -144,8 +149,6 @@ static bool FEB_TPS_Init_Devices(void)
       tps2482_en_pins[i - 1] = tps_device_configs[i].en_pin;
     }
   }
-
-  bool all_success = true;
 
   for (uint8_t i = 0; i < NUM_TPS2482; i++)
   {
@@ -169,15 +172,12 @@ static bool FEB_TPS_Init_Devices(void)
     if (status != FEB_TPS_OK)
     {
       LOG_E(TAG_MAIN, "TPS init failed for %s: %s", tps_device_configs[i].name, FEB_TPS_StatusToString(status));
-      all_success = false;
+      return false; // Abort immediately to prevent index misalignment
     }
-    else
-    {
-      LOG_D(TAG_MAIN, "TPS %s registered at 0x%02X", tps_device_configs[i].name, tps_device_configs[i].i2c_addr);
-    }
+    LOG_D(TAG_MAIN, "TPS %s registered at 0x%02X", tps_device_configs[i].name, tps_device_configs[i].i2c_addr);
   }
 
-  return all_success;
+  return true;
 }
 
 /* Note: Custom FEB_TPS_Enable_All removed - using library FEB_TPS_EnableAll instead.

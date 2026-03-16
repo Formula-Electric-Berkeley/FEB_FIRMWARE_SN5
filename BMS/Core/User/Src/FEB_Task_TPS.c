@@ -73,7 +73,15 @@ void StartTPSTask(void *argument)
       .log_func = tps_log_callback,
       .log_level = FEB_TPS_LOG_INFO,
   };
-  FEB_TPS_Init(&lib_cfg);
+  FEB_TPS_Status_t init_status = FEB_TPS_Init(&lib_cfg);
+  if (init_status != FEB_TPS_OK)
+  {
+    LOG_E(TAG_TPS, "TPS library init failed: %s", FEB_TPS_StatusToString(init_status));
+    for (;;)
+    {
+      osDelay(pdMS_TO_TICKS(1000));
+    }
+  }
 
   /* Configure and register the TPS2482 device */
   FEB_TPS_DeviceConfig_t cfg = {
@@ -96,8 +104,15 @@ void StartTPSTask(void *argument)
   else
   {
     uint16_t id = 0;
-    FEB_TPS_ReadID(bms_tps_handle, &id);
-    LOG_I(TAG_TPS, "TPS2482 initialized, ID: 0x%04X", id);
+    FEB_TPS_Status_t id_status = FEB_TPS_ReadID(bms_tps_handle, &id);
+    if (id_status == FEB_TPS_OK)
+    {
+      LOG_I(TAG_TPS, "TPS2482 initialized, ID: 0x%04X", id);
+    }
+    else
+    {
+      LOG_W(TAG_TPS, "TPS2482 initialized, ReadID failed: %s", FEB_TPS_StatusToString(id_status));
+    }
   }
 
   /* Polling loop */
