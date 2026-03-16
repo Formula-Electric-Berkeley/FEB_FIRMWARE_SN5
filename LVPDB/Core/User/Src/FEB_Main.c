@@ -277,6 +277,11 @@ void FEB_Main_Setup(void)
     if (!tps_init_success)
     {
       LOG_W(TAG_MAIN, "TPS init attempt %d failed, retrying...", maxiter);
+      FEB_TPS_DeInit(); /* Clean up partial state before retry */
+      for (uint8_t i = 0; i < NUM_TPS2482; i++)
+      {
+        tps_handles[i] = NULL;
+      }
       HAL_Delay(100); /* 100ms delay to avoid I2C bus contention */
     }
     maxiter++;

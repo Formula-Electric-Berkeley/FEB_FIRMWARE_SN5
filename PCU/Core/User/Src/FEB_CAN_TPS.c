@@ -92,6 +92,12 @@ void FEB_CAN_TPS_Update(I2C_HandleTypeDef *hi2c, uint8_t *i2c_addresses, uint8_t
       return;
     }
 
+    if (num_devices == 0 || i2c_addresses == NULL)
+    {
+      LOG_E(TAG_TPS, "TPS init failed: no devices specified");
+      return;
+    }
+
     FEB_TPS_DeviceConfig_t cfg = {
         .hi2c = hi2c,
         .i2c_addr = i2c_addresses[0],

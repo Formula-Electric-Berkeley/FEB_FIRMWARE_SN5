@@ -967,16 +967,23 @@ uint8_t FEB_TPS_ReadAllPowerGood(bool *pg_states, uint8_t count) {
                            count : feb_tps_ctx.device_count;
     uint8_t success_count = 0;
 
-    for (uint8_t i = 0; i < actual_count; i++) {
+    /* Use logical indexing (same as FEB_TPS_PollAllRaw) */
+    uint8_t logical_index = 0;
+    for (uint8_t i = 0; i < FEB_TPS_MAX_DEVICES && logical_index < actual_count; i++) {
         FEB_TPS_Device_t *dev = &feb_tps_ctx.devices[i];
-        if (dev->in_use && dev->initialized && dev->pg_gpio_port != NULL) {
+        if (!dev->in_use || !dev->initialized) {
+            continue;
+        }
+
+        if (dev->pg_gpio_port != NULL) {
             GPIO_PinState state = HAL_GPIO_ReadPin((GPIO_TypeDef *)dev->pg_gpio_port,
                                                     dev->pg_gpio_pin);
-            pg_states[i] = (state == GPIO_PIN_SET);
+            pg_states[logical_index] = (state == GPIO_PIN_SET);
             success_count++;
         } else {
-            pg_states[i] = false;
+            pg_states[logical_index] = false;
         }
+        logical_index++;
     }
 
     return success_count;
