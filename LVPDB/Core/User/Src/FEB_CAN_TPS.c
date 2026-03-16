@@ -20,7 +20,7 @@ void FEB_CAN_TPS_Init(void) {}
 
 // Order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF
 
-void FEB_CAN_TPS_Tick(uint16_t *tps_current_raw, uint16_t *tps_bus_voltage_raw, size_t length)
+void FEB_CAN_TPS_Tick(int16_t *tps_current_raw, uint16_t *tps_bus_voltage_raw, size_t length)
 {
   uint8_t tx_data[8] = {0};
   memcpy(&tx_data[0], &tps_bus_voltage_raw[0], sizeof(uint16_t));

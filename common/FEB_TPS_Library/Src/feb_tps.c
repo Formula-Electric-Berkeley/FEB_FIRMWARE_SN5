@@ -21,12 +21,47 @@
 #include "feb_tps.h"
 #include "feb_tps_internal.h"
 #include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
+
+/* Buffer size for formatted log messages */
+#define TPS_LOG_BUFFER_SIZE 128
 
 /* ============================================================================
  * Global Context
  * ============================================================================ */
 
 static FEB_TPS_Context_t feb_tps_ctx = {0};
+
+/* ============================================================================
+ * Internal Logging
+ * ============================================================================ */
+
+/**
+ * @brief Internal logging function - formats message and calls user callback
+ */
+void FEB_TPS_Log(uint8_t level, const char *fmt, ...) {
+    /* Early exit if no callback or level filtering */
+    if (feb_tps_ctx.log_func == NULL) {
+        return;
+    }
+
+    /* Skip if level is higher (less important) than configured level */
+    if (level > feb_tps_ctx.log_level) {
+        return;
+    }
+
+    /* Format message */
+    char buffer[TPS_LOG_BUFFER_SIZE];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buffer, sizeof(buffer), fmt, args);
+    va_end(args);
+
+    /* Call user's logging callback */
+    FEB_TPS_LogFunc_t callback = (FEB_TPS_LogFunc_t)feb_tps_ctx.log_func;
+    callback((FEB_TPS_LogLevel_t)level, buffer);
+}
 
 /* ============================================================================
  * Internal Helper Functions
@@ -99,10 +134,27 @@ FEB_TPS_Status_t FEB_TPS_Init(const FEB_TPS_LibConfig_t *config) {
         feb_tps_ctx.i2c_timeout_ms = FEB_TPS_DEFAULT_I2C_TIMEOUT_MS;
     }
 
+    /* Set logging configuration */
+    if (config && config->log_func != NULL) {
+        feb_tps_ctx.log_func = (void *)config->log_func;
+        feb_tps_ctx.log_level = (config->log_level != 0) ?
+                                 config->log_level : FEB_TPS_LOG_INFO;
+    }
+
     /* Create mutex for FreeRTOS */
     feb_tps_ctx.i2c_mutex = FEB_TPS_MUTEX_CREATE();
 
+#if FEB_TPS_USE_FREERTOS
+    /* On FreeRTOS, mutex creation can fail if out of memory */
+    if (feb_tps_ctx.i2c_mutex == NULL) {
+        TPS_LOG_E("Mutex creation failed");
+        return FEB_TPS_ERR_NOT_INIT;
+    }
+#endif
+
     feb_tps_ctx.initialized = true;
+
+    TPS_LOG_I("TPS library initialized");
 
     return FEB_TPS_OK;
 }
@@ -185,6 +237,7 @@ FEB_TPS_Status_t FEB_TPS_DeviceRegister(const FEB_TPS_DeviceConfig_t *config,
     hal_status = feb_tps_write_reg(dev->hi2c, dev->i2c_addr,
                                     FEB_TPS_REG_CONFIG, config_val);
     if (hal_status != HAL_OK) {
+        TPS_LOG_E("I2C write CONFIG failed: %s", dev->name ? dev->name : "?");
         status = FEB_TPS_ERR_I2C;
         goto cleanup;
     }
@@ -193,6 +246,7 @@ FEB_TPS_Status_t FEB_TPS_DeviceRegister(const FEB_TPS_DeviceConfig_t *config,
     hal_status = feb_tps_write_reg(dev->hi2c, dev->i2c_addr,
                                     FEB_TPS_REG_CAL, dev->cal_reg);
     if (hal_status != HAL_OK) {
+        TPS_LOG_E("I2C write CAL failed: %s", dev->name ? dev->name : "?");
         status = FEB_TPS_ERR_I2C;
         goto cleanup;
     }
@@ -229,6 +283,9 @@ FEB_TPS_Status_t FEB_TPS_DeviceRegister(const FEB_TPS_DeviceConfig_t *config,
     feb_tps_ctx.device_count++;
     *handle = dev;
 
+    TPS_LOG_I("Registered '%s' at 0x%02X (cal=0x%04X)",
+              dev->name ? dev->name : "?", dev->i2c_addr, dev->cal_reg);
+
 cleanup:
     FEB_TPS_MUTEX_UNLOCK(feb_tps_ctx.i2c_mutex);
 
@@ -241,7 +298,30 @@ void FEB_TPS_DeviceUnregister(FEB_TPS_Handle_t handle) {
     }
 
     FEB_TPS_Device_t *dev = (FEB_TPS_Device_t *)handle;
-    dev->initialized = false;
+
+    /* Find device index in array */
+    int dev_index = -1;
+    for (uint8_t i = 0; i < feb_tps_ctx.device_count; i++) {
+        if (&feb_tps_ctx.devices[i] == dev) {
+            dev_index = i;
+            break;
+        }
+    }
+
+    if (dev_index < 0) {
+        return; /* Device not found in array */
+    }
+
+    /* Compact array by moving last device to freed slot */
+    if ((uint8_t)dev_index < feb_tps_ctx.device_count - 1) {
+        feb_tps_ctx.devices[dev_index] = feb_tps_ctx.devices[feb_tps_ctx.device_count - 1];
+    }
+
+    /* Clear the last slot and decrement count */
+    memset(&feb_tps_ctx.devices[feb_tps_ctx.device_count - 1], 0, sizeof(FEB_TPS_Device_t));
+    feb_tps_ctx.device_count--;
+
+    TPS_LOG_I("Unregistered device at index %d", dev_index);
 }
 
 FEB_TPS_Handle_t FEB_TPS_DeviceGetByIndex(uint8_t index) {
@@ -339,17 +419,20 @@ FEB_TPS_Status_t FEB_TPS_PollScaled(FEB_TPS_Handle_t handle,
     FEB_TPS_Status_t status = FEB_TPS_Poll(handle, &meas);
 
     if (status == FEB_TPS_OK && scaled != NULL) {
-        scaled->bus_voltage_mv = (uint16_t)(meas.bus_voltage_v * 1000.0f);
-        scaled->current_ma = (int16_t)(meas.current_a * 1000.0f);
+        scaled->bus_voltage_mv = (uint32_t)(meas.bus_voltage_v * 1000.0f);
+        scaled->current_ma = (int32_t)(meas.current_a * 1000.0f);
         scaled->shunt_voltage_uv = (int32_t)(meas.shunt_voltage_mv * 1000.0f);
-        scaled->power_mw = (uint16_t)(meas.power_w * 1000.0f);
+        scaled->power_mw = (uint32_t)(meas.power_w * 1000.0f);
     }
 
     return status;
 }
 
 FEB_TPS_Status_t FEB_TPS_PollBusVoltage(FEB_TPS_Handle_t handle, float *voltage_v) {
-    if (!feb_tps_ctx.initialized || handle == NULL || voltage_v == NULL) {
+    if (!feb_tps_ctx.initialized) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
+    if (handle == NULL || voltage_v == NULL) {
         return FEB_TPS_ERR_INVALID_ARG;
     }
 
@@ -375,7 +458,10 @@ FEB_TPS_Status_t FEB_TPS_PollBusVoltage(FEB_TPS_Handle_t handle, float *voltage_
 }
 
 FEB_TPS_Status_t FEB_TPS_PollCurrent(FEB_TPS_Handle_t handle, float *current_a) {
-    if (!feb_tps_ctx.initialized || handle == NULL || current_a == NULL) {
+    if (!feb_tps_ctx.initialized) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
+    if (handle == NULL || current_a == NULL) {
         return FEB_TPS_ERR_INVALID_ARG;
     }
 
@@ -501,8 +587,8 @@ uint8_t FEB_TPS_PollAllScaled(FEB_TPS_MeasurementScaled_t *scaled, uint8_t count
     return success_count;
 }
 
-uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, uint16_t *current_raw,
-                            uint16_t *shunt_v_raw, uint8_t count) {
+uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
+                            int16_t *shunt_v_raw, uint8_t count) {
     if (!feb_tps_ctx.initialized) {
         return 0;
     }
@@ -537,7 +623,7 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, uint16_t *current_raw,
             hal_status = feb_tps_read_reg(dev->hi2c, dev->i2c_addr,
                                            FEB_TPS_REG_CURRENT, &raw);
             if (hal_status == HAL_OK) {
-                current_raw[i] = raw;
+                current_raw[i] = feb_tps_sign_magnitude(raw);
             } else {
                 success = false;
             }
@@ -547,7 +633,7 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, uint16_t *current_raw,
             hal_status = feb_tps_read_reg(dev->hi2c, dev->i2c_addr,
                                            FEB_TPS_REG_SHUNT_VOLT, &raw);
             if (hal_status == HAL_OK) {
-                shunt_v_raw[i] = raw;
+                shunt_v_raw[i] = feb_tps_sign_magnitude(raw);
             } else {
                 success = false;
             }
@@ -580,6 +666,8 @@ FEB_TPS_Status_t FEB_TPS_Enable(FEB_TPS_Handle_t handle, bool enable) {
 
     HAL_GPIO_WritePin((GPIO_TypeDef *)dev->en_gpio_port, dev->en_gpio_pin,
                       enable ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+    TPS_LOG_D("%s %s", dev->name ? dev->name : "?", enable ? "enabled" : "disabled");
 
     return FEB_TPS_OK;
 }

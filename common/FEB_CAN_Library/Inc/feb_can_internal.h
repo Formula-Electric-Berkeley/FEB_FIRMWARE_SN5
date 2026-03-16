@@ -73,7 +73,7 @@ extern "C"
 #else /* Bare-metal */
 
 typedef void *FEB_CAN_Queue_t;
-typedef uint8_t FEB_CAN_Mutex_t;
+typedef uint32_t FEB_CAN_Mutex_t;
 typedef volatile uint8_t FEB_CAN_Semaphore_t;
 
 #define FEB_CAN_QUEUE_CREATE(depth, item_size) NULL
@@ -86,11 +86,11 @@ typedef volatile uint8_t FEB_CAN_Semaphore_t;
 #define FEB_CAN_QUEUE_SPACE(q) (1)
 #define FEB_CAN_QUEUE_RESET(q) ((void)0)
 
-#define FEB_CAN_MUTEX_CREATE() (0)
+#define FEB_CAN_MUTEX_CREATE() (0U)
 #define FEB_CAN_MUTEX_DELETE(m) ((void)0)
-#define FEB_CAN_MUTEX_LOCK(m) __disable_irq()
-#define FEB_CAN_MUTEX_UNLOCK(m) __enable_irq()
-#define FEB_CAN_MUTEX_TRYLOCK(m) (__disable_irq(), true)
+#define FEB_CAN_MUTEX_LOCK(m) do { (m) = __get_PRIMASK(); __disable_irq(); } while(0)
+#define FEB_CAN_MUTEX_UNLOCK(m) __set_PRIMASK(m)
+#define FEB_CAN_MUTEX_TRYLOCK(m) (((m) = __get_PRIMASK()), __disable_irq(), true)
 
 #define FEB_CAN_SEM_CREATE(max, init) (init)
 #define FEB_CAN_SEM_DELETE(s) ((void)0)

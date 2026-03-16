@@ -59,13 +59,18 @@ extern "C"
 
 #else /* Bare-metal */
 
-typedef uint8_t FEB_UART_Mutex_t;
+typedef uint32_t FEB_UART_Mutex_t;
 typedef volatile uint8_t FEB_UART_Semaphore_t;
 
-#define FEB_UART_MUTEX_CREATE() (0)
+#define FEB_UART_MUTEX_CREATE() (0U)
 #define FEB_UART_MUTEX_DELETE(m) ((void)0)
-#define FEB_UART_MUTEX_LOCK(m) __disable_irq()
-#define FEB_UART_MUTEX_UNLOCK(m) __enable_irq()
+#define FEB_UART_MUTEX_LOCK(m)                                                                                         \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    (m) = __get_PRIMASK();                                                                                             \
+    __disable_irq();                                                                                                   \
+  } while (0)
+#define FEB_UART_MUTEX_UNLOCK(m) __set_PRIMASK(m)
 #define FEB_UART_MUTEX_LOCK_ISR(m) ((void)0) /* Already in ISR context */
 #define FEB_UART_MUTEX_UNLOCK_ISR(m) ((void)0)
 

@@ -55,12 +55,12 @@ typedef osMutexId_t FEB_TPS_Mutex_t;
 
 #else /* Bare-metal */
 
-typedef uint8_t FEB_TPS_Mutex_t;
+typedef uint32_t FEB_TPS_Mutex_t;
 
-#define FEB_TPS_MUTEX_CREATE()      (0)
+#define FEB_TPS_MUTEX_CREATE()      (0U)
 #define FEB_TPS_MUTEX_DELETE(m)     ((void)0)
-#define FEB_TPS_MUTEX_LOCK(m)       __disable_irq()
-#define FEB_TPS_MUTEX_UNLOCK(m)     __enable_irq()
+#define FEB_TPS_MUTEX_LOCK(m)       do { (m) = __get_PRIMASK(); __disable_irq(); } while(0)
+#define FEB_TPS_MUTEX_UNLOCK(m)     __set_PRIMASK(m)
 
 #define FEB_TPS_IN_ISR()            ((__get_IPSR() & 0xFF) != 0)
 #define FEB_TPS_DELAY_MS(ms)        HAL_Delay(ms)
@@ -114,35 +114,55 @@ typedef struct FEB_TPS_Device_s {
 
 /**
  * @brief Library global state
+ *
+ * Note: FEB_TPS_LogFunc_t and FEB_TPS_LogLevel_t are defined in feb_tps.h
+ * which must be included before this header in feb_tps.c
  */
 typedef struct {
     FEB_TPS_Device_t devices[FEB_TPS_MAX_DEVICES];  /**< Registered devices */
     uint8_t device_count;                            /**< Number of registered devices */
     FEB_TPS_Mutex_t i2c_mutex;                       /**< I2C access mutex */
     uint32_t i2c_timeout_ms;                         /**< I2C timeout */
+    void *log_func;                                  /**< User logging callback (FEB_TPS_LogFunc_t) */
+    uint8_t log_level;                               /**< Minimum log level (FEB_TPS_LogLevel_t) */
     bool initialized;                                /**< Library initialized flag */
 } FEB_TPS_Context_t;
+
+/* ============================================================================
+ * Internal Logging
+ * ============================================================================ */
+
+/**
+ * @brief Internal logging function (formats and calls user callback)
+ *
+ * @param level Log level (use TPS_LOG_* macros)
+ * @param fmt Printf-style format string
+ */
+void FEB_TPS_Log(uint8_t level, const char *fmt, ...);
+
+/* Log level values for macros (must match FEB_TPS_LogLevel_t in feb_tps.h) */
+#define TPS_LOG_E(fmt, ...) FEB_TPS_Log(1, fmt, ##__VA_ARGS__)
+#define TPS_LOG_W(fmt, ...) FEB_TPS_Log(2, fmt, ##__VA_ARGS__)
+#define TPS_LOG_I(fmt, ...) FEB_TPS_Log(3, fmt, ##__VA_ARGS__)
+#define TPS_LOG_D(fmt, ...) FEB_TPS_Log(4, fmt, ##__VA_ARGS__)
 
 /* ============================================================================
  * Sign-Magnitude Conversion
  * ============================================================================ */
 
-/**
- * @brief Convert raw register value to signed using sign-magnitude format
- *
- * TPS2482 uses sign-magnitude format for current and shunt voltage:
- *   - Bit 15 = sign (0 = positive, 1 = negative)
- *   - Bits 14:0 = magnitude
- *
- * @param raw Raw 16-bit register value
- * @return Signed 16-bit value
+/*
+ * NOTE: feb_tps_internal.h must only be included after feb_tps.h in feb_tps.c
+ * The internal sign-magnitude conversion delegates to the public API to avoid
+ * code duplication.
  */
-static inline int16_t feb_tps_sign_magnitude(uint16_t raw) {
-    if (raw & 0x8000) {
-        return -(int16_t)(raw & 0x7FFF);
-    }
-    return (int16_t)(raw & 0x7FFF);
-}
+#ifndef FEB_TPS_H
+#error "feb_tps_internal.h must only be included after feb_tps.h"
+#endif
+
+/**
+ * @brief Internal sign-magnitude conversion (delegates to public API)
+ */
+#define feb_tps_sign_magnitude(raw) FEB_TPS_SignMagnitude(raw)
 
 #ifdef __cplusplus
 }

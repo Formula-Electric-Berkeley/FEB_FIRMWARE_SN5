@@ -61,7 +61,8 @@ extern "C"
    */
 
 #ifndef FEB_UART_USE_FREERTOS
-#if defined(INCLUDE_xSemaphoreGetMutexHolder) || defined(configUSE_MUTEXES) || defined(USE_FREERTOS)
+#if ((defined(INCLUDE_xSemaphoreGetMutexHolder) && (INCLUDE_xSemaphoreGetMutexHolder != 0)) ||                         \
+     (defined(configUSE_MUTEXES) && (configUSE_MUTEXES != 0)) || (defined(USE_FREERTOS) && (USE_FREERTOS != 0)))
 #define FEB_UART_USE_FREERTOS 1
 #else
 #define FEB_UART_USE_FREERTOS 0

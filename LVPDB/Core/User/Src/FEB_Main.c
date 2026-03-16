@@ -63,9 +63,10 @@ static const struct
 };
 
 // Raw measurement data (for backward compatibility with CAN transmission)
-uint16_t tps2482_current_raw[NUM_TPS2482];
+// Note: current and shunt voltage are now sign-corrected by the library
+int16_t tps2482_current_raw[NUM_TPS2482];
 uint16_t tps2482_bus_voltage_raw[NUM_TPS2482];
-uint16_t tps2482_shunt_voltage_raw[NUM_TPS2482];
+int16_t tps2482_shunt_voltage_raw[NUM_TPS2482];
 
 // Filtered current values
 int32_t tps2482_current_filter[NUM_TPS2482];
@@ -86,6 +87,27 @@ uint16_t tps2482_pg_pins[NUM_TPS2482];
 FEB_LVPDB_CAN_Data can_data;
 bool bus_voltage_healthy = true;
 
+static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg)
+{
+  switch (level)
+  {
+  case FEB_TPS_LOG_ERROR:
+    LOG_E(TAG_TPS, "%s", msg);
+    break;
+  case FEB_TPS_LOG_WARN:
+    LOG_W(TAG_TPS, "%s", msg);
+    break;
+  case FEB_TPS_LOG_INFO:
+    LOG_I(TAG_TPS, "%s", msg);
+    break;
+  case FEB_TPS_LOG_DEBUG:
+    LOG_D(TAG_TPS, "%s", msg);
+    break;
+  default:
+    break;
+  }
+}
+
 /* ============================================================================
  * TPS Device Initialization
  * ============================================================================ */
@@ -93,7 +115,11 @@ bool bus_voltage_healthy = true;
 static bool FEB_TPS_Init_Devices(void)
 {
   // Initialize TPS library
-  FEB_TPS_Init(NULL);
+  FEB_TPS_LibConfig_t lib_cfg = {
+      .log_func = tps_log_callback,
+      .log_level = FEB_TPS_LOG_INFO,
+  };
+  FEB_TPS_Init(&lib_cfg);
 
   // Populate exported arrays for console commands
   for (uint8_t i = 0; i < NUM_TPS2482; i++)
@@ -240,6 +266,7 @@ void FEB_Main_Setup(void)
     if (!tps_init_success)
     {
       LOG_W(TAG_MAIN, "TPS init attempt %d failed, retrying...", maxiter);
+      HAL_Delay(100); /* 100ms delay to avoid I2C bus contention */
     }
     maxiter++;
   }
@@ -350,20 +377,22 @@ static void FEB_Current_IIR(int16_t *data_in, int16_t *data_out, int32_t *filter
 static void FEB_Variable_Conversion(void)
 {
   // Convert bus voltage and shunt voltage using library constants
+  // Note: current and shunt voltage are now sign-corrected by FEB_TPS_PollAllRaw
   for (uint8_t i = 0; i < NUM_TPS2482; i++)
   {
     tps2482_bus_voltage[i] = FLOAT_TO_UINT16_T(tps2482_bus_voltage_raw[i] * FEB_TPS_CONV_VBUS_V_PER_LSB);
-    tps2482_shunt_voltage[i] = (FEB_TPS_SignMagnitude(tps2482_shunt_voltage_raw[i]) * FEB_TPS_CONV_VSHUNT_MV_PER_LSB);
+    tps2482_shunt_voltage[i] = (tps2482_shunt_voltage_raw[i] * FEB_TPS_CONV_VSHUNT_MV_PER_LSB);
   }
 
   // Convert current with per-device current LSB values
-  tps2482_current[0] = FLOAT_TO_INT16_T(FEB_TPS_SignMagnitude(tps2482_current_raw[0]) * LV_CURRENT_LSB);
-  tps2482_current[1] = FLOAT_TO_INT16_T(FEB_TPS_SignMagnitude(tps2482_current_raw[1]) * SH_CURRENT_LSB);
-  tps2482_current[2] = FLOAT_TO_INT16_T(FEB_TPS_SignMagnitude(tps2482_current_raw[2]) * LT_CURRENT_LSB);
-  tps2482_current[3] = FLOAT_TO_INT16_T(FEB_TPS_SignMagnitude(tps2482_current_raw[3]) * BM_L_CURRENT_LSB);
-  tps2482_current[4] = FLOAT_TO_INT16_T(FEB_TPS_SignMagnitude(tps2482_current_raw[4]) * SM_CURRENT_LSB);
-  tps2482_current[5] = FLOAT_TO_INT16_T(FEB_TPS_SignMagnitude(tps2482_current_raw[5]) * AF1_AF2_CURRENT_LSB);
-  tps2482_current[6] = FLOAT_TO_INT16_T(FEB_TPS_SignMagnitude(tps2482_current_raw[6]) * CP_RF_CURRENT_LSB);
+  // Note: FEB_TPS_PollAllRaw now returns sign-corrected values
+  tps2482_current[0] = FLOAT_TO_INT16_T(tps2482_current_raw[0] * LV_CURRENT_LSB);
+  tps2482_current[1] = FLOAT_TO_INT16_T(tps2482_current_raw[1] * SH_CURRENT_LSB);
+  tps2482_current[2] = FLOAT_TO_INT16_T(tps2482_current_raw[2] * LT_CURRENT_LSB);
+  tps2482_current[3] = FLOAT_TO_INT16_T(tps2482_current_raw[3] * BM_L_CURRENT_LSB);
+  tps2482_current[4] = FLOAT_TO_INT16_T(tps2482_current_raw[4] * SM_CURRENT_LSB);
+  tps2482_current[5] = FLOAT_TO_INT16_T(tps2482_current_raw[5] * AF1_AF2_CURRENT_LSB);
+  tps2482_current[6] = FLOAT_TO_INT16_T(tps2482_current_raw[6] * CP_RF_CURRENT_LSB);
 
   FEB_Current_IIR(tps2482_current, tps2482_current, tps2482_current_filter, NUM_TPS2482, tps2482_current_filter_init);
 }

@@ -66,6 +66,32 @@ typedef enum {
 } FEB_TPS_Status_t;
 
 /* ============================================================================
+ * Logging
+ * ============================================================================ */
+
+/**
+ * @brief Log levels for TPS library (values match FEB_UART for easy mapping)
+ */
+typedef enum FEB_TPS_LogLevel_e {
+    FEB_TPS_LOG_NONE = 0,       /**< No logging */
+    FEB_TPS_LOG_ERROR = 1,      /**< Errors only */
+    FEB_TPS_LOG_WARN = 2,       /**< Warnings and errors */
+    FEB_TPS_LOG_INFO = 3,       /**< Informational messages */
+    FEB_TPS_LOG_DEBUG = 4,      /**< Debug messages */
+} FEB_TPS_LogLevel_t;
+
+/**
+ * @brief Logging callback function type
+ *
+ * The library formats messages internally and passes a pre-formatted string.
+ * This makes it easy to wrap FEB_UART's LOG_* macros.
+ *
+ * @param level Log level of the message
+ * @param msg Pre-formatted message string (no newline)
+ */
+typedef void (*FEB_TPS_LogFunc_t)(FEB_TPS_LogLevel_t level, const char *msg);
+
+/* ============================================================================
  * Configuration Structures
  * ============================================================================ */
 
@@ -105,6 +131,8 @@ typedef struct {
  */
 typedef struct {
     uint32_t i2c_timeout_ms;    /**< I2C timeout in ms (0 = use default) */
+    FEB_TPS_LogFunc_t log_func; /**< Logging callback (NULL = silent) */
+    FEB_TPS_LogLevel_t log_level; /**< Minimum level to log (0 = use default INFO) */
 } FEB_TPS_LibConfig_t;
 
 /* ============================================================================
@@ -131,12 +159,13 @@ typedef struct {
  * @brief Scaled integer values for CAN transmission
  *
  * Avoids floating point on CAN bus. Values are already scaled to common units.
+ * Uses wider types to support high-power applications (e.g., 24V @ 20A = 480W).
  */
 typedef struct {
-    uint16_t bus_voltage_mv;    /**< Bus voltage in millivolts */
-    int16_t current_ma;         /**< Current in milliamps */
+    uint32_t bus_voltage_mv;    /**< Bus voltage in millivolts */
+    int32_t current_ma;         /**< Current in milliamps */
     int32_t shunt_voltage_uv;   /**< Shunt voltage in microvolts */
-    uint16_t power_mw;          /**< Power in milliwatts */
+    uint32_t power_mw;          /**< Power in milliwatts */
 } FEB_TPS_MeasurementScaled_t;
 
 /* ============================================================================
@@ -286,15 +315,16 @@ uint8_t FEB_TPS_PollAllScaled(FEB_TPS_MeasurementScaled_t *scaled, uint8_t count
  * @brief Poll all registered devices (raw values only)
  *
  * This is the most efficient batch operation - only reads raw registers.
+ * Current and shunt voltage values are sign-magnitude converted to signed.
  *
  * @param bus_v_raw Array for raw bus voltage values (can be NULL)
- * @param current_raw Array for raw current values (can be NULL)
- * @param shunt_v_raw Array for raw shunt voltage values (can be NULL)
+ * @param current_raw Array for sign-corrected current values (can be NULL)
+ * @param shunt_v_raw Array for sign-corrected shunt voltage values (can be NULL)
  * @param count Number of elements in arrays
  * @return Number of devices successfully polled
  */
-uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, uint16_t *current_raw,
-                            uint16_t *shunt_v_raw, uint8_t count);
+uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
+                            int16_t *shunt_v_raw, uint8_t count);
 
 /* ============================================================================
  * GPIO Control (Enable/Power-Good/Alert)

@@ -11,6 +11,27 @@ TPS_MESSAGE_TYPE TPS_MESSAGE;
 /* Device handle */
 static FEB_TPS_Handle_t pcu_tps_handle = NULL;
 
+static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg)
+{
+  switch (level)
+  {
+  case FEB_TPS_LOG_ERROR:
+    LOG_E(TAG_TPS, "%s", msg);
+    break;
+  case FEB_TPS_LOG_WARN:
+    LOG_W(TAG_TPS, "%s", msg);
+    break;
+  case FEB_TPS_LOG_INFO:
+    LOG_I(TAG_TPS, "%s", msg);
+    break;
+  case FEB_TPS_LOG_DEBUG:
+    LOG_D(TAG_TPS, "%s", msg);
+    break;
+  default:
+    break;
+  }
+}
+
 void FEB_CAN_TPS_Init(void)
 {
   /* Initialize TPS message structure */
@@ -32,7 +53,11 @@ void FEB_CAN_TPS_Update(I2C_HandleTypeDef *hi2c, uint8_t *i2c_addresses, uint8_t
   /* Initialize library and register device on first call */
   if (pcu_tps_handle == NULL)
   {
-    FEB_TPS_Init(NULL);
+    FEB_TPS_LibConfig_t lib_cfg = {
+        .log_func = tps_log_callback,
+        .log_level = FEB_TPS_LOG_INFO,
+    };
+    FEB_TPS_Init(&lib_cfg);
 
     FEB_TPS_DeviceConfig_t cfg = {
         .hi2c = hi2c,

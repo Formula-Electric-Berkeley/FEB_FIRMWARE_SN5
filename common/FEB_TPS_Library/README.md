@@ -10,6 +10,58 @@ Common library for TPS2482 power monitoring ICs used across Formula Electric @ B
 - **Per-device calibration** - Configure different shunt resistors and current ranges per device
 - **GPIO integration** - Optional EN/Power-Good/Alert pin control
 - **Flexible measurement API** - Float, scaled integer, or raw register access
+- **Injectable logging** - Provide your own logging callback for debug output
+
+## Logging
+
+The library supports injectable logging via a user-provided callback function. This allows routing debug messages to FEB_UART, printf, or any other output without creating a hard dependency.
+
+### Enable Logging
+
+```c
+#include "feb_tps.h"
+#include "feb_uart_log.h"  // For LOG_* macros
+
+// Callback to route TPS messages to FEB_UART
+static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg) {
+    switch (level) {
+        case FEB_TPS_LOG_ERROR: LOG_E(TAG_TPS, "%s", msg); break;
+        case FEB_TPS_LOG_WARN:  LOG_W(TAG_TPS, "%s", msg); break;
+        case FEB_TPS_LOG_INFO:  LOG_I(TAG_TPS, "%s", msg); break;
+        case FEB_TPS_LOG_DEBUG: LOG_D(TAG_TPS, "%s", msg); break;
+        default: break;
+    }
+}
+
+void setup(void) {
+    // Initialize with logging
+    FEB_TPS_LibConfig_t cfg = {
+        .log_func = tps_log_callback,
+        .log_level = FEB_TPS_LOG_INFO,  // Show INFO and above
+    };
+    FEB_TPS_Init(&cfg);
+
+    // ... register devices
+}
+```
+
+### Log Levels
+
+| Level | Value | Description |
+|-------|-------|-------------|
+| `FEB_TPS_LOG_NONE` | 0 | No logging |
+| `FEB_TPS_LOG_ERROR` | 1 | Errors only (I2C failures) |
+| `FEB_TPS_LOG_WARN` | 2 | Warnings and errors |
+| `FEB_TPS_LOG_INFO` | 3 | Informational (device registration) |
+| `FEB_TPS_LOG_DEBUG` | 4 | Debug (enable/disable GPIO) |
+
+### Silent Mode (Default)
+
+Pass `NULL` to `FEB_TPS_Init()` for no logging output:
+
+```c
+FEB_TPS_Init(NULL);  // Silent mode - no debug output
+```
 
 ## Quick Start
 
@@ -22,7 +74,11 @@ static FEB_TPS_Handle_t tps;
 
 void setup(void) {
     // Initialize library
-    FEB_TPS_Init(NULL);
+    FEB_TPS_Status_t status = FEB_TPS_Init(NULL);
+    if (status != FEB_TPS_OK) {
+        // Handle initialization error
+        return;
+    }
 
     // Configure and register device
     FEB_TPS_DeviceConfig_t cfg = {
@@ -32,7 +88,12 @@ void setup(void) {
         .i_max_amps = 4.0f,      // 4A fuse
         .name = "PCU",
     };
-    FEB_TPS_DeviceRegister(&cfg, &tps);
+    status = FEB_TPS_DeviceRegister(&cfg, &tps);
+    if (status != FEB_TPS_OK) {
+        // Handle registration error
+        printf("TPS init failed: %s\n", FEB_TPS_StatusToString(status));
+        return;
+    }
 }
 
 void loop(void) {
@@ -54,7 +115,11 @@ void loop(void) {
 static FEB_TPS_Handle_t tps_handles[NUM_DEVICES];
 
 void setup(void) {
-    FEB_TPS_Init(NULL);
+    FEB_TPS_Status_t status = FEB_TPS_Init(NULL);
+    if (status != FEB_TPS_OK) {
+        printf("TPS library init failed: %s\n", FEB_TPS_StatusToString(status));
+        return;
+    }
 
     // Register each device with its specific configuration
     for (int i = 0; i < NUM_DEVICES; i++) {
@@ -67,13 +132,18 @@ void setup(void) {
             .en_gpio_pin = en_pins[i],
             .name = device_names[i],
         };
-        FEB_TPS_DeviceRegister(&cfg, &tps_handles[i]);
+        status = FEB_TPS_DeviceRegister(&cfg, &tps_handles[i]);
+        if (status != FEB_TPS_OK) {
+            printf("TPS device %d init failed: %s\n", i, FEB_TPS_StatusToString(status));
+        }
     }
 }
 
 void loop(void) {
     // Poll all devices at once
-    uint16_t bus_v[NUM_DEVICES], current[NUM_DEVICES], shunt_v[NUM_DEVICES];
+    // Note: current and shunt_v are now sign-corrected int16_t
+    uint16_t bus_v[NUM_DEVICES];
+    int16_t current[NUM_DEVICES], shunt_v[NUM_DEVICES];
     FEB_TPS_PollAllRaw(bus_v, current, shunt_v, NUM_DEVICES);
 }
 ```
@@ -167,12 +237,16 @@ typedef struct {
 
 ```c
 typedef struct {
-    uint16_t bus_voltage_mv;    // Bus voltage in millivolts
-    int16_t current_ma;         // Current in milliamps
+    uint32_t bus_voltage_mv;    // Bus voltage in millivolts
+    int32_t current_ma;         // Current in milliamps
     int32_t shunt_voltage_uv;   // Shunt voltage in microvolts
-    uint16_t power_mw;          // Power in milliwatts
+    uint32_t power_mw;          // Power in milliwatts (supports high-power: 24V @ 20A = 480W)
 } FEB_TPS_MeasurementScaled_t;
 ```
+
+> **Note:** The wider integer types (32-bit) are used to support high-power applications
+> without overflow. For example, 24V @ 20A = 480W = 480,000 mW, which would overflow
+> a 16-bit unsigned integer (max 65,535).
 
 ## Board Usage
 

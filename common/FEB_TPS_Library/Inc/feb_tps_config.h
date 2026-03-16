@@ -30,7 +30,9 @@ extern "C" {
  * User can override by defining FEB_TPS_USE_FREERTOS before including this header.
  */
 #ifndef FEB_TPS_USE_FREERTOS
-#if defined(INCLUDE_xSemaphoreGetMutexHolder) || defined(configUSE_MUTEXES) || defined(USE_FREERTOS)
+#if ((defined(INCLUDE_xSemaphoreGetMutexHolder) && (INCLUDE_xSemaphoreGetMutexHolder != 0)) || \
+     (defined(configUSE_MUTEXES) && (configUSE_MUTEXES != 0)) || \
+     (defined(USE_FREERTOS) && (USE_FREERTOS != 0)))
 #define FEB_TPS_USE_FREERTOS 1
 #else
 #define FEB_TPS_USE_FREERTOS 0

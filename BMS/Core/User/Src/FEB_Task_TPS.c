@@ -22,6 +22,27 @@
 /* Device handle */
 static FEB_TPS_Handle_t bms_tps_handle = NULL;
 
+static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg)
+{
+  switch (level)
+  {
+  case FEB_TPS_LOG_ERROR:
+    LOG_E(TAG_TPS, "%s", msg);
+    break;
+  case FEB_TPS_LOG_WARN:
+    LOG_W(TAG_TPS, "%s", msg);
+    break;
+  case FEB_TPS_LOG_INFO:
+    LOG_I(TAG_TPS, "%s", msg);
+    break;
+  case FEB_TPS_LOG_DEBUG:
+    LOG_D(TAG_TPS, "%s", msg);
+    break;
+  default:
+    break;
+  }
+}
+
 /* ===== StartTPSTask =====
    Low-priority task for TPS2482 power monitoring
    - Monitors LV bus voltage and current
@@ -31,7 +52,11 @@ void StartTPSTask(void *argument)
   (void)argument;
 
   /* Initialize TPS library */
-  FEB_TPS_Init(NULL);
+  FEB_TPS_LibConfig_t lib_cfg = {
+      .log_func = tps_log_callback,
+      .log_level = FEB_TPS_LOG_INFO,
+  };
+  FEB_TPS_Init(&lib_cfg);
 
   /* Configure and register the TPS2482 device */
   FEB_TPS_DeviceConfig_t cfg = {
