@@ -7,12 +7,18 @@
 #include "feb_tps.h"
 #include <string.h>
 
+/* Status flag bit definitions */
+#define TPS_STATUS_VOLTAGE_OVERFLOW (1U << 0) /* Bus voltage exceeded uint16 max */
+#define TPS_STATUS_CURRENT_OVERFLOW (1U << 1) /* Current exceeded int16 range */
+#define TPS_STATUS_CURRENT_NEGATIVE (1U << 2) /* Current reading is negative */
+
 /* Message structure */
 typedef struct
 {
   uint16_t bus_voltage_mv;  /* Bus voltage in millivolts */
   int16_t current_ma;       /* Current in milliamps */
   int32_t shunt_voltage_uv; /* Shunt voltage in microvolts */
+  uint8_t status_flags;     /* Status flags for overflow/negative current */
 } TPS_MESSAGE_TYPE;
 
 /* Data type for console command access */

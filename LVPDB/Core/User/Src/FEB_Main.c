@@ -180,32 +180,8 @@ static bool FEB_TPS_Init_Devices(void)
   return all_success;
 }
 
-/**
- * Enable or disable all TPS2482 devices except the LV rail.
- *
- * Skips device index 0 (LV) because it does not have an enable pin; attempts to set the enable
- * state for each other registered TPS device and logs failures for devices that expose an EN pin.
- *
- * @param enable `true` to enable devices, `false` to disable them.
- * @returns `true` if every attempted enable/disable operation succeeded, `false` if any failed.
- */
-static bool FEB_TPS_Enable_All(bool enable)
-{
-  bool all_success = true;
-
-  // Skip LV (index 0) - it doesn't have an EN pin
-  for (uint8_t i = 1; i < NUM_TPS2482; i++)
-  {
-    FEB_TPS_Status_t status = FEB_TPS_Enable(tps_handles[i], enable);
-    if (status != FEB_TPS_OK && tps_device_configs[i].en_port != NULL)
-    {
-      LOG_E(TAG_MAIN, "Failed to %s %s", enable ? "enable" : "disable", tps_device_configs[i].name);
-      all_success = false;
-    }
-  }
-
-  return all_success;
-}
+/* Note: Custom FEB_TPS_Enable_All removed - using library FEB_TPS_EnableAll instead.
+ * The library function already handles NULL EN ports (skips LV automatically). */
 
 /**
  * Verify TPS devices' power-good signals and report LV failure.
@@ -315,8 +291,8 @@ void FEB_Main_Setup(void)
     LOG_E(TAG_MAIN, "TPS2482 init failed after %d retries", maxiter);
   }
 
-  // Start with all rails disabled (except LV which has no EN)
-  FEB_TPS_Enable_All(false);
+  // Start with all rails disabled (library skips devices without EN pin)
+  FEB_TPS_EnableAll(false);
 
   // Check power good states
   FEB_TPS_Check_Power_Good();
@@ -348,7 +324,9 @@ void FEB_Main_Setup(void)
 /**
  * Main periodic loop executed from the scheduler; performs periodic TPS sampling and UART receive processing.
  *
- * On each invocation, if at least MAIN_LOOP_POLL_INTERVAL_MS has elapsed since the last poll, triggers a batch poll of all TPS devices to update raw bus/shunt/currents and then runs variable conversion to update scaled values. Always processes pending UART RX for the primary UART instance.
+ * On each invocation, if at least MAIN_LOOP_POLL_INTERVAL_MS has elapsed since the last poll, triggers a batch poll of
+ * all TPS devices to update raw bus/shunt/currents and then runs variable conversion to update scaled values. Always
+ * processes pending UART RX for the primary UART instance.
  */
 void FEB_Main_Loop(void)
 {
@@ -406,14 +384,16 @@ void FEB_1ms_Callback(void)
  * Apply a per-element IIR low-pass filter to an array of input samples.
  *
  * For each index up to `length`, initialize the internal filter state on first use
- * and otherwise update the filter using a fixed-exponent IIR: filters[i] += data_in[i] - (filters[i] >> ADC_FILTER_EXPONENT),
- * then set data_out[i] to the scaled filter value (filters[i] >> ADC_FILTER_EXPONENT).
+ * and otherwise update the filter using a fixed-exponent IIR: filters[i] += data_in[i] - (filters[i] >>
+ * ADC_FILTER_EXPONENT), then set data_out[i] to the scaled filter value (filters[i] >> ADC_FILTER_EXPONENT).
  *
  * @param data_in Pointer to the array of new input samples.
  * @param data_out Pointer to the array where filtered output samples are written.
- * @param filters Pointer to the array holding internal fixed-point filter accumulators (must be at least `length` elements).
+ * @param filters Pointer to the array holding internal fixed-point filter accumulators (must be at least `length`
+ * elements).
  * @param length Number of elements to process.
- * @param filter_initialized Boolean array indicating per-index whether the corresponding filter accumulator has been initialized; on first use the accumulator and output are initialized from the input.
+ * @param filter_initialized Boolean array indicating per-index whether the corresponding filter accumulator has been
+ * initialized; on first use the accumulator and output are initialized from the input.
  */
 static void FEB_Current_IIR(int16_t *data_in, int16_t *data_out, int32_t *filters, uint8_t length,
                             bool *filter_initialized)

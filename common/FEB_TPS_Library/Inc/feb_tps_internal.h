@@ -65,8 +65,7 @@ typedef uint32_t FEB_TPS_Mutex_t;
 #define FEB_TPS_IN_ISR()            ((__get_IPSR() & 0xFF) != 0)
 #define FEB_TPS_DELAY_MS(ms)        HAL_Delay(ms)
 
-#define FEB_TPS_ENTER_CRITICAL()    __disable_irq()
-#define FEB_TPS_EXIT_CRITICAL()     __enable_irq()
+/* Note: Critical section macros removed - library uses mutex-based I2C protection */
 
 #endif /* FEB_TPS_USE_FREERTOS */
 
@@ -106,6 +105,7 @@ typedef struct FEB_TPS_Device_s {
     const char *name;               /**< Human-readable name for debugging */
     uint16_t device_id;             /**< Device unique ID (read from chip) */
     bool initialized;               /**< Device initialized flag */
+    bool in_use;                    /**< Slot is in use (for stable handles) */
 } FEB_TPS_Device_t;
 
 /* ============================================================================
@@ -151,12 +151,11 @@ void FEB_TPS_Log(uint8_t level, const char *fmt, ...);
  * ============================================================================ */
 
 /*
- * NOTE: feb_tps_internal.h must only be included after feb_tps.h in feb_tps.c
- * The internal sign-magnitude conversion delegates to the public API to avoid
- * code duplication.
+ * NOTE: feb_tps_internal.h requires feb_tps.h for FEB_TPS_SignMagnitude.
+ * Include it automatically if not already included.
  */
 #ifndef FEB_TPS_H
-#error "feb_tps_internal.h must only be included after feb_tps.h"
+#include "feb_tps.h"
 #endif
 
 /**

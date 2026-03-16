@@ -30,10 +30,12 @@ void FEB_CAN_TPS_Init(void) {}
  *   tps_current_raw[4..6] as three 16-bit values (fourth slot left zero).
  *
  * @param tps_current_raw Array of raw current measurements in the order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF.
- *                        Values are treated as 16-bit signed integers and placed into CAN payloads as little-endian 16-bit words.
+ *                        Values are treated as 16-bit signed integers and placed into CAN payloads as little-endian
+ * 16-bit words.
  * @param tps_bus_voltage_raw Array of raw bus voltage measurements; expected to contain at least elements 0 and 3
  *                            which are placed into the voltages CAN frame as 16-bit words.
- * @param length Number of elements available in the provided arrays. This parameter is currently not used by the implementation.
+ * @param length Number of elements available in the provided arrays. This parameter is currently not used by the
+ * implementation.
  */
 
 void FEB_CAN_TPS_Tick(int16_t *tps_current_raw, uint16_t *tps_bus_voltage_raw, size_t length)

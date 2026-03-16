@@ -1,5 +1,6 @@
 #include "FEB_CAN_TPS.h"
 #include "feb_uart_log.h"
+#include <stdint.h>
 
 /* TPS2482 Configuration */
 #define TPS_MAX_CURRENT_A 4.0f         /* Maximum current in Amps (based on 4A fuse rating) */
@@ -52,6 +53,7 @@ void FEB_CAN_TPS_Init(void)
   TPS_MESSAGE.bus_voltage_mv = 0;
   TPS_MESSAGE.current_ma = 0;
   TPS_MESSAGE.shunt_voltage_uv = 0;
+  TPS_MESSAGE.status_flags = 0;
   LOG_I(TAG_TPS, "TPS CAN initialized");
 }
 
@@ -112,12 +114,46 @@ void FEB_CAN_TPS_Update(I2C_HandleTypeDef *hi2c, uint8_t *i2c_addresses, uint8_t
     return;
   }
 
-  /* Update message structure */
-  TPS_MESSAGE.bus_voltage_mv = scaled.bus_voltage_mv;
-  TPS_MESSAGE.current_ma = scaled.current_ma;
+  /* Update message structure with bounds checking */
+  TPS_MESSAGE.status_flags = 0;
+
+  /* Bus voltage: uint32 -> uint16 with overflow detection */
+  if (scaled.bus_voltage_mv > UINT16_MAX)
+  {
+    TPS_MESSAGE.bus_voltage_mv = UINT16_MAX;
+    TPS_MESSAGE.status_flags |= TPS_STATUS_VOLTAGE_OVERFLOW;
+  }
+  else
+  {
+    TPS_MESSAGE.bus_voltage_mv = (uint16_t)scaled.bus_voltage_mv;
+  }
+
+  /* Current: int32 -> int16 with overflow detection */
+  if (scaled.current_ma > INT16_MAX)
+  {
+    TPS_MESSAGE.current_ma = INT16_MAX;
+    TPS_MESSAGE.status_flags |= TPS_STATUS_CURRENT_OVERFLOW;
+  }
+  else if (scaled.current_ma < INT16_MIN)
+  {
+    TPS_MESSAGE.current_ma = INT16_MIN;
+    TPS_MESSAGE.status_flags |= TPS_STATUS_CURRENT_OVERFLOW;
+  }
+  else
+  {
+    TPS_MESSAGE.current_ma = (int16_t)scaled.current_ma;
+  }
+
+  /* Track negative current */
+  if (scaled.current_ma < 0)
+  {
+    TPS_MESSAGE.status_flags |= TPS_STATUS_CURRENT_NEGATIVE;
+  }
+
   TPS_MESSAGE.shunt_voltage_uv = scaled.shunt_voltage_uv;
 
-  LOG_D(TAG_TPS, "TPS update: Voltage=%d mV, Current=%d mA", TPS_MESSAGE.bus_voltage_mv, TPS_MESSAGE.current_ma);
+  LOG_D(TAG_TPS, "TPS update: Voltage=%d mV, Current=%d mA, Flags=0x%02X", TPS_MESSAGE.bus_voltage_mv,
+        TPS_MESSAGE.current_ma, TPS_MESSAGE.status_flags);
 }
 
 /**

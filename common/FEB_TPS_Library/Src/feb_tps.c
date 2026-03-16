@@ -258,12 +258,18 @@ FEB_TPS_Status_t FEB_TPS_DeviceRegister(const FEB_TPS_DeviceConfig_t *config,
         return FEB_TPS_ERR_INVALID_ARG;
     }
 
-    if (feb_tps_ctx.device_count >= FEB_TPS_MAX_DEVICES) {
-        return FEB_TPS_ERR_MAX_DEVICES;
+    /* Find first available slot (supports stable handles after unregister) */
+    FEB_TPS_Device_t *dev = NULL;
+    for (uint8_t i = 0; i < FEB_TPS_MAX_DEVICES; i++) {
+        if (!feb_tps_ctx.devices[i].in_use) {
+            dev = &feb_tps_ctx.devices[i];
+            break;
+        }
     }
 
-    /* Get next available slot */
-    FEB_TPS_Device_t *dev = &feb_tps_ctx.devices[feb_tps_ctx.device_count];
+    if (dev == NULL) {
+        return FEB_TPS_ERR_MAX_DEVICES;
+    }
 
     /* Copy configuration */
     dev->hi2c = config->hi2c;
@@ -338,6 +344,7 @@ FEB_TPS_Status_t FEB_TPS_DeviceRegister(const FEB_TPS_DeviceConfig_t *config,
     }
 
     dev->initialized = true;
+    dev->in_use = true;
     feb_tps_ctx.device_count++;
     *handle = dev;
 
@@ -364,29 +371,32 @@ void FEB_TPS_DeviceUnregister(FEB_TPS_Handle_t handle) {
 
     FEB_TPS_Device_t *dev = (FEB_TPS_Device_t *)handle;
 
-    /* Find device index in array */
+    /* Validate device is in our array and in use */
+    bool found = false;
     int dev_index = -1;
-    for (uint8_t i = 0; i < feb_tps_ctx.device_count; i++) {
-        if (&feb_tps_ctx.devices[i] == dev) {
+    for (uint8_t i = 0; i < FEB_TPS_MAX_DEVICES; i++) {
+        if (&feb_tps_ctx.devices[i] == dev && dev->in_use) {
+            found = true;
             dev_index = i;
             break;
         }
     }
 
-    if (dev_index < 0) {
-        return; /* Device not found in array */
+    if (!found) {
+        return; /* Device not found or not in use */
     }
 
-    /* Compact array by moving last device to freed slot */
-    if ((uint8_t)dev_index < feb_tps_ctx.device_count - 1) {
-        feb_tps_ctx.devices[dev_index] = feb_tps_ctx.devices[feb_tps_ctx.device_count - 1];
-    }
+    /* Save name for logging before clearing */
+    const char *name = dev->name;
 
-    /* Clear the last slot and decrement count */
-    memset(&feb_tps_ctx.devices[feb_tps_ctx.device_count - 1], 0, sizeof(FEB_TPS_Device_t));
+    /* Mark slot as unused without relocating (preserves other handles) */
+    dev->in_use = false;
+    dev->initialized = false;
+    memset(dev, 0, sizeof(FEB_TPS_Device_t));
+
     feb_tps_ctx.device_count--;
 
-    TPS_LOG_I("Unregistered device at index %d", dev_index);
+    TPS_LOG_I("Unregistered device '%s' at index %d", name ? name : "?", dev_index);
 }
 
 /**
@@ -396,15 +406,18 @@ void FEB_TPS_DeviceUnregister(FEB_TPS_Handle_t handle) {
  * @returns Pointer to the device handle at the given index, or `NULL` if the index is out of range or the device is not initialized.
  */
 FEB_TPS_Handle_t FEB_TPS_DeviceGetByIndex(uint8_t index) {
-    if (index >= feb_tps_ctx.device_count) {
-        return NULL;
+    /* Iterate through slots, counting only in-use devices */
+    uint8_t found = 0;
+    for (uint8_t i = 0; i < FEB_TPS_MAX_DEVICES; i++) {
+        if (feb_tps_ctx.devices[i].in_use && feb_tps_ctx.devices[i].initialized) {
+            if (found == index) {
+                return &feb_tps_ctx.devices[i];
+            }
+            found++;
+        }
     }
 
-    if (!feb_tps_ctx.devices[index].initialized) {
-        return NULL;
-    }
-
-    return &feb_tps_ctx.devices[index];
+    return NULL;
 }
 
 /**
@@ -637,7 +650,11 @@ FEB_TPS_Status_t FEB_TPS_PollRaw(FEB_TPS_Handle_t handle,
                                   uint16_t *bus_v_raw,
                                   int16_t *current_raw,
                                   int16_t *shunt_v_raw) {
-    if (!feb_tps_ctx.initialized || handle == NULL) {
+    if (!feb_tps_ctx.initialized) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
+
+    if (handle == NULL) {
         return FEB_TPS_ERR_INVALID_ARG;
     }
 
@@ -776,7 +793,7 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
 
     for (uint8_t i = 0; i < actual_count; i++) {
         FEB_TPS_Device_t *dev = &feb_tps_ctx.devices[i];
-        if (!dev->initialized) {
+        if (!dev->in_use || !dev->initialized) {
             continue;
         }
 
@@ -914,9 +931,9 @@ FEB_TPS_Status_t FEB_TPS_ReadAlert(FEB_TPS_Handle_t handle, bool *alert_active) 
 uint8_t FEB_TPS_EnableAll(bool enable) {
     uint8_t count = 0;
 
-    for (uint8_t i = 0; i < feb_tps_ctx.device_count; i++) {
+    for (uint8_t i = 0; i < FEB_TPS_MAX_DEVICES; i++) {
         FEB_TPS_Device_t *dev = &feb_tps_ctx.devices[i];
-        if (dev->initialized && dev->en_gpio_port != NULL) {
+        if (dev->in_use && dev->initialized && dev->en_gpio_port != NULL) {
             HAL_GPIO_WritePin((GPIO_TypeDef *)dev->en_gpio_port, dev->en_gpio_pin,
                               enable ? GPIO_PIN_SET : GPIO_PIN_RESET);
             count++;
@@ -950,7 +967,7 @@ uint8_t FEB_TPS_ReadAllPowerGood(bool *pg_states, uint8_t count) {
 
     for (uint8_t i = 0; i < actual_count; i++) {
         FEB_TPS_Device_t *dev = &feb_tps_ctx.devices[i];
-        if (dev->initialized && dev->pg_gpio_port != NULL) {
+        if (dev->in_use && dev->initialized && dev->pg_gpio_port != NULL) {
             GPIO_PinState state = HAL_GPIO_ReadPin((GPIO_TypeDef *)dev->pg_gpio_port,
                                                     dev->pg_gpio_pin);
             pg_states[i] = (state == GPIO_PIN_SET);
