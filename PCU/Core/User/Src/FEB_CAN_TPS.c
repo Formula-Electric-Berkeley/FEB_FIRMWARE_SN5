@@ -2,11 +2,14 @@
 #include "feb_uart_log.h"
 
 /* TPS2482 Configuration */
-#define TPS_MAX_CURRENT_A 4.0         /* Maximum current in Amps (based on 4A fuse rating) */
-#define TPS_SHUNT_RESISTOR_OHMS 0.012 /* 12 milliohm shunt resistor */
+#define TPS_MAX_CURRENT_A 4.0f         /* Maximum current in Amps (based on 4A fuse rating) */
+#define TPS_SHUNT_RESISTOR_OHMS 0.012f /* 12 milliohm shunt resistor */
 
 /* Global TPS message data */
 TPS_MESSAGE_TYPE TPS_MESSAGE;
+
+/* Device handle */
+static FEB_TPS_Handle_t pcu_tps_handle = NULL;
 
 void FEB_CAN_TPS_Init(void)
 {
@@ -26,68 +29,44 @@ void FEB_CAN_TPS_GetData(FEB_CAN_TPS_Data_t *data)
 
 void FEB_CAN_TPS_Update(I2C_HandleTypeDef *hi2c, uint8_t *i2c_addresses, uint8_t num_devices)
 {
-  uint16_t voltage_raw;
-  uint16_t current_raw;
-
-  /* Poll TPS2482 for voltage and current */
-  TPS2482_Poll_Bus_Voltage(hi2c, i2c_addresses, &voltage_raw, num_devices);
-  TPS2482_Poll_Current(hi2c, i2c_addresses, &current_raw, num_devices);
-
-  /* ===== CONVERSION FACTOR DOCUMENTATION =====
-   *
-   * Voltage Conversion:
-   *   - TPS2482_CONV_VBUS = 0.00125 V/LSB (1.25 mV per bit)
-   *   - Reference: TPS2482 datasheet, Bus Voltage Register (00h)
-   *   - Raw value is multiplied by conversion factor and converted to mV
-   *
-   * Current Conversion:
-   *   - Current LSB depends on maximum expected current and shunt resistor
-   *   - Formula: Current_LSB = I_max / 2^15
-   *   - I_max = TPS_MAX_CURRENT_A (4A, based on fuse rating)
-   *   - This value assumes a specific shunt resistor configuration
-   *   - To change: Update TPS_MAX_CURRENT_A #define at top of file
-   *   - Reference: TPS2482 datasheet, Calibration Register (05h)
-   */
-  double voltage_v = voltage_raw * TPS2482_CONV_VBUS;
-  double voltage_mv = voltage_v * 1000.0; /* Convert V to mV */
-
-  /* Saturate voltage to uint16_t range to prevent overflow */
-  if (voltage_mv > 65535.0)
+  /* Initialize library and register device on first call */
+  if (pcu_tps_handle == NULL)
   {
-    TPS_MESSAGE.bus_voltage_mv = 65535;
-  }
-  else if (voltage_mv < 0.0)
-  {
-    TPS_MESSAGE.bus_voltage_mv = 0;
-  }
-  else
-  {
-    TPS_MESSAGE.bus_voltage_mv = (uint16_t)voltage_mv;
+    FEB_TPS_Init(NULL);
+
+    FEB_TPS_DeviceConfig_t cfg = {
+        .hi2c = hi2c,
+        .i2c_addr = i2c_addresses[0],
+        .r_shunt_ohms = TPS_SHUNT_RESISTOR_OHMS,
+        .i_max_amps = TPS_MAX_CURRENT_A,
+        .config_reg = FEB_TPS_CONFIG_DEFAULT,
+        .name = "PCU",
+    };
+
+    FEB_TPS_Status_t status = FEB_TPS_DeviceRegister(&cfg, &pcu_tps_handle);
+    if (status != FEB_TPS_OK)
+    {
+      LOG_E(TAG_TPS, "TPS init failed: %s", FEB_TPS_StatusToString(status));
+      return;
+    }
   }
 
-  double current_lsb = TPS2482_CURRENT_LSB_EQ(TPS_MAX_CURRENT_A);
-  double current_a = SIGN_MAGNITUDE(current_raw) * current_lsb;
-  double current_ma = current_a * 1000.0; /* Convert A to mA */
+  /* Poll using the new library */
+  FEB_TPS_MeasurementScaled_t scaled;
+  FEB_TPS_Status_t status = FEB_TPS_PollScaled(pcu_tps_handle, &scaled);
 
-  /* Saturate current to int16_t range to prevent overflow */
-  if (current_ma > 32767.0)
+  if (status != FEB_TPS_OK)
   {
-    TPS_MESSAGE.current_ma = 32767;
-  }
-  else if (current_ma < -32768.0)
-  {
-    TPS_MESSAGE.current_ma = -32768;
-  }
-  else
-  {
-    TPS_MESSAGE.current_ma = (int16_t)current_ma;
+    LOG_E(TAG_TPS, "TPS poll failed: %s", FEB_TPS_StatusToString(status));
+    return;
   }
 
-  /* Calculate shunt voltage in microvolts */
-  TPS_MESSAGE.shunt_voltage_uv = (int32_t)(TPS_MESSAGE.current_ma * TPS_SHUNT_RESISTOR_OHMS * 1000.0);
+  /* Update message structure */
+  TPS_MESSAGE.bus_voltage_mv = scaled.bus_voltage_mv;
+  TPS_MESSAGE.current_ma = scaled.current_ma;
+  TPS_MESSAGE.shunt_voltage_uv = scaled.shunt_voltage_uv;
 
-  LOG_D(TAG_TPS, "TPS update: Voltage=%d mV (%.2fV), Current=%d mA (%.2fA) [raw: V=0x%04X, I=0x%04X]",
-        TPS_MESSAGE.bus_voltage_mv, voltage_v, TPS_MESSAGE.current_ma, current_a, voltage_raw, current_raw);
+  LOG_D(TAG_TPS, "TPS update: Voltage=%d mV, Current=%d mA", TPS_MESSAGE.bus_voltage_mv, TPS_MESSAGE.current_ma);
 }
 
 void FEB_CAN_TPS_Transmit(void)

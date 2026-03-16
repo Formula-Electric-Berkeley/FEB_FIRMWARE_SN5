@@ -29,7 +29,6 @@
 #include "FEB_Task_TPS.h"
 #include "FEB_Main.h"
 #include "i2c.h"
-#include "TPS2482.h"
 #include "feb_uart.h"
 #include "feb_console.h"
 #include <stdio.h>

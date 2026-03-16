@@ -7,8 +7,8 @@
  */
 
 #include "FEB_Task_TPS.h"
-#include "TPS2482.h"
-#include "i2c.h"
+#include "i2c.h" /* Must be before feb_tps.h for HAL types */
+#include "feb_tps.h"
 #include "cmsis_os.h"
 #include "feb_uart_log.h"
 #include <stdbool.h>
@@ -16,11 +16,11 @@
 #define TAG_TPS "[TPS]"
 
 /* TPS2482 configuration */
-#define BMS_TPS_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_GND, TPS2482_I2C_ADDR_GND)
-#define BMS_TPS_R_SHUNT 0.002 /* 2 mOhm shunt resistor (WSR52L000FEA) */
-#define BMS_TPS_I_MAX 5.0     /* 5A fuse max */
-#define BMS_TPS_CURRENT_LSB TPS2482_CURRENT_LSB_EQ(BMS_TPS_I_MAX)
-#define BMS_TPS_CAL TPS2482_CAL_EQ(BMS_TPS_CURRENT_LSB, BMS_TPS_R_SHUNT)
+#define BMS_TPS_R_SHUNT 0.002f /* 2 mOhm shunt resistor (WSR52L000FEA) */
+#define BMS_TPS_I_MAX 5.0f     /* 5A fuse max */
+
+/* Device handle */
+static FEB_TPS_Handle_t bms_tps_handle = NULL;
 
 /* ===== StartTPSTask =====
    Low-priority task for TPS2482 power monitoring
@@ -30,38 +30,54 @@ void StartTPSTask(void *argument)
 {
   (void)argument;
 
-  uint8_t addr = BMS_TPS_ADDR;
-  TPS2482_Configuration config = {.config = TPS2482_CONFIG_DEFAULT, .cal = BMS_TPS_CAL, .mask = 0, .alert_lim = 0};
-  uint16_t id = 0;
-  bool init_result = false;
+  /* Initialize TPS library */
+  FEB_TPS_Init(NULL);
 
-  LOG_I(TAG_TPS, "Initializing TPS2482 at address 0x%02X", addr);
+  /* Configure and register the TPS2482 device */
+  FEB_TPS_DeviceConfig_t cfg = {
+      .hi2c = &hi2c1,
+      .i2c_addr = FEB_TPS_ADDR(FEB_TPS_PIN_GND, FEB_TPS_PIN_GND),
+      .r_shunt_ohms = BMS_TPS_R_SHUNT,
+      .i_max_amps = BMS_TPS_I_MAX,
+      .config_reg = FEB_TPS_CONFIG_DEFAULT,
+      .name = "BMS",
+  };
 
-  TPS2482_Init(&hi2c1, &addr, &config, &id, &init_result, 1);
+  LOG_I(TAG_TPS, "Initializing TPS2482 at address 0x%02X", cfg.i2c_addr);
 
-  if (!init_result)
+  FEB_TPS_Status_t status = FEB_TPS_DeviceRegister(&cfg, &bms_tps_handle);
+
+  if (status != FEB_TPS_OK)
   {
-    LOG_W(TAG_TPS, "TPS2482 initialization failed");
+    LOG_W(TAG_TPS, "TPS2482 initialization failed: %s", FEB_TPS_StatusToString(status));
   }
   else
   {
+    uint16_t id = 0;
+    FEB_TPS_ReadID(bms_tps_handle, &id);
     LOG_I(TAG_TPS, "TPS2482 initialized, ID: 0x%04X", id);
   }
 
+  /* Polling loop */
+  FEB_TPS_Measurement_t meas;
+
   for (;;)
   {
-    uint16_t current_raw = 0;
-    uint16_t voltage_raw = 0;
+    if (bms_tps_handle != NULL)
+    {
+      status = FEB_TPS_Poll(bms_tps_handle, &meas);
 
-    TPS2482_Poll_Current(&hi2c1, &addr, &current_raw, 1);
-    TPS2482_Poll_Bus_Voltage(&hi2c1, &addr, &voltage_raw, 1);
-
-    /* Convert to physical units */
-    /* Current: raw * current_LSB (in Amps) */
-    /* Voltage: raw * 1.25mV/LSB = raw * 0.00125 V */
-    (void)((float)((int16_t)current_raw) * BMS_TPS_CURRENT_LSB);
-    (void)((float)voltage_raw * TPS2482_CONV_VBUS);
-    // LOG_D(TAG_TPS, "V=%.2fV I=%.3fA", voltage_V, current_A);
+      if (status == FEB_TPS_OK)
+      {
+        /* Measurement data is now available in meas struct:
+         * - meas.bus_voltage_v (float, in Volts)
+         * - meas.current_a (float, in Amps, correctly sign-converted)
+         * - meas.shunt_voltage_mv (float, in millivolts)
+         * - meas.power_w (float, in Watts)
+         */
+        // LOG_D(TAG_TPS, "V=%.2fV I=%.3fA", meas.bus_voltage_v, meas.current_a);
+      }
+    }
 
     osDelay(pdMS_TO_TICKS(1000)); /* 1 Hz polling */
   }

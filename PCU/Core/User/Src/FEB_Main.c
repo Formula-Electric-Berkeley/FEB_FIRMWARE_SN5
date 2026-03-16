@@ -1,5 +1,4 @@
 #include "FEB_Main.h"
-#include "TPS2482.h"
 #include "main.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -15,35 +14,12 @@ extern DMA_HandleTypeDef hdma_usart2_rx;
 static uint8_t uart_tx_buf[4096];
 static uint8_t uart_rx_buf[256];
 
-/* ===== TPS2482 I2C CONFIGURATION - DISABLED =====
- *
- * Hardware Setup:
- *   - Number of devices: 1
- *   - I2C Address pins: A0=GND, A1=GND
- *   - Resulting 7-bit address: 0x40 (calculated by TPS2482_I2C_ADDR macro)
- *   - Note: STM32 HAL I2C functions expect 7-bit addresses (they handle the R/W bit internally)
- *
- * Address Calculation:
- *   - TPS2482_I2C_ADDR(A1, A0) macro from TPS2482.h
- *   - Base address: 0b1000000 (0x40)
- *   - A1 and A0 pins can be GND (0x00), VCC (0x01), SDA (0x02), or SCL (0x03)
- *   - Current config: Both pins = GND → 0x40
- *
- * TPS2482 Configuration
- * CAL calculation:
- *   - R_shunt = 0.012Ω (12 milliohm)
- *   - I_max = 4A
- *   - Current_LSB = I_max / 2^15 = 4 / 32768 = 0.000122 A/LSB
- *   - CAL = 0.00512 / (Current_LSB × R_shunt) = 0.00512 / (0.000122 × 0.012) = 3495
+/* TPS2482 I2C Configuration
+ * - Address pins: A0=GND, A1=GND → 0x40
+ * - R_shunt = 0.012Ω (12 milliohm)
+ * - I_max = 4A
  */
-// #define NUM_TPS_DEVICES 1
-// static uint8_t tps_i2c_address = TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_GND, TPS2482_I2C_ADDR_GND);
-// static TPS2482_Configuration tps_config = {
-//     .config = TPS2482_CONFIG_DEFAULT,
-//     .cal = 3495,
-//     .mask = 0x0000,
-//     .alert_lim = 0x0000
-// };
+static uint8_t tps_i2c_address;
 
 void FEB_Main_Setup(void)
 {
@@ -102,24 +78,10 @@ void FEB_Main_Setup(void)
   FEB_CAN_BMS_Init();
   LOG_I(TAG_MAIN, "BMS initialized");
 
-  // TPS2482 I2C initialization - DISABLED (causing CAN queue overflow)
-  // uint16_t tps_device_id = 0;
-  // bool tps_init_success = false;
-  // TPS2482_Init(&hi2c1, &tps_i2c_address, &tps_config, &tps_device_id, &tps_init_success, NUM_TPS_DEVICES);
-  // FEB_CAN_TPS_Init();
-  //
-  // if (tps_init_success)
-  // {
-  //   LOG_I(TAG_MAIN, "TPS2482 initialized successfully");
-  //   LOG_I(TAG_MAIN, "  Device ID: 0x%04X", tps_device_id);
-  //   LOG_I(TAG_MAIN, "  CAL value: %d (0x%04X) for 4A max, 12mOhm shunt", tps_config.cal, tps_config.cal);
-  //   LOG_I(TAG_MAIN, "  Config: 0x%04X (continuous measurement mode)", tps_config.config);
-  // }
-  // else
-  // {
-  //   LOG_E(TAG_MAIN, "TPS2482 initialization FAILED");
-  //   LOG_E(TAG_MAIN, "  Check: I2C1 pins, pull-ups, TPS2482 power, address (0x%02X)", tps_i2c_address);
-  // }
+  // TPS2482 power monitoring initialization
+  tps_i2c_address = FEB_TPS_ADDR(FEB_TPS_PIN_GND, FEB_TPS_PIN_GND); // 0x40
+  FEB_CAN_TPS_Init();
+  LOG_I(TAG_MAIN, "TPS initialized (0x%02X)", tps_i2c_address);
 
   LOG_I(TAG_MAIN, "=== Setup Complete ===");
 
@@ -130,9 +92,15 @@ void FEB_Main_Loop(void)
 {
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
 
-  // TPS monitoring DISABLED (causing CAN queue overflow)
-  // FEB_CAN_TPS_Update(&hi2c1, &tps_i2c_address, NUM_TPS_DEVICES);
-  // FEB_CAN_TPS_Transmit();
+  // TPS power monitoring (rate limited to 10Hz to prevent CAN queue overflow)
+  static uint32_t last_tps_tick = 0;
+  uint32_t now = HAL_GetTick();
+  if (now - last_tps_tick >= 100)
+  {
+    last_tps_tick = now;
+    FEB_CAN_TPS_Update(&hi2c1, &tps_i2c_address, 1);
+    FEB_CAN_TPS_Transmit();
+  }
 
   // CAN TX processing
   FEB_CAN_TX_Process();
@@ -162,6 +130,4 @@ void FEB_1ms_Callback(void)
     FEB_CAN_Diagnostics_TransmitBrakeData();
     FEB_CAN_Diagnostics_TransmitAPPSData();
   }
-
-  // NOTE: TPS update is handled in FEB_Main_Loop (uses blocking I2C, cannot run in ISR)
 }

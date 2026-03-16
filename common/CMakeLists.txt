@@ -12,3 +12,6 @@ add_subdirectory(FEB_Console_Library)
 
 # CAN Library - FreeRTOS-safe CAN communication with registration/callback pattern
 add_subdirectory(FEB_CAN_Library)
+
+# TPS Library - TPS2482 power monitoring with FreeRTOS support
+add_subdirectory(FEB_TPS_Library)

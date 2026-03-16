@@ -4,11 +4,8 @@
 #include "stm32f4xx_hal.h"
 #include "feb_can_lib.h"
 #include "feb_can.h"
-#include "TPS2482.h"
+#include "feb_tps.h"
 #include <string.h>
-
-/* Conversion helper macros - TPS2482 conversion macros are in TPS2482.h */
-#define SIGN_MAGNITUDE(n) ((int16_t)((((n >> 15) & 0x01) == 1) ? -(n & 0x7FFF) : (n & 0x7FFF)))
 
 /* Message structure */
 typedef struct

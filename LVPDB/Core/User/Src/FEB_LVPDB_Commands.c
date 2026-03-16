@@ -9,8 +9,8 @@
 #include "FEB_LVPDB_Commands.h"
 #include "FEB_CAN_PingPong.h"
 #include "FEB_Main.h"
-#include "TPS2482.h"
 #include "feb_console.h"
+#include "feb_tps.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -75,7 +75,7 @@ static int get_chip_index(const char *name)
 }
 
 /* ============================================================================
- * Register Name/Address Mapping
+ * Register Name/Address Mapping (using FEB_TPS_Library constants)
  * ============================================================================ */
 
 typedef struct
@@ -86,9 +86,11 @@ typedef struct
 } RegInfo_t;
 
 static const RegInfo_t registers[] = {
-    {"config", TPS2482_CONFIG, true}, {"shunt", TPS2482_SHUNT_VOLT, false}, {"bus", TPS2482_BUS_VOLT, false},
-    {"power", TPS2482_POWER, false},  {"current", TPS2482_CURRENT, false},  {"cal", TPS2482_CAL, true},
-    {"mask", TPS2482_MASK, true},     {"alert", TPS2482_ALERT_LIM, true},   {"id", TPS2482_ID, false},
+    {"config", FEB_TPS_REG_CONFIG, true},    {"shunt", FEB_TPS_REG_SHUNT_VOLT, false},
+    {"bus", FEB_TPS_REG_BUS_VOLT, false},    {"power", FEB_TPS_REG_POWER, false},
+    {"current", FEB_TPS_REG_CURRENT, false}, {"cal", FEB_TPS_REG_CAL, true},
+    {"mask", FEB_TPS_REG_MASK, true},        {"alert", FEB_TPS_REG_ALERT_LIM, true},
+    {"id", FEB_TPS_REG_ID, false},
 };
 
 #define NUM_REGISTERS (sizeof(registers) / sizeof(registers[0]))
@@ -105,6 +107,36 @@ static const RegInfo_t *get_register_info(const char *name)
       return &registers[i];
   }
   return NULL;
+}
+
+/* ============================================================================
+ * I2C Helper Functions (for direct register access in debug commands)
+ * ============================================================================ */
+
+/**
+ * @brief Read a 16-bit register from TPS2482 via I2C
+ */
+static HAL_StatusTypeDef tps_read_reg(uint8_t i2c_addr, uint8_t reg, uint16_t *value)
+{
+  uint8_t buf[2];
+  HAL_StatusTypeDef status =
+      HAL_I2C_Mem_Read(&hi2c1, (uint16_t)(i2c_addr << 1), reg, I2C_MEMADD_SIZE_8BIT, buf, 2, 100);
+  if (status == HAL_OK)
+  {
+    *value = ((uint16_t)buf[0] << 8) | buf[1]; // TPS2482 sends MSB first
+  }
+  return status;
+}
+
+/**
+ * @brief Write a 16-bit register to TPS2482 via I2C
+ */
+static HAL_StatusTypeDef tps_write_reg(uint8_t i2c_addr, uint8_t reg, uint16_t value)
+{
+  uint8_t buf[2];
+  buf[0] = (uint8_t)(value >> 8); // MSB first
+  buf[1] = (uint8_t)(value & 0xFF);
+  return HAL_I2C_Mem_Write(&hi2c1, (uint16_t)(i2c_addr << 1), reg, I2C_MEMADD_SIZE_8BIT, buf, 2, 100);
 }
 
 /* ============================================================================
@@ -139,10 +171,16 @@ static void cmd_status(void)
   GPIO_PinState en_states[NUM_TPS2482 - 1];
 
   // Read power-good pins
-  TPS2482_GPIO_Read(tps2482_pg_ports, tps2482_pg_pins, pg_states, NUM_TPS2482);
+  for (int i = 0; i < NUM_TPS2482; i++)
+  {
+    pg_states[i] = HAL_GPIO_ReadPin(tps2482_pg_ports[i], tps2482_pg_pins[i]);
+  }
 
   // Read enable pins (for chips 1-6, EN pin array is 0-5)
-  TPS2482_GPIO_Read(tps2482_en_ports, tps2482_en_pins, en_states, NUM_TPS2482 - 1);
+  for (int i = 0; i < NUM_TPS2482 - 1; i++)
+  {
+    en_states[i] = HAL_GPIO_ReadPin(tps2482_en_ports[i], tps2482_en_pins[i]);
+  }
 
   FEB_Console_Printf("TPS2482 Status:\r\n");
   FEB_Console_Printf("%-3s %-8s %-4s %-3s %8s %8s\r\n", "ID", "Name", "EN", "PG", "Vbus(mV)", "I(mA)");
@@ -188,12 +226,12 @@ static void cmd_enable(int argc, char *argv[])
 
   // Enable pin index is chip index - 1
   int en_idx = idx - 1;
-  uint8_t en_state = 1;
-  bool result;
 
-  TPS2482_Enable(&tps2482_en_ports[en_idx], &tps2482_en_pins[en_idx], &en_state, &result, 1);
+  HAL_GPIO_WritePin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx], GPIO_PIN_SET);
 
-  if (result)
+  // Read back to verify
+  GPIO_PinState state = HAL_GPIO_ReadPin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx]);
+  if (state == GPIO_PIN_SET)
   {
     FEB_Console_Printf("%s enabled\r\n", chip_names[idx]);
   }
@@ -226,12 +264,12 @@ static void cmd_disable(int argc, char *argv[])
 
   // Enable pin index is chip index - 1
   int en_idx = idx - 1;
-  uint8_t en_state = 0;
-  bool result;
 
-  TPS2482_Enable(&tps2482_en_ports[en_idx], &tps2482_en_pins[en_idx], &en_state, &result, 1);
+  HAL_GPIO_WritePin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx], GPIO_PIN_RESET);
 
-  if (!result)
+  // Read back to verify
+  GPIO_PinState state = HAL_GPIO_ReadPin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx]);
+  if (state == GPIO_PIN_RESET)
   {
     FEB_Console_Printf("%s disabled\r\n", chip_names[idx]);
   }
@@ -265,9 +303,16 @@ static void cmd_read(int argc, char *argv[])
   }
 
   uint16_t value;
-  TPS2482_Get_Register(&hi2c1, &tps2482_i2c_addresses[idx], reg->addr, &value, 1);
+  HAL_StatusTypeDef status = tps_read_reg(tps2482_i2c_addresses[idx], reg->addr, &value);
 
-  FEB_Console_Printf("%s %s = 0x%04X (%u)\r\n", chip_names[idx], reg->name, value, value);
+  if (status == HAL_OK)
+  {
+    FEB_Console_Printf("%s %s = 0x%04X (%u)\r\n", chip_names[idx], reg->name, value, value);
+  }
+  else
+  {
+    FEB_Console_Printf("Error: I2C read failed (status=%d)\r\n", status);
+  }
 }
 
 static void cmd_write(int argc, char *argv[])
@@ -308,13 +353,24 @@ static void cmd_write(int argc, char *argv[])
     return;
   }
 
-  TPS2482_Write_Register(&hi2c1, &tps2482_i2c_addresses[idx], reg->addr, &value, 1);
+  HAL_StatusTypeDef status = tps_write_reg(tps2482_i2c_addresses[idx], reg->addr, value);
+  if (status != HAL_OK)
+  {
+    FEB_Console_Printf("Error: I2C write failed (status=%d)\r\n", status);
+    return;
+  }
 
   // Read back to verify
   uint16_t readback;
-  TPS2482_Get_Register(&hi2c1, &tps2482_i2c_addresses[idx], reg->addr, &readback, 1);
-
-  FEB_Console_Printf("%s %s written: 0x%04X, readback: 0x%04X\r\n", chip_names[idx], reg->name, value, readback);
+  status = tps_read_reg(tps2482_i2c_addresses[idx], reg->addr, &readback);
+  if (status == HAL_OK)
+  {
+    FEB_Console_Printf("%s %s written: 0x%04X, readback: 0x%04X\r\n", chip_names[idx], reg->name, value, readback);
+  }
+  else
+  {
+    FEB_Console_Printf("%s %s written: 0x%04X (readback failed)\r\n", chip_names[idx], reg->name, value);
+  }
 }
 
 /* ============================================================================
