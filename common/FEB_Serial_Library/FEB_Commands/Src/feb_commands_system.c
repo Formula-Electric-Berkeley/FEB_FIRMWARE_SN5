@@ -1,14 +1,28 @@
 /**
  ******************************************************************************
- * @file           : feb_console_commands.c
- * @brief          : FEB Console Built-in Command Implementations
+ * @file           : feb_commands_system.c
+ * @brief          : FEB System Command Implementations
  * @author         : Formula Electric @ Berkeley
+ ******************************************************************************
+ * @details
+ *
+ * Implements default system commands:
+ *   - echo   : Print arguments
+ *   - help   : Show available commands
+ *   - version: Show firmware build info
+ *   - uptime : Show system uptime
+ *   - reboot : Perform software reset
+ *   - log    : Get/set log level
+ *
  ******************************************************************************
  */
 
-#include "feb_console_commands.h"
+#include "feb_commands.h"
+#include "feb_commands_system.h"
 #include "feb_console.h"
-#include "feb_uart.h"
+#include "feb_log.h"
+
+/* HAL for HAL_GetTick and NVIC_SystemReset */
 #include "main.h"
 
 /* ============================================================================
@@ -29,37 +43,37 @@ static int strcasecmp_local(const char *a, const char *b);
  * Command Descriptors
  * ============================================================================ */
 
-const FEB_Console_Cmd_t feb_console_cmd_echo = {
+const FEB_Console_Cmd_t feb_cmd_echo = {
     .name = "echo",
     .help = "Print arguments: echo|text to print",
     .handler = cmd_echo,
 };
 
-const FEB_Console_Cmd_t feb_console_cmd_help = {
+const FEB_Console_Cmd_t feb_cmd_help = {
     .name = "help",
     .help = "Show commands: help or help|command",
     .handler = cmd_help,
 };
 
-const FEB_Console_Cmd_t feb_console_cmd_version = {
+const FEB_Console_Cmd_t feb_cmd_version = {
     .name = "version",
     .help = "Show firmware version and build info",
     .handler = cmd_version,
 };
 
-const FEB_Console_Cmd_t feb_console_cmd_uptime = {
+const FEB_Console_Cmd_t feb_cmd_uptime = {
     .name = "uptime",
     .help = "Show system uptime in milliseconds",
     .handler = cmd_uptime,
 };
 
-const FEB_Console_Cmd_t feb_console_cmd_reboot = {
+const FEB_Console_Cmd_t feb_cmd_reboot = {
     .name = "reboot",
     .help = "Perform software reset",
     .handler = cmd_reboot,
 };
 
-const FEB_Console_Cmd_t feb_console_cmd_log = {
+const FEB_Console_Cmd_t feb_cmd_log = {
     .name = "log",
     .help = "Set log level: log|error|warn|info|debug|trace",
     .handler = cmd_log,
@@ -69,14 +83,14 @@ const FEB_Console_Cmd_t feb_console_cmd_log = {
  * Registration Function
  * ============================================================================ */
 
-void FEB_Console_RegisterBuiltins(void)
+void FEB_Commands_RegisterSystem(void)
 {
-  FEB_Console_Register(&feb_console_cmd_echo);
-  FEB_Console_Register(&feb_console_cmd_help);
-  FEB_Console_Register(&feb_console_cmd_version);
-  FEB_Console_Register(&feb_console_cmd_uptime);
-  FEB_Console_Register(&feb_console_cmd_reboot);
-  FEB_Console_Register(&feb_console_cmd_log);
+  FEB_Console_Register(&feb_cmd_echo);
+  FEB_Console_Register(&feb_cmd_help);
+  FEB_Console_Register(&feb_cmd_version);
+  FEB_Console_Register(&feb_cmd_uptime);
+  FEB_Console_Register(&feb_cmd_reboot);
+  FEB_Console_Register(&feb_cmd_log);
 }
 
 /* ============================================================================
@@ -196,7 +210,10 @@ static void cmd_reboot(int argc, char *argv[])
   (void)argv;
 
   FEB_Console_Printf("Rebooting...\r\n");
-  FEB_UART_Flush(FEB_UART_INSTANCE_1, 100); /* Wait for output to complete */
+
+  /* Flush console output before reset */
+  FEB_Console_Flush(100);
+
   NVIC_SystemReset();
 }
 
@@ -206,40 +223,40 @@ static void cmd_log(int argc, char *argv[])
   {
     /* Show current level */
     const char *level_names[] = {"none", "error", "warn", "info", "debug", "trace"};
-    FEB_UART_LogLevel_t level = FEB_UART_GetLogLevel(FEB_UART_INSTANCE_1);
-    if (level <= FEB_UART_LOG_TRACE)
+    FEB_Log_Level_t level = FEB_Log_GetLevel();
+    if (level <= FEB_LOG_TRACE)
     {
       FEB_Console_Printf("Log level: %s\r\n", level_names[level]);
     }
-    FEB_Console_Printf("Usage: log|<error|warn|info|debug|trace>\r\n");
+    FEB_Console_Printf("Usage: log|<error|warn|info|debug|trace|none>\r\n");
     return;
   }
 
   /* Set log level */
-  FEB_UART_LogLevel_t new_level;
+  FEB_Log_Level_t new_level;
   if (strcasecmp_local(argv[1], "error") == 0)
   {
-    new_level = FEB_UART_LOG_ERROR;
+    new_level = FEB_LOG_ERROR;
   }
   else if (strcasecmp_local(argv[1], "warn") == 0)
   {
-    new_level = FEB_UART_LOG_WARN;
+    new_level = FEB_LOG_WARN;
   }
   else if (strcasecmp_local(argv[1], "info") == 0)
   {
-    new_level = FEB_UART_LOG_INFO;
+    new_level = FEB_LOG_INFO;
   }
   else if (strcasecmp_local(argv[1], "debug") == 0)
   {
-    new_level = FEB_UART_LOG_DEBUG;
+    new_level = FEB_LOG_DEBUG;
   }
   else if (strcasecmp_local(argv[1], "trace") == 0)
   {
-    new_level = FEB_UART_LOG_TRACE;
+    new_level = FEB_LOG_TRACE;
   }
   else if (strcasecmp_local(argv[1], "none") == 0)
   {
-    new_level = FEB_UART_LOG_NONE;
+    new_level = FEB_LOG_NONE;
   }
   else
   {
@@ -248,6 +265,6 @@ static void cmd_log(int argc, char *argv[])
     return;
   }
 
-  FEB_UART_SetLogLevel(FEB_UART_INSTANCE_1, new_level);
+  FEB_Log_SetLevel(new_level);
   FEB_Console_Printf("Log level set to: %s\r\n", argv[1]);
 }

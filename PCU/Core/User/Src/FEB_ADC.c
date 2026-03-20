@@ -13,7 +13,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "FEB_ADC.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 extern UART_HandleTypeDef huart2;
 
 /* Private typedef -----------------------------------------------------------*/

@@ -73,6 +73,22 @@ extern "C"
 #endif
 
   /* ============================================================================
+   * Bare-Metal Safety Mode
+   * ============================================================================
+   *
+   * When FreeRTOS is NOT detected and FORCE_BARE_METAL is NOT set:
+   *   - Mutex operations are NO-OPs (safe default for single-threaded use)
+   *
+   * When FORCE_BARE_METAL is explicitly set to 1:
+   *   - Mutex operations use __disable_irq() / __enable_irq() critical sections
+   *   - Use this for bare-metal projects that need ISR protection
+   */
+
+#ifndef FEB_CAN_FORCE_BARE_METAL
+#define FEB_CAN_FORCE_BARE_METAL 0
+#endif
+
+  /* ============================================================================
    * Periodic TX Configuration
    * ============================================================================ */
 

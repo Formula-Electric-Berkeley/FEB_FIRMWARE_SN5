@@ -173,15 +173,21 @@ FEB_TPS_Status_t FEB_TPS_Init(const FEB_TPS_LibConfig_t *config) {
                                  config->log_level : FEB_TPS_LOG_INFO;
     }
 
-    /* Create mutex for FreeRTOS */
-    feb_tps_ctx.i2c_mutex = FEB_TPS_MUTEX_CREATE();
-
 #if FEB_TPS_USE_FREERTOS
-    /* On FreeRTOS, mutex creation can fail if out of memory */
-    if (feb_tps_ctx.i2c_mutex == NULL) {
-        TPS_LOG_E("Mutex creation failed");
-        return FEB_TPS_ERR_NOT_INIT;
+    /* Validate and store user-provided mutexes (NOT created internally) */
+    if (config == NULL || config->data_mutex == NULL || config->i2c_mutex == NULL) {
+        TPS_LOG_E("Required mutexes not provided");
+        return FEB_TPS_ERR_INVALID_ARG;
     }
+    feb_tps_ctx.data_mutex = config->data_mutex;
+    feb_tps_ctx.i2c_mutex = config->i2c_mutex;
+    feb_tps_ctx.poll_interval_ms = (config->poll_interval_ms > 0) ?
+                                    config->poll_interval_ms :
+                                    FEB_TPS_DEFAULT_POLL_INTERVAL_MS;
+    feb_tps_ctx.get_tick_ms = HAL_GetTick; /* Default to HAL_GetTick */
+#else
+    /* Bare-metal: Initialize local mutex storage */
+    feb_tps_ctx.i2c_mutex = 0;
 #endif
 
     feb_tps_ctx.initialized = true;
@@ -207,7 +213,11 @@ void FEB_TPS_DeInit(void) {
         feb_tps_ctx.devices[i].initialized = false;
     }
 
-    FEB_TPS_MUTEX_DELETE(feb_tps_ctx.i2c_mutex);
+    /*
+     * NOTE: We do NOT delete user-provided mutexes.
+     * The user created them in CubeMX/.ioc and owns their lifecycle.
+     * We only clear our references.
+     */
 
     memset(&feb_tps_ctx, 0, sizeof(feb_tps_ctx));
 }
@@ -1128,3 +1138,150 @@ const char *FEB_TPS_GetDeviceName(FEB_TPS_Handle_t handle) {
     FEB_TPS_Device_t *dev = (FEB_TPS_Device_t *)handle;
     return (dev->name != NULL) ? dev->name : "Unknown";
 }
+
+/* ============================================================================
+ * Cached Data API (FreeRTOS Mode Only)
+ * ============================================================================ */
+
+#if FEB_TPS_USE_FREERTOS
+
+float FEB_TPS_GetVoltage(FEB_TPS_Handle_t handle) {
+    if (handle == NULL) {
+        return 0.0f;
+    }
+
+    FEB_TPS_Device_t *dev = (FEB_TPS_Device_t *)handle;
+
+    osMutexAcquire(feb_tps_ctx.data_mutex, osWaitForever);
+    float val = dev->cached_valid ? dev->cached_voltage_v : 0.0f;
+    osMutexRelease(feb_tps_ctx.data_mutex);
+
+    return val;
+}
+
+float FEB_TPS_GetCurrent(FEB_TPS_Handle_t handle) {
+    if (handle == NULL) {
+        return 0.0f;
+    }
+
+    FEB_TPS_Device_t *dev = (FEB_TPS_Device_t *)handle;
+
+    osMutexAcquire(feb_tps_ctx.data_mutex, osWaitForever);
+    float val = dev->cached_valid ? dev->cached_current_a : 0.0f;
+    osMutexRelease(feb_tps_ctx.data_mutex);
+
+    return val;
+}
+
+float FEB_TPS_GetPower(FEB_TPS_Handle_t handle) {
+    if (handle == NULL) {
+        return 0.0f;
+    }
+
+    FEB_TPS_Device_t *dev = (FEB_TPS_Device_t *)handle;
+
+    osMutexAcquire(feb_tps_ctx.data_mutex, osWaitForever);
+    float val = dev->cached_valid ? dev->cached_power_w : 0.0f;
+    osMutexRelease(feb_tps_ctx.data_mutex);
+
+    return val;
+}
+
+uint32_t FEB_TPS_GetLastUpdateTime(FEB_TPS_Handle_t handle) {
+    if (handle == NULL) {
+        return 0;
+    }
+
+    FEB_TPS_Device_t *dev = (FEB_TPS_Device_t *)handle;
+
+    osMutexAcquire(feb_tps_ctx.data_mutex, osWaitForever);
+    uint32_t val = dev->cached_last_update_ms;
+    osMutexRelease(feb_tps_ctx.data_mutex);
+
+    return val;
+}
+
+bool FEB_TPS_IsCacheValid(FEB_TPS_Handle_t handle) {
+    if (handle == NULL) {
+        return false;
+    }
+
+    FEB_TPS_Device_t *dev = (FEB_TPS_Device_t *)handle;
+
+    osMutexAcquire(feb_tps_ctx.data_mutex, osWaitForever);
+    bool val = dev->cached_valid;
+    osMutexRelease(feb_tps_ctx.data_mutex);
+
+    return val;
+}
+
+FEB_TPS_Status_t FEB_TPS_GetCachedData(FEB_TPS_Handle_t handle, FEB_TPS_CachedData_t *data) {
+    if (handle == NULL || data == NULL) {
+        return FEB_TPS_ERR_INVALID_ARG;
+    }
+
+    FEB_TPS_Device_t *dev = (FEB_TPS_Device_t *)handle;
+
+    osMutexAcquire(feb_tps_ctx.data_mutex, osWaitForever);
+    data->voltage_v = dev->cached_voltage_v;
+    data->current_a = dev->cached_current_a;
+    data->power_w = dev->cached_power_w;
+    data->last_update_ms = dev->cached_last_update_ms;
+    data->valid = dev->cached_valid;
+    osMutexRelease(feb_tps_ctx.data_mutex);
+
+    return FEB_TPS_OK;
+}
+
+void FEB_TPS_PollAllDevices(void) {
+    if (!feb_tps_ctx.initialized) {
+        return;
+    }
+
+    uint32_t now = feb_tps_ctx.get_tick_ms ? feb_tps_ctx.get_tick_ms() : 0;
+
+    for (uint8_t i = 0; i < FEB_TPS_MAX_DEVICES; i++) {
+        FEB_TPS_Device_t *dev = &feb_tps_ctx.devices[i];
+        if (!dev->in_use || !dev->initialized) {
+            continue;
+        }
+
+        /* Poll this device */
+        FEB_TPS_Measurement_t meas;
+        FEB_TPS_Status_t status = FEB_TPS_Poll(dev, &meas);
+
+        /* Update cache under data_mutex */
+        osMutexAcquire(feb_tps_ctx.data_mutex, osWaitForever);
+        if (status == FEB_TPS_OK) {
+            dev->cached_voltage_v = meas.bus_voltage_v;
+            dev->cached_current_a = meas.current_a;
+            dev->cached_power_w = meas.power_w;
+            dev->cached_last_update_ms = now;
+            dev->cached_valid = true;
+        }
+        osMutexRelease(feb_tps_ctx.data_mutex);
+    }
+}
+
+/* ============================================================================
+ * Weak Task Function Implementation (FreeRTOS Mode)
+ * ============================================================================ */
+
+/**
+ * @brief Weak default polling task
+ *
+ * Polls all TPS devices periodically and updates cached data.
+ * Override to customize polling behavior.
+ *
+ * @param argument Not used (pass NULL from CubeMX)
+ */
+__attribute__((weak)) void FEB_TPS_PollTaskFunc(void *argument) {
+    (void)argument; /* Unused */
+
+    for (;;) {
+        FEB_TPS_PollAllDevices();
+        osDelay(feb_tps_ctx.poll_interval_ms);
+    }
+}
+
+#endif /* FEB_TPS_USE_FREERTOS */

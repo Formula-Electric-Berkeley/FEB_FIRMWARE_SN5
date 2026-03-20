@@ -12,7 +12,7 @@
 #include "FEB_Main.h"
 #include "main.h"
 #include "feb_uart.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 #include "feb_console.h"
 #include "uart_test_commands.h"
 #include "cmsis_os2.h"
@@ -48,9 +48,6 @@ void FEB_Main_Setup(void)
       .tx_buffer_size = sizeof(uart_tx_buf),
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
-      .log_level = FEB_UART_LOG_DEBUG,
-      .enable_colors = true,
-      .enable_timestamps = true,
       .get_tick_ms = HAL_GetTick,
   };
 
@@ -66,8 +63,18 @@ void FEB_Main_Setup(void)
 
   HAL_UART_Transmit(&huart1, (uint8_t *)"DBG:3-PostUARTInit\r\n", 20, 100);
 
+  /* Initialize logging system */
+  FEB_Log_Config_t log_cfg = {
+      .uart_instance = FEB_UART_INSTANCE_1,
+      .level = FEB_LOG_DEBUG,
+      .colors = true,
+      .timestamps = true,
+      .get_tick_ms = HAL_GetTick,
+  };
+  FEB_Log_Init(&log_cfg);
+
   /* Initialize console (registers built-in commands) */
-  FEB_Console_Init();
+  FEB_Console_Init(true);
 
   HAL_UART_Transmit(&huart1, (uint8_t *)"DBG:4-PostConsole\r\n", 19, 100);
 

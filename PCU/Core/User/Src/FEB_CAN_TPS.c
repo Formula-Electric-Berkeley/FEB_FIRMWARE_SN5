@@ -1,5 +1,5 @@
 #include "FEB_CAN_TPS.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 #include <stdint.h>
 
 /* TPS2482 Configuration */

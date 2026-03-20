@@ -10,7 +10,7 @@
 
 #include "FEB_Commands.h"
 #include "feb_console.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 #include "FEB_ADBMS6830B.h"
 #include "FEB_CAN_IVT.h"
 #include "FEB_CAN_PingPong.h"

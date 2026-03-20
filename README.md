@@ -417,15 +417,14 @@ common/
     gen/                    # Generated C code (feb_can.c, feb_can.h)
     *_messages.py           # Python message definitions per board
     generate_can.sh         # Generation script
-  FEB_UART_Library/         # Printf/logging with DMA
-    Inc/                    # Headers (feb_uart.h, feb_uart_log.h, etc.)
-    Src/                    # Implementation (feb_uart.c)
-  FEB_Console_Library/      # CLI interface
-    Inc/                    # Headers (feb_console.h, feb_console_commands.h)
-    Src/                    # Implementation (feb_console.c, feb_console_commands.c)
+  FEB_Serial_Library/       # UART, Logging, and Console
+    FEB_UART/               # DMA UART driver (feb_uart.h)
+    FEB_Log/                # Logging system (feb_log.h)
+    FEB_Console/            # CLI interface (feb_console.h)
+    FEB_Commands/           # Default commands (feb_commands.h)
 ```
 
-See [FEB_UART_Library/README.md](common/FEB_UART_Library/README.md) and [FEB_Console_Library/README.md](common/FEB_Console_Library/README.md) for detailed usage documentation.
+See [FEB_Serial_Library/README.md](common/FEB_Serial_Library/README.md) for detailed usage documentation.
 
 ### Board Directory Structure
 

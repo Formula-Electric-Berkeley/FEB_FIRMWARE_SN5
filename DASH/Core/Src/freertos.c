@@ -91,10 +91,35 @@ const osThreadAttr_t DASHTaskTx_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
+/* Definitions for canTxQueue */
+osMessageQueueId_t canTxQueueHandle;
+const osMessageQueueAttr_t canTxQueue_attributes = {
+  .name = "canTxQueue"
+};
+/* Definitions for canRxQueue */
+osMessageQueueId_t canRxQueueHandle;
+const osMessageQueueAttr_t canRxQueue_attributes = {
+  .name = "canRxQueue"
+};
 /* Definitions for FEB_I2C_Mutex */
 osMutexId_t FEB_I2C_MutexHandle;
 const osMutexAttr_t FEB_I2C_Mutex_attributes = {
   .name = "FEB_I2C_Mutex"
+};
+/* Definitions for canTxMutex */
+osMutexId_t canTxMutexHandle;
+const osMutexAttr_t canTxMutex_attributes = {
+  .name = "canTxMutex"
+};
+/* Definitions for canRxMutex */
+osMutexId_t canRxMutexHandle;
+const osMutexAttr_t canRxMutex_attributes = {
+  .name = "canRxMutex"
+};
+/* Definitions for canTxMailboxSem */
+osSemaphoreId_t canTxMailboxSemHandle;
+const osSemaphoreAttr_t canTxMailboxSem_attributes = {
+  .name = "canTxMailboxSem"
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -169,9 +194,19 @@ void MX_FREERTOS_Init(void) {
   /* creation of FEB_I2C_Mutex */
   FEB_I2C_MutexHandle = osMutexNew(&FEB_I2C_Mutex_attributes);
 
+  /* creation of canTxMutex */
+  canTxMutexHandle = osMutexNew(&canTxMutex_attributes);
+
+  /* creation of canRxMutex */
+  canRxMutexHandle = osMutexNew(&canRxMutex_attributes);
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
+
+  /* Create the semaphores(s) */
+  /* creation of canTxMailboxSem */
+  canTxMailboxSemHandle = osSemaphoreNew(3, 3, &canTxMailboxSem_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -180,6 +215,13 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
+
+  /* Create the queue(s) */
+  /* creation of canTxQueue */
+  canTxQueueHandle = osMessageQueueNew (16, sizeof(uint8_t), &canTxQueue_attributes);
+
+  /* creation of canRxQueue */
+  canRxQueueHandle = osMessageQueueNew (32, sizeof(uint8_t), &canRxQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */

@@ -20,7 +20,7 @@ The library supports injectable logging via a user-provided callback function. T
 
 ```c
 #include "feb_tps.h"
-#include "feb_uart_log.h"  // For LOG_* macros
+#include "feb_log.h"  // For LOG_* macros
 
 // Callback to route TPS messages to FEB_UART
 static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg) {

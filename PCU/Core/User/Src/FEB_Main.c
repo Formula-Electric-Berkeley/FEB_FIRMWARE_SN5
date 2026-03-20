@@ -41,15 +41,22 @@ void FEB_Main_Setup(void)
       .tx_buffer_size = sizeof(uart_tx_buf),
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
-      .log_level = FEB_UART_LOG_INFO,
-      .enable_colors = true,
-      .enable_timestamps = true,
       .get_tick_ms = HAL_GetTick,
   };
   FEB_UART_Init(FEB_UART_INSTANCE_1, &uart_cfg);
 
+  // Initialize logging system
+  FEB_Log_Config_t log_cfg = {
+      .uart_instance = FEB_UART_INSTANCE_1,
+      .level = FEB_LOG_INFO,
+      .colors = true,
+      .timestamps = true,
+      .get_tick_ms = HAL_GetTick,
+  };
+  FEB_Log_Init(&log_cfg);
+
   // Initialize console (registers built-in commands: help, version, uptime, reboot, log)
-  FEB_Console_Init();
+  FEB_Console_Init(true);
 
   // Register PCU-specific commands
   PCU_RegisterCommands();

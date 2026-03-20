@@ -9,10 +9,9 @@
  * Provides a comprehensive UART interface with:
  *   - Multi-instance support (up to FEB_UART_MAX_INSTANCES UARTs)
  *   - DMA-based non-blocking TX/RX
+ *   - Line mode (console) and Binary mode (device-to-device) with framing
  *   - FreeRTOS-optional thread safety
  *   - Printf/scanf redirection with buffering
- *   - Verbosity levels, ANSI colors, timestamps
- *   - Bidirectional command parsing
  *   - Optional FreeRTOS queue support
  *
  * Usage:
@@ -32,10 +31,6 @@
  *     .tx_buffer_size = sizeof(my_tx_buf),
  *     .rx_buffer = my_rx_buf,
  *     .rx_buffer_size = sizeof(my_rx_buf),
- *     .log_level = FEB_UART_LOG_DEBUG,
- *     .enable_colors = true,
- *     .enable_timestamps = true,
- *     .get_tick_ms = HAL_GetTick,
  *   };
  *   FEB_UART_Init(FEB_UART_INSTANCE_1, &cfg);
  *
@@ -71,6 +66,44 @@ extern "C"
   typedef struct __DMA_HandleTypeDef DMA_HandleTypeDef;
 
   /* ============================================================================
+   * FreeRTOS Sync Primitive Types (forward declarations)
+   * ============================================================================
+   *
+   * These are forward declared to avoid requiring FreeRTOS headers in user code.
+   * In FreeRTOS mode, these map to osMutexId_t, osSemaphoreId_t, osMessageQueueId_t.
+   * In bare-metal mode, these are unused but kept for API consistency.
+   */
+#if FEB_UART_USE_FREERTOS
+#include "cmsis_os2.h"
+  typedef osMutexId_t FEB_UART_MutexHandle_t;
+  typedef osSemaphoreId_t FEB_UART_SemaphoreHandle_t;
+  typedef osMessageQueueId_t FEB_UART_QueueHandle_t;
+#else
+typedef void *FEB_UART_MutexHandle_t;
+typedef void *FEB_UART_SemaphoreHandle_t;
+typedef void *FEB_UART_QueueHandle_t;
+#endif
+
+  /* ============================================================================
+   * Error Codes
+   * ============================================================================ */
+
+  /**
+   * @brief UART library error codes
+   */
+  typedef enum
+  {
+    FEB_UART_OK = 0,                /**< Success */
+    FEB_UART_ERR_INVALID_ARG = -1,  /**< Invalid argument */
+    FEB_UART_ERR_NOT_INIT = -2,     /**< Instance not initialized */
+    FEB_UART_ERR_TIMEOUT = -3,      /**< Operation timeout */
+    FEB_UART_ERR_BUFFER_FULL = -4,  /**< TX buffer full */
+    FEB_UART_ERR_NO_MUTEX = -5,     /**< Required mutex not provided (FreeRTOS) */
+    FEB_UART_ERR_NO_SEMAPHORE = -6, /**< Required semaphore not provided (FreeRTOS) */
+    FEB_UART_ERR_NO_QUEUE = -7,     /**< Required queue not provided (FreeRTOS) */
+  } FEB_UART_Error_t;
+
+  /* ============================================================================
    * Instance Enumeration
    * ============================================================================ */
 
@@ -88,25 +121,48 @@ extern "C"
   } FEB_UART_Instance_t;
 
   /* ============================================================================
-   * Log Level Enumeration
+   * Operating Mode Enumeration
    * ============================================================================ */
 
   /**
-   * @brief UART log verbosity levels
+   * @brief UART operating modes
    *
-   * Lower values = higher priority. Messages are filtered based on runtime
-   * log level setting. Compile-time log level (FEB_UART_COMPILE_LOG_LEVEL)
-   * can eliminate code for higher levels entirely.
+   * LINE mode: Line-based reception with callbacks on \\r\\n
+   * BINARY mode: Raw byte reception with optional framing
    */
   typedef enum
   {
-    FEB_UART_LOG_NONE = 0,  /**< No logging output */
-    FEB_UART_LOG_ERROR = 1, /**< Critical errors only */
-    FEB_UART_LOG_WARN = 2,  /**< Warnings and errors */
-    FEB_UART_LOG_INFO = 3,  /**< Informational messages */
-    FEB_UART_LOG_DEBUG = 4, /**< Debug-level output */
-    FEB_UART_LOG_TRACE = 5, /**< Verbose trace output */
-  } FEB_UART_LogLevel_t;
+    FEB_UART_MODE_LINE = 0,  /**< Line-based mode (callback on \\r\\n) */
+    FEB_UART_MODE_BINARY = 1 /**< Binary mode (raw bytes or framed packets) */
+  } FEB_UART_Mode_t;
+
+  /* ============================================================================
+   * Framing Configuration (for Binary mode)
+   * ============================================================================ */
+
+  /**
+   * @brief Frame configuration for binary mode
+   *
+   * When enabled, the UART library will detect and extract frames
+   * delimited by start/end bytes, with optional byte stuffing (escaping).
+   *
+   * Example (HDLC-style):
+   *   .enable_framing = true,
+   *   .start_delimiter = 0x7E,
+   *   .end_delimiter = 0x7E,
+   *   .escape_enabled = true,
+   *   .escape_char = 0x7D,
+   *   .max_frame_size = 256,
+   */
+  typedef struct
+  {
+    bool enable_framing;     /**< Enable frame detection */
+    uint8_t start_delimiter; /**< Frame start byte (e.g., 0x7E) */
+    uint8_t end_delimiter;   /**< Frame end byte (can be same as start) */
+    bool escape_enabled;     /**< Enable byte stuffing */
+    uint8_t escape_char;     /**< Escape character (e.g., 0x7D) */
+    uint16_t max_frame_size; /**< Maximum frame size */
+  } FEB_UART_FramingConfig_t;
 
   /* ============================================================================
    * Configuration Structure
@@ -117,6 +173,15 @@ extern "C"
    *
    * All pointers to buffers and handles must remain valid for the lifetime
    * of the library. Buffers are user-provided to allow static allocation.
+   *
+   * FreeRTOS Mode (FEB_UART_USE_FREERTOS == 1):
+   *   - tx_mutex is REQUIRED (created in CubeMX .ioc, passed here)
+   *   - tx_complete_sem is REQUIRED for blocking TX operations
+   *   - rx_queue/tx_queue are optional (if queue mode enabled)
+   *
+   * Bare-Metal Mode (FEB_UART_USE_FREERTOS == 0):
+   *   - Sync primitive fields are ignored
+   *   - Set FEB_UART_FORCE_BARE_METAL=1 if ISR protection is needed
    */
   typedef struct
   {
@@ -135,18 +200,41 @@ extern "C"
     uint8_t *rx_buffer;    /**< Pointer to RX circular DMA buffer */
     size_t rx_buffer_size; /**< RX buffer size in bytes (recommend 256+) */
 
-    /* Logging configuration */
-    FEB_UART_LogLevel_t log_level; /**< Initial runtime log level */
-    bool enable_colors;            /**< Enable ANSI color codes in output */
-    bool enable_timestamps;        /**< Prefix messages with [timestamp_ms] */
-
     /* Optional: Timestamp source (defaults to HAL_GetTick if NULL) */
     uint32_t (*get_tick_ms)(void); /**< Function returning millisecond tick */
 
-#if FEB_UART_ENABLE_QUEUES
-    /* Queue configuration (FreeRTOS only) */
+#if FEB_UART_USE_FREERTOS
+    /* ========================================================================
+     * REQUIRED Sync Primitives (FreeRTOS mode)
+     * ========================================================================
+     *
+     * These MUST be created by the user (typically via CubeMX .ioc) and passed
+     * to this config. The library does NOT create these internally.
+     *
+     * Init will return FEB_UART_ERR_NO_MUTEX/SEMAPHORE if required fields are NULL.
+     */
+
+    /** @brief TX mutex - REQUIRED. Protects TX buffer access. Create in CubeMX. */
+    FEB_UART_MutexHandle_t tx_mutex;
+
+    /** @brief TX complete semaphore - REQUIRED. Binary semaphore for DMA completion. */
+    FEB_UART_SemaphoreHandle_t tx_complete_sem;
+
+    /* ========================================================================
+     * Optional Queue Configuration (FreeRTOS mode)
+     * ========================================================================
+     *
+     * Enable queue mode for decoupled TX/RX processing. When enabled, the
+     * corresponding queue handle must be provided.
+     */
     bool enable_rx_queue; /**< Enable RX line queue mode (disables callback) */
     bool enable_tx_queue; /**< Enable TX queue mode */
+
+    /** @brief RX queue - Required if enable_rx_queue is true. For received lines. */
+    FEB_UART_QueueHandle_t rx_queue;
+
+    /** @brief TX queue - Required if enable_tx_queue is true. For queued TX data. */
+    FEB_UART_QueueHandle_t tx_queue;
 #endif
 
   } FEB_UART_Config_t;
@@ -156,15 +244,10 @@ extern "C"
    * ============================================================================ */
 
   /**
-   * @brief Callback for received line/command
+   * @brief Callback for received line/command (LINE mode)
    *
    * Called from FEB_UART_ProcessRx() when a complete line is received.
    * Line is null-terminated and does not include line ending characters.
-   *
-   * Line termination is triggered by:
-   *   - \\r (carriage return)
-   *   - \\n (line feed)
-   *   - \\r\\n or \\n\\r sequences (treated as single termination, no double-trigger)
    *
    * @param line Pointer to null-terminated line (without \\n or \\r)
    * @param len  Length of line in bytes (not including null terminator)
@@ -173,6 +256,21 @@ extern "C"
    * @note Line buffer is reused after callback returns - copy if needed
    */
   typedef void (*FEB_UART_RxLineCallback_t)(const char *line, size_t len);
+
+  /**
+   * @brief Callback for binary data reception (BINARY mode)
+   *
+   * Called from FEB_UART_ProcessRx() when binary data is received.
+   * If framing is enabled, data contains the unescaped frame payload.
+   *
+   * @param instance UART instance that received data
+   * @param data     Pointer to received data
+   * @param len      Length of data in bytes
+   *
+   * @note Called from main loop context, not ISR context
+   * @note Data buffer is reused after callback returns - copy if needed
+   */
+  typedef void (*FEB_UART_RxBinaryCallback_t)(FEB_UART_Instance_t instance, const uint8_t *data, size_t len);
 
   /* ============================================================================
    * Initialization API
@@ -187,11 +285,8 @@ extern "C"
    * @param instance UART instance to initialize
    * @param config   Pointer to configuration structure
    * @return 0 on success, negative error code on failure
-   *   - -1: Invalid instance or configuration (NULL pointers)
-   *   - -2: DMA initialization failed
    *
    * @note Configuration structure and buffers must remain valid until DeInit
-   * @note If using DMA RX, starts circular DMA reception automatically
    * @note Printf/scanf redirection uses instance 0 only
    */
   int FEB_UART_Init(FEB_UART_Instance_t instance, const FEB_UART_Config_t *config);
@@ -214,56 +309,37 @@ extern "C"
   bool FEB_UART_IsInitialized(FEB_UART_Instance_t instance);
 
   /* ============================================================================
-   * Runtime Configuration API
+   * Mode Configuration API
    * ============================================================================ */
 
   /**
-   * @brief Set runtime log verbosity level
+   * @brief Set UART operating mode
    *
    * @param instance UART instance
-   * @param level    New log level (FEB_UART_LOG_NONE to FEB_UART_LOG_TRACE)
+   * @param mode     FEB_UART_MODE_LINE or FEB_UART_MODE_BINARY
+   * @return 0 on success, -1 on error
+   *
+   * @note Clears any pending RX data when mode changes
    */
-  void FEB_UART_SetLogLevel(FEB_UART_Instance_t instance, FEB_UART_LogLevel_t level);
+  int FEB_UART_SetMode(FEB_UART_Instance_t instance, FEB_UART_Mode_t mode);
 
   /**
-   * @brief Get current runtime log level
+   * @brief Get current operating mode
    *
    * @param instance UART instance
-   * @return Current log level
+   * @return Current mode
    */
-  FEB_UART_LogLevel_t FEB_UART_GetLogLevel(FEB_UART_Instance_t instance);
+  FEB_UART_Mode_t FEB_UART_GetMode(FEB_UART_Instance_t instance);
 
   /**
-   * @brief Enable or disable ANSI color codes
+   * @brief Configure binary mode framing
    *
    * @param instance UART instance
-   * @param enable   true to enable colors, false to disable
-   */
-  void FEB_UART_SetColorsEnabled(FEB_UART_Instance_t instance, bool enable);
-
-  /**
-   * @brief Check if colors are enabled
+   * @param config   Framing configuration (NULL to disable framing)
    *
-   * @param instance UART instance
-   * @return true if colors enabled, false otherwise
+   * @note Only applies in BINARY mode
    */
-  bool FEB_UART_GetColorsEnabled(FEB_UART_Instance_t instance);
-
-  /**
-   * @brief Enable or disable timestamps
-   *
-   * @param instance UART instance
-   * @param enable   true to enable timestamps, false to disable
-   */
-  void FEB_UART_SetTimestampsEnabled(FEB_UART_Instance_t instance, bool enable);
-
-  /**
-   * @brief Check if timestamps are enabled
-   *
-   * @param instance UART instance
-   * @return true if timestamps enabled, false otherwise
-   */
-  bool FEB_UART_GetTimestampsEnabled(FEB_UART_Instance_t instance);
+  void FEB_UART_SetFramingConfig(FEB_UART_Instance_t instance, const FEB_UART_FramingConfig_t *config);
 
   /* ============================================================================
    * Output API
@@ -296,6 +372,20 @@ extern "C"
   int FEB_UART_Write(FEB_UART_Instance_t instance, const uint8_t *data, size_t len);
 
   /**
+   * @brief Write binary data with optional framing
+   *
+   * @param instance    UART instance
+   * @param data        Data to send
+   * @param len         Length of data
+   * @param add_framing If true and framing enabled, wraps data with delimiters
+   * @return Number of bytes queued (before framing), or negative on error
+   *
+   * @note When add_framing is true, adds start/end delimiters and escapes
+   *       any occurrences of delimiter/escape bytes in the data
+   */
+  int FEB_UART_WriteBinary(FEB_UART_Instance_t instance, const uint8_t *data, size_t len, bool add_framing);
+
+  /**
    * @brief Flush pending TX data
    *
    * Blocks until all queued data is transmitted or timeout expires.
@@ -319,12 +409,23 @@ extern "C"
    * ============================================================================ */
 
   /**
-   * @brief Register callback for received lines
+   * @brief Register callback for received lines (LINE mode)
    *
    * @param instance UART instance
    * @param callback Function to call, or NULL to disable
    */
   void FEB_UART_SetRxLineCallback(FEB_UART_Instance_t instance, FEB_UART_RxLineCallback_t callback);
+
+  /**
+   * @brief Register callback for binary data (BINARY mode)
+   *
+   * @param instance        UART instance
+   * @param callback        Function to call when data received
+   * @param min_bytes       Minimum bytes before callback (0 = any data)
+   * @param idle_timeout_ms Trigger callback after idle (0 = disabled)
+   */
+  void FEB_UART_SetRxBinaryCallback(FEB_UART_Instance_t instance, FEB_UART_RxBinaryCallback_t callback,
+                                    size_t min_bytes, uint32_t idle_timeout_ms);
 
   /**
    * @brief Process received data and invoke callbacks
@@ -363,31 +464,61 @@ extern "C"
 
   /**
    * @brief Call from HAL_UART_TxCpltCallback()
-   *
-   * Auto-routes to correct instance based on huart handle.
-   *
-   * @param huart UART handle that completed transmission
    */
   void FEB_UART_TxCpltCallback(UART_HandleTypeDef *huart);
 
   /**
    * @brief Call from HAL_UARTEx_RxEventCallback()
-   *
-   * Auto-routes to correct instance based on huart handle.
-   *
-   * @param huart UART handle
-   * @param size  Number of bytes received
    */
   void FEB_UART_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size);
 
   /**
    * @brief Call from USARTx_IRQHandler for IDLE line detection
-   *
-   * Auto-routes to correct instance based on huart handle.
-   *
-   * @param huart UART handle
    */
   void FEB_UART_IDLE_Callback(UART_HandleTypeDef *huart);
+
+  /* ============================================================================
+   * Weak Task Functions (FreeRTOS Mode)
+   * ============================================================================
+   *
+   * These are weak default implementations that can be overridden by user code.
+   * Create tasks in CubeMX .ioc pointing to these entry functions.
+   *
+   * CubeMX Task Configuration:
+   *   - Task name: e.g., "UART_RX_Task"
+   *   - Entry function: FEB_UART_RxTaskFunc
+   *   - Argument: (void*)(uintptr_t)FEB_UART_INSTANCE_1
+   *   - Stack size: User choice (recommend 256+ words)
+   *   - Priority: User choice
+   *
+   * To override, define a non-weak version in user code:
+   *   void FEB_UART_RxTaskFunc(void *argument) {
+   *     FEB_UART_Instance_t inst = (FEB_UART_Instance_t)(uintptr_t)argument;
+   *     for (;;) {
+   *       FEB_UART_ProcessRx(inst);
+   *       // Custom user processing...
+   *       osDelay(5);
+   *     }
+   *   }
+   */
+
+#if FEB_UART_USE_FREERTOS
+
+  /**
+   * @brief Weak default RX processing task entry function
+   *
+   * @param argument UART instance cast to void* (e.g., (void*)FEB_UART_INSTANCE_1)
+   */
+  void FEB_UART_RxTaskFunc(void *argument);
+
+  /**
+   * @brief Weak default TX queue processing task entry function
+   *
+   * @param argument UART instance cast to void* (e.g., (void*)FEB_UART_INSTANCE_1)
+   */
+  void FEB_UART_TxTaskFunc(void *argument);
+
+#endif /* FEB_UART_USE_FREERTOS */
 
   /* ============================================================================
    * Queue-Based API (FreeRTOS only)
@@ -395,70 +526,15 @@ extern "C"
 
 #if FEB_UART_ENABLE_QUEUES
 
-  /**
-   * @brief Receive a line from the RX queue (blocking)
-   *
-   * @param instance UART instance
-   * @param buffer   Destination buffer for the line
-   * @param max_len  Maximum buffer size
-   * @param out_len  Output: actual line length (optional, can be NULL)
-   * @param timeout  Timeout in ms (osWaitForever for infinite)
-   * @return true if line received, false on timeout
-   */
   bool FEB_UART_QueueReceiveLine(FEB_UART_Instance_t instance, char *buffer, size_t max_len, size_t *out_len,
                                  uint32_t timeout);
-
-  /**
-   * @brief Get number of lines waiting in RX queue
-   *
-   * @param instance UART instance
-   * @return Number of complete lines queued
-   */
   uint32_t FEB_UART_RxQueueCount(FEB_UART_Instance_t instance);
-
-  /**
-   * @brief Check if RX queue mode is enabled
-   *
-   * @param instance UART instance
-   * @return true if RX queue is active
-   */
   bool FEB_UART_IsRxQueueEnabled(FEB_UART_Instance_t instance);
-
-  /**
-   * @brief Queue data for transmission (blocking)
-   *
-   * @param instance UART instance
-   * @param data     Data to transmit
-   * @param len      Data length
-   * @param timeout  Timeout in ms
-   * @return Number of bytes queued, or -1 on error
-   */
+  uint32_t FEB_UART_GetRxQueueDrops(FEB_UART_Instance_t instance);
   int FEB_UART_QueueWrite(FEB_UART_Instance_t instance, const uint8_t *data, size_t len, uint32_t timeout);
-
-  /**
-   * @brief Queue formatted output for transmission (blocking)
-   *
-   * @param instance UART instance
-   * @param timeout  Timeout in ms
-   * @param format   Printf format string
-   * @return Number of bytes queued, or -1 on error
-   */
   int FEB_UART_QueuePrintf(FEB_UART_Instance_t instance, uint32_t timeout, const char *format, ...)
       __attribute__((format(printf, 3, 4)));
-
-  /**
-   * @brief Process TX queue and transmit pending messages
-   *
-   * @param instance UART instance
-   */
   void FEB_UART_ProcessTxQueue(FEB_UART_Instance_t instance);
-
-  /**
-   * @brief Check if TX queue mode is enabled
-   *
-   * @param instance UART instance
-   * @return true if TX queue is active
-   */
   bool FEB_UART_IsTxQueueEnabled(FEB_UART_Instance_t instance);
 
 #endif /* FEB_UART_ENABLE_QUEUES */

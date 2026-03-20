@@ -57,15 +57,34 @@ typedef osMutexId_t FEB_TPS_Mutex_t;
 
 typedef uint32_t FEB_TPS_Mutex_t;
 
+/*
+ * Bare-metal sync primitive behavior depends on FEB_TPS_FORCE_BARE_METAL:
+ *
+ * When FORCE_BARE_METAL == 0 (default):
+ *   - Mutex operations are NO-OPs
+ *   - Safe for single-threaded applications
+ *
+ * When FORCE_BARE_METAL == 1 (explicit):
+ *   - Uses __disable_irq() / __enable_irq() for critical sections
+ */
+#if FEB_TPS_FORCE_BARE_METAL
+
 #define FEB_TPS_MUTEX_CREATE()      (0U)
 #define FEB_TPS_MUTEX_DELETE(m)     ((void)0)
 #define FEB_TPS_MUTEX_LOCK(m)       do { (m) = __get_PRIMASK(); __disable_irq(); } while(0)
 #define FEB_TPS_MUTEX_UNLOCK(m)     __set_PRIMASK(m)
 
+#else /* Safe no-op defaults */
+
+#define FEB_TPS_MUTEX_CREATE()      (0U)
+#define FEB_TPS_MUTEX_DELETE(m)     ((void)0)
+#define FEB_TPS_MUTEX_LOCK(m)       ((void)0)
+#define FEB_TPS_MUTEX_UNLOCK(m)     ((void)0)
+
+#endif /* FEB_TPS_FORCE_BARE_METAL */
+
 #define FEB_TPS_IN_ISR()            ((__get_IPSR() & 0xFF) != 0)
 #define FEB_TPS_DELAY_MS(ms)        HAL_Delay(ms)
-
-/* Note: Critical section macros removed - library uses mutex-based I2C protection */
 
 #endif /* FEB_TPS_USE_FREERTOS */
 
@@ -106,6 +125,15 @@ typedef struct FEB_TPS_Device_s {
     uint16_t device_id;             /**< Device unique ID (read from chip) */
     bool initialized;               /**< Device initialized flag */
     bool in_use;                    /**< Slot is in use (for stable handles) */
+
+#if FEB_TPS_USE_FREERTOS
+    /* Cached measurement data (updated by polling task) */
+    float cached_voltage_v;
+    float cached_current_a;
+    float cached_power_w;
+    uint32_t cached_last_update_ms;
+    bool cached_valid;
+#endif
 } FEB_TPS_Device_t;
 
 /* ============================================================================
@@ -121,11 +149,20 @@ typedef struct FEB_TPS_Device_s {
 typedef struct {
     FEB_TPS_Device_t devices[FEB_TPS_MAX_DEVICES];  /**< Registered devices */
     uint8_t device_count;                            /**< Number of registered devices */
-    FEB_TPS_Mutex_t i2c_mutex;                       /**< I2C access mutex */
     uint32_t i2c_timeout_ms;                         /**< I2C timeout */
     FEB_TPS_LogFunc_t log_func;                      /**< User logging callback */
     uint8_t log_level;                               /**< Minimum log level (FEB_TPS_LogLevel_t) */
     bool initialized;                                /**< Library initialized flag */
+
+#if FEB_TPS_USE_FREERTOS
+    /* User-provided sync primitives (NOT created internally) */
+    FEB_TPS_MutexHandle_t data_mutex;                /**< Protects cached data reads */
+    FEB_TPS_MutexHandle_t i2c_mutex;                 /**< Protects I2C bus access */
+    uint32_t poll_interval_ms;                       /**< Polling interval for auto-poll task */
+    uint32_t (*get_tick_ms)(void);                   /**< Timestamp function */
+#else
+    FEB_TPS_Mutex_t i2c_mutex;                       /**< Bare-metal: PRIMASK storage */
+#endif
 } FEB_TPS_Context_t;
 
 /* ============================================================================

@@ -9,8 +9,9 @@
  * Provides a simple command console over UART with:
  *   - Case-insensitive command matching
  *   - Easy command registration
- *   - Built-in commands: echo, help, version, uptime, reboot, log
  *   - Pipe (|) delimited arguments - spaces within args are preserved
+ *
+ * Built-in commands are now in the separate feb_commands library.
  *
  * Command Syntax:
  *   command|arg1|arg2|arg3
@@ -24,7 +25,9 @@
  *
  * Usage:
  *   1. Call FEB_Console_Init() after FEB_UART_Init()
- *   2. Register custom commands with FEB_Console_Register()
+ *   2. Register commands:
+ *      - Use FEB_Commands_RegisterSystem() for built-in commands
+ *      - Use FEB_Console_Register() for custom commands
  *   3. Connect to UART: FEB_UART_SetRxLineCallback(FEB_Console_ProcessLine)
  *   4. Call FEB_UART_ProcessRx() in main loop
  *
@@ -53,6 +56,8 @@ extern "C"
 #endif
 
 #include <stddef.h>
+#include <stdbool.h>
+#include <stdint.h>
 
   /* ============================================================================
    * Configuration
@@ -101,12 +106,30 @@ extern "C"
    * ============================================================================ */
 
   /**
-   * @brief Initialize console and register built-in commands
+   * @brief Initialize console
    *
-   * Registers: echo, help, version, uptime, reboot, log
    * Call after FEB_UART_Init() but before main loop.
+   * Does NOT register built-in commands - use FEB_Commands_RegisterSystem()
+   * or pass true to register_default_commands for convenience.
+   *
+   * @param register_default_commands If true, registers system commands
+   *        (echo, help, version, uptime, reboot, log)
    */
-  void FEB_Console_Init(void);
+  void FEB_Console_Init(bool register_default_commands);
+
+  /**
+   * @brief Set the UART instance used for console output
+   *
+   * @param uart_instance UART instance number (0 = FEB_UART_INSTANCE_1)
+   */
+  void FEB_Console_SetUartInstance(int uart_instance);
+
+  /**
+   * @brief Get the UART instance used for console output
+   *
+   * @return UART instance number
+   */
+  int FEB_Console_GetUartInstance(void);
 
   /**
    * @brief Process a received command line
@@ -115,12 +138,13 @@ extern "C"
    * executes the matching command. Spaces within arguments are preserved.
    * Connect this to FEB_UART_SetRxLineCallback() for automatic processing.
    *
+   * Uses stack-allocated buffer for reentrancy.
+   *
    * @param line Null-terminated command line (without line ending)
    * @param len  Length of line in bytes
    *
-   * @note Line is modified during parsing (pipes replaced with nulls)
-   * @note Not reentrant - call from single task/context only
-   * @warning FreeRTOS: Should only be called from the UART RX processing task
+   * @note Reentrant - uses stack-allocated parse buffer
+   * @note Thread-safe for command lookup
    */
   void FEB_Console_ProcessLine(const char *line, size_t len);
 
@@ -130,8 +154,7 @@ extern "C"
    * @param cmd Pointer to command descriptor (must remain valid)
    * @return 0 on success, -1 if command table is full
    *
-   * @note Call during initialization only, before starting RTOS scheduler
-   * @warning Not thread-safe - do not call after FEB_Console_Init() returns
+   * @note Thread-safe when FreeRTOS is enabled
    */
   int FEB_Console_Register(const FEB_Console_Cmd_t *cmd);
 
@@ -143,11 +166,22 @@ extern "C"
    *
    * @param fmt Printf format string
    * @param ... Variable arguments
+   * @return Number of characters written, or negative on error
    *
    * @note Thread-safe - can be called from multiple tasks concurrently
    * @note ISR-safe via underlying FEB_UART_Write
    */
-  void FEB_Console_Printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+  int FEB_Console_Printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
+  /**
+   * @brief Flush console output
+   *
+   * Waits for pending TX data to be transmitted.
+   *
+   * @param timeout_ms Maximum time to wait in milliseconds
+   * @return 0 on success, -1 on timeout
+   */
+  int FEB_Console_Flush(uint32_t timeout_ms);
 
   /**
    * @brief Get the number of registered commands

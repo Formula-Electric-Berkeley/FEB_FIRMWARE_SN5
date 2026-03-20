@@ -1,5 +1,5 @@
 #include "FEB_CAN_Diagnostics.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 
 Brake_DataTypeDef Brake_Data;
 

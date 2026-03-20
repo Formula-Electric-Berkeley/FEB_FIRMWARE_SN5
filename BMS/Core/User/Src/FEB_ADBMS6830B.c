@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include "stm32f4xx_hal.h"
 #include "cmsis_os.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 
 /* External mutex from freertos.c */
 extern osMutexId_t ADBMSMutexHandle;

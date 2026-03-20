@@ -237,15 +237,22 @@ void FEB_Main_Setup(void)
       .tx_buffer_size = sizeof(uart_tx_buf),
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
-      .log_level = FEB_UART_LOG_DEBUG,
-      .enable_colors = true,
-      .enable_timestamps = true,
       .get_tick_ms = HAL_GetTick,
   };
   FEB_UART_Init(FEB_UART_INSTANCE_1, &uart_cfg);
 
+  // Initialize logging system
+  FEB_Log_Config_t log_cfg = {
+      .uart_instance = FEB_UART_INSTANCE_1,
+      .level = FEB_LOG_DEBUG,
+      .colors = true,
+      .timestamps = true,
+      .get_tick_ms = HAL_GetTick,
+  };
+  FEB_Log_Init(&log_cfg);
+
   // Initialize console
-  FEB_Console_Init();
+  FEB_Console_Init(true);
   LVPDB_RegisterCommands();
   FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
 

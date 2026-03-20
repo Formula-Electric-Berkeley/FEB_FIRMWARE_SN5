@@ -9,7 +9,7 @@
 #include "FEB_Main.h"
 #include "main.h"
 #include "feb_uart.h"
-#include "feb_uart_config.h"
+#include "feb_log.h"
 #include "feb_console.h"
 #include "FEB_CAN_State.h"
 #include "FEB_Commands.h"
@@ -39,9 +39,6 @@ void FEB_Init(void)
       .tx_buffer_size = sizeof(uart_tx_buf),
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
-      .log_level = FEB_UART_LOG_DEBUG,
-      .enable_colors = true,
-      .enable_timestamps = true,
       .get_tick_ms = HAL_GetTick,
       .enable_rx_queue = true,
   };
@@ -54,8 +51,18 @@ void FEB_Init(void)
     }
   }
 
+  /* Initialize logging system */
+  FEB_Log_Config_t log_cfg = {
+      .uart_instance = FEB_UART_INSTANCE_1,
+      .level = FEB_LOG_DEBUG,
+      .colors = true,
+      .timestamps = true,
+      .get_tick_ms = HAL_GetTick,
+  };
+  FEB_Log_Init(&log_cfg);
+
   /* Initialize console (registers built-in commands: echo, help, version, uptime, reboot, log) */
-  FEB_Console_Init();
+  FEB_Console_Init(true);
   DASH_RegisterCommands();
 
   /* Initialize CAN state publisher */

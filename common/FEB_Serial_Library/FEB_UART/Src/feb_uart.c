@@ -12,7 +12,6 @@
  *   - DMA-based circular RX with idle line detection
  *   - Printf/scanf redirection via _write/_read overrides (instance 0 only)
  *   - FreeRTOS-optional thread safety
- *   - Logging with verbosity levels, colors, timestamps
  *   - Optional FreeRTOS queue support per-instance
  *
  ******************************************************************************
@@ -45,16 +44,30 @@ typedef struct
   uint32_t (*get_tick_ms)(void);
 
   /* Runtime settings */
-  FEB_UART_LogLevel_t log_level;
-  bool colors_enabled;
-  bool timestamps_enabled;
   bool initialized;
+
+  /* Operating mode */
+  FEB_UART_Mode_t mode;             /* LINE or BINARY */
+  FEB_UART_FramingConfig_t framing; /* Framing config for binary mode */
+  FEB_UART_RxBinaryCallback_t rx_binary_callback;
+  size_t rx_binary_min_bytes;         /* Min bytes before callback */
+  uint32_t rx_binary_idle_timeout_ms; /* Idle timeout for callback */
+  uint32_t rx_last_data_tick;         /* Last time data was received */
+  bool rx_in_frame;                   /* Currently receiving a frame */
+  bool rx_escape_next;                /* Next byte is escaped */
 
   /* TX state */
   FEB_UART_RingBuffer_t tx_ring;
   FEB_UART_TxState_t tx_state;
   size_t tx_dma_len;
-  FEB_UART_Mutex_t tx_mutex;
+
+#if FEB_UART_USE_FREERTOS
+  /* User-provided sync primitives (FreeRTOS mode) */
+  FEB_UART_MutexHandle_t tx_mutex;            /* User-created mutex */
+  FEB_UART_SemaphoreHandle_t tx_complete_sem; /* User-created semaphore */
+#else
+  FEB_UART_Mutex_t tx_mutex; /* Bare-metal: PRIMASK storage */
+#endif
 
   /* RX state */
   uint8_t *rx_buffer;
@@ -65,12 +78,13 @@ typedef struct
   FEB_UART_LineBuffer_t line_buffer;
   bool last_was_line_ending; /* Track \r\n and \n\r sequences */
 
-#if FEB_UART_ENABLE_QUEUES
-  /* Queue state */
-  FEB_UART_Queue_t rx_queue;
-  FEB_UART_Queue_t tx_queue;
+#if FEB_UART_USE_FREERTOS
+  /* Queue state - user-provided handles */
+  FEB_UART_QueueHandle_t rx_queue;
+  FEB_UART_QueueHandle_t tx_queue;
   bool rx_queue_enabled;
   bool tx_queue_enabled;
+  uint32_t rx_queue_drops; /**< Count of dropped messages when queue full */
 #endif
 
 } FEB_UART_Context_t;
@@ -142,26 +156,45 @@ int FEB_UART_Init(FEB_UART_Instance_t instance, const FEB_UART_Config_t *config)
 
   if (config == NULL || config->huart == NULL)
   {
-    return -1;
+    return FEB_UART_ERR_INVALID_ARG;
   }
 
   if (config->tx_buffer == NULL || config->tx_buffer_size == 0)
   {
-    return -1;
+    return FEB_UART_ERR_INVALID_ARG;
   }
 
   if (config->rx_buffer == NULL || config->rx_buffer_size == 0)
   {
-    return -1;
+    return FEB_UART_ERR_INVALID_ARG;
   }
+
+#if FEB_UART_USE_FREERTOS
+  /* Validate REQUIRED sync primitives in FreeRTOS mode */
+  if (config->tx_mutex == NULL)
+  {
+    return FEB_UART_ERR_NO_MUTEX;
+  }
+  if (config->tx_complete_sem == NULL)
+  {
+    return FEB_UART_ERR_NO_SEMAPHORE;
+  }
+
+  /* Validate optional queue handles if queue mode is enabled */
+  if (config->enable_rx_queue && config->rx_queue == NULL)
+  {
+    return FEB_UART_ERR_NO_QUEUE;
+  }
+  if (config->enable_tx_queue && config->tx_queue == NULL)
+  {
+    return FEB_UART_ERR_NO_QUEUE;
+  }
+#endif
 
   /* Store configuration */
   ctx[inst].huart = config->huart;
   ctx[inst].hdma_tx = config->hdma_tx;
   ctx[inst].hdma_rx = config->hdma_rx;
-  ctx[inst].log_level = config->log_level;
-  ctx[inst].colors_enabled = config->enable_colors;
-  ctx[inst].timestamps_enabled = config->enable_timestamps;
   ctx[inst].get_tick_ms = config->get_tick_ms ? config->get_tick_ms : default_get_tick;
 
   /* Initialize TX ring buffer */
@@ -170,7 +203,9 @@ int FEB_UART_Init(FEB_UART_Instance_t instance, const FEB_UART_Config_t *config)
   ctx[inst].tx_dma_len = 0;
 
 #if FEB_UART_USE_FREERTOS
-  ctx[inst].tx_mutex = FEB_UART_MUTEX_CREATE();
+  /* Store user-provided sync primitives (NOT created internally) */
+  ctx[inst].tx_mutex = config->tx_mutex;
+  ctx[inst].tx_complete_sem = config->tx_complete_sem;
 #endif
 
   /* Initialize RX state */
@@ -181,6 +216,16 @@ int FEB_UART_Init(FEB_UART_Instance_t instance, const FEB_UART_Config_t *config)
   ctx[inst].rx_line_callback = NULL;
   ctx[inst].line_buffer.len = 0;
   ctx[inst].last_was_line_ending = false;
+
+  /* Initialize binary mode state */
+  ctx[inst].mode = FEB_UART_MODE_LINE; /* Default to line mode */
+  memset(&ctx[inst].framing, 0, sizeof(ctx[inst].framing));
+  ctx[inst].rx_binary_callback = NULL;
+  ctx[inst].rx_binary_min_bytes = 0;
+  ctx[inst].rx_binary_idle_timeout_ms = 0;
+  ctx[inst].rx_last_data_tick = 0;
+  ctx[inst].rx_in_frame = false;
+  ctx[inst].rx_escape_next = false;
 
   /* Start DMA RX if DMA available */
   if (ctx[inst].hdma_rx != NULL)
@@ -206,25 +251,18 @@ int FEB_UART_Init(FEB_UART_Instance_t instance, const FEB_UART_Config_t *config)
   /* ALWAYS enable IDLE line interrupt - required for RX to work even if DMA fails */
   __HAL_UART_ENABLE_IT(ctx[inst].huart, UART_IT_IDLE);
 
-#if FEB_UART_ENABLE_QUEUES
-  /* Initialize queues if enabled */
+#if FEB_UART_USE_FREERTOS
+  /* Store user-provided queue handles (NOT created internally) */
   ctx[inst].rx_queue_enabled = config->enable_rx_queue;
   ctx[inst].tx_queue_enabled = config->enable_tx_queue;
-
-  if (ctx[inst].rx_queue_enabled)
-  {
-    ctx[inst].rx_queue = FEB_UART_QUEUE_CREATE(FEB_UART_RX_QUEUE_DEPTH, sizeof(FEB_UART_RxQueueMsg_t));
-  }
-
-  if (ctx[inst].tx_queue_enabled)
-  {
-    ctx[inst].tx_queue = FEB_UART_QUEUE_CREATE(FEB_UART_TX_QUEUE_DEPTH, sizeof(FEB_UART_TxQueueMsg_t));
-  }
+  ctx[inst].rx_queue = config->rx_queue;
+  ctx[inst].tx_queue = config->tx_queue;
+  ctx[inst].rx_queue_drops = 0;
 #endif
 
   ctx[inst].initialized = true;
 
-  return 0;
+  return FEB_UART_OK;
 }
 
 void FEB_UART_DeInit(FEB_UART_Instance_t instance)
@@ -241,22 +279,17 @@ void FEB_UART_DeInit(FEB_UART_Instance_t instance)
   /* Disable IDLE interrupt */
   __HAL_UART_DISABLE_IT(ctx[inst].huart, UART_IT_IDLE);
 
-#if FEB_UART_USE_FREERTOS
-  FEB_UART_MUTEX_DELETE(ctx[inst].tx_mutex);
-#endif
+  /*
+   * NOTE: We do NOT delete user-provided sync primitives (mutex, semaphore, queues).
+   * The user created them in CubeMX/.ioc and owns their lifecycle.
+   * We only clear our references to them.
+   */
 
-#if FEB_UART_ENABLE_QUEUES
-  /* Delete queues if they exist */
-  if (ctx[inst].rx_queue != NULL)
-  {
-    FEB_UART_QUEUE_DELETE(ctx[inst].rx_queue);
-    ctx[inst].rx_queue = NULL;
-  }
-  if (ctx[inst].tx_queue != NULL)
-  {
-    FEB_UART_QUEUE_DELETE(ctx[inst].tx_queue);
-    ctx[inst].tx_queue = NULL;
-  }
+#if FEB_UART_USE_FREERTOS
+  ctx[inst].tx_mutex = NULL;
+  ctx[inst].tx_complete_sem = NULL;
+  ctx[inst].rx_queue = NULL;
+  ctx[inst].tx_queue = NULL;
   ctx[inst].rx_queue_enabled = false;
   ctx[inst].tx_queue_enabled = false;
 #endif
@@ -274,219 +307,57 @@ bool FEB_UART_IsInitialized(FEB_UART_Instance_t instance)
 }
 
 /* ============================================================================
- * Runtime Configuration
+ * Mode Configuration
  * ============================================================================ */
 
-void FEB_UART_SetLogLevel(FEB_UART_Instance_t instance, FEB_UART_LogLevel_t level)
+int FEB_UART_SetMode(FEB_UART_Instance_t instance, FEB_UART_Mode_t mode)
 {
-  VALIDATE_INSTANCE_VOID(instance);
-  ctx[instance].log_level = level;
+  VALIDATE_INSTANCE_INIT(instance);
+  int inst = (int)instance;
+
+  /* Clear pending RX data when mode changes */
+  ctx[inst].rx_tail = ctx[inst].rx_head;
+  ctx[inst].line_buffer.len = 0;
+  ctx[inst].last_was_line_ending = false;
+  ctx[inst].rx_in_frame = false;
+  ctx[inst].rx_escape_next = false;
+
+  ctx[inst].mode = mode;
+  return 0;
 }
 
-FEB_UART_LogLevel_t FEB_UART_GetLogLevel(FEB_UART_Instance_t instance)
+FEB_UART_Mode_t FEB_UART_GetMode(FEB_UART_Instance_t instance)
 {
   if (instance >= FEB_UART_MAX_INSTANCES || !ctx[instance].initialized)
   {
-    return FEB_UART_LOG_NONE;
+    return FEB_UART_MODE_LINE;
   }
-  return ctx[instance].log_level;
+  return ctx[instance].mode;
 }
 
-void FEB_UART_SetColorsEnabled(FEB_UART_Instance_t instance, bool enable)
+void FEB_UART_SetFramingConfig(FEB_UART_Instance_t instance, const FEB_UART_FramingConfig_t *config)
 {
   VALIDATE_INSTANCE_VOID(instance);
-  ctx[instance].colors_enabled = enable;
-}
 
-bool FEB_UART_GetColorsEnabled(FEB_UART_Instance_t instance)
-{
-  VALIDATE_INSTANCE_BOOL(instance);
-  if (!ctx[instance].initialized)
-    return false;
-  return ctx[instance].colors_enabled;
-}
-
-void FEB_UART_SetTimestampsEnabled(FEB_UART_Instance_t instance, bool enable)
-{
-  VALIDATE_INSTANCE_VOID(instance);
-  ctx[instance].timestamps_enabled = enable;
-}
-
-bool FEB_UART_GetTimestampsEnabled(FEB_UART_Instance_t instance)
-{
-  VALIDATE_INSTANCE_BOOL(instance);
-  if (!ctx[instance].initialized)
-    return false;
-  return ctx[instance].timestamps_enabled;
-}
-
-/* ============================================================================
- * Logging Functions
- * ============================================================================ */
-
-void FEB_UART_Log(FEB_UART_LogLevel_t level, const char *tag, const char *file, int line, const char *format, ...)
-{
-  /* Use instance 0 for logging (all LOG_* macros use instance 0) */
-  int inst = 0;
-
-  if (!ctx[inst].initialized)
+  if (config != NULL)
   {
-    return;
-  }
-
-  /* Runtime level filter */
-  if (level > ctx[inst].log_level || level == FEB_UART_LOG_NONE)
-  {
-    return;
-  }
-
-  bool in_isr = FEB_UART_IN_ISR();
-
-  /* Acquire lock BEFORE formatting to protect staging_buffer */
-#if FEB_UART_USE_FREERTOS
-  if (!in_isr)
-  {
-    FEB_UART_MUTEX_LOCK(ctx[inst].tx_mutex);
-  }
-#else
-  (void)in_isr;
-  FEB_UART_ENTER_CRITICAL();
-#endif
-
-  int offset = 0;
-  char *buf = staging_buffer[inst];
-  size_t buf_size = sizeof(staging_buffer[inst]);
-
-  /* Add color prefix if enabled */
-  if (ctx[inst].colors_enabled)
-  {
-    const char *color = "";
-    switch (level)
-    {
-    case FEB_UART_LOG_ERROR:
-      color = FEB_UART_COLOR_ERROR;
-      break;
-    case FEB_UART_LOG_WARN:
-      color = FEB_UART_COLOR_WARN;
-      break;
-    case FEB_UART_LOG_INFO:
-      color = FEB_UART_COLOR_INFO;
-      break;
-    case FEB_UART_LOG_DEBUG:
-      color = FEB_UART_COLOR_DEBUG;
-      break;
-    case FEB_UART_LOG_TRACE:
-      color = FEB_UART_COLOR_TRACE;
-      break;
-    default:
-      break;
-    }
-    offset += snprintf(buf + offset, buf_size - offset, "%s", color);
-  }
-
-  /* Add timestamp if enabled */
-  if (ctx[inst].timestamps_enabled && ctx[inst].get_tick_ms != NULL)
-  {
-    uint32_t tick = ctx[inst].get_tick_ms();
-    offset += snprintf(buf + offset, buf_size - offset, "[%lu] ", (unsigned long)tick);
-  }
-
-  /* Add level prefix */
-  const char *level_str = "";
-  switch (level)
-  {
-  case FEB_UART_LOG_ERROR:
-    level_str = "E";
-    break;
-  case FEB_UART_LOG_WARN:
-    level_str = "W";
-    break;
-  case FEB_UART_LOG_INFO:
-    level_str = "I";
-    break;
-  case FEB_UART_LOG_DEBUG:
-    level_str = "D";
-    break;
-  case FEB_UART_LOG_TRACE:
-    level_str = "T";
-    break;
-  default:
-    break;
-  }
-  offset += snprintf(buf + offset, buf_size - offset, "%s ", level_str);
-
-  /* Add tag */
-  if (tag != NULL)
-  {
-    offset += snprintf(buf + offset, buf_size - offset, "%s ", tag);
-  }
-
-  /* Add user message */
-  va_list args;
-  va_start(args, format);
-  offset += vsnprintf(buf + offset, buf_size - offset, format, args);
-  va_end(args);
-
-  /* Add file/line for ERROR and WARN */
-  if (file != NULL && (level == FEB_UART_LOG_ERROR || level == FEB_UART_LOG_WARN))
-  {
-    /* Extract just filename from full path */
-    const char *filename = file;
-    for (const char *p = file; *p; p++)
-    {
-      if (*p == '/' || *p == '\\')
-      {
-        filename = p + 1;
-      }
-    }
-    offset += snprintf(buf + offset, buf_size - offset, " (%s:%d)", filename, line);
-  }
-
-  /* Add color reset and newline */
-  if (ctx[inst].colors_enabled)
-  {
-    offset += snprintf(buf + offset, buf_size - offset, "%s\r\n", FEB_UART_ANSI_RESET);
+    ctx[instance].framing = *config;
   }
   else
   {
-    offset += snprintf(buf + offset, buf_size - offset, "\r\n");
+    memset(&ctx[instance].framing, 0, sizeof(ctx[instance].framing));
   }
-
-  /* Clamp to buffer size */
-  if ((size_t)offset >= buf_size)
-  {
-    offset = buf_size - 1;
-  }
-
-  /* Write to ring buffer and start DMA */
-  feb_uart_write_internal(inst, (const uint8_t *)buf, (size_t)offset);
-
-  /* Release lock */
-#if FEB_UART_USE_FREERTOS
-  if (!in_isr)
-  {
-    FEB_UART_MUTEX_UNLOCK(ctx[inst].tx_mutex);
-  }
-#else
-  FEB_UART_EXIT_CRITICAL();
-#endif
+  ctx[instance].rx_in_frame = false;
+  ctx[instance].rx_escape_next = false;
 }
 
-void FEB_UART_LogHexdump(const char *tag, const uint8_t *data, size_t len)
+void FEB_UART_SetRxBinaryCallback(FEB_UART_Instance_t instance, FEB_UART_RxBinaryCallback_t callback, size_t min_bytes,
+                                  uint32_t idle_timeout_ms)
 {
-  if (data == NULL || len == 0)
-  {
-    return;
-  }
-
-  FEB_UART_Printf(FEB_UART_INSTANCE_1, "%s HEX[%u]: ", tag ? tag : "", (unsigned)len);
-
-  for (size_t i = 0; i < len; i++)
-  {
-    FEB_UART_Printf(FEB_UART_INSTANCE_1, "%02X ", data[i]);
-  }
-
-  FEB_UART_Printf(FEB_UART_INSTANCE_1, "\r\n");
+  VALIDATE_INSTANCE_VOID(instance);
+  ctx[instance].rx_binary_callback = callback;
+  ctx[instance].rx_binary_min_bytes = min_bytes;
+  ctx[instance].rx_binary_idle_timeout_ms = idle_timeout_ms;
 }
 
 /* ============================================================================
@@ -581,6 +452,81 @@ int FEB_UART_Write(FEB_UART_Instance_t instance, const uint8_t *data, size_t len
   return written;
 }
 
+int FEB_UART_WriteBinary(FEB_UART_Instance_t instance, const uint8_t *data, size_t len, bool add_framing)
+{
+  VALIDATE_INSTANCE_INIT(instance);
+  int inst = (int)instance;
+
+  if (data == NULL || len == 0)
+  {
+    return -1;
+  }
+
+  /* If framing not enabled or not requested, just write raw */
+  if (!add_framing || !ctx[inst].framing.enable_framing)
+  {
+    return FEB_UART_Write(instance, data, len);
+  }
+
+  /* With framing: write start delimiter, escaped data, end delimiter */
+  int total_written = 0;
+  bool in_isr = FEB_UART_IN_ISR();
+
+#if FEB_UART_USE_FREERTOS
+  if (!in_isr)
+  {
+    FEB_UART_MUTEX_LOCK(ctx[inst].tx_mutex);
+  }
+#else
+  (void)in_isr;
+  FEB_UART_ENTER_CRITICAL();
+#endif
+
+  /* Write start delimiter */
+  uint8_t delim = ctx[inst].framing.start_delimiter;
+  feb_uart_write_internal(inst, &delim, 1);
+  total_written++;
+
+  /* Write data with escaping if enabled */
+  for (size_t i = 0; i < len; i++)
+  {
+    uint8_t byte = data[i];
+
+    if (ctx[inst].framing.escape_enabled)
+    {
+      /* Check if byte needs escaping */
+      if (byte == ctx[inst].framing.start_delimiter || byte == ctx[inst].framing.end_delimiter ||
+          byte == ctx[inst].framing.escape_char)
+      {
+        /* Write escape char + XOR'd byte (HDLC style) */
+        uint8_t esc = ctx[inst].framing.escape_char;
+        feb_uart_write_internal(inst, &esc, 1);
+        byte ^= 0x20; /* HDLC XOR */
+        total_written++;
+      }
+    }
+
+    feb_uart_write_internal(inst, &byte, 1);
+    total_written++;
+  }
+
+  /* Write end delimiter */
+  delim = ctx[inst].framing.end_delimiter;
+  feb_uart_write_internal(inst, &delim, 1);
+  total_written++;
+
+#if FEB_UART_USE_FREERTOS
+  if (!in_isr)
+  {
+    FEB_UART_MUTEX_UNLOCK(ctx[inst].tx_mutex);
+  }
+#else
+  FEB_UART_EXIT_CRITICAL();
+#endif
+
+  return (int)len; /* Return original data length, not framed length */
+}
+
 int FEB_UART_Flush(FEB_UART_Instance_t instance, uint32_t timeout_ms)
 {
   VALIDATE_INSTANCE_INIT(instance);
@@ -622,11 +568,131 @@ void FEB_UART_SetRxLineCallback(FEB_UART_Instance_t instance, FEB_UART_RxLineCal
 // DEBUG: Set to 1 to enable verbose RX debugging
 #define FEB_UART_DEBUG_RX 0
 
+/* Forward declaration for binary processing */
+static void process_rx_binary(int inst);
+static void process_rx_line(int inst);
+
 void FEB_UART_ProcessRx(FEB_UART_Instance_t instance)
 {
   VALIDATE_INSTANCE_VOID(instance);
   int inst = (int)instance;
 
+  /* Dispatch based on mode */
+  if (ctx[inst].mode == FEB_UART_MODE_BINARY)
+  {
+    process_rx_binary(inst);
+  }
+  else
+  {
+    process_rx_line(inst);
+  }
+}
+
+/**
+ * @brief Process RX in binary mode
+ */
+static void process_rx_binary(int inst)
+{
+  size_t count = get_rx_count(inst);
+
+  if (count == 0)
+  {
+    /* Check idle timeout */
+    if (ctx[inst].rx_binary_idle_timeout_ms > 0 && ctx[inst].line_buffer.len > 0)
+    {
+      uint32_t now = ctx[inst].get_tick_ms ? ctx[inst].get_tick_ms() : 0;
+      if ((now - ctx[inst].rx_last_data_tick) >= ctx[inst].rx_binary_idle_timeout_ms)
+      {
+        /* Idle timeout - deliver accumulated data */
+        if (ctx[inst].rx_binary_callback != NULL)
+        {
+          ctx[inst].rx_binary_callback((FEB_UART_Instance_t)inst, (const uint8_t *)ctx[inst].line_buffer.buffer,
+                                       ctx[inst].line_buffer.len);
+        }
+        ctx[inst].line_buffer.len = 0;
+      }
+    }
+    return;
+  }
+
+  /* Update last data timestamp */
+  ctx[inst].rx_last_data_tick = ctx[inst].get_tick_ms ? ctx[inst].get_tick_ms() : 0;
+
+  while (count > 0)
+  {
+    uint8_t byte = ctx[inst].rx_buffer[ctx[inst].rx_tail];
+    ctx[inst].rx_tail = (ctx[inst].rx_tail + 1) % ctx[inst].rx_buffer_size;
+    count--;
+
+    /* Process with framing if enabled */
+    if (ctx[inst].framing.enable_framing)
+    {
+      /* Handle escape sequences */
+      if (ctx[inst].rx_escape_next)
+      {
+        byte ^= 0x20; /* HDLC XOR */
+        ctx[inst].rx_escape_next = false;
+      }
+      else if (ctx[inst].framing.escape_enabled && byte == ctx[inst].framing.escape_char)
+      {
+        ctx[inst].rx_escape_next = true;
+        continue;
+      }
+      else if (byte == ctx[inst].framing.start_delimiter)
+      {
+        /* Start of frame - reset buffer */
+        ctx[inst].line_buffer.len = 0;
+        ctx[inst].rx_in_frame = true;
+        continue;
+      }
+      else if (byte == ctx[inst].framing.end_delimiter)
+      {
+        /* End of frame - deliver if we have data */
+        if (ctx[inst].rx_in_frame && ctx[inst].line_buffer.len > 0)
+        {
+          if (ctx[inst].rx_binary_callback != NULL)
+          {
+            ctx[inst].rx_binary_callback((FEB_UART_Instance_t)inst, (const uint8_t *)ctx[inst].line_buffer.buffer,
+                                         ctx[inst].line_buffer.len);
+          }
+        }
+        ctx[inst].line_buffer.len = 0;
+        ctx[inst].rx_in_frame = false;
+        continue;
+      }
+
+      /* Only add byte if we're in a frame */
+      if (!ctx[inst].rx_in_frame)
+      {
+        continue;
+      }
+    }
+
+    /* Add byte to buffer */
+    if (ctx[inst].line_buffer.len < sizeof(ctx[inst].line_buffer.buffer) - 1)
+    {
+      ctx[inst].line_buffer.buffer[ctx[inst].line_buffer.len++] = (char)byte;
+    }
+
+    /* Check min_bytes threshold (only without framing) */
+    if (!ctx[inst].framing.enable_framing && ctx[inst].rx_binary_min_bytes > 0 &&
+        ctx[inst].line_buffer.len >= ctx[inst].rx_binary_min_bytes)
+    {
+      if (ctx[inst].rx_binary_callback != NULL)
+      {
+        ctx[inst].rx_binary_callback((FEB_UART_Instance_t)inst, (const uint8_t *)ctx[inst].line_buffer.buffer,
+                                     ctx[inst].line_buffer.len);
+      }
+      ctx[inst].line_buffer.len = 0;
+    }
+  }
+}
+
+/**
+ * @brief Process RX in line mode (original behavior)
+ */
+static void process_rx_line(int inst)
+{
   size_t count = get_rx_count(inst);
 
 #if FEB_UART_DEBUG_RX
@@ -690,7 +756,10 @@ void FEB_UART_ProcessRx(FEB_UART_Instance_t instance)
           memcpy(msg.line, ctx[inst].line_buffer.buffer, ctx[inst].line_buffer.len + 1);
           msg.len = (uint16_t)ctx[inst].line_buffer.len;
           msg.timestamp = ctx[inst].get_tick_ms ? ctx[inst].get_tick_ms() : 0;
-          (void)FEB_UART_QUEUE_SEND(ctx[inst].rx_queue, &msg, 0); /* Non-blocking */
+          if (!FEB_UART_QUEUE_SEND(ctx[inst].rx_queue, &msg, 0))
+          {
+            ctx[inst].rx_queue_drops++; /* Track dropped messages */
+          }
         }
         else
 #endif
@@ -1127,6 +1196,12 @@ bool FEB_UART_IsRxQueueEnabled(FEB_UART_Instance_t instance)
   return ctx[instance].initialized && ctx[instance].rx_queue_enabled;
 }
 
+uint32_t FEB_UART_GetRxQueueDrops(FEB_UART_Instance_t instance)
+{
+  VALIDATE_INSTANCE_ZERO(instance);
+  return ctx[instance].rx_queue_drops;
+}
+
 int FEB_UART_QueueWrite(FEB_UART_Instance_t instance, const uint8_t *data, size_t len, uint32_t timeout)
 {
   VALIDATE_INSTANCE_INIT(instance);
@@ -1222,4 +1297,65 @@ bool FEB_UART_IsTxQueueEnabled(FEB_UART_Instance_t instance)
   return ctx[instance].initialized && ctx[instance].tx_queue_enabled;
 }
 
-#endif /* FEB_UART_ENABLE_QUEUES */
+#endif /* FEB_UART_USE_FREERTOS - Queue API */
+
+/* ============================================================================
+ * Weak Task Function Implementations (FreeRTOS Mode)
+ * ============================================================================
+ *
+ * These are default implementations that users can override by defining
+ * their own non-weak versions. Create tasks in CubeMX .ioc pointing to
+ * these entry functions.
+ *
+ * Override example:
+ *   void FEB_UART_RxTaskFunc(void *argument) {
+ *     FEB_UART_Instance_t inst = (FEB_UART_Instance_t)(uintptr_t)argument;
+ *     for (;;) {
+ *       FEB_UART_ProcessRx(inst);
+ *       // User's custom processing...
+ *       osDelay(5);
+ *     }
+ *   }
+ */
+
+#if FEB_UART_USE_FREERTOS
+
+#include <stdint.h>
+
+/**
+ * @brief Weak default RX processing task
+ *
+ * Processes received UART data in a loop. Override to add custom logic.
+ *
+ * @param argument UART instance cast to void*
+ */
+__attribute__((weak)) void FEB_UART_RxTaskFunc(void *argument)
+{
+  FEB_UART_Instance_t inst = (FEB_UART_Instance_t)(uintptr_t)argument;
+
+  for (;;)
+  {
+    FEB_UART_ProcessRx(inst);
+    osDelay(1); /* Yield to other tasks */
+  }
+}
+
+/**
+ * @brief Weak default TX queue processing task
+ *
+ * Processes queued TX messages. Only needed if TX queue mode is enabled.
+ *
+ * @param argument UART instance cast to void*
+ */
+__attribute__((weak)) void FEB_UART_TxTaskFunc(void *argument)
+{
+  FEB_UART_Instance_t inst = (FEB_UART_Instance_t)(uintptr_t)argument;
+
+  for (;;)
+  {
+    FEB_UART_ProcessTxQueue(inst);
+    osDelay(1); /* Yield to other tasks */
+  }
+}
+
+#endif /* FEB_UART_USE_FREERTOS */

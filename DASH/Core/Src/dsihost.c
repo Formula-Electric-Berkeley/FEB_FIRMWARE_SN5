@@ -185,3 +185,4 @@ void HAL_DSI_MspDeInit(DSI_HandleTypeDef* dsiHandle)
 /* USER CODE BEGIN 1 */
 
 /* USER CODE END 1 */
+

@@ -10,7 +10,7 @@
  */
 
 #include "FEB_Regen.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 
 /* External references to RMS and BMS data */
 extern RMS_MESSAGE_TYPE RMS_MESSAGE;

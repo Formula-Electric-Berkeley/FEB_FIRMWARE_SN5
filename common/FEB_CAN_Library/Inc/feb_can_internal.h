@@ -86,6 +86,18 @@ typedef volatile uint8_t FEB_CAN_Semaphore_t;
 #define FEB_CAN_QUEUE_SPACE(q) (1)
 #define FEB_CAN_QUEUE_RESET(q) ((void)0)
 
+/*
+ * Bare-metal sync primitive behavior depends on FEB_CAN_FORCE_BARE_METAL:
+ *
+ * When FORCE_BARE_METAL == 0 (default):
+ *   - Mutex/semaphore operations are NO-OPs
+ *   - Safe for single-threaded applications
+ *
+ * When FORCE_BARE_METAL == 1 (explicit):
+ *   - Uses __disable_irq() / __enable_irq() for critical sections
+ */
+#if FEB_CAN_FORCE_BARE_METAL
+
 #define FEB_CAN_MUTEX_CREATE() (0U)
 #define FEB_CAN_MUTEX_DELETE(m) ((void)0)
 #define FEB_CAN_MUTEX_LOCK(m) do { (m) = __get_PRIMASK(); __disable_irq(); } while(0)
@@ -102,6 +114,26 @@ typedef volatile uint8_t FEB_CAN_Semaphore_t;
 #define FEB_CAN_ENTER_CRITICAL() __disable_irq()
 #define FEB_CAN_EXIT_CRITICAL() __enable_irq()
 
+#else /* Safe no-op defaults */
+
+#define FEB_CAN_MUTEX_CREATE() (0U)
+#define FEB_CAN_MUTEX_DELETE(m) ((void)0)
+#define FEB_CAN_MUTEX_LOCK(m) ((void)0)
+#define FEB_CAN_MUTEX_UNLOCK(m) ((void)0)
+#define FEB_CAN_MUTEX_TRYLOCK(m) (true)
+
+#define FEB_CAN_SEM_CREATE(max, init) (init)
+#define FEB_CAN_SEM_DELETE(s) ((void)0)
+#define FEB_CAN_SEM_GIVE(s) ((void)0)
+#define FEB_CAN_SEM_GIVE_ISR(s) ((void)0)
+#define FEB_CAN_SEM_TAKE(s, timeout) (true)
+#define FEB_CAN_SEM_TAKE_ISR(s) (true)
+
+#define FEB_CAN_ENTER_CRITICAL() ((void)0)
+#define FEB_CAN_EXIT_CRITICAL() ((void)0)
+
+#endif /* FEB_CAN_FORCE_BARE_METAL */
+
 #define FEB_CAN_IN_ISR() ((__get_IPSR() & 0xFF) != 0)
 
 #define FEB_CAN_DELAY(ms) HAL_Delay(ms)
@@ -110,21 +142,13 @@ typedef volatile uint8_t FEB_CAN_Semaphore_t;
 
   /* ============================================================================
    * CAN Message Structure for Queuing
-   * ============================================================================ */
-
-  /**
-   * @brief Internal CAN message structure for queue operations
+   * ============================================================================
+   *
+   * FEB_CAN_Message_t is now defined in the public header (feb_can_lib.h) so
+   * CubeMX-generated freertos.c can use it for queue item size calculation.
+   * Include feb_can_lib.h to access the type.
    */
-  typedef struct
-  {
-    uint32_t can_id;    /**< CAN identifier */
-    uint8_t data[8];    /**< Message data */
-    uint8_t length;     /**< Data length (0-8) */
-    uint8_t id_type;    /**< 0=Standard, 1=Extended */
-    uint8_t instance;   /**< CAN1 or CAN2 */
-    uint8_t reserved;   /**< Padding for alignment */
-    uint32_t timestamp; /**< Reception/transmission timestamp */
-  } FEB_CAN_Message_t;
+#include "feb_can_lib.h"
 
   /* ============================================================================
    * Forward Declarations

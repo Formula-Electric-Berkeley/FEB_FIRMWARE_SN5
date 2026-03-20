@@ -13,7 +13,7 @@
 #include "FEB_SM.h"
 #include "FEB_Const.h"
 #include "cmsis_os.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 #include <stdbool.h>
 
 #define TAG_ADBMS "[ADBMS]"

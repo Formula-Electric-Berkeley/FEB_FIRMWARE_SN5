@@ -126,14 +126,62 @@ typedef struct {
     const char *name;           /**< Human-readable name (e.g., "LV", "BMS") */
 } FEB_TPS_DeviceConfig_t;
 
+/* ============================================================================
+ * FreeRTOS Sync Primitive Types
+ * ============================================================================ */
+#if FEB_TPS_USE_FREERTOS
+#include "cmsis_os2.h"
+typedef osMutexId_t FEB_TPS_MutexHandle_t;
+#else
+typedef void *FEB_TPS_MutexHandle_t;
+#endif
+
 /**
  * @brief Library initialization configuration
+ *
+ * FreeRTOS Mode (FEB_TPS_USE_FREERTOS == 1):
+ *   - data_mutex is REQUIRED - protects cached data reads
+ *   - i2c_mutex is REQUIRED - protects I2C bus access
+ *   - poll_interval_ms configures auto-polling rate
+ *
+ * Bare-Metal Mode (FEB_TPS_USE_FREERTOS == 0):
+ *   - Sync primitive fields are ignored
+ *   - Use FEB_TPS_Poll() directly in main loop
  */
 typedef struct {
     uint32_t i2c_timeout_ms;    /**< I2C timeout in ms (0 = use default) */
     FEB_TPS_LogFunc_t log_func; /**< Logging callback (NULL = silent) */
     FEB_TPS_LogLevel_t log_level; /**< Minimum level to log (0 = use default INFO) */
+
+#if FEB_TPS_USE_FREERTOS
+    /** @brief Data mutex - REQUIRED. Protects cached measurement data. Create in CubeMX. */
+    FEB_TPS_MutexHandle_t data_mutex;
+
+    /** @brief I2C mutex - REQUIRED. Protects I2C bus access. Create in CubeMX. */
+    FEB_TPS_MutexHandle_t i2c_mutex;
+
+    /** @brief Polling interval in ms for auto-polling mode (0 = use default 100ms) */
+    uint32_t poll_interval_ms;
+#endif
 } FEB_TPS_LibConfig_t;
+
+/* ============================================================================
+ * Cached Data Structure (FreeRTOS Mode)
+ * ============================================================================ */
+
+/**
+ * @brief Cached measurement data from a TPS device
+ *
+ * In FreeRTOS mode, the polling task updates this cache periodically.
+ * User code reads from cache (fast, mutex-protected) instead of doing I2C.
+ */
+typedef struct {
+    float voltage_v;        /**< Cached bus voltage in Volts */
+    float current_a;        /**< Cached current in Amps */
+    float power_w;          /**< Cached power in Watts */
+    uint32_t last_update_ms;/**< Timestamp of last successful poll */
+    bool valid;             /**< True if data has been successfully polled at least once */
+} FEB_TPS_CachedData_t;
 
 /* ============================================================================
  * Measurement Data Structures
@@ -449,6 +497,101 @@ static inline int16_t FEB_TPS_SignMagnitude(uint16_t raw) {
     }
     return (int16_t)(raw & 0x7FFF);
 }
+
+/* ============================================================================
+ * Cached Data API (FreeRTOS Mode)
+ * ============================================================================
+ *
+ * In FreeRTOS mode, these functions read from cached data that is updated
+ * by the polling task. They are thread-safe and return immediately.
+ *
+ * In bare-metal mode, these are not available - use FEB_TPS_Poll() directly.
+ */
+
+#if FEB_TPS_USE_FREERTOS
+
+/**
+ * @brief Get cached voltage from a device
+ *
+ * Returns immediately from cache. Thread-safe.
+ *
+ * @param handle Device handle
+ * @return Cached voltage in Volts, or 0.0 if data not valid
+ */
+float FEB_TPS_GetVoltage(FEB_TPS_Handle_t handle);
+
+/**
+ * @brief Get cached current from a device
+ *
+ * @param handle Device handle
+ * @return Cached current in Amps, or 0.0 if data not valid
+ */
+float FEB_TPS_GetCurrent(FEB_TPS_Handle_t handle);
+
+/**
+ * @brief Get cached power from a device
+ *
+ * @param handle Device handle
+ * @return Cached power in Watts, or 0.0 if data not valid
+ */
+float FEB_TPS_GetPower(FEB_TPS_Handle_t handle);
+
+/**
+ * @brief Get timestamp of last successful poll
+ *
+ * @param handle Device handle
+ * @return Timestamp in milliseconds, or 0 if never polled
+ */
+uint32_t FEB_TPS_GetLastUpdateTime(FEB_TPS_Handle_t handle);
+
+/**
+ * @brief Check if cached data is valid
+ *
+ * @param handle Device handle
+ * @return true if data has been successfully polled at least once
+ */
+bool FEB_TPS_IsCacheValid(FEB_TPS_Handle_t handle);
+
+/**
+ * @brief Get full cached data structure
+ *
+ * @param handle Device handle
+ * @param data Output: cached data (copied under mutex protection)
+ * @return FEB_TPS_OK on success
+ */
+FEB_TPS_Status_t FEB_TPS_GetCachedData(FEB_TPS_Handle_t handle, FEB_TPS_CachedData_t *data);
+
+/**
+ * @brief Poll all devices and update cache
+ *
+ * Called by the polling task. Can also be called manually to force refresh.
+ * Updates cached data for all registered devices.
+ */
+void FEB_TPS_PollAllDevices(void);
+
+/* ============================================================================
+ * Weak Task Functions (FreeRTOS Mode)
+ * ============================================================================
+ *
+ * Default implementations that can be overridden by user code.
+ * Create task in CubeMX .ioc pointing to this entry function.
+ *
+ * CubeMX Task Configuration:
+ *   - Task name: e.g., "TPS_Poll_Task"
+ *   - Entry function: FEB_TPS_PollTaskFunc
+ *   - Argument: NULL (not used)
+ *   - Stack size: User choice (recommend 256+ words)
+ *   - Priority: Low priority recommended
+ */
+
+/**
+ * @brief Weak default polling task entry function
+ *
+ * @param argument Not used (pass NULL)
+ */
+void FEB_TPS_PollTaskFunc(void *argument);
+
+#endif /* FEB_TPS_USE_FREERTOS */
 
 #ifdef __cplusplus
 }
