@@ -235,15 +235,44 @@ void FEB_Log_Output(FEB_Log_Level_t level, const char *tag, const char *file, in
 
   bool in_isr = FEB_LOG_IN_ISR();
 
-  /* Acquire lock BEFORE formatting to protect staging_buffer */
-  if (!in_isr)
+  /*
+   * Buffer selection: Use stack-local buffer for ISR context to avoid
+   * race conditions with staging_buffer. ISR buffer is smaller due to
+   * stack constraints.
+   */
+  char isr_buffer[128];
+  char *buf;
+  size_t buf_size;
+
+  if (in_isr)
   {
+    buf = isr_buffer;
+    buf_size = sizeof(isr_buffer);
+  }
+  else
+  {
+    /* Acquire lock BEFORE formatting to protect staging_buffer */
     FEB_LOG_MUTEX_LOCK(log_ctx.mutex);
+    buf = staging_buffer;
+    buf_size = sizeof(staging_buffer);
   }
 
   int offset = 0;
-  char *buf = staging_buffer;
-  size_t buf_size = sizeof(staging_buffer);
+  int ret;
+
+  /*
+   * Helper macro: Add snprintf result to offset and clamp to prevent overflow.
+   * snprintf returns the number of bytes that WOULD be written (excluding null),
+   * which can exceed remaining space. We must clamp after each call.
+   */
+#define SAFE_OFFSET_ADD(r)                                                                                             \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    if ((r) > 0)                                                                                                       \
+      offset += (r);                                                                                                   \
+    if ((size_t)offset >= buf_size)                                                                                    \
+      offset = (int)(buf_size - 1);                                                                                    \
+  } while (0)
 
   /* Add color prefix if enabled */
   if (log_ctx.colors_enabled)
@@ -269,14 +298,16 @@ void FEB_Log_Output(FEB_Log_Level_t level, const char *tag, const char *file, in
     default:
       break;
     }
-    offset += snprintf(buf + offset, buf_size - offset, "%s", color);
+    ret = snprintf(buf + offset, buf_size - (size_t)offset, "%s", color);
+    SAFE_OFFSET_ADD(ret);
   }
 
   /* Add timestamp if enabled */
   if (log_ctx.timestamps_enabled && log_ctx.get_tick_ms != NULL)
   {
     uint32_t tick = log_ctx.get_tick_ms();
-    offset += snprintf(buf + offset, buf_size - offset, "[%lu] ", (unsigned long)tick);
+    ret = snprintf(buf + offset, buf_size - (size_t)offset, "[%lu] ", (unsigned long)tick);
+    SAFE_OFFSET_ADD(ret);
   }
 
   /* Add level prefix */
@@ -301,19 +332,22 @@ void FEB_Log_Output(FEB_Log_Level_t level, const char *tag, const char *file, in
   default:
     break;
   }
-  offset += snprintf(buf + offset, buf_size - offset, "%s ", level_str);
+  ret = snprintf(buf + offset, buf_size - (size_t)offset, "%s ", level_str);
+  SAFE_OFFSET_ADD(ret);
 
   /* Add tag */
   if (tag != NULL)
   {
-    offset += snprintf(buf + offset, buf_size - offset, "%s ", tag);
+    ret = snprintf(buf + offset, buf_size - (size_t)offset, "%s ", tag);
+    SAFE_OFFSET_ADD(ret);
   }
 
   /* Add user message */
   va_list args;
   va_start(args, format);
-  offset += vsnprintf(buf + offset, buf_size - offset, format, args);
+  ret = vsnprintf(buf + offset, buf_size - (size_t)offset, format, args);
   va_end(args);
+  SAFE_OFFSET_ADD(ret);
 
   /* Add file/line for ERROR and WARN */
   if (file != NULL && (level == FEB_LOG_ERROR || level == FEB_LOG_WARN))
@@ -327,24 +361,23 @@ void FEB_Log_Output(FEB_Log_Level_t level, const char *tag, const char *file, in
         filename = p + 1;
       }
     }
-    offset += snprintf(buf + offset, buf_size - offset, " (%s:%d)", filename, line);
+    ret = snprintf(buf + offset, buf_size - (size_t)offset, " (%s:%d)", filename, line);
+    SAFE_OFFSET_ADD(ret);
   }
 
   /* Add color reset and newline */
   if (log_ctx.colors_enabled)
   {
-    offset += snprintf(buf + offset, buf_size - offset, "%s\r\n", FEB_LOG_ANSI_RESET);
+    ret = snprintf(buf + offset, buf_size - (size_t)offset, "%s\r\n", FEB_LOG_ANSI_RESET);
+    SAFE_OFFSET_ADD(ret);
   }
   else
   {
-    offset += snprintf(buf + offset, buf_size - offset, "\r\n");
+    ret = snprintf(buf + offset, buf_size - (size_t)offset, "\r\n");
+    SAFE_OFFSET_ADD(ret);
   }
 
-  /* Clamp to buffer size */
-  if ((size_t)offset >= buf_size)
-  {
-    offset = buf_size - 1;
-  }
+#undef SAFE_OFFSET_ADD
 
   /* Output the formatted message */
   log_ctx.output(buf, (size_t)offset);
@@ -365,25 +398,40 @@ int FEB_Log_Raw(const char *format, ...)
 
   bool in_isr = FEB_LOG_IN_ISR();
 
-  /* Acquire lock */
-  if (!in_isr)
+  /*
+   * Buffer selection: Use stack-local buffer for ISR context to avoid
+   * race conditions with staging_buffer.
+   */
+  char isr_buffer[128];
+  char *buf;
+  size_t buf_size;
+
+  if (in_isr)
   {
+    buf = isr_buffer;
+    buf_size = sizeof(isr_buffer);
+  }
+  else
+  {
+    /* Acquire lock */
     FEB_LOG_MUTEX_LOCK(log_ctx.mutex);
+    buf = staging_buffer;
+    buf_size = sizeof(staging_buffer);
   }
 
   va_list args;
   va_start(args, format);
-  int len = vsnprintf(staging_buffer, sizeof(staging_buffer), format, args);
+  int len = vsnprintf(buf, buf_size, format, args);
   va_end(args);
 
   int result = -1;
   if (len > 0)
   {
-    if ((size_t)len >= sizeof(staging_buffer))
+    if ((size_t)len >= buf_size)
     {
-      len = sizeof(staging_buffer) - 1;
+      len = (int)(buf_size - 1);
     }
-    result = log_ctx.output(staging_buffer, (size_t)len);
+    result = log_ctx.output(buf, (size_t)len);
   }
 
   /* Release lock */

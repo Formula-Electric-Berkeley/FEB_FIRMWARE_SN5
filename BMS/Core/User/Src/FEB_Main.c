@@ -32,6 +32,12 @@ extern DMA_HandleTypeDef hdma_usart2_tx;
 static uint8_t uart_tx_buf[512];
 static uint8_t uart_rx_buf[256];
 
+/* Logger mutex for thread-safe logging */
+#if FEB_LOG_USE_FREERTOS
+static osMutexId_t log_mutex;
+static const osMutexAttr_t log_mutex_attr = {.name = "logMutex"};
+#endif
+
 /* ============================================================================
  * Application Entry Points
  * ============================================================================ */
@@ -60,12 +66,18 @@ void FEB_Init(void)
   }
 
   /* Initialize logging system */
+#if FEB_LOG_USE_FREERTOS
+  log_mutex = osMutexNew(&log_mutex_attr);
+#endif
   FEB_Log_Config_t log_cfg = {
       .uart_instance = FEB_UART_INSTANCE_1,
       .level = FEB_LOG_DEBUG,
       .colors = true,
       .timestamps = true,
       .get_tick_ms = HAL_GetTick,
+#if FEB_LOG_USE_FREERTOS
+      .mutex = log_mutex,
+#endif
   };
   FEB_Log_Init(&log_cfg);
 

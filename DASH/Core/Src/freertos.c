@@ -28,6 +28,7 @@
 #include "FEB_Main.h"
 #include "feb_uart.h"
 #include "feb_console.h"
+#include "feb_can_lib.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -224,7 +225,24 @@ void MX_FREERTOS_Init(void) {
   canRxQueueHandle = osMessageQueueNew (32, sizeof(uint8_t), &canRxQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+  /*
+   * Fix: CubeMX-generated queues above use sizeof(uint8_t) but should use
+   * sizeof(FEB_CAN_Message_t). Delete and recreate with correct size.
+   */
+  osMessageQueueDelete(canTxQueueHandle);
+  osMessageQueueDelete(canRxQueueHandle);
+  canTxQueueHandle = osMessageQueueNew(16, sizeof(FEB_CAN_Message_t), &canTxQueue_attributes);
+  canRxQueueHandle = osMessageQueueNew(32, sizeof(FEB_CAN_Message_t), &canRxQueue_attributes);
+
+  /* Validate all RTOS objects - fail fast on low heap */
+  if (FEB_I2C_MutexHandle == NULL ||
+      canTxMutexHandle == NULL ||
+      canRxMutexHandle == NULL ||
+      canTxMailboxSemHandle == NULL ||
+      canTxQueueHandle == NULL ||
+      canRxQueueHandle == NULL) {
+    Error_Handler();
+  }
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */

@@ -1089,20 +1089,35 @@ FEB_TPS_Status_t FEB_TPS_Reconfigure(FEB_TPS_Handle_t handle,
         return FEB_TPS_ERR_NOT_INIT;
     }
 
-    /* Update configuration */
-    dev->r_shunt_ohms = r_shunt_ohms;
-    dev->i_max_amps = i_max_amps;
-    feb_tps_compute_calibration(dev);
+    /*
+     * Compute calibration values to temporaries first.
+     * Only update the device struct after I2C write succeeds to avoid
+     * cache-hardware mismatch on I2C failure.
+     */
+    float new_current_lsb = FEB_TPS_CALC_CURRENT_LSB(i_max_amps);
+    float new_power_lsb = FEB_TPS_CALC_POWER_LSB(new_current_lsb);
+    uint16_t new_cal_reg = FEB_TPS_CALC_CAL(new_current_lsb, r_shunt_ohms);
 
     /* Write new calibration to device */
     FEB_TPS_MUTEX_LOCK(feb_tps_ctx.i2c_mutex);
 
     HAL_StatusTypeDef hal_status = feb_tps_write_reg(dev->hi2c, dev->i2c_addr,
-                                                      FEB_TPS_REG_CAL, dev->cal_reg);
+                                                      FEB_TPS_REG_CAL, new_cal_reg);
 
     FEB_TPS_MUTEX_UNLOCK(feb_tps_ctx.i2c_mutex);
 
-    return (hal_status == HAL_OK) ? FEB_TPS_OK : FEB_TPS_ERR_I2C;
+    if (hal_status != HAL_OK) {
+        return FEB_TPS_ERR_I2C;
+    }
+
+    /* I2C write succeeded - update device cache */
+    dev->r_shunt_ohms = r_shunt_ohms;
+    dev->i_max_amps = i_max_amps;
+    dev->current_lsb = new_current_lsb;
+    dev->power_lsb = new_power_lsb;
+    dev->cal_reg = new_cal_reg;
+
+    return FEB_TPS_OK;
 }
 
 /**
@@ -1146,7 +1161,7 @@ const char *FEB_TPS_GetDeviceName(FEB_TPS_Handle_t handle) {
 #if FEB_TPS_USE_FREERTOS
 
 float FEB_TPS_GetVoltage(FEB_TPS_Handle_t handle) {
-    if (handle == NULL) {
+    if (!feb_tps_ctx.initialized || handle == NULL) {
         return 0.0f;
     }
 
@@ -1160,7 +1175,7 @@ float FEB_TPS_GetVoltage(FEB_TPS_Handle_t handle) {
 }
 
 float FEB_TPS_GetCurrent(FEB_TPS_Handle_t handle) {
-    if (handle == NULL) {
+    if (!feb_tps_ctx.initialized || handle == NULL) {
         return 0.0f;
     }
 
@@ -1174,7 +1189,7 @@ float FEB_TPS_GetCurrent(FEB_TPS_Handle_t handle) {
 }
 
 float FEB_TPS_GetPower(FEB_TPS_Handle_t handle) {
-    if (handle == NULL) {
+    if (!feb_tps_ctx.initialized || handle == NULL) {
         return 0.0f;
     }
 
@@ -1188,7 +1203,7 @@ float FEB_TPS_GetPower(FEB_TPS_Handle_t handle) {
 }
 
 uint32_t FEB_TPS_GetLastUpdateTime(FEB_TPS_Handle_t handle) {
-    if (handle == NULL) {
+    if (!feb_tps_ctx.initialized || handle == NULL) {
         return 0;
     }
 
@@ -1202,7 +1217,7 @@ uint32_t FEB_TPS_GetLastUpdateTime(FEB_TPS_Handle_t handle) {
 }
 
 bool FEB_TPS_IsCacheValid(FEB_TPS_Handle_t handle) {
-    if (handle == NULL) {
+    if (!feb_tps_ctx.initialized || handle == NULL) {
         return false;
     }
 
@@ -1216,6 +1231,9 @@ bool FEB_TPS_IsCacheValid(FEB_TPS_Handle_t handle) {
 }
 
 FEB_TPS_Status_t FEB_TPS_GetCachedData(FEB_TPS_Handle_t handle, FEB_TPS_CachedData_t *data) {
+    if (!feb_tps_ctx.initialized) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
     if (handle == NULL || data == NULL) {
         return FEB_TPS_ERR_INVALID_ARG;
     }
@@ -1280,7 +1298,15 @@ __attribute__((weak)) void FEB_TPS_PollTaskFunc(void *argument) {
 
     for (;;) {
         FEB_TPS_PollAllDevices();
-        osDelay(feb_tps_ctx.poll_interval_ms);
+        /*
+         * Use poll_interval_ms with fallback to default if zero.
+         * This prevents osDelay(0) spinning if init hasn't completed.
+         */
+        uint32_t delay = feb_tps_ctx.poll_interval_ms;
+        if (delay == 0) {
+            delay = FEB_TPS_DEFAULT_POLL_INTERVAL_MS;
+        }
+        osDelay(delay);
     }
 }
 

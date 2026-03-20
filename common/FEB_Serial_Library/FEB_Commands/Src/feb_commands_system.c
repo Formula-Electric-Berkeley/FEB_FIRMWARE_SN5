@@ -75,7 +75,7 @@ const FEB_Console_Cmd_t feb_cmd_reboot = {
 
 const FEB_Console_Cmd_t feb_cmd_log = {
     .name = "log",
-    .help = "Set log level: log|error|warn|info|debug|trace",
+    .help = "Set log level: log|none|error|warn|info|debug|trace",
     .handler = cmd_log,
 };
 

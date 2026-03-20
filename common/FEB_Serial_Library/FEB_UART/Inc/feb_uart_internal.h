@@ -63,18 +63,40 @@ typedef uint32_t FEB_UART_Mutex_t;
 typedef volatile uint8_t FEB_UART_Semaphore_t;
 
 /*
- * Bare-metal sync primitive behavior depends on FEB_UART_FORCE_BARE_METAL:
+ * Bare-metal sync primitive behavior depends on FEB_UART_BARE_METAL_NO_SYNC:
  *
- * When FORCE_BARE_METAL == 0 (default):
- *   - Mutex/semaphore operations are NO-OPs
- *   - Safe for single-threaded applications
- *   - Prevents accidental deadlocks if FreeRTOS detection failed
- *
- * When FORCE_BARE_METAL == 1 (explicit):
+ * By default (FEB_UART_BARE_METAL_NO_SYNC undefined or 0):
  *   - Uses __disable_irq() / __enable_irq() for critical sections
- *   - Required if ISR/main-loop contention is possible
+ *   - Safe when ISR/main-loop contention is possible
+ *   - This is the recommended default for most bare-metal applications
+ *
+ * When FEB_UART_BARE_METAL_NO_SYNC == 1 (explicit opt-out):
+ *   - Mutex/semaphore operations are NO-OPs
+ *   - Only safe for single-threaded applications with no ISR contention
+ *   - Use this only if you're certain there's no concurrent access
+ *
+ * Note: FEB_UART_FORCE_BARE_METAL is now deprecated but still supported
+ * for backward compatibility (it now enables sync by default).
  */
-#if FEB_UART_FORCE_BARE_METAL
+#if defined(FEB_UART_BARE_METAL_NO_SYNC) && FEB_UART_BARE_METAL_NO_SYNC
+
+/* Explicit opt-out: NO-OP macros for purely single-threaded use */
+#define FEB_UART_MUTEX_CREATE() (0U)
+#define FEB_UART_MUTEX_DELETE(m) ((void)0)
+#define FEB_UART_MUTEX_LOCK(m) ((void)0)
+#define FEB_UART_MUTEX_UNLOCK(m) ((void)0)
+#define FEB_UART_MUTEX_LOCK_ISR(m) ((void)0)
+#define FEB_UART_MUTEX_UNLOCK_ISR(m) ((void)0)
+
+#define FEB_UART_SEM_CREATE(max, init) (init)
+#define FEB_UART_SEM_DELETE(s) ((void)0)
+#define FEB_UART_SEM_GIVE(s) ((void)0)
+#define FEB_UART_SEM_TAKE(s, timeout) (true)
+
+#define FEB_UART_ENTER_CRITICAL() ((void)0)
+#define FEB_UART_EXIT_CRITICAL() ((void)0)
+
+#else /* Default: use interrupt masking for safety */
 
 #define FEB_UART_MUTEX_CREATE() (0U)
 #define FEB_UART_MUTEX_DELETE(m) ((void)0)
@@ -96,24 +118,7 @@ typedef volatile uint8_t FEB_UART_Semaphore_t;
 #define FEB_UART_ENTER_CRITICAL() __disable_irq()
 #define FEB_UART_EXIT_CRITICAL() __enable_irq()
 
-#else /* Safe no-op defaults */
-
-#define FEB_UART_MUTEX_CREATE() (0U)
-#define FEB_UART_MUTEX_DELETE(m) ((void)0)
-#define FEB_UART_MUTEX_LOCK(m) ((void)0)
-#define FEB_UART_MUTEX_UNLOCK(m) ((void)0)
-#define FEB_UART_MUTEX_LOCK_ISR(m) ((void)0)
-#define FEB_UART_MUTEX_UNLOCK_ISR(m) ((void)0)
-
-#define FEB_UART_SEM_CREATE(max, init) (init)
-#define FEB_UART_SEM_DELETE(s) ((void)0)
-#define FEB_UART_SEM_GIVE(s) ((void)0)
-#define FEB_UART_SEM_TAKE(s, timeout) (true)
-
-#define FEB_UART_ENTER_CRITICAL() ((void)0)
-#define FEB_UART_EXIT_CRITICAL() ((void)0)
-
-#endif /* FEB_UART_FORCE_BARE_METAL */
+#endif /* FEB_UART_BARE_METAL_NO_SYNC */
 
 #define FEB_UART_IN_ISR() ((__get_IPSR() & 0xFF) != 0)
 

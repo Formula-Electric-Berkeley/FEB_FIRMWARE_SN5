@@ -78,7 +78,7 @@ typedef struct
   FEB_UART_LineBuffer_t line_buffer;
   bool last_was_line_ending; /* Track \r\n and \n\r sequences */
 
-#if FEB_UART_USE_FREERTOS
+#if FEB_UART_USE_FREERTOS && FEB_UART_ENABLE_QUEUES
   /* Queue state - user-provided handles */
   FEB_UART_QueueHandle_t rx_queue;
   FEB_UART_QueueHandle_t tx_queue;
@@ -370,16 +370,21 @@ int FEB_UART_Printf(FEB_UART_Instance_t instance, const char *format, ...)
   int inst = (int)instance;
 
   int written;
-  bool in_isr = FEB_UART_IN_ISR();
+
+#if FEB_UART_USE_FREERTOS
+  /*
+   * ISR writes are not supported in FreeRTOS mode.
+   * ISR context would skip the mutex and corrupt the tx_ring if the main
+   * thread is also writing. Return error instead of corrupting data.
+   */
+  if (FEB_UART_IN_ISR())
+  {
+    return -1;
+  }
 
   /* Acquire lock BEFORE formatting to protect staging_buffer */
-#if FEB_UART_USE_FREERTOS
-  if (!in_isr)
-  {
-    FEB_UART_MUTEX_LOCK(ctx[inst].tx_mutex);
-  }
+  FEB_UART_MUTEX_LOCK(ctx[inst].tx_mutex);
 #else
-  (void)in_isr;
   FEB_UART_ENTER_CRITICAL();
 #endif
 
@@ -403,10 +408,7 @@ int FEB_UART_Printf(FEB_UART_Instance_t instance, const char *format, ...)
   }
 
 #if FEB_UART_USE_FREERTOS
-  if (!in_isr)
-  {
-    FEB_UART_MUTEX_UNLOCK(ctx[inst].tx_mutex);
-  }
+  FEB_UART_MUTEX_UNLOCK(ctx[inst].tx_mutex);
 #else
   FEB_UART_EXIT_CRITICAL();
 #endif
@@ -425,26 +427,28 @@ int FEB_UART_Write(FEB_UART_Instance_t instance, const uint8_t *data, size_t len
   }
 
   int written;
-  bool in_isr = FEB_UART_IN_ISR();
+
+#if FEB_UART_USE_FREERTOS
+  /*
+   * ISR writes are not supported in FreeRTOS mode.
+   * ISR context would skip the mutex and corrupt the tx_ring if the main
+   * thread is also writing. Return error instead of corrupting data.
+   */
+  if (FEB_UART_IN_ISR())
+  {
+    return -1;
+  }
 
   /* Lock for thread safety */
-#if FEB_UART_USE_FREERTOS
-  if (!in_isr)
-  {
-    FEB_UART_MUTEX_LOCK(ctx[inst].tx_mutex);
-  }
+  FEB_UART_MUTEX_LOCK(ctx[inst].tx_mutex);
 #else
-  (void)in_isr;
   FEB_UART_ENTER_CRITICAL();
 #endif
 
   written = feb_uart_write_internal(inst, data, len);
 
 #if FEB_UART_USE_FREERTOS
-  if (!in_isr)
-  {
-    FEB_UART_MUTEX_UNLOCK(ctx[inst].tx_mutex);
-  }
+  FEB_UART_MUTEX_UNLOCK(ctx[inst].tx_mutex);
 #else
   FEB_UART_EXIT_CRITICAL();
 #endif
@@ -468,24 +472,33 @@ int FEB_UART_WriteBinary(FEB_UART_Instance_t instance, const uint8_t *data, size
     return FEB_UART_Write(instance, data, len);
   }
 
-  /* With framing: write start delimiter, escaped data, end delimiter */
-  int total_written = 0;
-  bool in_isr = FEB_UART_IN_ISR();
-
 #if FEB_UART_USE_FREERTOS
-  if (!in_isr)
+  /*
+   * ISR writes are not supported in FreeRTOS mode.
+   * ISR context would skip the mutex and corrupt the tx_ring if the main
+   * thread is also writing. Return error instead of corrupting data.
+   */
+  if (FEB_UART_IN_ISR())
   {
-    FEB_UART_MUTEX_LOCK(ctx[inst].tx_mutex);
+    return -1;
   }
+
+  FEB_UART_MUTEX_LOCK(ctx[inst].tx_mutex);
 #else
-  (void)in_isr;
   FEB_UART_ENTER_CRITICAL();
 #endif
 
+  int result = (int)len; /* Success: return original data length */
+  int ret;
+
   /* Write start delimiter */
   uint8_t delim = ctx[inst].framing.start_delimiter;
-  feb_uart_write_internal(inst, &delim, 1);
-  total_written++;
+  ret = feb_uart_write_internal(inst, &delim, 1);
+  if (ret != 1)
+  {
+    result = -1;
+    goto cleanup;
+  }
 
   /* Write data with escaping if enabled */
   for (size_t i = 0; i < len; i++)
@@ -500,31 +513,40 @@ int FEB_UART_WriteBinary(FEB_UART_Instance_t instance, const uint8_t *data, size
       {
         /* Write escape char + XOR'd byte (HDLC style) */
         uint8_t esc = ctx[inst].framing.escape_char;
-        feb_uart_write_internal(inst, &esc, 1);
+        ret = feb_uart_write_internal(inst, &esc, 1);
+        if (ret != 1)
+        {
+          result = -1;
+          goto cleanup;
+        }
         byte ^= 0x20; /* HDLC XOR */
-        total_written++;
       }
     }
 
-    feb_uart_write_internal(inst, &byte, 1);
-    total_written++;
+    ret = feb_uart_write_internal(inst, &byte, 1);
+    if (ret != 1)
+    {
+      result = -1;
+      goto cleanup;
+    }
   }
 
   /* Write end delimiter */
   delim = ctx[inst].framing.end_delimiter;
-  feb_uart_write_internal(inst, &delim, 1);
-  total_written++;
-
-#if FEB_UART_USE_FREERTOS
-  if (!in_isr)
+  ret = feb_uart_write_internal(inst, &delim, 1);
+  if (ret != 1)
   {
-    FEB_UART_MUTEX_UNLOCK(ctx[inst].tx_mutex);
+    result = -1;
   }
+
+cleanup:
+#if FEB_UART_USE_FREERTOS
+  FEB_UART_MUTEX_UNLOCK(ctx[inst].tx_mutex);
 #else
   FEB_UART_EXIT_CRITICAL();
 #endif
 
-  return (int)len; /* Return original data length, not framed length */
+  return result;
 }
 
 int FEB_UART_Flush(FEB_UART_Instance_t instance, uint32_t timeout_ms)
@@ -638,26 +660,44 @@ static void process_rx_binary(int inst)
         ctx[inst].rx_escape_next = true;
         continue;
       }
-      else if (byte == ctx[inst].framing.start_delimiter)
+      else if (byte == ctx[inst].framing.start_delimiter || byte == ctx[inst].framing.end_delimiter)
       {
-        /* Start of frame - reset buffer */
-        ctx[inst].line_buffer.len = 0;
-        ctx[inst].rx_in_frame = true;
-        continue;
-      }
-      else if (byte == ctx[inst].framing.end_delimiter)
-      {
-        /* End of frame - deliver if we have data */
-        if (ctx[inst].rx_in_frame && ctx[inst].line_buffer.len > 0)
+        /*
+         * Handle delimiter byte. When start_delimiter == end_delimiter (e.g., HDLC 0x7E),
+         * we use rx_in_frame state to disambiguate:
+         * - If in_frame: treat as end delimiter (close frame)
+         * - If not in_frame: treat as start delimiter (open frame)
+         */
+        bool is_end = (byte == ctx[inst].framing.end_delimiter) && ctx[inst].rx_in_frame;
+        bool is_start = (byte == ctx[inst].framing.start_delimiter) && !ctx[inst].rx_in_frame;
+
+        /* Handle same-delimiter case: if both match, use rx_in_frame to decide */
+        if (ctx[inst].framing.start_delimiter == ctx[inst].framing.end_delimiter)
         {
-          if (ctx[inst].rx_binary_callback != NULL)
-          {
-            ctx[inst].rx_binary_callback((FEB_UART_Instance_t)inst, (const uint8_t *)ctx[inst].line_buffer.buffer,
-                                         ctx[inst].line_buffer.len);
-          }
+          is_end = ctx[inst].rx_in_frame;
+          is_start = !ctx[inst].rx_in_frame;
         }
-        ctx[inst].line_buffer.len = 0;
-        ctx[inst].rx_in_frame = false;
+
+        if (is_end)
+        {
+          /* End of frame - deliver if we have data */
+          if (ctx[inst].line_buffer.len > 0)
+          {
+            if (ctx[inst].rx_binary_callback != NULL)
+            {
+              ctx[inst].rx_binary_callback((FEB_UART_Instance_t)inst, (const uint8_t *)ctx[inst].line_buffer.buffer,
+                                           ctx[inst].line_buffer.len);
+            }
+          }
+          ctx[inst].line_buffer.len = 0;
+          ctx[inst].rx_in_frame = false;
+        }
+        else if (is_start)
+        {
+          /* Start of frame - reset buffer */
+          ctx[inst].line_buffer.len = 0;
+          ctx[inst].rx_in_frame = true;
+        }
         continue;
       }
 

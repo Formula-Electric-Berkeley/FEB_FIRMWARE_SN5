@@ -168,13 +168,27 @@ FEB_CAN_Transmit(&hcan1, 0x200, data, 8);
 ```c
 #include "feb_tps.h"
 
-// Initialize TPS2482 on I2C
-FEB_TPS_Init(&hi2c1, TPS2482_ADDR);
+// Initialize library
+FEB_TPS_LibConfig_t lib_cfg = {
+    .log_func = my_log_callback,  // Optional
+    .log_level = FEB_TPS_LOG_INFO,
+};
+FEB_TPS_Init(&lib_cfg);
+
+// Register device (use FEB_TPS_ADDR macro for pin configuration)
+FEB_TPS_Handle_t handle;
+FEB_TPS_DeviceConfig_t cfg = {
+    .hi2c = &hi2c1,
+    .i2c_addr = FEB_TPS_ADDR(FEB_TPS_PIN_GND, FEB_TPS_PIN_GND),
+    .r_shunt_ohms = 0.002f,
+    .i_max_amps = 10.0f,
+};
+FEB_TPS_DeviceRegister(&cfg, &handle);
 
 // Read measurements
-float voltage = FEB_TPS_GetVoltage();
-float current = FEB_TPS_GetCurrent();
-float power = FEB_TPS_GetPower();
+float voltage = FEB_TPS_GetVoltage(handle);
+float current = FEB_TPS_GetCurrent(handle);
+float power = FEB_TPS_GetPower(handle);
 ```
 
 ## FreeRTOS Support
@@ -189,7 +203,9 @@ When FreeRTOS is detected:
 - Logging uses mutex for thread-safety
 - CAN uses message queues
 
-No manual configuration required.
+**Note:** While most libraries auto-configure, the CAN library requires board-provided
+mutexes and message queues to be passed via `FEB_CAN_Config_t`. See existing board
+implementations (e.g., DASH, BMS) for examples of proper CAN initialization.
 
 ## Compile-Time Configuration
 

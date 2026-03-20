@@ -18,6 +18,12 @@ extern DMA_HandleTypeDef hdma_usart2_rx;
 static uint8_t uart_tx_buf[4096];
 static uint8_t uart_rx_buf[256];
 
+/* Logger mutex for thread-safe logging (FreeRTOS only) */
+#if FEB_LOG_USE_FREERTOS
+static osMutexId_t log_mutex;
+static const osMutexAttr_t log_mutex_attr = {.name = "logMutex"};
+#endif
+
 static void FEB_Variable_Conversion(void);
 
 /* ============================================================================
@@ -86,6 +92,7 @@ uint16_t tps2482_pg_pins[NUM_TPS2482];
 
 FEB_LVPDB_CAN_Data can_data;
 bool bus_voltage_healthy = true;
+static bool tps_init_success = false;
 
 /**
  * Route TPS library log messages into the platform logging system with level mapping.
@@ -201,15 +208,19 @@ static bool FEB_TPS_Check_Power_Good(void)
     bool pg_state = false;
     FEB_TPS_Status_t status = FEB_TPS_ReadPowerGood(tps_handles[i], &pg_state);
 
-    if (status == FEB_TPS_OK)
+    if (status != FEB_TPS_OK)
     {
-      // For LV (index 0), we expect power good
-      // For others, we expect power good to match enable state (currently disabled)
-      if (i == 0 && !pg_state)
-      {
-        LOG_W(TAG_MAIN, "LV power not good!");
-        all_good = false;
-      }
+      LOG_W(TAG_MAIN, "ReadPowerGood failed for %s: %s", tps_device_configs[i].name, FEB_TPS_StatusToString(status));
+      all_good = false;
+      continue;
+    }
+
+    // For LV (index 0), we expect power good
+    // For others, we expect power good to match enable state (currently disabled)
+    if (i == 0 && !pg_state)
+    {
+      LOG_W(TAG_MAIN, "LV power not good!");
+      all_good = false;
     }
   }
 
@@ -242,12 +253,18 @@ void FEB_Main_Setup(void)
   FEB_UART_Init(FEB_UART_INSTANCE_1, &uart_cfg);
 
   // Initialize logging system
+#if FEB_LOG_USE_FREERTOS
+  log_mutex = osMutexNew(&log_mutex_attr);
+#endif
   FEB_Log_Config_t log_cfg = {
       .uart_instance = FEB_UART_INSTANCE_1,
       .level = FEB_LOG_DEBUG,
       .colors = true,
       .timestamps = true,
       .get_tick_ms = HAL_GetTick,
+#if FEB_LOG_USE_FREERTOS
+      .mutex = log_mutex,
+#endif
   };
   FEB_Log_Init(&log_cfg);
 
@@ -276,7 +293,7 @@ void FEB_Main_Setup(void)
 
   // Initialize TPS devices using the new library
   int maxiter = 0;
-  bool tps_init_success = false;
+  tps_init_success = false;
 
   while (!tps_init_success && maxiter < 100)
   {
@@ -345,7 +362,7 @@ void FEB_Main_Loop(void)
   static uint32_t last_poll_tick = 0;
   uint32_t now = HAL_GetTick();
 
-  if (now - last_poll_tick >= MAIN_LOOP_POLL_INTERVAL_MS)
+  if (tps_init_success && (now - last_poll_tick >= MAIN_LOOP_POLL_INTERVAL_MS))
   {
     last_poll_tick = now;
 

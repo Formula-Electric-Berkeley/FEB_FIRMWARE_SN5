@@ -19,7 +19,7 @@
  *		LV - Low Voltage Source (sda-scl)
  *		SH - Shutdown Source (sda-sda)
  *		LT - Laptop Branch (gnd-gnd)
- *		BM_L - Braking Servo, Lidar (gnd-scl)
+ *		BM_L - Braking Servo, Lidar (scl-scl)
  *		SM - Steering Motor (gnd-sda)
  *		AF1_AF2 - Accumulator Fans 1 Branch (gnd-vs)
  *		CP_RF - Coolant Pump + Radiator Fans Branch (vs-scl)

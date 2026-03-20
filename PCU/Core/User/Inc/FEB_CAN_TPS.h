@@ -11,6 +11,7 @@
 #define TPS_STATUS_VOLTAGE_OVERFLOW (1U << 0) /* Bus voltage exceeded uint16 max */
 #define TPS_STATUS_CURRENT_OVERFLOW (1U << 1) /* Current exceeded int16 range */
 #define TPS_STATUS_CURRENT_NEGATIVE (1U << 2) /* Current reading is negative */
+#define TPS_STATUS_POLL_ERROR (1U << 3)       /* Poll failed, values may be stale */
 
 /* Message structure */
 typedef struct

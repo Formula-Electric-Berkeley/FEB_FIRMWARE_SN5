@@ -179,7 +179,11 @@ int FEB_Console_Printf(const char *fmt, ...)
     {
       len = sizeof(printf_buf) - 1;
     }
-    FEB_UART_Write((FEB_UART_Instance_t)console_uart_instance, (const uint8_t *)printf_buf, (size_t)len);
+    int result = FEB_UART_Write((FEB_UART_Instance_t)console_uart_instance, (const uint8_t *)printf_buf, (size_t)len);
+    if (result < 0)
+    {
+      return result;
+    }
   }
 
   return len;
