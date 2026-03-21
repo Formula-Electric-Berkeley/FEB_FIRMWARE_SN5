@@ -1,4 +1,5 @@
 #include <TPS2482.h>
+#include "FEB_i2c_protected.h"
 
 void TPS2482_Init(I2C_HandleTypeDef *hi2c, uint8_t *addresses, TPS2482_Configuration *configurations, uint16_t *ids,
                   bool *res, uint8_t messageCount)

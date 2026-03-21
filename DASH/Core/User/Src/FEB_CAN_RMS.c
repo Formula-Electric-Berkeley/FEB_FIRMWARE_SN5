@@ -40,7 +40,7 @@ RMS_State_t state = {.torque = 0xFF, .direction = 0xFF, .enabled = 0xFF};
 static void rx_callback_ch1(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                             const uint8_t *data, uint8_t length, void *user_data)
 {
-  memcopy(&state.torque, &data[0], sizeof(int16_t));
+  memcpy(&state.torque, &data[0], sizeof(int16_t));
   state.torque = data[4];
   state.torque = data[5];
 }
