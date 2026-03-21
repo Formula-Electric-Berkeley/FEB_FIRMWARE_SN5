@@ -36,7 +36,7 @@
 #include "fmc.h"
 #include "FEB_CAN_BMS.h"
 #include "feb_uart.h"
-#include "FEB_Console.h"
+#include "feb_console.h"
 #include <stdio.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
