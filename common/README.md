@@ -70,17 +70,28 @@ void FEB_Main(void) {
     // 1. UART Setup
     // ========================================
     FEB_UART_Config_t uart_cfg = {
-        .huart = &huart2,  // Your UART handle
-        .rx_mode = FEB_UART_RX_MODE_DMA_IDLE,
+        .huart = &huart2,
+        .hdma_tx = &hdma_usart2_tx,
+        .hdma_rx = &hdma_usart2_rx,
+        .tx_buffer = uart_tx_buf,
+        .tx_buffer_size = sizeof(uart_tx_buf),
+        .rx_buffer = uart_rx_buf,
+        .rx_buffer_size = sizeof(uart_rx_buf),
+        .get_tick_ms = HAL_GetTick,
     };
     FEB_UART_Init(FEB_UART_INSTANCE_1, &uart_cfg);
 
     // ========================================
     // 2. Logging Setup (optional but recommended)
     // ========================================
-    FEB_Log_Init(log_output, HAL_GetTick, FEB_LOG_INFO);
-    FEB_Log_SetColors(true);       // ANSI colors
-    FEB_Log_SetTimestamps(true);   // Millisecond timestamps
+    FEB_Log_Config_t log_cfg = {
+        .uart_instance = FEB_UART_INSTANCE_1,
+        .level = FEB_LOG_INFO,
+        .colors = true,
+        .timestamps = true,
+        .get_tick_ms = HAL_GetTick,
+    };
+    FEB_Log_Init(&log_cfg);
 
     // ========================================
     // 3. Console Setup
@@ -96,7 +107,12 @@ void FEB_Main(void) {
     // ========================================
     // 4. CAN Setup (if needed)
     // ========================================
-    FEB_CAN_Init(&hcan1);
+    FEB_CAN_Config_t can_cfg = {
+        .hcan1 = &hcan1,
+        .hcan2 = NULL,
+        .get_tick_ms = HAL_GetTick,
+    };
+    FEB_CAN_Init(&can_cfg);
 
     // ========================================
     // Ready!
@@ -169,9 +185,14 @@ FEB_CAN_Transmit(&hcan1, 0x200, data, 8);
 #include "feb_tps.h"
 
 // Initialize library
+// Note: In FreeRTOS mode, data_mutex and i2c_mutex are REQUIRED
 FEB_TPS_LibConfig_t lib_cfg = {
     .log_func = my_log_callback,  // Optional
     .log_level = FEB_TPS_LOG_INFO,
+#if FEB_TPS_USE_FREERTOS
+    .data_mutex = tpsDataMutexHandle,  // Create in CubeMX
+    .i2c_mutex = i2cMutexHandle,       // Create in CubeMX
+#endif
 };
 FEB_TPS_Init(&lib_cfg);
 

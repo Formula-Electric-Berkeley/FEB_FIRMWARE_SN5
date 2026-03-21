@@ -122,6 +122,10 @@ void FEB_CAN_TPS_Update(I2C_HandleTypeDef *hi2c, uint8_t *i2c_addresses, uint8_t
   if (status != FEB_TPS_OK)
   {
     LOG_E(TAG_TPS, "TPS poll failed: %s", FEB_TPS_StatusToString(status));
+    /* Invalidate cached data to prevent stale values from being used */
+    TPS_MESSAGE.bus_voltage_mv = 0;
+    TPS_MESSAGE.current_ma = 0;
+    TPS_MESSAGE.shunt_voltage_uv = 0;
     TPS_MESSAGE.status_flags |= TPS_STATUS_POLL_ERROR;
     return;
   }

@@ -38,12 +38,37 @@ static osMutexId_t log_mutex;
 static const osMutexAttr_t log_mutex_attr = {.name = "logMutex"};
 #endif
 
+/* UART sync primitives (required when FEB_UART_USE_FREERTOS is enabled) */
+#if FEB_UART_USE_FREERTOS
+static osMutexId_t uart_tx_mutex;
+static osSemaphoreId_t uart_tx_sem;
+static osMessageQueueId_t uart_rx_queue;
+static const osMutexAttr_t uart_tx_mutex_attr = {.name = "uartTxMutex"};
+static const osSemaphoreAttr_t uart_tx_sem_attr = {.name = "uartTxSem"};
+static const osMessageQueueAttr_t uart_rx_queue_attr = {.name = "uartRxQueue"};
+#endif
+
 /* ============================================================================
  * Application Entry Points
  * ============================================================================ */
 
 void FEB_Init(void)
 {
+#if FEB_UART_USE_FREERTOS
+  /* Create UART sync primitives before init */
+  uart_tx_mutex = osMutexNew(&uart_tx_mutex_attr);
+  uart_tx_sem = osSemaphoreNew(1, 0, &uart_tx_sem_attr);
+  uart_rx_queue = osMessageQueueNew(FEB_UART_RX_QUEUE_DEPTH, FEB_UART_QUEUE_LINE_SIZE, &uart_rx_queue_attr);
+
+  if (uart_tx_mutex == NULL || uart_tx_sem == NULL || uart_rx_queue == NULL)
+  {
+    HAL_UART_Transmit(&huart2, (uint8_t *)"UART sync alloc failed\r\n", 24, 100);
+    while (1)
+    {
+    }
+  }
+#endif
+
   /* Initialize UART library */
   FEB_UART_Config_t cfg = {
       .huart = &huart2,
@@ -54,7 +79,12 @@ void FEB_Init(void)
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
       .get_tick_ms = HAL_GetTick,
+#if FEB_UART_USE_FREERTOS
+      .tx_mutex = uart_tx_mutex,
+      .tx_complete_sem = uart_tx_sem,
       .enable_rx_queue = true,
+      .rx_queue = uart_rx_queue,
+#endif
   };
 
   if (FEB_UART_Init(FEB_UART_INSTANCE_1, &cfg) != 0)

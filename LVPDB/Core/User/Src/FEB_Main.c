@@ -314,19 +314,19 @@ void FEB_Main_Setup(void)
   if (tps_init_success)
   {
     LOG_I(TAG_MAIN, "TPS2482 I2C init complete");
+
+    // Start with all rails disabled (library skips devices without EN pin)
+    FEB_TPS_EnableAll(false);
+
+    // Check power good states
+    FEB_TPS_Check_Power_Good();
+
+    LOG_I(TAG_MAIN, "TPS2482 power rails configured");
   }
   else
   {
-    LOG_E(TAG_MAIN, "TPS2482 init failed after %d retries", maxiter);
+    LOG_E(TAG_MAIN, "TPS2482 init failed after %d retries - skipping power rail config", maxiter);
   }
-
-  // Start with all rails disabled (library skips devices without EN pin)
-  FEB_TPS_EnableAll(false);
-
-  // Check power good states
-  FEB_TPS_Check_Power_Good();
-
-  LOG_I(TAG_MAIN, "TPS2482 power rails configured");
 
   // Initialize brake light to be off
   HAL_GPIO_WritePin(BL_Switch_GPIO_Port, BL_Switch_Pin, GPIO_PIN_RESET);
@@ -367,7 +367,12 @@ void FEB_Main_Loop(void)
     last_poll_tick = now;
 
     // Poll all TPS devices using the new library's batch operation
-    FEB_TPS_PollAllRaw(tps2482_bus_voltage_raw, tps2482_current_raw, tps2482_shunt_voltage_raw, NUM_TPS2482);
+    uint8_t polled =
+        FEB_TPS_PollAllRaw(tps2482_bus_voltage_raw, tps2482_current_raw, tps2482_shunt_voltage_raw, NUM_TPS2482);
+    if (polled < NUM_TPS2482)
+    {
+      LOG_W(TAG_MAIN, "TPS poll: only %d/%d devices succeeded", polled, NUM_TPS2482);
+    }
 
     FEB_Variable_Conversion();
   }

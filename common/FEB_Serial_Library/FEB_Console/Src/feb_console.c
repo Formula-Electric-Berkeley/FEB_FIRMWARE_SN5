@@ -149,6 +149,12 @@ int FEB_Console_Register(const FEB_Console_Cmd_t *cmd)
     return -1;
   }
 
+  /* Validate required fields before acquiring mutex */
+  if (cmd->name == NULL || cmd->handler == NULL)
+  {
+    return -1;
+  }
+
   CONSOLE_MUTEX_LOCK();
 
   if (command_count >= FEB_CONSOLE_MAX_COMMANDS)

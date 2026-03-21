@@ -1276,6 +1276,8 @@ void FEB_TPS_PollAllDevices(void) {
             dev->cached_power_w = meas.power_w;
             dev->cached_last_update_ms = now;
             dev->cached_valid = true;
+        } else {
+            dev->cached_valid = false;
         }
         osMutexRelease(feb_tps_ctx.data_mutex);
     }

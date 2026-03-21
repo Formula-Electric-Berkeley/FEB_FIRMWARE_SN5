@@ -226,8 +226,9 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /*
-   * Fix: CubeMX-generated queues above use sizeof(uint8_t) but should use
+   * Workaround: CubeMX-generated queues above use sizeof(uint8_t) but should use
    * sizeof(FEB_CAN_Message_t). Delete and recreate with correct size.
+   * TODO: Fix queue item size in .ioc file to eliminate this workaround.
    */
   osMessageQueueDelete(canTxQueueHandle);
   osMessageQueueDelete(canRxQueueHandle);
@@ -265,7 +266,15 @@ void MX_FREERTOS_Init(void) {
   DASHTaskTxHandle = osThreadNew(StartDASHTaskTx, NULL, &DASHTaskTx_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-
+  /* Validate all thread creations - fail fast on low heap */
+  if (btnTxLoopTaskHandle == NULL ||
+      displayTaskHandle == NULL ||
+      uartRxTaskHandle == NULL ||
+      uartTxTaskHandle == NULL ||
+      DASHTaskRxHandle == NULL ||
+      DASHTaskTxHandle == NULL) {
+    Error_Handler();
+  }
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
