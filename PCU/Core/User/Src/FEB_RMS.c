@@ -1,8 +1,9 @@
 #include "FEB_RMS.h"
 #include "FEB_ADC.h"
+#include "FEB_CAN_BMS.h"
 #include "FEB_CAN_RMS.h"
 #include "FEB_RMS_Config.h"
-#include "FEB_Debug.h"
+#include "feb_uart_log.h"
 #include "FEB_Regen.h"
 #include "main.h"
 
@@ -29,18 +30,17 @@ void FEB_RMS_Setup(void)
 
 void FEB_RMS_Process(void)
 {
+  // Require BMS to be in drive state before enabling inverter
+  if (!FEB_CAN_BMS_InDriveState())
+  {
+    LOG_W(TAG_RMS, "Cannot enable RMS: BMS not in drive state (state=%d)", BMS_MESSAGE.state);
+    return;
+  }
+
   if (!RMS_CONTROL_MESSAGE.enabled)
   {
-    LOG_I(TAG_RMS, "Sending RMS disable commands to clear lockout");
-    // Send continuous disable commands for 2 seconds to clear lockout
-    for (int i = 0; i < 200; i++) // 200 x 10ms = 2 seconds
-    {
-      FEB_CAN_RMS_Transmit_UpdateTorque(0, 0);
-      HAL_Delay(10);
-    }
-
-    RMS_CONTROL_MESSAGE.enabled = 1;
     LOG_I(TAG_RMS, "RMS enabled");
+    RMS_CONTROL_MESSAGE.enabled = 1;
   }
 
   DRIVE_STATE = true;
@@ -175,13 +175,27 @@ float FEB_RMS_GetMaxTorque(void)
  */
 void FEB_RMS_Torque(void)
 {
+  // Try to enable RMS if BMS enters drive state
+  if (!DRIVE_STATE && FEB_CAN_BMS_InDriveState())
+  {
+    FEB_RMS_Process();
+  }
+
+  // Auto-disable RMS if BMS leaves drive state or communication is lost
+  if (DRIVE_STATE && !FEB_CAN_BMS_InDriveState())
+  {
+    LOG_W(TAG_RMS, "BMS left drive state or timeout, disabling RMS");
+    FEB_RMS_Disable();
+  }
 
   // Read latest sensor data
   FEB_ADC_GetAPPSData(&APPS_Data);
   FEB_ADC_GetBrakeData(&Brake_Data);
+  Brake_Data.plausible = true; // OVERRIDE: Bypass brake plausibility check
 
-  // Check plausibility and safety conditions
-  bool sensors_plausible = true; // OVERRIDE: bypass implausibility for testing
+  // Check plausibility and safety conditions (require BMS in drive state)
+  bool bms_in_drive = FEB_CAN_BMS_InDriveState();
+  bool sensors_plausible = bms_in_drive && DRIVE_STATE;
 
   // Log any safety violations
   if (!sensors_plausible)
@@ -200,7 +214,7 @@ void FEB_RMS_Torque(void)
     }
     if (!DRIVE_STATE)
     {
-      LOG_W(TAG_RMS, "Not in drive state, cutting torque");
+      // LOG_W(TAG_RMS, "Not in drive state, cutting torque");
     }
   }
 

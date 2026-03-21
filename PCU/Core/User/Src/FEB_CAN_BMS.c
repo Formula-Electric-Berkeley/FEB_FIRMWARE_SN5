@@ -1,5 +1,9 @@
 #include "FEB_CAN_BMS.h"
 #include "feb_uart_log.h"
+#include <stdbool.h>
+
+/* Timeout for BMS CAN communication (ms) */
+#define BMS_STATE_TIMEOUT_MS 500
 
 /* Global BMS message data */
 BMS_MESSAGE_TYPE BMS_MESSAGE;
@@ -70,7 +74,7 @@ void FEB_CAN_BMS_Init(void)
 
   BMS_MESSAGE.temperature = 0;
   BMS_MESSAGE.voltage = 0;
-  BMS_MESSAGE.state = FEB_SM_ST_DEFAULT;
+  BMS_MESSAGE.state = FEB_SM_ST_BOOT;
   BMS_MESSAGE.ping_ack = FEB_HB_NULL;
   BMS_MESSAGE.max_temperature = 0.0f;
   BMS_MESSAGE.accumulator_voltage = 0.0f;
@@ -102,7 +106,7 @@ static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
     BMS_MESSAGE.ping_ack = (data[0] & 0xE0) >> 5;
 
     /* Defer heartbeat TX to main loop - do NOT transmit from ISR */
-    if (BMS_MESSAGE.state == FEB_SM_ST_HEALTH_CHECK || BMS_MESSAGE.ping_ack == FEB_HB_PCU)
+    if (BMS_MESSAGE.state == FEB_SM_ST_BUS_HEALTH_CHECK || BMS_MESSAGE.ping_ack == FEB_HB_PCU)
     {
       heartbeat_pending = true;
     }
@@ -139,4 +143,20 @@ void FEB_CAN_BMS_ProcessHeartbeat(void)
     LOG_D(TAG_BMS, "Processing deferred heartbeat (state=%d, ping_ack=%d)", BMS_MESSAGE.state, BMS_MESSAGE.ping_ack);
     FEB_CAN_HEARTBEAT_Transmit();
   }
+}
+
+bool FEB_CAN_BMS_InDriveState(void)
+{
+  // Check for recent BMS communication
+  if (BMS_MESSAGE.last_rx_timestamp == 0)
+  {
+    return false; // Never received BMS data
+  }
+
+  if (HAL_GetTick() - BMS_MESSAGE.last_rx_timestamp > BMS_STATE_TIMEOUT_MS)
+  {
+    return false; // BMS communication timeout
+  }
+
+  return BMS_MESSAGE.state == FEB_SM_ST_DRIVE;
 }

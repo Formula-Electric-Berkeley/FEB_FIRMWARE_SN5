@@ -200,11 +200,11 @@ void cmd_68_r(uint8_t tx_cmd[2], uint8_t *data, uint8_t len)
   FEB_spi_write_read(cmd, 4, data, len);
   FEB_cs_high();
 
-  // Debug: print raw received bytes
-  printf("[SPI] TX: %02X %02X, RX:", tx_cmd[0], tx_cmd[1]);
-  for (int i = 0; i < len && i < 16; i++)
-    printf(" %02X", data[i]);
-  printf("\r\n");
+  // Debug: print raw received bytes (commented out to reduce log spam)
+  // printf("[SPI] TX: %02X %02X, RX:", tx_cmd[0], tx_cmd[1]);
+  // for (int i = 0; i < len && i < 16; i++)
+  //   printf(" %02X", data[i]);
+  // printf("\r\n");
 }
 /*
 Generic function to write 68xx commands and write payload data.

@@ -34,10 +34,12 @@
 #include "usart.h"
 #include "gpio.h"
 #include "fmc.h"
-
+#include "FEB_CAN_BMS.h"
+#include "feb_uart.h"
+#include "FEB_Console.h"
+#include <stdio.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdio.h>
 #include "FEB_Main.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
@@ -232,42 +234,6 @@ void PeriphCommonClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
-
-/* USER CODE BEGIN Header_StartBtnTxLoop */
-/**
- * @brief  Function implementing the btnTxLoopTask thread.
- * @param  argument: Not used
- * @retval None
- */
-/* USER CODE END Header_StartBtnTxLoop */
-__weak void StartBtnTxLoop(void *argument)
-{
-  /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for (;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END 5 */
-}
-
-/* USER CODE BEGIN Header_StartDisplayTask */
-/**
- * @brief Function implementing the displayTask thread.
- * @param argument: Not used
- * @retval None
- */
-/* USER CODE END Header_StartDisplayTask */
-__weak void StartDisplayTask(void *argument)
-{
-  /* USER CODE BEGIN StartDisplayTask */
-  /* Infinite loop */
-  for (;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartDisplayTask */
-}
 
 /**
   * @brief  Period elapsed callback in non blocking mode

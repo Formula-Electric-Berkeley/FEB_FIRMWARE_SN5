@@ -8,6 +8,7 @@
 #include "stm32469i_discovery_lcd.h"
 #include "stm32f4xx_hal_uart.h"
 #include <stdio.h>
+#include "FEB_UI_Helpers.h"
 
 // **************************************** Variables ****************************************
 
@@ -74,7 +75,7 @@ void FEB_UI_Init(void)
 
 void FEB_UI_Update(void)
 {
-  lv_timer_handler(); // (lv_task_handler is deprecated)
+  ui_update(); // (lv_task_handler is deprecated)
 }
 
 void StartDisplayTask(void *argument)
@@ -86,15 +87,13 @@ void StartDisplayTask(void *argument)
   {
     FEB_UI_Update();
 
-    // LVGL timer handler should NOT be called in critical section
-    // It needs interrupts enabled for DMA2D and LTDC to work properly
     if (lv_tick_get() - last_blink >= 1000)
-    { // 1 second passed
+    {
       HAL_GPIO_TogglePin(LED4_GPIO_Port, LED4_Pin);
       last_blink = lv_tick_get();
     }
 
-    osDelay(pdMS_TO_TICKS(5)); // VERY IMPORTANT (lets LVGL run properly)
+    osDelay(pdMS_TO_TICKS(50)); // slower delay so you can see it changing
   }
 }
 

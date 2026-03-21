@@ -4,25 +4,88 @@
  */
 
 #include "FEB_CAN_State.h"
+#include "FEB_CAN_DASH.h"
+#include "FEB_SM.h"
 #include "feb_can_lib.h"
 #include "feb_can.h"
+#include "stm32f4xx_hal.h"
 #include <stdbool.h>
 #include <string.h>
+
+/* Critical section macros for ISR/task shared data */
+#define STATE_ENTER_CRITICAL()                                                                                         \
+  uint32_t _primask = __get_PRIMASK();                                                                                 \
+  __disable_irq()
+#define STATE_EXIT_CRITICAL() __set_PRIMASK(_primask)
+
+/* R2D timeout for state transitions */
+#define R2D_TIMEOUT_MS 500
 
 /* CAN ready flag - prevents transmission before CAN is initialized */
 static volatile bool can_ready = false;
 
+/* Current BMS state - volatile for ISR/task access */
+static volatile BMS_State_t current_state = BMS_STATE_BOOT;
+
 /* BMS state message data */
 static struct feb_can_bms_state_t bms_state_msg;
+
+/* State name lookup table - must match BMS_State_t enum order */
+static const char *state_names[] = {
+    "BOOT",              // 0
+    "LV_POWER",          // 1
+    "BUS_HEALTH_CHECK",  // 2
+    "PRECHARGE",         // 3
+    "ENERGIZED",         // 4
+    "DRIVE",             // 5
+    "BATTERY_FREE",      // 6
+    "CHARGER_PRECHARGE", // 7
+    "CHARGING",          // 8
+    "BALANCE",           // 9
+    "FAULT_BMS",         // 10
+    "FAULT_BSPD",        // 11
+    "FAULT_IMD",         // 12
+    "FAULT_CHARGING",    // 13
+};
 
 void FEB_CAN_State_Init(void)
 {
   memset(&bms_state_msg, 0, sizeof(bms_state_msg));
+  current_state = BMS_STATE_BOOT;
 }
 
 void FEB_CAN_State_SetReady(void)
 {
   can_ready = true;
+}
+
+BMS_State_t FEB_CAN_State_GetState(void)
+{
+  STATE_ENTER_CRITICAL();
+  BMS_State_t state = current_state;
+  STATE_EXIT_CRITICAL();
+  return state;
+}
+
+int FEB_CAN_State_SetState(BMS_State_t state)
+{
+  if (state >= BMS_STATE_COUNT)
+  {
+    return -1;
+  }
+  STATE_ENTER_CRITICAL();
+  current_state = state;
+  STATE_EXIT_CRITICAL();
+  return 0;
+}
+
+const char *FEB_CAN_State_GetStateName(BMS_State_t state)
+{
+  if (state >= BMS_STATE_COUNT)
+  {
+    return "UNKNOWN";
+  }
+  return state_names[state];
 }
 
 void FEB_CAN_State_Tick(void)
@@ -41,16 +104,54 @@ void FEB_CAN_State_Tick(void)
   {
     state_divider = 0;
 
-    /* TODO: Wire to actual BMS state when state machine is implemented */
-    /* bms_state_msg.bms_state = current_state; */
-    /* bms_state_msg.relay_state = relay_status; */
-    /* bms_state_msg.gpio_sense = gpio_reading; */
-    /* bms_state_msg.ping_lv_nodes = ping_value; */
+    /* Update message with current state - protected read */
+    STATE_ENTER_CRITICAL();
+    BMS_State_t state_snapshot = current_state;
+    STATE_EXIT_CRITICAL();
+    bms_state_msg.bms_state = (uint8_t)state_snapshot;
 
     /* Pack and send */
     uint8_t tx_data[FEB_CAN_BMS_STATE_LENGTH];
     feb_can_bms_state_pack(tx_data, &bms_state_msg, sizeof(tx_data));
 
     FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_STATE_FRAME_ID, FEB_CAN_ID_STD, tx_data, FEB_CAN_BMS_STATE_LENGTH);
+  }
+}
+
+void FEB_CAN_State_ProcessTransitions(void)
+{
+  /* Don't process until CAN is initialized */
+  if (!can_ready)
+  {
+    return;
+  }
+
+  /*
+   * NOTE: This function now routes through FEB_SM_Transition() to ensure
+   * proper relay control and state validation. Previously this function
+   * directly modified current_state, bypassing the state machine's
+   * relay control logic.
+   *
+   * The FEB_SM_Process() function (called from timer ISR) already handles
+   * ENERGIZED <-> DRIVE transitions via EnergizedTransition() and
+   * DriveTransition(). This function is kept for API compatibility.
+   */
+  BMS_State_t state = FEB_SM_Get_Current_State();
+
+  /* ENERGIZED -> DRIVE: When R2D is active and fresh */
+  if (state == BMS_STATE_ENERGIZED)
+  {
+    if (FEB_CAN_DASH_IsReadyToDrive(R2D_TIMEOUT_MS))
+    {
+      FEB_SM_Transition(BMS_STATE_DRIVE);
+    }
+  }
+  /* DRIVE -> ENERGIZED: When R2D is inactive or stale */
+  else if (state == BMS_STATE_DRIVE)
+  {
+    if (!FEB_CAN_DASH_IsReadyToDrive(R2D_TIMEOUT_MS))
+    {
+      FEB_SM_Transition(BMS_STATE_ENERGIZED);
+    }
   }
 }

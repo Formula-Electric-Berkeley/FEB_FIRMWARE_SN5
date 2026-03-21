@@ -21,8 +21,8 @@
 // Alias for compatibility
 #define FEB_NUM_CELL_PER_BANK FEB_NUM_CELLS_PER_BANK
 
-// Total number of temperature sensors
-#define FEB_NUM_TEMP_SENSORS 10
+// Total number of temperature sensors per bank (10 per IC × 2 ICs)
+#define FEB_NUM_TEMP_SENSORS 20
 
 // Number of temperature sensors per IC (for MUX reading)
 #define FEB_NUM_TEMP_SENSE_PER_IC 10

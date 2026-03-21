@@ -24,6 +24,8 @@
 #include "feb_uart_log.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
+#include "FEB_CAN_DASH.h"
+#include "FEB_CAN_IVT.h"
 
 /* ========================== External HAL handles ========================== */
 extern CAN_HandleTypeDef hcan1;
@@ -79,9 +81,7 @@ static void BMS_CAN_Init(void)
   };
 
   FEB_CAN_RX_Register(&rx_params);
-
-  /* Ensure filters reflect registry */
-  FEB_CAN_Filter_UpdateFromRegistry(FEB_CAN_INSTANCE_1);
+  /* Note: Filter update deferred to StartBMSTaskRx() after all registrations */
 }
 
 /* ============================================================================
@@ -100,6 +100,15 @@ void StartBMSTaskRx(void *argument)
 
   /* Initialize pingpong module */
   FEB_CAN_PingPong_Init();
+
+  /* Initialize DASH CAN reception (R2D signal) */
+  FEB_CAN_DASH_Init();
+
+  /* Initialize IVT CAN reception (voltage/current for precharge monitoring) */
+  FEB_CAN_IVT_Init();
+
+  /* Update filters after all registrations */
+  FEB_CAN_Filter_UpdateFromRegistry(FEB_CAN_INSTANCE_1);
 
   /* Signal that CAN is ready for state publishing */
   FEB_CAN_State_SetReady();

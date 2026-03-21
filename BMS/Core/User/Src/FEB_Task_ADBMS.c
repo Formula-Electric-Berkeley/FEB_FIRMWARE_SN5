@@ -47,15 +47,10 @@ void StartADBMSTask(void *argument)
     FEB_spi_init_redundancy();
 #endif
 
-    HAL_GPIO_WritePin(M1_GPIO_Port, M1_Pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(M2_GPIO_Port, M2_Pin, GPIO_PIN_SET);
+    /* Note: MUX pins M1/M2 are hardwired (M1=HIGH, M2=LOW), no GPIO control needed */
 
-    /* Initialize ADBMS6830B chips */
-    FEB_ADBMS_Init();
-
-    /* TODO: Add validation check here if FEB_ADBMS_Init returns status */
-    /* For now, assume initialization succeeded */
-    init_success = true;
+    /* Initialize ADBMS6830B chips and validate communication */
+    init_success = FEB_ADBMS_Init();
 
     if (!init_success && init_attempts < MAX_INIT_RETRIES)
     {
@@ -72,7 +67,7 @@ void StartADBMSTask(void *argument)
     /* Signal failure via LED blinking */
     for (;;)
     {
-      HAL_GPIO_TogglePin(M2_GPIO_Port, M2_Pin);
+      HAL_GPIO_TogglePin(INDICATOR_GPIO_Port, INDICATOR_Pin);
       osDelay(pdMS_TO_TICKS(500));
     }
   }

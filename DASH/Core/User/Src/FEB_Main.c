@@ -7,6 +7,8 @@
  */
 
 #include "FEB_Main.h"
+#include "FEB_CAN_PCU.h"
+#include "FEB_CAN_PingPong.h"
 #include "main.h"
 #include "feb_uart.h"
 #include "feb_uart_config.h"
@@ -14,6 +16,7 @@
 #include "FEB_CAN_State.h"
 #include "FEB_Commands.h"
 #include "cmsis_os2.h"
+#include "FEB_CAN_BMS.h"
 
 /* External HAL handles from CubeMX-generated code */
 extern UART_HandleTypeDef huart3;
@@ -60,6 +63,8 @@ void FEB_Init(void)
 
   /* Initialize CAN state publisher */
   FEB_CAN_State_Init();
+  FEB_CAN_BMS_Init();
+  FEB_CAN_PCU_Init();
 
   /* Startup banner */
   FEB_Console_Printf("\r\n");
