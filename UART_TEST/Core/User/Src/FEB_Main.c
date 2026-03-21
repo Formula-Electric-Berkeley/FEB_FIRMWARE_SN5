@@ -90,7 +90,13 @@ void FEB_Main_Setup(void)
       .mutex = log_mutex,
 #endif
   };
-  FEB_Log_Init(&log_cfg);
+  if (FEB_Log_Init(&log_cfg) != 0)
+  {
+    HAL_UART_Transmit(&huart1, (uint8_t *)"DBG:FAIL-LogInit\r\n", 18, 100);
+    while (1)
+    {
+    }
+  }
 
   /* Initialize console (registers built-in commands) */
   FEB_Console_Init(true);
