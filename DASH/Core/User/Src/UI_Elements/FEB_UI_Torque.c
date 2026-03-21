@@ -44,10 +44,10 @@ void FEB_UI_Update_Torque(int16_t torque)
                             0); // Set dot opacities based on if they should be filled
 
     lv_obj_set_style_bg_color(ui_TorqueCircles[i],
-                              (torque < 0) ? lv_color_hex(0xFFFFFF)  // If torque < 0 all dots are white
-                              : (i < 12)   ? lv_color_hex(0x00FF00)  // First 12 dots are green
-                              : (i < 18)   ? lv_color_hex(0xFFFF00)  // Next 6 dots are yellow
-                                           : lv_color_hex(0xFF0000), // Last 3 dots are red
+                              (torque < 0) ? lv_color_hex(0xFFFFFF) // If torque < 0 all dots are white
+                              : (i < 12)   ? lv_color_hex(0x00FF00) // First 12 dots are green
+                              : (i < 18)   ? lv_color_hex(0xFFFF00) // Next 6 dots are yellow
+                                           : lv_color_hex(0xFF0000),  // Last 3 dots are red
                               0);
   }
 }
