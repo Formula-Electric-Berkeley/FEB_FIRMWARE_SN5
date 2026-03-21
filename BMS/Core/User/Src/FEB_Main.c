@@ -98,6 +98,13 @@ void FEB_Init(void)
   /* Initialize logging system */
 #if FEB_LOG_USE_FREERTOS
   log_mutex = osMutexNew(&log_mutex_attr);
+  if (log_mutex == NULL)
+  {
+    HAL_UART_Transmit(&huart2, (uint8_t *)"Log mutex alloc failed\r\n", 24, 100);
+    while (1)
+    {
+    }
+  }
 #endif
   FEB_Log_Config_t log_cfg = {
       .uart_instance = FEB_UART_INSTANCE_1,

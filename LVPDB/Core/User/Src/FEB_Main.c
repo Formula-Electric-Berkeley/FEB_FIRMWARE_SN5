@@ -404,7 +404,10 @@ void FEB_1ms_Callback(void)
   if (tps_divider >= 100)
   {
     tps_divider = 0;
-    FEB_CAN_TPS_Tick(tps2482_current_raw, tps2482_bus_voltage_raw, NUM_TPS2482);
+    if (tps_init_success)
+    {
+      FEB_CAN_TPS_Tick(tps2482_current_raw, tps2482_bus_voltage_raw, NUM_TPS2482);
+    }
   }
 }
 

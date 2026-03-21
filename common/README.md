@@ -129,7 +129,7 @@ void FEB_Main(void) {
 
 ## Directory Structure
 
-```
+```text
 common/
 ├── CMakeLists.txt              # Aggregates all libraries
 ├── README.md                   # This file
@@ -169,8 +169,13 @@ See [`FEB_Serial_Library/README.md`](FEB_Serial_Library/README.md) for detailed 
 ```c
 #include "feb_can.h"
 
-// Initialize
-FEB_CAN_Init(&hcan1);
+// Initialize with configuration
+FEB_CAN_Config_t can_cfg = {
+    .hcan1 = &hcan1,
+    .hcan2 = NULL,
+    .get_tick_ms = HAL_GetTick,
+};
+FEB_CAN_Init(&can_cfg);
 
 // Register message handler
 FEB_CAN_Register(0x100, 0x7FF, my_handler, NULL);
@@ -291,7 +296,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 ### "file not found" in IDE
 - IDE may not parse CMake include paths correctly
-- Code will compile correctly with CMake
+- Code will compile successfully with CMake
 - Rebuild CMake cache in IDE if needed
 
 ### Console not responding

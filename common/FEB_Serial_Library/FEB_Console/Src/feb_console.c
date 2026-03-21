@@ -216,6 +216,10 @@ const FEB_Console_Cmd_t *FEB_Console_GetCommand(size_t index)
 
 const FEB_Console_Cmd_t *FEB_Console_FindCommand(const char *name)
 {
+  if (name == NULL)
+  {
+    return NULL;
+  }
   CONSOLE_MUTEX_LOCK();
   const FEB_Console_Cmd_t *cmd = find_command(name);
   CONSOLE_MUTEX_UNLOCK();

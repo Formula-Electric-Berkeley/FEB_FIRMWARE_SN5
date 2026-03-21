@@ -75,6 +75,9 @@ void FEB_Main_Setup(void)
   if (log_mutex == NULL)
   {
     HAL_UART_Transmit(&huart1, (uint8_t *)"ERR: log mutex alloc failed\r\n", 29, 100);
+    while (1)
+    {
+    }
   }
 #endif
   FEB_Log_Config_t log_cfg = {
