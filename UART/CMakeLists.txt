@@ -21,6 +21,7 @@ add_compile_definitions(
     USE_HAL_DRIVER
     STM32F446xx
     FEB_UART_USE_FREERTOS=1
+    FEB_LOG_COMPILE_LEVEL=5
     $<$<CONFIG:Debug>:DEBUG>
 )
 

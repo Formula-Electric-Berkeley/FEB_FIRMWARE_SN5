@@ -8,14 +8,16 @@
 
 #include "uart_commands.h"
 #include "feb_console.h"
+#include "feb_log.h"
 #include "flash_benchmark.h"
+#include "main.h"
+#include "cmsis_os2.h"
 #include <stdlib.h>
 
 /* ============================================================================
  * Private Function Prototypes
  * ============================================================================ */
 
-static void cmd_hello(int argc, char *argv[]);
 static void cmd_blink(int argc, char *argv[]);
 static void cmd_flashbench(int argc, char *argv[]);
 
@@ -23,15 +25,9 @@ static void cmd_flashbench(int argc, char *argv[]);
  * Command Descriptors
  * ============================================================================ */
 
-const FEB_Console_Cmd_t uart_cmd_hello = {
-    .name = "hello",
-    .help = "Say hello from UART",
-    .handler = cmd_hello,
-};
-
 const FEB_Console_Cmd_t uart_cmd_blink = {
     .name = "blink",
-    .help = "Blink LED (placeholder)",
+    .help = "Blink LD2 (PA5) 3 times",
     .handler = cmd_blink,
 };
 
@@ -47,7 +43,6 @@ const FEB_Console_Cmd_t uart_cmd_flashbench = {
 
 void UART_RegisterCommands(void)
 {
-  FEB_Console_Register(&uart_cmd_hello);
   FEB_Console_Register(&uart_cmd_blink);
   FEB_Console_Register(&uart_cmd_flashbench);
 }
@@ -56,19 +51,24 @@ void UART_RegisterCommands(void)
  * Command Handlers
  * ============================================================================ */
 
-static void cmd_hello(int argc, char *argv[])
-{
-  (void)argc;
-  (void)argv;
-  FEB_Console_Printf("Hello from UART!\r\n");
-  FEB_Console_Printf("STM32F446 Console Demo\r\n");
-}
-
 static void cmd_blink(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-  FEB_Console_Printf("LED blink not implemented (no LED configured)\r\n");
+
+  FEB_Console_Printf("Blinking LD2 (PA5) 3 times...\r\n");
+
+  for (int i = 0; i < 3; i++)
+  {
+    LOG_T(TAG_GPIO, "Blink cycle %d: LED ON", i + 1);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+    osDelay(100);
+    LOG_T(TAG_GPIO, "Blink cycle %d: LED OFF", i + 1);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+    osDelay(100);
+  }
+
+  FEB_Console_Printf("Done.\r\n");
 }
 
 static void print_stats(const char *name, const FlashBench_Stats_t *s)

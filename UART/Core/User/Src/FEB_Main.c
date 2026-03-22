@@ -21,6 +21,11 @@ extern UART_HandleTypeDef huart2;
 extern DMA_HandleTypeDef hdma_usart2_rx;
 extern DMA_HandleTypeDef hdma_usart2_tx;
 
+/* FreeRTOS handles from CubeMX (freertos.c) */
+extern osMutexId_t uartTxMutexHandle;
+extern osSemaphoreId_t uartTxSemHandle;
+extern osMessageQueueId_t uartRxQueueHandle;
+
 /* UART buffers */
 static uint8_t uart_tx_buf[512];
 static uint8_t uart_rx_buf[256];
@@ -47,7 +52,10 @@ void FEB_Main_Setup(void)
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
       .get_tick_ms = HAL_GetTick,
+      .tx_mutex = uartTxMutexHandle,
+      .tx_complete_sem = uartTxSemHandle,
       .enable_rx_queue = true,
+      .rx_queue = uartRxQueueHandle,
   };
 
   if (FEB_UART_Init(FEB_UART_INSTANCE_1, &cfg) != 0)
@@ -100,7 +108,7 @@ void FEB_Main_Setup(void)
  * FreeRTOS Task Implementations - Override weak stubs in freertos.c
  * ============================================================================ */
 
-void StartUartRxTask(void *argument)
+void StartUARTRxTask(void *argument)
 {
   (void)argument;
 
@@ -120,14 +128,5 @@ void StartUartRxTask(void *argument)
     {
       FEB_Console_ProcessLine(line_buf, line_len);
     }
-  }
-}
-
-void StartUartTxTask(void *argument)
-{
-  (void)argument;
-  for (;;)
-  {
-    osDelay(100); /* TX task placeholder - currently unused */
   }
 }

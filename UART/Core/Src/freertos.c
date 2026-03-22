@@ -26,6 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "flash_benchmark.h"
+#include "feb_uart_internal.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,19 +55,27 @@ const osThreadAttr_t flashTask_attributes = {
   .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for uartTxTask */
-osThreadId_t uartTxTaskHandle;
-const osThreadAttr_t uartTxTask_attributes = {
-  .name = "uartTxTask",
-  .stack_size = 2048 * 4,
-  .priority = (osPriority_t) osPriorityBelowNormal1,
-};
-/* Definitions for uartRxTask03 */
-osThreadId_t uartRxTask03Handle;
-const osThreadAttr_t uartRxTask03_attributes = {
-  .name = "uartRxTask03",
+/* Definitions for uartRxTask */
+osThreadId_t uartRxTaskHandle;
+const osThreadAttr_t uartRxTask_attributes = {
+  .name = "uartRxTask",
   .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
+};
+/* Definitions for uartRxQueue */
+osMessageQueueId_t uartRxQueueHandle;
+const osMessageQueueAttr_t uartRxQueue_attributes = {
+  .name = "uartRxQueue"
+};
+/* Definitions for uartTxMutex */
+osMutexId_t uartTxMutexHandle;
+const osMutexAttr_t uartTxMutex_attributes = {
+  .name = "uartTxMutex"
+};
+/* Definitions for uartTxSem */
+osSemaphoreId_t uartTxSemHandle;
+const osSemaphoreAttr_t uartTxSem_attributes = {
+  .name = "uartTxSem"
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -75,8 +84,7 @@ const osThreadAttr_t uartRxTask03_attributes = {
 /* USER CODE END FunctionPrototypes */
 
 void StartFlashTask(void *argument);
-void StartUartTxTask(void *argument);
-void StartUartRxTask(void *argument);
+void StartUARTRxTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -89,10 +97,17 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
+  /* Create the mutex(es) */
+  /* creation of uartTxMutex */
+  uartTxMutexHandle = osMutexNew(&uartTxMutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
+
+  /* Create the semaphores(s) */
+  /* creation of uartTxSem */
+  uartTxSemHandle = osSemaphoreNew(1, 0, &uartTxSem_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -102,6 +117,10 @@ void MX_FREERTOS_Init(void) {
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
+  /* Create the queue(s) */
+  /* creation of uartRxQueue */
+  uartRxQueueHandle = osMessageQueueNew (8, sizeof(FEB_UART_RxQueueMsg_t), &uartRxQueue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -110,11 +129,8 @@ void MX_FREERTOS_Init(void) {
   /* creation of flashTask */
   flashTaskHandle = osThreadNew(StartFlashTask, NULL, &flashTask_attributes);
 
-  /* creation of uartTxTask */
-  uartTxTaskHandle = osThreadNew(StartUartTxTask, NULL, &uartTxTask_attributes);
-
-  /* creation of uartRxTask03 */
-  uartRxTask03Handle = osThreadNew(StartUartRxTask, NULL, &uartRxTask03_attributes);
+  /* creation of uartRxTask */
+  uartRxTaskHandle = osThreadNew(StartUARTRxTask, NULL, &uartRxTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -133,47 +149,29 @@ void MX_FREERTOS_Init(void) {
   * @retval None
   */
 /* USER CODE END Header_StartFlashTask */
-void StartFlashTask(void *argument)
+__weak void StartFlashTask(void *argument)
 {
   /* USER CODE BEGIN StartFlashTask */
   FlashBench_TaskEntry(argument);
   /* USER CODE END StartFlashTask */
 }
 
-/* USER CODE BEGIN Header_StartUartTxTask */
-/**
-* @brief Function implementing the uartTxTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartUartTxTask */
-__weak void StartUartTxTask(void *argument)
-{
-  /* USER CODE BEGIN StartUartTxTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartUartTxTask */
-}
-
-/* USER CODE BEGIN Header_StartUartRxTask */
+/* USER CODE BEGIN Header_StartUARTRxTask */
 /**
 * @brief Function implementing the uartRxTask03 thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartUartRxTask */
-__weak void StartUartRxTask(void *argument)
+/* USER CODE END Header_StartUARTRxTask */
+__weak void StartUARTRxTask(void *argument)
 {
-  /* USER CODE BEGIN StartUartRxTask */
+  /* USER CODE BEGIN StartUARTRxTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartUartRxTask */
+  /* USER CODE END StartUARTRxTask */
 }
 
 /* Private application code --------------------------------------------------*/

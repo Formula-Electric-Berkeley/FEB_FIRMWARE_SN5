@@ -31,6 +31,7 @@
 
 static void cmd_echo(int argc, char *argv[]);
 static void cmd_help(int argc, char *argv[]);
+static void cmd_hello(int argc, char *argv[]);
 static void cmd_version(int argc, char *argv[]);
 static void cmd_uptime(int argc, char *argv[]);
 static void cmd_reboot(int argc, char *argv[]);
@@ -53,6 +54,12 @@ const FEB_Console_Cmd_t feb_cmd_help = {
     .name = "help",
     .help = "Show commands: help or help|command",
     .handler = cmd_help,
+};
+
+const FEB_Console_Cmd_t feb_cmd_hello = {
+    .name = "hello",
+    .help = "Say hello from FEB",
+    .handler = cmd_hello,
 };
 
 const FEB_Console_Cmd_t feb_cmd_version = {
@@ -87,6 +94,7 @@ void FEB_Commands_RegisterSystem(void)
 {
   FEB_Console_Register(&feb_cmd_echo);
   FEB_Console_Register(&feb_cmd_help);
+  FEB_Console_Register(&feb_cmd_hello);
   FEB_Console_Register(&feb_cmd_version);
   FEB_Console_Register(&feb_cmd_uptime);
   FEB_Console_Register(&feb_cmd_reboot);
@@ -178,6 +186,13 @@ static void cmd_help(int argc, char *argv[])
   }
 }
 
+static void cmd_hello(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  FEB_Console_Printf("Hello from FEB!\r\n");
+}
+
 static void cmd_version(int argc, char *argv[])
 {
   (void)argc;
@@ -228,43 +243,44 @@ static void cmd_log(int argc, char *argv[])
     {
       FEB_Console_Printf("Log level: %s\r\n", level_names[level]);
     }
-    FEB_Console_Printf("Usage: log|<error|warn|info|debug|trace|none>\r\n");
+    FEB_Console_Printf("Usage: log|<e|w|i|d|t|n>\r\n");
     return;
   }
 
   /* Set log level */
   FEB_Log_Level_t new_level;
-  if (strcasecmp_local(argv[1], "error") == 0)
+  if (strcasecmp_local(argv[1], "error") == 0 || strcasecmp_local(argv[1], "e") == 0)
   {
     new_level = FEB_LOG_ERROR;
   }
-  else if (strcasecmp_local(argv[1], "warn") == 0)
+  else if (strcasecmp_local(argv[1], "warn") == 0 || strcasecmp_local(argv[1], "w") == 0)
   {
     new_level = FEB_LOG_WARN;
   }
-  else if (strcasecmp_local(argv[1], "info") == 0)
+  else if (strcasecmp_local(argv[1], "info") == 0 || strcasecmp_local(argv[1], "i") == 0)
   {
     new_level = FEB_LOG_INFO;
   }
-  else if (strcasecmp_local(argv[1], "debug") == 0)
+  else if (strcasecmp_local(argv[1], "debug") == 0 || strcasecmp_local(argv[1], "d") == 0)
   {
     new_level = FEB_LOG_DEBUG;
   }
-  else if (strcasecmp_local(argv[1], "trace") == 0)
+  else if (strcasecmp_local(argv[1], "trace") == 0 || strcasecmp_local(argv[1], "t") == 0)
   {
     new_level = FEB_LOG_TRACE;
   }
-  else if (strcasecmp_local(argv[1], "none") == 0)
+  else if (strcasecmp_local(argv[1], "none") == 0 || strcasecmp_local(argv[1], "n") == 0)
   {
     new_level = FEB_LOG_NONE;
   }
   else
   {
     FEB_Console_Printf("Invalid level: %s\r\n", argv[1]);
-    FEB_Console_Printf("Valid levels: error, warn, info, debug, trace, none\r\n");
+    FEB_Console_Printf("Valid: error(e), warn(w), info(i), debug(d), trace(t), none(n)\r\n");
     return;
   }
 
+  const char *level_names[] = {"none", "error", "warn", "info", "debug", "trace"};
   FEB_Log_SetLevel(new_level);
-  FEB_Console_Printf("Log level set to: %s\r\n", argv[1]);
+  FEB_Console_Printf("Log level set to: %s\r\n", level_names[new_level]);
 }
