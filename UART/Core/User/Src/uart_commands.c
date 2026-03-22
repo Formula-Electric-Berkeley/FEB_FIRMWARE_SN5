@@ -14,6 +14,17 @@
 #include "cmsis_os2.h"
 #include "FreeRTOS.h"
 #include <stdlib.h>
+#include <ctype.h>
+
+/* ============================================================================
+ * Blink Configuration
+ * ============================================================================ */
+
+#define BLINK_DEFAULT_COUNT     3
+#define BLINK_DEFAULT_PERIOD_MS 100
+#define BLINK_MIN_PERIOD_MS     10
+#define BLINK_MAX_PERIOD_MS     10000
+#define BLINK_MAX_COUNT         255
 
 /* ============================================================================
  * Blink Timer State
@@ -21,7 +32,10 @@
 
 static osTimerId_t blink_timer_id = NULL;
 static volatile uint8_t blink_count = 0;
+static volatile uint8_t blink_target_count = 0;
 static volatile bool blink_led_on = false;
+static volatile bool blink_continuous = false;
+static volatile uint32_t blink_period_ms = BLINK_DEFAULT_PERIOD_MS;
 
 static const osTimerAttr_t blink_timer_attr = {
     .name = "blinkTimer"
@@ -32,6 +46,8 @@ static const osTimerAttr_t blink_timer_attr = {
  * ============================================================================ */
 
 static void blink_timer_callback(void *argument);
+static void blink_stop(void);
+static bool blink_start(uint8_t count, uint32_t period_ms, bool continuous);
 static void cmd_blink(int argc, char *argv[]);
 static void cmd_flashbench(int argc, char *argv[]);
 
@@ -41,7 +57,7 @@ static void cmd_flashbench(int argc, char *argv[]);
 
 const FEB_Console_Cmd_t uart_cmd_blink = {
     .name = "blink",
-    .help = "Blink LD2 (PA5) 3 times",
+    .help = "Blink LD2: blink [count] [period_ms] | blink|stop | blink|help",
     .handler = cmd_blink,
 };
 
@@ -66,10 +82,25 @@ void UART_RegisterCommands(void)
  * ============================================================================ */
 
 /**
+ * @brief Case-insensitive string comparison
+ */
+static int strcasecmp_local(const char *s1, const char *s2)
+{
+  while (*s1 && *s2)
+  {
+    int diff = tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
+    if (diff != 0)
+      return diff;
+    s1++;
+    s2++;
+  }
+  return tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
+}
+
+/**
  * @brief Timer callback for non-blocking LED blink
  *
- * Called every 100ms from FreeRTOS timer daemon task.
- * Toggles LED state and decrements counter.
+ * Supports both finite and continuous blinking modes.
  *
  * @param argument Unused
  */
@@ -79,58 +110,238 @@ static void blink_timer_callback(void *argument)
 
   if (blink_led_on)
   {
+    /* Turn LED OFF */
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-    LOG_T(TAG_GPIO, "Blink cycle %d: LED OFF", (int)(3 - blink_count) + 1);
-    blink_led_on = false;
-    blink_count--;
 
-    if (blink_count == 0)
+    if (blink_continuous)
     {
-      osTimerStop(blink_timer_id);
-      FEB_Console_Printf("Done.\r\n");
+      LOG_T(TAG_GPIO, "Continuous blink: LED OFF");
+    }
+    else
+    {
+      LOG_T(TAG_GPIO, "Blink cycle %d/%d: LED OFF",
+            (int)(blink_target_count - blink_count) + 1, (int)blink_target_count);
+    }
+
+    blink_led_on = false;
+
+    if (!blink_continuous)
+    {
+      blink_count--;
+      if (blink_count == 0)
+      {
+        osTimerStop(blink_timer_id);
+        FEB_Console_Printf("Done.\r\n");
+      }
     }
   }
   else
   {
+    /* Turn LED ON */
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-    LOG_T(TAG_GPIO, "Blink cycle %d: LED ON", (int)(3 - blink_count) + 1);
+
+    if (blink_continuous)
+    {
+      LOG_T(TAG_GPIO, "Continuous blink: LED ON");
+    }
+    else
+    {
+      LOG_T(TAG_GPIO, "Blink cycle %d/%d: LED ON",
+            (int)(blink_target_count - blink_count) + 1, (int)blink_target_count);
+    }
+
     blink_led_on = true;
   }
 }
 
-static void cmd_blink(int argc, char *argv[])
+/**
+ * @brief Stop blinking and reset state
+ */
+static void blink_stop(void)
 {
-  (void)argc;
-  (void)argv;
-
   if (blink_timer_id != NULL && osTimerIsRunning(blink_timer_id))
   {
-    FEB_Console_Printf("Blink already in progress\r\n");
-    return;
+    osTimerStop(blink_timer_id);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+    blink_led_on = false;
+    blink_continuous = false;
+    blink_count = 0;
+    FEB_Console_Printf("Blink stopped.\r\n");
+    LOG_T(TAG_GPIO, "Blink stopped by user");
+  }
+  else
+  {
+    FEB_Console_Printf("No blink in progress.\r\n");
+  }
+}
+
+/**
+ * @brief Start blinking with specified parameters
+ */
+static bool blink_start(uint8_t count, uint32_t period_ms, bool continuous)
+{
+  /* Validate period */
+  if (period_ms < BLINK_MIN_PERIOD_MS || period_ms > BLINK_MAX_PERIOD_MS)
+  {
+    FEB_Console_Printf("Error: Period must be %d-%d ms\r\n",
+                       BLINK_MIN_PERIOD_MS, BLINK_MAX_PERIOD_MS);
+    return false;
   }
 
+  /* Create timer if needed */
   if (blink_timer_id == NULL)
   {
-    blink_timer_id = osTimerNew(blink_timer_callback, osTimerPeriodic, NULL, &blink_timer_attr);
+    blink_timer_id = osTimerNew(blink_timer_callback, osTimerPeriodic,
+                                 NULL, &blink_timer_attr);
     if (blink_timer_id == NULL)
     {
       FEB_Console_Printf("Error: Failed to create blink timer\r\n");
+      return false;
+    }
+  }
+
+  /* Set state */
+  blink_count = count;
+  blink_target_count = count;
+  blink_continuous = continuous;
+  blink_period_ms = period_ms;
+  blink_led_on = true;
+
+  /* Turn on LED immediately */
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+
+  if (continuous)
+  {
+    FEB_Console_Printf("Blinking continuously at %lu ms (use 'blink|stop' to stop)\r\n",
+                       (unsigned long)period_ms);
+    LOG_T(TAG_GPIO, "Continuous blink started at %lu ms", (unsigned long)period_ms);
+  }
+  else
+  {
+    FEB_Console_Printf("Blinking LD2 (PA5) %d times at %lu ms...\r\n",
+                       count, (unsigned long)period_ms);
+    LOG_T(TAG_GPIO, "Blink cycle 1/%d: LED ON", count);
+  }
+
+  /* Start timer */
+  if (osTimerStart(blink_timer_id, pdMS_TO_TICKS(period_ms)) != osOK)
+  {
+    FEB_Console_Printf("Error: Failed to start blink timer\r\n");
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+    blink_led_on = false;
+    blink_continuous = false;
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * @brief Print blink command help
+ */
+static void print_blink_help(void)
+{
+  FEB_Console_Printf("Blink Commands:\r\n");
+  FEB_Console_Printf("  blink              - Blink %d times at %dms (default)\r\n",
+                     BLINK_DEFAULT_COUNT, BLINK_DEFAULT_PERIOD_MS);
+  FEB_Console_Printf("  blink|N            - Blink N times at %dms\r\n",
+                     BLINK_DEFAULT_PERIOD_MS);
+  FEB_Console_Printf("  blink|N|PERIOD     - Blink N times at PERIOD ms\r\n");
+  FEB_Console_Printf("  blink|0            - Continuous blink at %dms\r\n",
+                     BLINK_DEFAULT_PERIOD_MS);
+  FEB_Console_Printf("  blink|0|PERIOD     - Continuous blink at PERIOD ms\r\n");
+  FEB_Console_Printf("  blink|forever      - Continuous blink (alias for 0)\r\n");
+  FEB_Console_Printf("  blink|stop         - Stop blinking\r\n");
+  FEB_Console_Printf("  blink|help         - Show this help\r\n");
+  FEB_Console_Printf("Period range: %d-%d ms\r\n",
+                     BLINK_MIN_PERIOD_MS, BLINK_MAX_PERIOD_MS);
+}
+
+/**
+ * @brief Blink command handler
+ *
+ * Syntax:
+ *   blink              - Default: 3 blinks at 100ms
+ *   blink|N            - N blinks at 100ms
+ *   blink|N|PERIOD     - N blinks at PERIOD ms
+ *   blink|0            - Continuous at 100ms
+ *   blink|0|PERIOD     - Continuous at PERIOD ms
+ *   blink|forever      - Alias for continuous
+ *   blink|stop         - Stop blinking
+ *   blink|help         - Show help
+ */
+static void cmd_blink(int argc, char *argv[])
+{
+  uint8_t count = BLINK_DEFAULT_COUNT;
+  uint32_t period_ms = BLINK_DEFAULT_PERIOD_MS;
+  bool continuous = false;
+
+  /* Handle subcommands */
+  if (argc >= 2)
+  {
+    /* Check for 'stop' command */
+    if (strcasecmp_local(argv[1], "stop") == 0)
+    {
+      blink_stop();
+      return;
+    }
+
+    /* Check for 'help' command */
+    if (strcasecmp_local(argv[1], "help") == 0)
+    {
+      print_blink_help();
+      return;
+    }
+
+    /* Check for 'forever' keyword */
+    if (strcasecmp_local(argv[1], "forever") == 0)
+    {
+      continuous = true;
+      count = 0;
+    }
+    else
+    {
+      /* Parse count as number */
+      count = (uint8_t)strtoul(argv[1], NULL, 10);
+
+      if (count == 0)
+      {
+        continuous = true;
+      }
+      else if (count > BLINK_MAX_COUNT)
+      {
+        FEB_Console_Printf("Error: Count must be 0-%d (0 = continuous)\r\n",
+                           BLINK_MAX_COUNT);
+        return;
+      }
+    }
+
+    /* Parse period if provided */
+    if (argc >= 3)
+    {
+      period_ms = (uint32_t)strtoul(argv[2], NULL, 10);
+    }
+  }
+
+  /* Check if already blinking */
+  if (blink_timer_id != NULL && osTimerIsRunning(blink_timer_id))
+  {
+    if (continuous || blink_continuous)
+    {
+      /* Allow stopping continuous mode to start a new blink */
+      FEB_Console_Printf("Stopping current blink...\r\n");
+      osTimerStop(blink_timer_id);
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+    }
+    else
+    {
+      FEB_Console_Printf("Blink already in progress\r\n");
       return;
     }
   }
 
-  FEB_Console_Printf("Blinking LD2 (PA5) 3 times...\r\n");
-
-  blink_count = 3;
-  blink_led_on = true;
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-  LOG_T(TAG_GPIO, "Blink cycle 1: LED ON");
-
-  if (osTimerStart(blink_timer_id, pdMS_TO_TICKS(100)) != osOK)
-  {
-    FEB_Console_Printf("Error: Failed to start blink timer\r\n");
-    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-  }
+  /* Start blinking */
+  blink_start(count, period_ms, continuous);
 }
 
 static void print_stats(const char *name, const FlashBench_Stats_t *s)
