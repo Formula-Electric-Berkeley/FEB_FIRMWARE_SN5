@@ -11,7 +11,7 @@
 #include "feb_can_lib.h"
 #include "feb_console.h"
 #include "feb_uart.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 #include "stm32f4xx_hal.h"
 #include <stdint.h>
 #include <stdio.h>

@@ -10,7 +10,7 @@
 #include "feb_can.h"
 #include "feb_can_lib.h"
 #include "feb_uart.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 #include "stm32f4xx_hal.h"
 #include <string.h>
 
