@@ -128,18 +128,24 @@ static void blink_timer_callback(void *argument)
 
     if (!blink_continuous)
     {
-      blink_count--;
-      if (blink_count == 0)
+      if (blink_count == 1)
       {
+        /* Last blink - try to stop timer first */
         osStatus_t status = osTimerStop(blink_timer_id);
         if (status == osOK)
         {
+          blink_count = 0;
           FEB_Console_Printf("Done.\r\n");
         }
         else
         {
+          /* Keep blink_count at 1 so we retry next callback */
           FEB_Console_Printf("Failed to stop timer: %d\r\n", status);
         }
+      }
+      else
+      {
+        blink_count--;
       }
     }
   }
@@ -361,6 +367,14 @@ static void cmd_blink(int argc, char *argv[])
 
       period_ms = (uint32_t)parsed;
     }
+  }
+
+  /* Validate period before potentially stopping a running blink */
+  if (period_ms < BLINK_MIN_PERIOD_MS || period_ms > BLINK_MAX_PERIOD_MS)
+  {
+    FEB_Console_Printf("Error: Period must be %d-%d ms\r\n",
+                       BLINK_MIN_PERIOD_MS, BLINK_MAX_PERIOD_MS);
+    return;
   }
 
   /* Check if already blinking */
