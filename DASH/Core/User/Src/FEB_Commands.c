@@ -13,6 +13,9 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include "FEB_CAN_LVPDB.h"
+#include "FEB_CAN_BMS.h"
+#include "FEB_CAN_PCU.h"
 
 /* ============================================================================
  * CAN Ping/Pong Commands
@@ -156,12 +159,94 @@ static const FEB_Console_Cmd_t dash_cmd_canstatus = {
 };
 
 /* ============================================================================
+ * LVPDB Commands for DASH Display
+ * ============================================================================ */
+
+static void cmd_lvpdb(int argc, char *argv[])
+{
+  (void)argc; // note to anyone reading this:
+  (void)argv; // this is so that the compiler won't complain about unused parameters & this matches the FEB UART library
+
+  uint16_t v24 = FEB_CAN_LVPDB_GetLast24VVoltage();
+  uint16_t v12 = FEB_CAN_LVPDB_GetLast12VVoltage();
+
+  FEB_Console_Printf("LVPDB Voltages:\r\n");
+  FEB_Console_Printf("  24V Bus: %u (raw)\r\n", (unsigned int)v24);
+  FEB_Console_Printf("  12V Bus: %u (raw)\r\n", (unsigned int)v12);
+}
+
+static const FEB_Console_Cmd_t dash_cmd_lvpdb = {
+    .name = "lvpdb",
+    .help = "Show LVPDB bus voltages",
+    .handler = cmd_lvpdb,
+};
+
+/* ============================================================================
+ * BMS Commands for DASH Display
+ * ============================================================================ */
+
+static void cmd_bms(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  BMS_State_t state = FEB_CAN_BMS_GetLastState();
+  int16_t temp = FEB_CAN_BMS_GetLastCellMaxTemperature();
+  uint16_t voltage = FEB_CAN_BMS_GetLastAccumulatorTotalVoltage();
+
+  FEB_Console_Printf("BMS Status:\r\n");
+  FEB_Console_Printf("  State:       %d (raw)\r\n", (int)state);
+  FEB_Console_Printf("  Max Cell Temp: %d (raw)\r\n", (int)temp);
+  FEB_Console_Printf("  Pack Voltage:  %u (raw)\r\n", (unsigned int)voltage);
+}
+
+static const FEB_Console_Cmd_t dash_cmd_bms = {
+    .name = "bms",
+    .help = "Show BMS state, max cell temperature, and pack voltage",
+    .handler = cmd_bms,
+};
+
+/* ============================================================================
+ * PCU Commands for DASH Display
+ * ============================================================================ */
+static void cmd_pcu(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  int16_t torque = FEB_CAN_PCU_GetLastTorque();
+  int8_t direction = FEB_CAN_PCU_GetLastDirection();
+  int8_t enabled = FEB_CAN_PCU_GetLastRMSEnabled();
+  uint16_t brake = FEB_CAN_PCU_GetLastBreakPosition();
+
+  FEB_Console_Printf("PCU / RMS Status:\r\n");
+  FEB_Console_Printf("  Torque:         %d (raw)\r\n", (int)torque);
+  FEB_Console_Printf("  Direction:      %d (raw)\r\n", (int)direction);
+  FEB_Console_Printf("  RMS Enabled:    %d (raw)\r\n", (int)enabled);
+  FEB_Console_Printf("  Brake Position: %u (raw)\r\n", (unsigned int)brake);
+}
+
+static const FEB_Console_Cmd_t dash_cmd_pcu = {
+    .name = "pcu",
+    .help = "Show PCU torque, direction, RMS enable, and brake position",
+    .handler = cmd_pcu,
+};
+
+/* ============================================================================
  * Registration
  * ============================================================================ */
 void DASH_RegisterCommands(void)
 {
+  // CAN Ping Pong commands
   FEB_Console_Register(&dash_cmd_ping);
   FEB_Console_Register(&dash_cmd_pong);
   FEB_Console_Register(&dash_cmd_canstop);
   FEB_Console_Register(&dash_cmd_canstatus);
+
+  // LVPDB commands for DASH display
+  FEB_Console_Register(&dash_cmd_lvpdb);
+  // BMS commands for DASH display
+  FEB_Console_Register(&dash_cmd_bms);
+  // PCU commands for DASH display
+  FEB_Console_Register(&dash_cmd_pcu);
 }
