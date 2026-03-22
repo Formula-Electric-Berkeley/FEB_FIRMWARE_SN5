@@ -40,6 +40,7 @@
 #include "FEB_Main.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

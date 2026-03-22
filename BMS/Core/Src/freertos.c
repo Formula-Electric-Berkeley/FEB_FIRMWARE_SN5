@@ -30,6 +30,7 @@
 #include "FEB_Main.h"
 #include "i2c.h"
 #include "feb_uart.h"
+#include "feb_uart_internal.h"
 #include "feb_console.h"
 #include "feb_can_lib.h"
 #include <stdio.h>
