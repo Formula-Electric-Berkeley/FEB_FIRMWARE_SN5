@@ -60,7 +60,6 @@ static int console_uart_instance = 0; /* Default to instance 0 */
  * Private Function Prototypes
  * ============================================================================ */
 
-static int strcasecmp_local(const char *a, const char *b);
 static int parse_args(char *line, char *argv[], int max_args);
 static const FEB_Console_Cmd_t *find_command(const char *name);
 
@@ -79,6 +78,11 @@ void FEB_Console_Init(bool register_default_commands)
   if (console_mutex == NULL)
   {
     console_mutex = osMutexNew(NULL);
+    if (console_mutex == NULL)
+    {
+      /* Mutex creation failed - will operate without thread safety.
+       * The CONSOLE_MUTEX_LOCK/UNLOCK macros already handle NULL gracefully. */
+    }
   }
 #endif
 
@@ -164,6 +168,16 @@ int FEB_Console_Register(const FEB_Console_Cmd_t *cmd)
     return -1;
   }
 
+  /* Check for duplicate command name */
+  for (size_t i = 0; i < command_count; i++)
+  {
+    if (FEB_strcasecmp(commands[i]->name, cmd->name) == 0)
+    {
+      CONSOLE_MUTEX_UNLOCK();
+      return -2; /* Duplicate command name */
+    }
+  }
+
   commands[command_count++] = cmd;
 
   CONSOLE_MUTEX_UNLOCK();
@@ -203,16 +217,22 @@ int FEB_Console_Flush(uint32_t timeout_ms)
 
 size_t FEB_Console_GetCommandCount(void)
 {
-  return command_count;
+  CONSOLE_MUTEX_LOCK();
+  size_t count = command_count;
+  CONSOLE_MUTEX_UNLOCK();
+  return count;
 }
 
 const FEB_Console_Cmd_t *FEB_Console_GetCommand(size_t index)
 {
-  if (index >= command_count)
+  CONSOLE_MUTEX_LOCK();
+  const FEB_Console_Cmd_t *cmd = NULL;
+  if (index < command_count)
   {
-    return NULL;
+    cmd = commands[index];
   }
-  return commands[index];
+  CONSOLE_MUTEX_UNLOCK();
+  return cmd;
 }
 
 const FEB_Console_Cmd_t *FEB_Console_FindCommand(const char *name)

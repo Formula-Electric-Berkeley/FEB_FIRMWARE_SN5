@@ -249,15 +249,15 @@ static void cmd_enable(int argc, char *argv[])
 
   HAL_GPIO_WritePin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx], GPIO_PIN_SET);
 
-  // Read back to verify
+  // Read back to verify EN pin state
   GPIO_PinState state = HAL_GPIO_ReadPin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx]);
   if (state == GPIO_PIN_SET)
   {
-    FEB_Console_Printf("%s enabled\r\n", chip_names[idx]);
+    FEB_Console_Printf("%s EN asserted\r\n", chip_names[idx]);
   }
   else
   {
-    FEB_Console_Printf("Warning: %s enable command sent, but readback failed\r\n", chip_names[idx]);
+    FEB_Console_Printf("Warning: %s EN assert failed (readback LOW)\r\n", chip_names[idx]);
   }
 }
 
@@ -298,15 +298,15 @@ static void cmd_disable(int argc, char *argv[])
 
   HAL_GPIO_WritePin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx], GPIO_PIN_RESET);
 
-  // Read back to verify
+  // Read back to verify EN pin state
   GPIO_PinState state = HAL_GPIO_ReadPin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx]);
   if (state == GPIO_PIN_RESET)
   {
-    FEB_Console_Printf("%s disabled\r\n", chip_names[idx]);
+    FEB_Console_Printf("%s EN deasserted\r\n", chip_names[idx]);
   }
   else
   {
-    FEB_Console_Printf("Warning: %s disable command sent, but readback shows still enabled\r\n", chip_names[idx]);
+    FEB_Console_Printf("Warning: %s EN deassert failed (readback HIGH)\r\n", chip_names[idx]);
   }
 }
 
@@ -420,7 +420,15 @@ static void cmd_write(int argc, char *argv[])
   status = tps_read_reg(tps2482_i2c_addresses[idx], reg->addr, &readback);
   if (status == HAL_OK)
   {
-    FEB_Console_Printf("%s %s written: 0x%04X, readback: 0x%04X\r\n", chip_names[idx], reg->name, value, readback);
+    if (readback == value)
+    {
+      FEB_Console_Printf("%s %s written: 0x%04X (verified)\r\n", chip_names[idx], reg->name, value);
+    }
+    else
+    {
+      FEB_Console_Printf("Warning: %s %s write mismatch - wrote: 0x%04X, read: 0x%04X\r\n", chip_names[idx], reg->name,
+                         value, readback);
+    }
   }
   else
   {
