@@ -28,10 +28,9 @@ extern DMA_HandleTypeDef handle_GPDMA1_Channel1; /* TX */
 static uint8_t uart_tx_buf[512];
 static uint8_t uart_rx_buf[256];
 
-/* Logger mutex for thread-safe logging (FreeRTOS only) */
+/* External FreeRTOS handles from .ioc-generated code */
 #if FEB_LOG_USE_FREERTOS
-static osMutexId_t log_mutex;
-static const osMutexAttr_t log_mutex_attr = {.name = "logMutex"};
+extern osMutexId_t logMutexHandle;
 #endif
 
 #undef TAG_MAIN
@@ -70,16 +69,6 @@ void FEB_Main_Setup(void)
   HAL_UART_Transmit(&huart1, (uint8_t *)"DBG:3-PostUARTInit\r\n", 20, 100);
 
   /* Initialize logging system */
-#if FEB_LOG_USE_FREERTOS
-  log_mutex = osMutexNew(&log_mutex_attr);
-  if (log_mutex == NULL)
-  {
-    HAL_UART_Transmit(&huart1, (uint8_t *)"ERR: log mutex alloc failed\r\n", 29, 100);
-    while (1)
-    {
-    }
-  }
-#endif
   FEB_Log_Config_t log_cfg = {
       .uart_instance = FEB_UART_INSTANCE_1,
       .level = FEB_LOG_DEBUG,
@@ -87,7 +76,7 @@ void FEB_Main_Setup(void)
       .timestamps = true,
       .get_tick_ms = HAL_GetTick,
 #if FEB_LOG_USE_FREERTOS
-      .mutex = log_mutex,
+      .mutex = logMutexHandle,
 #endif
   };
   if (FEB_Log_Init(&log_cfg) != 0)

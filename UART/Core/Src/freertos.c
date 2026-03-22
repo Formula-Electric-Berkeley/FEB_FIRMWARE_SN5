@@ -72,6 +72,21 @@ osMutexId_t uartTxMutexHandle;
 const osMutexAttr_t uartTxMutex_attributes = {
   .name = "uartTxMutex"
 };
+/* Definitions for logMutex */
+osMutexId_t logMutexHandle;
+const osMutexAttr_t logMutex_attributes = {
+  .name = "logMutex"
+};
+/* Definitions for rtcMutex */
+osMutexId_t rtcMutexHandle;
+const osMutexAttr_t rtcMutex_attributes = {
+  .name = "rtcMutex"
+};
+/* Definitions for flashMutex */
+osMutexId_t flashMutexHandle;
+const osMutexAttr_t flashMutex_attributes = {
+  .name = "flashMutex"
+};
 /* Definitions for uartTxSem */
 osSemaphoreId_t uartTxSemHandle;
 const osSemaphoreAttr_t uartTxSem_attributes = {
@@ -100,6 +115,15 @@ void MX_FREERTOS_Init(void) {
   /* Create the mutex(es) */
   /* creation of uartTxMutex */
   uartTxMutexHandle = osMutexNew(&uartTxMutex_attributes);
+
+  /* creation of logMutex */
+  logMutexHandle = osMutexNew(&logMutex_attributes);
+
+  /* creation of rtcMutex */
+  rtcMutexHandle = osMutexNew(&rtcMutex_attributes);
+
+  /* creation of flashMutex */
+  flashMutexHandle = osMutexNew(&flashMutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */

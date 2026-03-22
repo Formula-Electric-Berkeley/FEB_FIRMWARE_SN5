@@ -56,6 +56,7 @@ extern "C" {
 /* USER CODE END EM */
 extern osThreadId_t uartTxTaskHandle;
 extern osThreadId_t uartRxTaskHandle;
+extern osMutexId_t logMutexHandle;
 extern osMessageQueueId_t UartTxQueueHandle;
 extern osMessageQueueId_t UartRxQueueHandle;
 

@@ -58,6 +58,11 @@ const osThreadAttr_t uartRxTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal1,
   .stack_size = 512 * 4
 };
+/* Definitions for logMutex */
+osMutexId_t logMutexHandle;
+const osMutexAttr_t logMutex_attributes = {
+  .name = "logMutex"
+};
 /* Definitions for UartTxQueue */
 osMessageQueueId_t UartTxQueueHandle;
 const osMessageQueueAttr_t UartTxQueue_attributes = {
@@ -83,6 +88,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
   extern UART_HandleTypeDef huart1;
   /* USER CODE END Init */
+  /* creation of logMutex */
+  logMutexHandle = osMutexNew(&logMutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */

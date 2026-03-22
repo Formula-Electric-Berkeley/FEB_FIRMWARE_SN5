@@ -34,10 +34,7 @@
 #include "usart.h"
 #include "gpio.h"
 #include "fmc.h"
-#include "FEB_CAN_BMS.h"
-#include "feb_uart.h"
-#include "feb_console.h"
-#include <stdio.h>
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "FEB_Main.h"

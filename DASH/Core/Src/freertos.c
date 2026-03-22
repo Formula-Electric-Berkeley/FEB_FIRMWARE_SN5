@@ -117,6 +117,11 @@ osMutexId_t canRxMutexHandle;
 const osMutexAttr_t canRxMutex_attributes = {
   .name = "canRxMutex"
 };
+/* Definitions for logMutex */
+osMutexId_t logMutexHandle;
+const osMutexAttr_t logMutex_attributes = {
+  .name = "logMutex"
+};
 /* Definitions for canTxMailboxSem */
 osSemaphoreId_t canTxMailboxSemHandle;
 const osSemaphoreAttr_t canTxMailboxSem_attributes = {
@@ -201,6 +206,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of canRxMutex */
   canRxMutexHandle = osMutexNew(&canRxMutex_attributes);
 
+  /* creation of logMutex */
+  logMutexHandle = osMutexNew(&logMutex_attributes);
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -219,10 +227,10 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the queue(s) */
   /* creation of canTxQueue */
-  canTxQueueHandle = osMessageQueueNew (16, sizeof(uint8_t), &canTxQueue_attributes);
+  canTxQueueHandle = osMessageQueueNew (16, sizeof(FEB_CAN_Message_t), &canTxQueue_attributes);
 
   /* creation of canRxQueue */
-  canRxQueueHandle = osMessageQueueNew (32, sizeof(uint8_t), &canRxQueue_attributes);
+  canRxQueueHandle = osMessageQueueNew (32, sizeof(FEB_CAN_Message_t), &canRxQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /*
