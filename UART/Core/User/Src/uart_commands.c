@@ -15,6 +15,7 @@
 #include "FreeRTOS.h"
 #include <stdlib.h>
 #include <ctype.h>
+#include <errno.h>
 
 /* ============================================================================
  * Blink Configuration
@@ -161,13 +162,21 @@ static void blink_stop(void)
 {
   if (blink_timer_id != NULL && osTimerIsRunning(blink_timer_id))
   {
-    osTimerStop(blink_timer_id);
-    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-    blink_led_on = false;
-    blink_continuous = false;
-    blink_count = 0;
-    FEB_Console_Printf("Blink stopped.\r\n");
-    LOG_T(TAG_GPIO, "Blink stopped by user");
+    osStatus_t status = osTimerStop(blink_timer_id);
+    if (status == osOK)
+    {
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+      blink_led_on = false;
+      blink_continuous = false;
+      blink_count = 0;
+      FEB_Console_Printf("Blink stopped.\r\n");
+      LOG_T(TAG_GPIO, "Blink stopped by user");
+    }
+    else
+    {
+      FEB_Console_Printf("Failed to stop blink: %d\r\n", status);
+      LOG_T(TAG_GPIO, "osTimerStop failed: %d", status);
+    }
   }
   else
   {
@@ -302,24 +311,48 @@ static void cmd_blink(int argc, char *argv[])
     else
     {
       /* Parse count as number */
-      count = (uint8_t)strtoul(argv[1], NULL, 10);
+      char *endptr;
+      errno = 0;
+      unsigned long parsed = strtoul(argv[1], &endptr, 10);
 
-      if (count == 0)
+      if (endptr == argv[1] || *endptr != '\0')
       {
-        continuous = true;
+        FEB_Console_Printf("Error: Invalid count '%s'\r\n", argv[1]);
+        return;
       }
-      else if (count > BLINK_MAX_COUNT)
+      if (errno == ERANGE || parsed > BLINK_MAX_COUNT)
       {
         FEB_Console_Printf("Error: Count must be 0-%d (0 = continuous)\r\n",
                            BLINK_MAX_COUNT);
         return;
+      }
+
+      count = (uint8_t)parsed;
+      if (count == 0)
+      {
+        continuous = true;
       }
     }
 
     /* Parse period if provided */
     if (argc >= 3)
     {
-      period_ms = (uint32_t)strtoul(argv[2], NULL, 10);
+      char *endptr;
+      errno = 0;
+      unsigned long parsed = strtoul(argv[2], &endptr, 10);
+
+      if (endptr == argv[2] || *endptr != '\0')
+      {
+        FEB_Console_Printf("Error: Invalid period '%s'\r\n", argv[2]);
+        return;
+      }
+      if (errno == ERANGE)
+      {
+        FEB_Console_Printf("Error: Period out of range\r\n");
+        return;
+      }
+
+      period_ms = (uint32_t)parsed;
     }
   }
 
