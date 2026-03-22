@@ -133,7 +133,15 @@ void MX_FREERTOS_Init(void) {
   uartRxTaskHandle = osThreadNew(StartUARTRxTask, NULL, &uartRxTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  /* Validate all RTOS object creations - fail fast on any NULL */
+  if (uartTxMutexHandle == NULL ||
+      uartTxSemHandle == NULL ||
+      uartRxQueueHandle == NULL ||
+      flashTaskHandle == NULL ||
+      uartRxTaskHandle == NULL)
+  {
+    Error_Handler();  /* Critical: RTOS resource allocation failed */
+  }
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */

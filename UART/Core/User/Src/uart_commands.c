@@ -12,12 +12,26 @@
 #include "flash_benchmark.h"
 #include "main.h"
 #include "cmsis_os2.h"
+#include "FreeRTOS.h"
 #include <stdlib.h>
+
+/* ============================================================================
+ * Blink Timer State
+ * ============================================================================ */
+
+static osTimerId_t blink_timer_id = NULL;
+static volatile uint8_t blink_count = 0;
+static volatile bool blink_led_on = false;
+
+static const osTimerAttr_t blink_timer_attr = {
+    .name = "blinkTimer"
+};
 
 /* ============================================================================
  * Private Function Prototypes
  * ============================================================================ */
 
+static void blink_timer_callback(void *argument);
 static void cmd_blink(int argc, char *argv[]);
 static void cmd_flashbench(int argc, char *argv[]);
 
@@ -51,24 +65,72 @@ void UART_RegisterCommands(void)
  * Command Handlers
  * ============================================================================ */
 
+/**
+ * @brief Timer callback for non-blocking LED blink
+ *
+ * Called every 100ms from FreeRTOS timer daemon task.
+ * Toggles LED state and decrements counter.
+ *
+ * @param argument Unused
+ */
+static void blink_timer_callback(void *argument)
+{
+  (void)argument;
+
+  if (blink_led_on)
+  {
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+    LOG_T(TAG_GPIO, "Blink cycle %d: LED OFF", (int)(3 - blink_count) + 1);
+    blink_led_on = false;
+    blink_count--;
+
+    if (blink_count == 0)
+    {
+      osTimerStop(blink_timer_id);
+      FEB_Console_Printf("Done.\r\n");
+    }
+  }
+  else
+  {
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+    LOG_T(TAG_GPIO, "Blink cycle %d: LED ON", (int)(3 - blink_count) + 1);
+    blink_led_on = true;
+  }
+}
+
 static void cmd_blink(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
 
-  FEB_Console_Printf("Blinking LD2 (PA5) 3 times...\r\n");
-
-  for (int i = 0; i < 3; i++)
+  if (blink_timer_id != NULL && osTimerIsRunning(blink_timer_id))
   {
-    LOG_T(TAG_GPIO, "Blink cycle %d: LED ON", i + 1);
-    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-    osDelay(100);
-    LOG_T(TAG_GPIO, "Blink cycle %d: LED OFF", i + 1);
-    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-    osDelay(100);
+    FEB_Console_Printf("Blink already in progress\r\n");
+    return;
   }
 
-  FEB_Console_Printf("Done.\r\n");
+  if (blink_timer_id == NULL)
+  {
+    blink_timer_id = osTimerNew(blink_timer_callback, osTimerPeriodic, NULL, &blink_timer_attr);
+    if (blink_timer_id == NULL)
+    {
+      FEB_Console_Printf("Error: Failed to create blink timer\r\n");
+      return;
+    }
+  }
+
+  FEB_Console_Printf("Blinking LD2 (PA5) 3 times...\r\n");
+
+  blink_count = 3;
+  blink_led_on = true;
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+  LOG_T(TAG_GPIO, "Blink cycle 1: LED ON");
+
+  if (osTimerStart(blink_timer_id, pdMS_TO_TICKS(100)) != osOK)
+  {
+    FEB_Console_Printf("Error: Failed to start blink timer\r\n");
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  }
 }
 
 static void print_stats(const char *name, const FlashBench_Stats_t *s)
