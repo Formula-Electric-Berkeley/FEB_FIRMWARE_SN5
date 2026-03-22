@@ -131,8 +131,15 @@ static void blink_timer_callback(void *argument)
       blink_count--;
       if (blink_count == 0)
       {
-        osTimerStop(blink_timer_id);
-        FEB_Console_Printf("Done.\r\n");
+        osStatus_t status = osTimerStop(blink_timer_id);
+        if (status == osOK)
+        {
+          FEB_Console_Printf("Done.\r\n");
+        }
+        else
+        {
+          FEB_Console_Printf("Failed to stop timer: %d\r\n", status);
+        }
       }
     }
   }
@@ -363,7 +370,12 @@ static void cmd_blink(int argc, char *argv[])
     {
       /* Allow stopping continuous mode to start a new blink */
       FEB_Console_Printf("Stopping current blink...\r\n");
-      osTimerStop(blink_timer_id);
+      osStatus_t status = osTimerStop(blink_timer_id);
+      if (status != osOK)
+      {
+        FEB_Console_Printf("Failed to stop timer: %d\r\n", status);
+        return;
+      }
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
     }
     else
