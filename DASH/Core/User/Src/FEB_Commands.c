@@ -8,6 +8,7 @@
 
 #include "FEB_Commands.h"
 #include "feb_console.h"
+#include "feb_string_utils.h"
 #include "FEB_CAN_PingPong.h"
 #include "feb_can_lib.h"
 #include <ctype.h>
@@ -20,19 +21,6 @@
 /* ============================================================================
  * CAN Ping/Pong Commands
  * ============================================================================ */
-
-static int strcasecmp_local(const char *s1, const char *s2)
-{
-  while (*s1 && *s2)
-  {
-    int diff = tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
-    if (diff != 0)
-      return diff;
-    s1++;
-    s2++;
-  }
-  return tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
-}
 
 static const char *mode_names[] = {"OFF", "PING", "PONG"};
 static const uint32_t pingpong_frame_ids[] = {0xE0, 0xE1, 0xE2, 0xE3};
@@ -97,7 +85,7 @@ static void cmd_canstop(int argc, char *argv[])
     return;
   }
 
-  if (strcasecmp_local(argv[1], "all") == 0)
+  if (FEB_strcasecmp(argv[1], "all") == 0)
   {
     FEB_CAN_PingPong_Reset();
     FEB_Console_Printf("All channels stopped\r\n");

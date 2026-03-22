@@ -13,29 +13,10 @@
 #include "FEB_CAN_TPS.h"
 #include "FEB_RMS.h"
 #include "feb_console.h"
+#include "feb_string_utils.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================ */
-
-/**
- * @brief Case-insensitive string comparison
- */
-static int strcasecmp_local(const char *s1, const char *s2)
-{
-  while (*s1 && *s2)
-  {
-    int diff = tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
-    if (diff != 0)
-      return diff;
-    s1++;
-    s2++;
-  }
-  return tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
-}
 
 /* ============================================================================
  * Subcommand Handlers
@@ -284,27 +265,27 @@ static void cmd_pcu(int argc, char *argv[])
 
   const char *subcmd = argv[1];
 
-  if (strcasecmp_local(subcmd, "status") == 0)
+  if (FEB_strcasecmp(subcmd, "status") == 0)
   {
     cmd_status();
   }
-  else if (strcasecmp_local(subcmd, "apps") == 0)
+  else if (FEB_strcasecmp(subcmd, "apps") == 0)
   {
     cmd_apps();
   }
-  else if (strcasecmp_local(subcmd, "brake") == 0)
+  else if (FEB_strcasecmp(subcmd, "brake") == 0)
   {
     cmd_brake();
   }
-  else if (strcasecmp_local(subcmd, "rms") == 0)
+  else if (FEB_strcasecmp(subcmd, "rms") == 0)
   {
     cmd_rms();
   }
-  else if (strcasecmp_local(subcmd, "tps") == 0)
+  else if (FEB_strcasecmp(subcmd, "tps") == 0)
   {
     cmd_tps();
   }
-  else if (strcasecmp_local(subcmd, "bms") == 0)
+  else if (FEB_strcasecmp(subcmd, "bms") == 0)
   {
     cmd_bms();
   }

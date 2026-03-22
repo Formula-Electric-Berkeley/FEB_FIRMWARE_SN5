@@ -27,6 +27,9 @@
 #
 # ===========================================================================
 
+# String utilities - standalone, no dependencies
+add_subdirectory(FEB_String_Utils)
+
 # Core UART driver - standalone, no dependencies on other FEB libraries
 add_subdirectory(FEB_UART)
 
@@ -46,6 +49,7 @@ add_subdirectory(FEB_Commands)
 # Linking feb_io automatically brings in UART, Log, Console, and Commands.
 add_library(feb_io INTERFACE)
 target_link_libraries(feb_io INTERFACE
+    feb_string_utils
     feb_uart
     feb_log
     feb_console

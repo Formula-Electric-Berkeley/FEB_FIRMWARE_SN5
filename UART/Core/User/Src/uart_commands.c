@@ -9,6 +9,7 @@
 #include "uart_commands.h"
 #include "feb_console.h"
 #include "feb_log.h"
+#include "feb_string_utils.h"
 #include "flash_benchmark.h"
 #include "main.h"
 #include "cmsis_os2.h"
@@ -81,22 +82,6 @@ void UART_RegisterCommands(void)
 /* ============================================================================
  * Command Handlers
  * ============================================================================ */
-
-/**
- * @brief Case-insensitive string comparison
- */
-static int strcasecmp_local(const char *s1, const char *s2)
-{
-  while (*s1 && *s2)
-  {
-    int diff = tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
-    if (diff != 0)
-      return diff;
-    s1++;
-    s2++;
-  }
-  return tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
-}
 
 /**
  * @brief Timer callback for non-blocking LED blink
@@ -302,21 +287,21 @@ static void cmd_blink(int argc, char *argv[])
   if (argc >= 2)
   {
     /* Check for 'stop' command */
-    if (strcasecmp_local(argv[1], "stop") == 0)
+    if (FEB_strcasecmp(argv[1], "stop") == 0)
     {
       blink_stop();
       return;
     }
 
     /* Check for 'help' command */
-    if (strcasecmp_local(argv[1], "help") == 0)
+    if (FEB_strcasecmp(argv[1], "help") == 0)
     {
       print_blink_help();
       return;
     }
 
     /* Check for 'forever' keyword */
-    if (strcasecmp_local(argv[1], "forever") == 0)
+    if (FEB_strcasecmp(argv[1], "forever") == 0)
     {
       continuous = true;
       count = 0;

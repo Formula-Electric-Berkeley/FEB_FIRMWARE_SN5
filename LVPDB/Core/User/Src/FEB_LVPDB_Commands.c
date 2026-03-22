@@ -10,6 +10,7 @@
 #include "FEB_CAN_PingPong.h"
 #include "FEB_Main.h"
 #include "feb_console.h"
+#include "feb_string_utils.h"
 #include "feb_tps.h"
 #include <ctype.h>
 #include <stdlib.h>
@@ -35,22 +36,6 @@ extern int16_t tps2482_current[NUM_TPS2482];
 static const char *chip_names[NUM_TPS2482] = {"LV", "SH", "LT", "BM_L", "SM", "AF1_AF2", "CP_RF"};
 
 /**
- * @brief Case-insensitive string comparison
- */
-static int strcasecmp_local(const char *s1, const char *s2)
-{
-  while (*s1 && *s2)
-  {
-    int diff = tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
-    if (diff != 0)
-      return diff;
-    s1++;
-    s2++;
-  }
-  return tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
-}
-
-/**
  * Resolve a TPS2482 chip index from a name or a numeric string.
  *
  * @param name Chip identifier as either a numeric string ("0".."6") or a case-insensitive chip name.
@@ -70,7 +55,7 @@ static int get_chip_index(const char *name)
   // Name lookup (case-insensitive)
   for (int i = 0; i < NUM_TPS2482; i++)
   {
-    if (strcasecmp_local(name, chip_names[i]) == 0)
+    if (FEB_strcasecmp(name, chip_names[i]) == 0)
       return i;
   }
   return -1;
@@ -108,7 +93,7 @@ static const RegInfo_t *get_register_info(const char *name)
 {
   for (size_t i = 0; i < NUM_REGISTERS; i++)
   {
-    if (strcasecmp_local(name, registers[i].name) == 0)
+    if (FEB_strcasecmp(name, registers[i].name) == 0)
       return &registers[i];
   }
   return NULL;
@@ -498,7 +483,7 @@ static void cmd_stop(int argc, char *argv[])
     return;
   }
 
-  if (strcasecmp_local(argv[1], "all") == 0)
+  if (FEB_strcasecmp(argv[1], "all") == 0)
   {
     FEB_CAN_PingPong_Reset();
     FEB_Console_Printf("All channels stopped\r\n");
@@ -549,39 +534,39 @@ static void cmd_lvpdb(int argc, char *argv[])
 
   const char *subcmd = argv[1];
 
-  if (strcasecmp_local(subcmd, "status") == 0)
+  if (FEB_strcasecmp(subcmd, "status") == 0)
   {
     cmd_status();
   }
-  else if (strcasecmp_local(subcmd, "enable") == 0)
+  else if (FEB_strcasecmp(subcmd, "enable") == 0)
   {
     cmd_enable(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "disable") == 0)
+  else if (FEB_strcasecmp(subcmd, "disable") == 0)
   {
     cmd_disable(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "read") == 0)
+  else if (FEB_strcasecmp(subcmd, "read") == 0)
   {
     cmd_read(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "write") == 0)
+  else if (FEB_strcasecmp(subcmd, "write") == 0)
   {
     cmd_write(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "ping") == 0)
+  else if (FEB_strcasecmp(subcmd, "ping") == 0)
   {
     cmd_ping(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "pong") == 0)
+  else if (FEB_strcasecmp(subcmd, "pong") == 0)
   {
     cmd_pong(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "stop") == 0)
+  else if (FEB_strcasecmp(subcmd, "stop") == 0)
   {
     cmd_stop(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "canstatus") == 0)
+  else if (FEB_strcasecmp(subcmd, "canstatus") == 0)
   {
     cmd_canstatus();
   }

@@ -11,6 +11,7 @@
 #include "FEB_Commands.h"
 #include "feb_console.h"
 #include "feb_log.h"
+#include "feb_string_utils.h"
 #include "FEB_ADBMS6830B.h"
 #include "FEB_CAN_IVT.h"
 #include "FEB_CAN_PingPong.h"
@@ -35,9 +36,6 @@ extern osThreadId_t ADBMSTaskHandle;
 extern osThreadId_t TPSTaskHandle;
 extern osThreadId_t BMSTaskRxHandle;
 extern osThreadId_t BMSTaskTxHandle;
-
-/* Forward declaration */
-static int strcasecmp_local(const char *s1, const char *s2);
 
 /* ============================================================================
  * Subcommand: status - Show BMS status summary
@@ -245,33 +243,33 @@ static void subcmd_state(int argc, char *argv[])
   else
   {
     /* Try name match */
-    if (strcasecmp_local(arg, "boot") == 0)
+    if (FEB_strcasecmp(arg, "boot") == 0)
       new_state = BMS_STATE_BOOT;
-    else if (strcasecmp_local(arg, "lv_power") == 0 || strcasecmp_local(arg, "lv") == 0)
+    else if (FEB_strcasecmp(arg, "lv_power") == 0 || FEB_strcasecmp(arg, "lv") == 0)
       new_state = BMS_STATE_LV_POWER;
-    else if (strcasecmp_local(arg, "bus_health") == 0 || strcasecmp_local(arg, "bus") == 0)
+    else if (FEB_strcasecmp(arg, "bus_health") == 0 || FEB_strcasecmp(arg, "bus") == 0)
       new_state = BMS_STATE_BUS_HEALTH_CHECK;
-    else if (strcasecmp_local(arg, "precharge") == 0 || strcasecmp_local(arg, "pre") == 0)
+    else if (FEB_strcasecmp(arg, "precharge") == 0 || FEB_strcasecmp(arg, "pre") == 0)
       new_state = BMS_STATE_PRECHARGE;
-    else if (strcasecmp_local(arg, "energized") == 0)
+    else if (FEB_strcasecmp(arg, "energized") == 0)
       new_state = BMS_STATE_ENERGIZED;
-    else if (strcasecmp_local(arg, "drive") == 0)
+    else if (FEB_strcasecmp(arg, "drive") == 0)
       new_state = BMS_STATE_DRIVE;
-    else if (strcasecmp_local(arg, "battery_free") == 0 || strcasecmp_local(arg, "free") == 0)
+    else if (FEB_strcasecmp(arg, "battery_free") == 0 || FEB_strcasecmp(arg, "free") == 0)
       new_state = BMS_STATE_BATTERY_FREE;
-    else if (strcasecmp_local(arg, "charger_precharge") == 0 || strcasecmp_local(arg, "charger_pre") == 0)
+    else if (FEB_strcasecmp(arg, "charger_precharge") == 0 || FEB_strcasecmp(arg, "charger_pre") == 0)
       new_state = BMS_STATE_CHARGER_PRECHARGE;
-    else if (strcasecmp_local(arg, "charging") == 0 || strcasecmp_local(arg, "charge") == 0)
+    else if (FEB_strcasecmp(arg, "charging") == 0 || FEB_strcasecmp(arg, "charge") == 0)
       new_state = BMS_STATE_CHARGING;
-    else if (strcasecmp_local(arg, "balance") == 0 || strcasecmp_local(arg, "bal") == 0)
+    else if (FEB_strcasecmp(arg, "balance") == 0 || FEB_strcasecmp(arg, "bal") == 0)
       new_state = BMS_STATE_BALANCE;
-    else if (strcasecmp_local(arg, "fault_bms") == 0 || strcasecmp_local(arg, "fault") == 0)
+    else if (FEB_strcasecmp(arg, "fault_bms") == 0 || FEB_strcasecmp(arg, "fault") == 0)
       new_state = BMS_STATE_FAULT_BMS;
-    else if (strcasecmp_local(arg, "fault_bspd") == 0)
+    else if (FEB_strcasecmp(arg, "fault_bspd") == 0)
       new_state = BMS_STATE_FAULT_BSPD;
-    else if (strcasecmp_local(arg, "fault_imd") == 0)
+    else if (FEB_strcasecmp(arg, "fault_imd") == 0)
       new_state = BMS_STATE_FAULT_IMD;
-    else if (strcasecmp_local(arg, "fault_charging") == 0)
+    else if (FEB_strcasecmp(arg, "fault_charging") == 0)
       new_state = BMS_STATE_FAULT_CHARGING;
     else
     {
@@ -548,19 +546,6 @@ static void subcmd_config(int argc, char *argv[])
  * CAN Ping/Pong Subcommands
  * ============================================================================ */
 
-static int strcasecmp_local(const char *s1, const char *s2)
-{
-  while (*s1 && *s2)
-  {
-    int diff = tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
-    if (diff != 0)
-      return diff;
-    s1++;
-    s2++;
-  }
-  return tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
-}
-
 static const char *mode_names[] = {"OFF", "PING", "PONG"};
 static const uint32_t pingpong_frame_ids[] = {0xE0, 0xE1, 0xE2, 0xE3};
 
@@ -612,7 +597,7 @@ static void subcmd_canstop(int argc, char *argv[])
     return;
   }
 
-  if (strcasecmp_local(argv[1], "all") == 0)
+  if (FEB_strcasecmp(argv[1], "all") == 0)
   {
     FEB_CAN_PingPong_Reset();
     FEB_Console_Printf("All channels stopped\r\n");
@@ -699,76 +684,76 @@ static void cmd_bms(int argc, char *argv[])
   const char *subcmd = argv[1];
 
   /* Dispatch to subcommand handler */
-  if (strcasecmp_local(subcmd, "status") == 0)
+  if (FEB_strcasecmp(subcmd, "status") == 0)
   {
     subcmd_status(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "cells") == 0)
+  else if (FEB_strcasecmp(subcmd, "cells") == 0)
   {
     subcmd_cells(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "temps") == 0)
+  else if (FEB_strcasecmp(subcmd, "temps") == 0)
   {
     subcmd_temps(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "state") == 0)
+  else if (FEB_strcasecmp(subcmd, "state") == 0)
   {
     subcmd_state(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "balance") == 0)
+  else if (FEB_strcasecmp(subcmd, "balance") == 0)
   {
     subcmd_balance(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "dump") == 0)
+  else if (FEB_strcasecmp(subcmd, "dump") == 0)
   {
     subcmd_dump(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "ping") == 0)
+  else if (FEB_strcasecmp(subcmd, "ping") == 0)
   {
     subcmd_ping(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "pong") == 0)
+  else if (FEB_strcasecmp(subcmd, "pong") == 0)
   {
     subcmd_pong(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "canstop") == 0 || strcasecmp_local(subcmd, "stop") == 0)
+  else if (FEB_strcasecmp(subcmd, "canstop") == 0 || FEB_strcasecmp(subcmd, "stop") == 0)
   {
     subcmd_canstop(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "canstatus") == 0)
+  else if (FEB_strcasecmp(subcmd, "canstatus") == 0)
   {
     subcmd_canstatus(argc - 1, argv + 1);
   }
   /* Diagnostic commands */
-  else if (strcasecmp_local(subcmd, "gpio") == 0)
+  else if (FEB_strcasecmp(subcmd, "gpio") == 0)
   {
     subcmd_gpio(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "ivt") == 0)
+  else if (FEB_strcasecmp(subcmd, "ivt") == 0)
   {
     subcmd_ivt(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "tasks") == 0)
+  else if (FEB_strcasecmp(subcmd, "tasks") == 0)
   {
     subcmd_tasks(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "mem") == 0)
+  else if (FEB_strcasecmp(subcmd, "mem") == 0)
   {
     subcmd_mem(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "cell") == 0)
+  else if (FEB_strcasecmp(subcmd, "cell") == 0)
   {
     subcmd_cell(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "spi") == 0)
+  else if (FEB_strcasecmp(subcmd, "spi") == 0)
   {
     subcmd_spi(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "errors") == 0)
+  else if (FEB_strcasecmp(subcmd, "errors") == 0)
   {
     subcmd_errors(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "config") == 0)
+  else if (FEB_strcasecmp(subcmd, "config") == 0)
   {
     subcmd_config(argc - 1, argv + 1);
   }

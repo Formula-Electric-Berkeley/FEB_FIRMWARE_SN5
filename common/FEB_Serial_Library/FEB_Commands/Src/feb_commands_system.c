@@ -21,6 +21,7 @@
 #include "feb_commands_system.h"
 #include "feb_console.h"
 #include "feb_log.h"
+#include "feb_string_utils.h"
 
 /* HAL for HAL_GetTick and NVIC_SystemReset */
 #include "main.h"
@@ -36,9 +37,6 @@ static void cmd_version(int argc, char *argv[]);
 static void cmd_uptime(int argc, char *argv[]);
 static void cmd_reboot(int argc, char *argv[]);
 static void cmd_log(int argc, char *argv[]);
-
-/* Case-insensitive string comparison (local helper) */
-static int strcasecmp_local(const char *a, const char *b);
 
 /* ============================================================================
  * Command Descriptors
@@ -99,40 +97,6 @@ void FEB_Commands_RegisterSystem(void)
   FEB_Console_Register(&feb_cmd_uptime);
   FEB_Console_Register(&feb_cmd_reboot);
   FEB_Console_Register(&feb_cmd_log);
-}
-
-/* ============================================================================
- * Private Helper Functions
- * ============================================================================ */
-
-/**
- * @brief Case-insensitive string comparison
- */
-static int strcasecmp_local(const char *a, const char *b)
-{
-  while (*a && *b)
-  {
-    char ca = *a;
-    char cb = *b;
-
-    /* Convert to lowercase */
-    if (ca >= 'A' && ca <= 'Z')
-    {
-      ca += 32;
-    }
-    if (cb >= 'A' && cb <= 'Z')
-    {
-      cb += 32;
-    }
-
-    if (ca != cb)
-    {
-      return ca - cb;
-    }
-    a++;
-    b++;
-  }
-  return *a - *b;
 }
 
 /* ============================================================================
@@ -249,27 +213,27 @@ static void cmd_log(int argc, char *argv[])
 
   /* Set log level */
   FEB_Log_Level_t new_level;
-  if (strcasecmp_local(argv[1], "error") == 0 || strcasecmp_local(argv[1], "e") == 0)
+  if (FEB_strcasecmp(argv[1], "error") == 0 || FEB_strcasecmp(argv[1], "e") == 0)
   {
     new_level = FEB_LOG_ERROR;
   }
-  else if (strcasecmp_local(argv[1], "warn") == 0 || strcasecmp_local(argv[1], "w") == 0)
+  else if (FEB_strcasecmp(argv[1], "warn") == 0 || FEB_strcasecmp(argv[1], "w") == 0)
   {
     new_level = FEB_LOG_WARN;
   }
-  else if (strcasecmp_local(argv[1], "info") == 0 || strcasecmp_local(argv[1], "i") == 0)
+  else if (FEB_strcasecmp(argv[1], "info") == 0 || FEB_strcasecmp(argv[1], "i") == 0)
   {
     new_level = FEB_LOG_INFO;
   }
-  else if (strcasecmp_local(argv[1], "debug") == 0 || strcasecmp_local(argv[1], "d") == 0)
+  else if (FEB_strcasecmp(argv[1], "debug") == 0 || FEB_strcasecmp(argv[1], "d") == 0)
   {
     new_level = FEB_LOG_DEBUG;
   }
-  else if (strcasecmp_local(argv[1], "trace") == 0 || strcasecmp_local(argv[1], "t") == 0)
+  else if (FEB_strcasecmp(argv[1], "trace") == 0 || FEB_strcasecmp(argv[1], "t") == 0)
   {
     new_level = FEB_LOG_TRACE;
   }
-  else if (strcasecmp_local(argv[1], "none") == 0 || strcasecmp_local(argv[1], "n") == 0)
+  else if (FEB_strcasecmp(argv[1], "none") == 0 || FEB_strcasecmp(argv[1], "n") == 0)
   {
     new_level = FEB_LOG_NONE;
   }

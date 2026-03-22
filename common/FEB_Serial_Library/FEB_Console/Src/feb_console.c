@@ -7,6 +7,7 @@
  */
 
 #include "feb_console.h"
+#include "feb_string_utils.h"
 #include "feb_uart.h"
 
 #include <stdarg.h>
@@ -231,36 +232,6 @@ const FEB_Console_Cmd_t *FEB_Console_FindCommand(const char *name)
  * ============================================================================ */
 
 /**
- * @brief Case-insensitive string comparison
- */
-static int strcasecmp_local(const char *a, const char *b)
-{
-  while (*a && *b)
-  {
-    char ca = *a;
-    char cb = *b;
-
-    /* Convert to lowercase */
-    if (ca >= 'A' && ca <= 'Z')
-    {
-      ca += 32;
-    }
-    if (cb >= 'A' && cb <= 'Z')
-    {
-      cb += 32;
-    }
-
-    if (ca != cb)
-    {
-      return ca - cb;
-    }
-    a++;
-    b++;
-  }
-  return *a - *b;
-}
-
-/**
  * @brief Parse command line into arguments
  *
  * Splits ONLY on pipe (|) characters. Spaces within arguments are preserved.
@@ -308,7 +279,7 @@ static const FEB_Console_Cmd_t *find_command(const char *name)
 {
   for (size_t i = 0; i < command_count; i++)
   {
-    if (strcasecmp_local(commands[i]->name, name) == 0)
+    if (FEB_strcasecmp(commands[i]->name, name) == 0)
     {
       return commands[i];
     }
