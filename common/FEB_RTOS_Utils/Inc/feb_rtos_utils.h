@@ -14,6 +14,9 @@
 #ifndef FEB_RTOS_UTILS_H
 #define FEB_RTOS_UTILS_H
 
+/* Error_Handler must be available - typically declared in main.h */
+extern void Error_Handler(void);
+
 /**
  * @brief Fail-fast macro for RTOS handle validation
  * @param handle The RTOS handle to check (mutex, semaphore, queue, task)

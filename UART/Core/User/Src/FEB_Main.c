@@ -104,7 +104,7 @@ void FEB_Main_Setup(void)
  * FreeRTOS Task Implementations - Override weak stubs in freertos.c
  * ============================================================================ */
 
-void StartUARTRxTask(void *argument)
+void StartUartRxTask(void *argument)
 {
   (void)argument;
 

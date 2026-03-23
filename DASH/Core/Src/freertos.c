@@ -234,20 +234,11 @@ void MX_FREERTOS_Init(void) {
   canRxQueueHandle = osMessageQueueNew (32, sizeof(FEB_CAN_Message_t), &canRxQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /*
-   * Workaround: CubeMX-generated queues above use sizeof(uint8_t) but should use
-   * sizeof(FEB_CAN_Message_t). Delete and recreate with correct size.
-   * TODO: Fix queue item size in .ioc file to eliminate this workaround.
-   */
-  osMessageQueueDelete(canTxQueueHandle);
-  osMessageQueueDelete(canRxQueueHandle);
-  canTxQueueHandle = osMessageQueueNew(16, sizeof(FEB_CAN_Message_t), &canTxQueue_attributes);
-  canRxQueueHandle = osMessageQueueNew(32, sizeof(FEB_CAN_Message_t), &canRxQueue_attributes);
-
   /* Validate all RTOS objects - fail fast on low heap */
   REQUIRE_RTOS_HANDLE(FEB_I2C_MutexHandle);
   REQUIRE_RTOS_HANDLE(canTxMutexHandle);
   REQUIRE_RTOS_HANDLE(canRxMutexHandle);
+  REQUIRE_RTOS_HANDLE(logMutexHandle);
   REQUIRE_RTOS_HANDLE(canTxMailboxSemHandle);
   REQUIRE_RTOS_HANDLE(canTxQueueHandle);
   REQUIRE_RTOS_HANDLE(canRxQueueHandle);
