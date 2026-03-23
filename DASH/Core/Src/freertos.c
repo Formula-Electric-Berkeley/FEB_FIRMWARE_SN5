@@ -29,6 +29,7 @@
 #include "feb_uart.h"
 #include "feb_console.h"
 #include "feb_can_lib.h"
+#include "feb_rtos_utils.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -244,14 +245,12 @@ void MX_FREERTOS_Init(void) {
   canRxQueueHandle = osMessageQueueNew(32, sizeof(FEB_CAN_Message_t), &canRxQueue_attributes);
 
   /* Validate all RTOS objects - fail fast on low heap */
-  if (FEB_I2C_MutexHandle == NULL ||
-      canTxMutexHandle == NULL ||
-      canRxMutexHandle == NULL ||
-      canTxMailboxSemHandle == NULL ||
-      canTxQueueHandle == NULL ||
-      canRxQueueHandle == NULL) {
-    Error_Handler();
-  }
+  REQUIRE_RTOS_HANDLE(FEB_I2C_MutexHandle);
+  REQUIRE_RTOS_HANDLE(canTxMutexHandle);
+  REQUIRE_RTOS_HANDLE(canRxMutexHandle);
+  REQUIRE_RTOS_HANDLE(canTxMailboxSemHandle);
+  REQUIRE_RTOS_HANDLE(canTxQueueHandle);
+  REQUIRE_RTOS_HANDLE(canRxQueueHandle);
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -275,14 +274,12 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* Validate all thread creations - fail fast on low heap */
-  if (btnTxLoopTaskHandle == NULL ||
-      displayTaskHandle == NULL ||
-      uartRxTaskHandle == NULL ||
-      uartTxTaskHandle == NULL ||
-      DASHTaskRxHandle == NULL ||
-      DASHTaskTxHandle == NULL) {
-    Error_Handler();
-  }
+  REQUIRE_RTOS_HANDLE(btnTxLoopTaskHandle);
+  REQUIRE_RTOS_HANDLE(displayTaskHandle);
+  REQUIRE_RTOS_HANDLE(uartRxTaskHandle);
+  REQUIRE_RTOS_HANDLE(uartTxTaskHandle);
+  REQUIRE_RTOS_HANDLE(DASHTaskRxHandle);
+  REQUIRE_RTOS_HANDLE(DASHTaskTxHandle);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */

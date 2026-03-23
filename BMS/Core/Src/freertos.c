@@ -33,6 +33,7 @@
 #include "feb_uart_internal.h"
 #include "feb_console.h"
 #include "feb_can_lib.h"
+#include "feb_rtos_utils.h"
 #include <stdio.h>
 /* USER CODE END Includes */
 
@@ -48,14 +49,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-/**
- * @brief Fail-fast macro for RTOS handle validation
- * @param handle The RTOS handle to check
- *
- * If handle is NULL, calls Error_Handler() to halt system.
- */
-#define REQUIRE_RTOS_HANDLE(handle) \
-  do { if ((handle) == NULL) { Error_Handler(); } } while(0)
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/

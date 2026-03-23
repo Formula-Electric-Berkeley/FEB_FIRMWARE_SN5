@@ -453,6 +453,25 @@ static void cmd_write(int argc, char *argv[])
 static const char *mode_names[] = {"OFF", "PING", "PONG"};
 static const uint32_t pingpong_frame_ids[] = {0xE0, 0xE1, 0xE2, 0xE3};
 
+/**
+ * Parse and validate a channel number from string input.
+ *
+ * @param str Input string to parse
+ * @param ch_out Pointer to store validated channel (1-4)
+ * @return true if valid channel parsed, false otherwise
+ */
+static bool parse_channel(const char *str, int *ch_out)
+{
+  char *endptr;
+  long val = strtol(str, &endptr, 10);
+  if (*endptr != '\0' || val < 1 || val > 4)
+  {
+    return false;
+  }
+  *ch_out = (int)val;
+  return true;
+}
+
 static void cmd_ping(int argc, char *argv[])
 {
   if (argc < 2)
@@ -462,8 +481,8 @@ static void cmd_ping(int argc, char *argv[])
     return;
   }
 
-  int ch = atoi(argv[1]);
-  if (ch < 1 || ch > 4)
+  int ch;
+  if (!parse_channel(argv[1], &ch))
   {
     FEB_Console_Printf("Error: Channel must be 1-4\r\n");
     return;
@@ -482,8 +501,8 @@ static void cmd_pong(int argc, char *argv[])
     return;
   }
 
-  int ch = atoi(argv[1]);
-  if (ch < 1 || ch > 4)
+  int ch;
+  if (!parse_channel(argv[1], &ch))
   {
     FEB_Console_Printf("Error: Channel must be 1-4\r\n");
     return;
@@ -508,8 +527,8 @@ static void cmd_stop(int argc, char *argv[])
     return;
   }
 
-  int ch = atoi(argv[1]);
-  if (ch < 1 || ch > 4)
+  int ch;
+  if (!parse_channel(argv[1], &ch))
   {
     FEB_Console_Printf("Error: Channel must be 1-4 or 'all'\r\n");
     return;

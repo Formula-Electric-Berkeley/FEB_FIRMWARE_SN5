@@ -27,6 +27,7 @@
 /* USER CODE BEGIN Includes */
 #include "flash_benchmark.h"
 #include "feb_uart_internal.h"
+#include "feb_rtos_utils.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -158,17 +159,14 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* Validate all RTOS object creations - fail fast on any NULL */
-  if (uartTxMutexHandle == NULL ||
-      logMutexHandle == NULL ||
-      rtcMutexHandle == NULL ||
-      flashMutexHandle == NULL ||
-      uartTxSemHandle == NULL ||
-      uartRxQueueHandle == NULL ||
-      flashTaskHandle == NULL ||
-      uartRxTaskHandle == NULL)
-  {
-    Error_Handler();  /* Critical: RTOS resource allocation failed */
-  }
+  REQUIRE_RTOS_HANDLE(uartTxMutexHandle);
+  REQUIRE_RTOS_HANDLE(logMutexHandle);
+  REQUIRE_RTOS_HANDLE(rtcMutexHandle);
+  REQUIRE_RTOS_HANDLE(flashMutexHandle);
+  REQUIRE_RTOS_HANDLE(uartTxSemHandle);
+  REQUIRE_RTOS_HANDLE(uartRxQueueHandle);
+  REQUIRE_RTOS_HANDLE(flashTaskHandle);
+  REQUIRE_RTOS_HANDLE(uartRxTaskHandle);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */

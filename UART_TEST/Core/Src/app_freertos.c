@@ -22,7 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "feb_rtos_utils.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -118,18 +118,12 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* Validate all RTOS object creations - fail fast on any NULL */
-  if (logMutexHandle == NULL ||
-      UartTxQueueHandle == NULL ||
-      UartRxQueueHandle == NULL ||
-      uartRxTaskHandle == NULL ||
-      uartTxTaskHandle == NULL)
-  {
-    extern UART_HandleTypeDef huart1;
-    const char *err = "RTOS create FAILED!\r\n";
-    HAL_UART_Transmit(&huart1, (uint8_t *)err, 21, 1000);
-    Error_Handler();
-  }
-  else
+  REQUIRE_RTOS_HANDLE(logMutexHandle);
+  REQUIRE_RTOS_HANDLE(UartTxQueueHandle);
+  REQUIRE_RTOS_HANDLE(UartRxQueueHandle);
+  REQUIRE_RTOS_HANDLE(uartRxTaskHandle);
+  REQUIRE_RTOS_HANDLE(uartTxTaskHandle);
+
   {
     extern UART_HandleTypeDef huart1;
     const char *ok = "RTOS objects OK\r\n";
