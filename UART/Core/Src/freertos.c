@@ -26,7 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "flash_benchmark.h"
-#include "feb_uart_internal.h"
+#include "feb_uart.h"
 #include "feb_rtos_utils.h"
 /* USER CODE END Includes */
 

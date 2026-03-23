@@ -103,6 +103,11 @@ osMessageQueueId_t canRxQueueHandle;
 const osMessageQueueAttr_t canRxQueue_attributes = {
   .name = "canRxQueue"
 };
+/* Definitions for uartRxQueue */
+osMessageQueueId_t uartRxQueueHandle;
+const osMessageQueueAttr_t uartRxQueue_attributes = {
+  .name = "uartRxQueue"
+};
 /* Definitions for FEB_I2C_Mutex */
 osMutexId_t FEB_I2C_MutexHandle;
 const osMutexAttr_t FEB_I2C_Mutex_attributes = {
@@ -123,10 +128,20 @@ osMutexId_t logMutexHandle;
 const osMutexAttr_t logMutex_attributes = {
   .name = "logMutex"
 };
+/* Definitions for uartTxMutex */
+osMutexId_t uartTxMutexHandle;
+const osMutexAttr_t uartTxMutex_attributes = {
+  .name = "uartTxMutex"
+};
 /* Definitions for canTxMailboxSem */
 osSemaphoreId_t canTxMailboxSemHandle;
 const osSemaphoreAttr_t canTxMailboxSem_attributes = {
   .name = "canTxMailboxSem"
+};
+/* Definitions for uartTxSem */
+osSemaphoreId_t uartTxSemHandle;
+const osSemaphoreAttr_t uartTxSem_attributes = {
+  .name = "uartTxSem"
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -210,6 +225,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of logMutex */
   logMutexHandle = osMutexNew(&logMutex_attributes);
 
+  /* creation of uartTxMutex */
+  uartTxMutexHandle = osMutexNew(&uartTxMutex_attributes);
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -217,6 +235,9 @@ void MX_FREERTOS_Init(void) {
   /* Create the semaphores(s) */
   /* creation of canTxMailboxSem */
   canTxMailboxSemHandle = osSemaphoreNew(3, 3, &canTxMailboxSem_attributes);
+
+  /* creation of uartTxSem */
+  uartTxSemHandle = osSemaphoreNew(1, 0, &uartTxSem_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -233,15 +254,21 @@ void MX_FREERTOS_Init(void) {
   /* creation of canRxQueue */
   canRxQueueHandle = osMessageQueueNew (32, sizeof(FEB_CAN_Message_t), &canRxQueue_attributes);
 
+  /* creation of uartRxQueue */
+  uartRxQueueHandle = osMessageQueueNew (8, sizeof(FEB_UART_RxQueueMsg_t), &uartRxQueue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* Validate all RTOS objects - fail fast on low heap */
   REQUIRE_RTOS_HANDLE(FEB_I2C_MutexHandle);
   REQUIRE_RTOS_HANDLE(canTxMutexHandle);
   REQUIRE_RTOS_HANDLE(canRxMutexHandle);
   REQUIRE_RTOS_HANDLE(logMutexHandle);
+  REQUIRE_RTOS_HANDLE(uartTxMutexHandle);
   REQUIRE_RTOS_HANDLE(canTxMailboxSemHandle);
+  REQUIRE_RTOS_HANDLE(uartTxSemHandle);
   REQUIRE_RTOS_HANDLE(canTxQueueHandle);
   REQUIRE_RTOS_HANDLE(canRxQueueHandle);
+  REQUIRE_RTOS_HANDLE(uartRxQueueHandle);
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */

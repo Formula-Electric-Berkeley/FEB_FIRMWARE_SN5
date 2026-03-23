@@ -160,22 +160,13 @@ typedef void *FEB_UART_Queue_t;
 
 #if FEB_UART_ENABLE_QUEUES
 
-  /**
-   * @brief RX queue message structure
-   *
-   * Contains a complete received line with metadata.
-   */
-  typedef struct
-  {
-    char line[FEB_UART_QUEUE_LINE_SIZE]; /**< Received line (null-terminated) */
-    uint16_t len;                        /**< Line length (not including null) */
-    uint32_t timestamp;                  /**< Reception timestamp (ms) */
-  } FEB_UART_RxQueueMsg_t;
+#include "feb_uart.h" /* For FEB_UART_RxQueueMsg_t (public type) */
 
   /**
    * @brief TX queue message structure
    *
-   * Contains data to be transmitted.
+   * Contains data to be transmitted. Internal only - TX queue sizing
+   * is handled by the library, not user freertos.c.
    */
   typedef struct
   {

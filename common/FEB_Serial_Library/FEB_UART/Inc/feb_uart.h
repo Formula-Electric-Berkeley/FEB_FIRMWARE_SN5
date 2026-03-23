@@ -240,6 +240,27 @@ typedef void *FEB_UART_QueueHandle_t;
   } FEB_UART_Config_t;
 
   /* ============================================================================
+   * Queue Message Types (Public for freertos.c queue sizing)
+   * ============================================================================ */
+
+#if FEB_UART_ENABLE_QUEUES
+
+  /**
+   * @brief RX queue message structure
+   *
+   * Contains a complete received line with metadata. Exposed publicly so
+   * freertos.c can use sizeof() when creating the message queue.
+   */
+  typedef struct
+  {
+    char line[FEB_UART_QUEUE_LINE_SIZE]; /**< Received line (null-terminated) */
+    uint16_t len;                        /**< Line length (not including null) */
+    uint32_t timestamp;                  /**< Reception timestamp (ms) */
+  } FEB_UART_RxQueueMsg_t;
+
+#endif /* FEB_UART_ENABLE_QUEUES */
+
+  /* ============================================================================
    * Callback Types
    * ============================================================================ */
 
