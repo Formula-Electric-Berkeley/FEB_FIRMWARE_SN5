@@ -322,8 +322,9 @@ print(m.get('boards', {}).get('$board', {}).get('files', {}).get('$rel_path', ''
 " 2>/dev/null || echo "")
 
             if [ -z "$manifest_checksum" ]; then
-                log_warn "  File not in manifest: $rel_path"
-                ((warnings++))
+                log_error "  File not in manifest: $rel_path"
+                log_error "  Run: ./scripts/cubemx-sync.sh --update -b $board"
+                ((file_errors++))
             elif [ "$current_checksum" != "$manifest_checksum" ]; then
                 log_error "  File modified: $rel_path"
                 ((file_errors++))

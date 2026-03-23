@@ -2,14 +2,11 @@
 #include "main.h"
 #include <stdint.h>
 #include <stdio.h>
-
-extern CAN_HandleTypeDef hcan1;
-extern CAN_HandleTypeDef hcan2;
-extern I2C_HandleTypeDef hi2c1;
-extern TIM_HandleTypeDef htim1;
-extern UART_HandleTypeDef huart2;
-extern DMA_HandleTypeDef hdma_usart2_tx;
-extern DMA_HandleTypeDef hdma_usart2_rx;
+#include "can.h"
+#include "dma.h"
+#include "i2c.h"
+#include "tim.h"
+#include "usart.h"
 
 static uint8_t uart_tx_buf[4096];
 static uint8_t uart_rx_buf[256];

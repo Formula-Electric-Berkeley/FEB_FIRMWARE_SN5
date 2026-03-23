@@ -4,7 +4,7 @@
   "boards": {
     "BMS": {
       "ioc_checksum": "08670b75875f2feedea3280eecc4821f36b742ccf7680976ae6f87bc3937ebfc",
-      "generated_at": "2026-03-23T05:36:57Z",
+      "generated_at": "2026-03-23T06:25:05Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "363755b7a21dd5a790f0bafbfd68f00abe141fd8691720b3604bc84b7dbaa81b",
         "Core/Inc/adc.h": "0ac97025a4065f07b7b65a906bd0c45ea800215434ed43c287c1685507f3f612",
@@ -35,7 +35,7 @@
     },
     "DASH": {
       "ioc_checksum": "e95ffc17bdded4d5b6be3894345d7149e5c93fd84b09279cd8888540662ce95e",
-      "generated_at": "2026-03-23T05:36:58Z",
+      "generated_at": "2026-03-23T06:25:06Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "692168cbc9c915133ce3f329cec850c5372c1759ec0412ced61fc14741de14be",
         "Core/Inc/can.h": "d9c82c8382c196a76d472a6b82a292a0384a086536ca280ce701ebbba9f5c682",
@@ -80,35 +80,43 @@
     },
     "DART": {
       "ioc_checksum": "700ee21775cc54bd8d22e666d723cf18278251a9a1559b42a5116fa2b47e4b47",
-      "generated_at": "2026-03-23T05:36:58Z",
+      "generated_at": "2026-03-23T06:25:06Z",
       "files": {
+        "Core/Inc/gpio.h": "e2d62f964a0b7f238384ed6a20a181d09df9647240a268dc547acf5b35099f74",
         "Core/Inc/main.h": "e07a43ebc634ce451e2f80884378d112e048e06235fb49fdc2d9a2b5057d28c5",
         "Core/Inc/stm32f4xx_hal_conf.h": "a7456a03b7c563da74771c7f179d5787d760b0f5508f4d739213e07f8604b0d8",
         "Core/Inc/stm32f4xx_it.h": "a96c6c7347c880644aeab9f9fe3ca9be2d61f123389fe8c2ce7dc4321501993a",
-        "Core/Src/main.c": "e00aafaa0ba80dc0a410526d5c00941f43d84d23297377587c60c008295ee2f7",
-        "Core/Src/stm32f4xx_hal_msp.c": "c88a101b38ec38ddc8fae8abc4fa242775701338c53fbbf40971593c6074186c",
+        "Core/Inc/usart.h": "2ddd1eaf81e3750b46df7222f4c34ae295bcdaaaa1152e4be4933d3a0ca90181",
+        "Core/Src/gpio.c": "e797753346f487c8ad1643608c3378e52c266e4d633d9ce3b1ffb7b9c92388bc",
+        "Core/Src/main.c": "0711ba496b6332972eb98e9f0ad49e691f8880418d032b46b8b9871b63e38873",
+        "Core/Src/stm32f4xx_hal_msp.c": "3217d99dc7006dc46ac384717641fe84386f05fc71db0a3340fa0eae810bc1b7",
         "Core/Src/stm32f4xx_it.c": "6cdfba6e76754e5838ae60c659793a49f4f635f7aa5d7451c0bbd0bbc502e1c7",
         "Core/Src/syscalls.c": "03c06c72eafb44b499814cf9234aba57dd830f345d9b8779b5d7090e78517600",
-        "Core/Src/sysmem.c": "ad20f7b1fa1e7c73330727747222cf2ffa3245ebf035230ee9a157545e79df95"
+        "Core/Src/sysmem.c": "ad20f7b1fa1e7c73330727747222cf2ffa3245ebf035230ee9a157545e79df95",
+        "Core/Src/usart.c": "f278cb5046ca6c2101b713ceddb7ac9fd5e07e4fc69f11039d48d143b13b9c0a"
       }
     },
     "DCU": {
       "ioc_checksum": "bee96712c33225bde55b6b3f0feac1f6572ac612bf4016578e0ca69a0af1a3b6",
-      "generated_at": "2026-03-23T05:36:59Z",
+      "generated_at": "2026-03-23T06:25:06Z",
       "files": {
+        "Core/Inc/gpio.h": "e2d62f964a0b7f238384ed6a20a181d09df9647240a268dc547acf5b35099f74",
         "Core/Inc/main.h": "e07a43ebc634ce451e2f80884378d112e048e06235fb49fdc2d9a2b5057d28c5",
         "Core/Inc/stm32f4xx_hal_conf.h": "a7456a03b7c563da74771c7f179d5787d760b0f5508f4d739213e07f8604b0d8",
         "Core/Inc/stm32f4xx_it.h": "a96c6c7347c880644aeab9f9fe3ca9be2d61f123389fe8c2ce7dc4321501993a",
-        "Core/Src/main.c": "70647ea08f07aaf8f025a8acddee78d021bbb5cfd5e1814c850868b379b0e51b",
-        "Core/Src/stm32f4xx_hal_msp.c": "c88a101b38ec38ddc8fae8abc4fa242775701338c53fbbf40971593c6074186c",
+        "Core/Inc/usart.h": "2ddd1eaf81e3750b46df7222f4c34ae295bcdaaaa1152e4be4933d3a0ca90181",
+        "Core/Src/gpio.c": "e797753346f487c8ad1643608c3378e52c266e4d633d9ce3b1ffb7b9c92388bc",
+        "Core/Src/main.c": "4a498aaccb2255c74972c8d84a90927a64d77558384b9cda503096c120fee2df",
+        "Core/Src/stm32f4xx_hal_msp.c": "3217d99dc7006dc46ac384717641fe84386f05fc71db0a3340fa0eae810bc1b7",
         "Core/Src/stm32f4xx_it.c": "6cdfba6e76754e5838ae60c659793a49f4f635f7aa5d7451c0bbd0bbc502e1c7",
         "Core/Src/syscalls.c": "03c06c72eafb44b499814cf9234aba57dd830f345d9b8779b5d7090e78517600",
-        "Core/Src/sysmem.c": "ad20f7b1fa1e7c73330727747222cf2ffa3245ebf035230ee9a157545e79df95"
+        "Core/Src/sysmem.c": "ad20f7b1fa1e7c73330727747222cf2ffa3245ebf035230ee9a157545e79df95",
+        "Core/Src/usart.c": "f278cb5046ca6c2101b713ceddb7ac9fd5e07e4fc69f11039d48d143b13b9c0a"
       }
     },
     "LVPDB": {
       "ioc_checksum": "fdbe95519a9005b08e31d4a2f1a1e5ca088029e6b6db3143b438f7a382077707",
-      "generated_at": "2026-03-23T05:36:59Z",
+      "generated_at": "2026-03-23T06:25:07Z",
       "files": {
         "Core/Inc/can.h": "17611aeff90b90e352bc2ace2749644663492ecb10c71539567ef9b1441fd5d9",
         "Core/Inc/dma.h": "7cf6f7450a29d26303cbba5a3ca8c6cb24a02635d6a5ba4d05141fdfc75c4c49",
@@ -119,50 +127,68 @@
         "Core/Inc/stm32f4xx_it.h": "ef4a73317f80ece423506ceb934583e428cd9c8dfcc3839b3ef0dc19d2aa91d6",
         "Core/Inc/tim.h": "1c2a27676a2fa58c0dac2f9d5766a06bcdbfe3149d348856d90fdfe4e9d4f2b4",
         "Core/Inc/usart.h": "30d9bc57b333c9656195e0daac6b9df231f447e504e1fbe604f9ca3de435029c",
-        "Core/Src/can.c": "d6be114fd1d7ecff20da3862d629b14a8ef4381f32958f8cce06cf334a1fa21c",
+        "Core/Src/can.c": "c35cbcd1a813503f929e7f6c9e6275f49e47e3f3cb643582a575fd60f60ce267",
         "Core/Src/dma.c": "5f55ed2c38ffd304a214d0b221173d3c55740b83bb74041d4af36f45120171f0",
         "Core/Src/gpio.c": "3196ac7d211bf6b897f97b3d281e513621244cf81cba845ab06a5ae310780bd8",
-        "Core/Src/i2c.c": "3d783ac6f75247051d9544414ef442ac5493de198808608c714429cf0d28633c",
+        "Core/Src/i2c.c": "6b43b2f5ea210e565c721f213419dbec51e7d7ce60e58ae9f60747da394e9062",
         "Core/Src/main.c": "4180206b6ec74231c172894f25ba07c75f43a52aab174208bd66dbb7c81c87eb",
-        "Core/Src/stm32f4xx_hal_msp.c": "76f3781a1062bdd59cf3e505cc39c9b09caaf50faa279d8dd22caadc8cab1bb4",
+        "Core/Src/stm32f4xx_hal_msp.c": "c959d837fb8e494d090dccecfba05082b25c1bd5114de586f0946b2920d9f29f",
         "Core/Src/stm32f4xx_it.c": "db741e5f163c73afdbfb77a8917dbdda9706e4be4be420452122f8612d858c0e",
         "Core/Src/syscalls.c": "7e00e71ea8dcbcb0dd37d1e3d7369e3af7a8affc54f1eb8fbe90285d38a57604",
         "Core/Src/sysmem.c": "428173de9a7a943d36b6f58a4abe8be087419b97a65d7980561c63ae81f1fce8",
-        "Core/Src/tim.c": "cf21c8a2e335c8960c41f4ad59a8e31cfd9430f4eca421200461ad5abd84486c",
-        "Core/Src/usart.c": "76f786c2c04063ce3e88b20855f581b0862697733e6398ef9275aee2fea091d8"
+        "Core/Src/tim.c": "30ac82e6fd65809964b537b4dcc1fc783cbf71861297753aa6c1c88f21c52bc9",
+        "Core/Src/usart.c": "cc4037399c8a53e987a07639989ccd477909e624c183f3342b934e8b6ac075f1"
       }
     },
     "PCU": {
       "ioc_checksum": "dd91de27d45363f02d89b5341de246826cc4d72a9f77d219c6bf4ac072c24126",
-      "generated_at": "2026-03-23T05:36:59Z",
+      "generated_at": "2026-03-23T06:25:07Z",
       "files": {
+        "Core/Inc/adc.h": "e36acfe1b822eff1de7e9f93073b8da32c94dd5b09484b716e190c6aa63eb3d0",
+        "Core/Inc/can.h": "98925d7f4010f054e17d240116244377377c15248a5413a09ff811cdc23084e5",
+        "Core/Inc/dma.h": "7cf6f7450a29d26303cbba5a3ca8c6cb24a02635d6a5ba4d05141fdfc75c4c49",
+        "Core/Inc/gpio.h": "e2d62f964a0b7f238384ed6a20a181d09df9647240a268dc547acf5b35099f74",
+        "Core/Inc/i2c.h": "61d9641a97b80c573f09879c391c8de322408051b8dca6ddd4af752653b0aef8",
         "Core/Inc/main.h": "1e5e83d6ee574cae27d091a3e515b90cca5185b2518e7dbe839ee4d702bb40ca",
         "Core/Inc/stm32f4xx_hal_conf.h": "73d247d57dfb67fbdd50432f98f71c6fe9c18d23a705828178ca7a3589f9e709",
         "Core/Inc/stm32f4xx_it.h": "26be41af93f9af1ac88028969b1c6bc18f8a85f149df95524da46b2ab1ef1cca",
-        "Core/Src/main.c": "35509d1a99b2e0da55dc0f9e733cbc7ac6fbcb66fe6acaba22c735f9dd0f3f5b",
-        "Core/Src/stm32f4xx_hal_msp.c": "54023420807d77d1a819e688f018be8f376e3acb9492e9b67d3532e99bfa8a50",
+        "Core/Inc/tim.h": "687f0a84fa12c3709bfe8f4bce41218f258938819a7cc807bdfb6c3a5d565439",
+        "Core/Inc/usart.h": "26823ced4880fd013f32903a94a3885807851197162d298114dd1983abaea040",
+        "Core/Src/adc.c": "d1e19c138b546dab2bf1a81f25388a84f6fe41fecb6242a00ed0cafb781dd6f5",
+        "Core/Src/can.c": "394f8a4a99d9c65784aa27c3745eca549717dfba4749d379acdfd212a5e80ca5",
+        "Core/Src/dma.c": "877c03069de3530b0bb3c75bcfa52dafeccd8ef28609172bce18808117ebb9d6",
+        "Core/Src/gpio.c": "9c4b67e0b98a39eee912a46a6dbb41fa5879fa2ceb9975dac6f08e998efac88a",
+        "Core/Src/i2c.c": "a611efe996c6cc1a558959c90dc397242b2e7b8ae2f8b09299c4642a039cf486",
+        "Core/Src/main.c": "bc9f3adf9fb1598e40b87df59d3630e93b523127c10d6dfd6b5b9ee534148371",
+        "Core/Src/stm32f4xx_hal_msp.c": "3217d99dc7006dc46ac384717641fe84386f05fc71db0a3340fa0eae810bc1b7",
         "Core/Src/stm32f4xx_it.c": "ba196c8a5825a9f86edb0ec98ef72c15c5f78b07c6f01229e9923283d4cfe370",
         "Core/Src/syscalls.c": "7aa2184cc74315f855bc7a8fdab2d9fdd796d7c036d4c86d22e450322c7a9617",
-        "Core/Src/sysmem.c": "ad20f7b1fa1e7c73330727747222cf2ffa3245ebf035230ee9a157545e79df95"
+        "Core/Src/sysmem.c": "ad20f7b1fa1e7c73330727747222cf2ffa3245ebf035230ee9a157545e79df95",
+        "Core/Src/tim.c": "c0331bea09c40fce5ed2f723f5c62f4bba2f426cfe7ccc422e515ec07fadf5d0",
+        "Core/Src/usart.c": "0717ca11b649d503f373c25dca3c451e4bd9b4d0f9f201a5a06fde2fc5970e04"
       }
     },
     "Sensor_Nodes": {
       "ioc_checksum": "1ee62c89a48113d0aff1cc21c958ab48d19c6a73f44b46a5797ae8de519106c0",
-      "generated_at": "2026-03-23T05:36:59Z",
+      "generated_at": "2026-03-23T06:25:07Z",
       "files": {
+        "Core/Inc/gpio.h": "e2d62f964a0b7f238384ed6a20a181d09df9647240a268dc547acf5b35099f74",
         "Core/Inc/main.h": "e07a43ebc634ce451e2f80884378d112e048e06235fb49fdc2d9a2b5057d28c5",
         "Core/Inc/stm32f4xx_hal_conf.h": "a7456a03b7c563da74771c7f179d5787d760b0f5508f4d739213e07f8604b0d8",
         "Core/Inc/stm32f4xx_it.h": "a96c6c7347c880644aeab9f9fe3ca9be2d61f123389fe8c2ce7dc4321501993a",
-        "Core/Src/main.c": "8bb086a706ff9024709e08304ba50acdc94eb7ff345ccb2962b36b6d0587160e",
-        "Core/Src/stm32f4xx_hal_msp.c": "c88a101b38ec38ddc8fae8abc4fa242775701338c53fbbf40971593c6074186c",
+        "Core/Inc/usart.h": "2ddd1eaf81e3750b46df7222f4c34ae295bcdaaaa1152e4be4933d3a0ca90181",
+        "Core/Src/gpio.c": "e797753346f487c8ad1643608c3378e52c266e4d633d9ce3b1ffb7b9c92388bc",
+        "Core/Src/main.c": "576f4c91af0744bbc496f35c823555416e6dbe7d4288643872b73c21562b6367",
+        "Core/Src/stm32f4xx_hal_msp.c": "3217d99dc7006dc46ac384717641fe84386f05fc71db0a3340fa0eae810bc1b7",
         "Core/Src/stm32f4xx_it.c": "6cdfba6e76754e5838ae60c659793a49f4f635f7aa5d7451c0bbd0bbc502e1c7",
         "Core/Src/syscalls.c": "03c06c72eafb44b499814cf9234aba57dd830f345d9b8779b5d7090e78517600",
-        "Core/Src/sysmem.c": "ad20f7b1fa1e7c73330727747222cf2ffa3245ebf035230ee9a157545e79df95"
+        "Core/Src/sysmem.c": "ad20f7b1fa1e7c73330727747222cf2ffa3245ebf035230ee9a157545e79df95",
+        "Core/Src/usart.c": "f278cb5046ca6c2101b713ceddb7ac9fd5e07e4fc69f11039d48d143b13b9c0a"
       }
     },
     "UART_TEST": {
       "ioc_checksum": "06c9618835096e44e3f73cd158bbc2e3fcf76e65dc9a29db68fe607180843efd",
-      "generated_at": "2026-03-23T05:37:00Z",
+      "generated_at": "2026-03-23T06:25:08Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "773dad076864ff18d5d85603d348d4931d29dde9925486e58f95a97ac98b8404",
         "Core/Inc/app_freertos.h": "6229601c2ebf192d40ceef377f3c1785571eaf6407f10bc87be5b06357dd3515",
