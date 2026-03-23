@@ -112,8 +112,8 @@ typedef volatile uint8_t FEB_UART_Semaphore_t;
 
 #define FEB_UART_SEM_CREATE(max, init) (init)
 #define FEB_UART_SEM_DELETE(s) ((void)0)
-#define FEB_UART_SEM_GIVE(s) ((s) = 1)
-#define FEB_UART_SEM_TAKE(s, timeout) ((s) ? ((s) = 0, 1) : 0)
+#define FEB_UART_SEM_GIVE(s) ((void)0)
+#define FEB_UART_SEM_TAKE(s, timeout) (true)
 
 #define FEB_UART_ENTER_CRITICAL() __disable_irq()
 #define FEB_UART_EXIT_CRITICAL() __enable_irq()

@@ -191,7 +191,7 @@ __weak void StartFlashTask(void *argument)
 
 /* USER CODE BEGIN Header_StartUartRxTask */
 /**
-* @brief Function implementing the uartRxTask03 thread.
+* @brief Function implementing the uartRxTask thread.
 * @param argument: Not used
 * @retval None
 */

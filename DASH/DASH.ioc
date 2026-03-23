@@ -467,7 +467,6 @@ PC9.Locked=true
 PC9.Mode=SD_4_bits_Wide_bus
 PC9.Signal=SDIO_D1
 PCC.Checker=false
-PCC.Display=Plot\: All Steps
 PCC.Line=STM32F469/479
 PCC.MCU=STM32F469NIHx
 PCC.PartNumber=STM32F469NIHx
