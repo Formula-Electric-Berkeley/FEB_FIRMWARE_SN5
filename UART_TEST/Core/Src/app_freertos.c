@@ -117,18 +117,23 @@ void MX_FREERTOS_Init(void) {
   uartRxTaskHandle = osThreadNew(StartUartRxTask, NULL, &uartRxTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* Diagnostic: check if task creation succeeded */
-  if (uartRxTaskHandle == NULL || uartTxTaskHandle == NULL)
+  /* Validate all RTOS object creations - fail fast on any NULL */
+  if (logMutexHandle == NULL ||
+      UartTxQueueHandle == NULL ||
+      UartRxQueueHandle == NULL ||
+      uartRxTaskHandle == NULL ||
+      uartTxTaskHandle == NULL)
   {
     extern UART_HandleTypeDef huart1;
-    const char *err = "Task create FAILED!\r\n";
+    const char *err = "RTOS create FAILED!\r\n";
     HAL_UART_Transmit(&huart1, (uint8_t *)err, 21, 1000);
+    Error_Handler();
   }
   else
   {
     extern UART_HandleTypeDef huart1;
-    const char *ok = "Tasks created OK\r\n";
-    HAL_UART_Transmit(&huart1, (uint8_t *)ok, 18, 1000);
+    const char *ok = "RTOS objects OK\r\n";
+    HAL_UART_Transmit(&huart1, (uint8_t *)ok, 17, 1000);
   }
   /* USER CODE END RTOS_THREADS */
 

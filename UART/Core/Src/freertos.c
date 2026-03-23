@@ -159,6 +159,9 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_THREADS */
   /* Validate all RTOS object creations - fail fast on any NULL */
   if (uartTxMutexHandle == NULL ||
+      logMutexHandle == NULL ||
+      rtcMutexHandle == NULL ||
+      flashMutexHandle == NULL ||
       uartTxSemHandle == NULL ||
       uartRxQueueHandle == NULL ||
       flashTaskHandle == NULL ||

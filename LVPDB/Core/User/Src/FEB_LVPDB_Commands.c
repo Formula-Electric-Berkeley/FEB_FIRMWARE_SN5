@@ -46,9 +46,13 @@ static int get_chip_index(const char *name)
   // Try numeric first
   if (isdigit((unsigned char)name[0]))
   {
-    int idx = atoi(name);
-    if (idx >= 0 && idx < NUM_TPS2482)
-      return idx;
+    char *endptr;
+    long idx = strtol(name, &endptr, 10);
+    // Validate: entire string consumed and within valid range
+    if (*endptr == '\0' && idx >= 0 && idx < NUM_TPS2482)
+    {
+      return (int)idx;
+    }
     return -1;
   }
 
@@ -401,12 +405,18 @@ static void cmd_write(int argc, char *argv[])
 
   // Parse value (supports hex with 0x prefix)
   char *endptr;
-  uint16_t value = (uint16_t)strtoul(argv[3], &endptr, 0);
+  unsigned long parsed = strtoul(argv[3], &endptr, 0);
   if (*endptr != '\0')
   {
     FEB_Console_Printf("Error: Invalid value '%s'\r\n", argv[3]);
     return;
   }
+  if (parsed > 65535)
+  {
+    FEB_Console_Printf("Error: Value '%s' exceeds 16-bit range (0-65535)\r\n", argv[3]);
+    return;
+  }
+  uint16_t value = (uint16_t)parsed;
 
   HAL_StatusTypeDef status = tps_write_reg(tps2482_i2c_addresses[idx], reg->addr, value);
   if (status != HAL_OK)

@@ -413,6 +413,13 @@ void FlashBench_TaskEntry(void *argument)
   /* Initialize queue (mutex is created via .ioc file) */
   flash_queue = osMessageQueueNew(FLASH_BENCH_QUEUE_DEPTH, sizeof(FlashBench_Request_t), NULL);
 
+  /* Validate queue creation - suspend task if failed */
+  if (flash_queue == NULL)
+  {
+    osThreadSuspend(osThreadGetId());
+    return;
+  }
+
   /* Initialize DWT cycle counter */
   FlashBench_Init();
 

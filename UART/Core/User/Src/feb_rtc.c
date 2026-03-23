@@ -86,7 +86,11 @@ static uint8_t calculate_weekday(uint8_t day, uint8_t month, uint16_t year)
 
 FEB_RTC_Status_t FEB_RTC_Init(void)
 {
-  /* Mutex is now created via .ioc file, nothing to do here */
+  /* Validate that mutex was created by .ioc-generated code */
+  if (rtcMutexHandle == NULL)
+  {
+    return FEB_RTC_ERROR;
+  }
   return FEB_RTC_OK;
 }
 

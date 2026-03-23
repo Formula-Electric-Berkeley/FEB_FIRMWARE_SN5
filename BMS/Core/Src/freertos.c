@@ -48,7 +48,14 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+/**
+ * @brief Fail-fast macro for RTOS handle validation
+ * @param handle The RTOS handle to check
+ *
+ * If handle is NULL, calls Error_Handler() to halt system.
+ */
+#define REQUIRE_RTOS_HANDLE(handle) \
+  do { if ((handle) == NULL) { Error_Handler(); } } while(0)
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -211,7 +218,14 @@ void MX_FREERTOS_Init(void) {
   uartTxMutexHandle = osMutexNew(&uartTxMutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
+  /* Validate all mutex creations - fail fast on allocation failure */
+  REQUIRE_RTOS_HANDLE(ADBMSMutexHandle);
+  REQUIRE_RTOS_HANDLE(canTxMutexHandle);
+  REQUIRE_RTOS_HANDLE(canRxMutexHandle);
+  REQUIRE_RTOS_HANDLE(tpsDataMutexHandle);
+  REQUIRE_RTOS_HANDLE(tpsI2cMutexHandle);
+  REQUIRE_RTOS_HANDLE(logMutexHandle);
+  REQUIRE_RTOS_HANDLE(uartTxMutexHandle);
   /* USER CODE END RTOS_MUTEX */
 
   /* Create the semaphores(s) */
@@ -222,7 +236,8 @@ void MX_FREERTOS_Init(void) {
   uartTxSemHandle = osSemaphoreNew(1, 0, &uartTxSem_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
+  REQUIRE_RTOS_HANDLE(canTxMailboxSemHandle);
+  REQUIRE_RTOS_HANDLE(uartTxSemHandle);
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
@@ -240,7 +255,9 @@ void MX_FREERTOS_Init(void) {
   uartRxQueueHandle = osMessageQueueNew (8, sizeof(FEB_UART_RxQueueMsg_t), &uartRxQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
-
+  REQUIRE_RTOS_HANDLE(canTxQueueHandle);
+  REQUIRE_RTOS_HANDLE(canRxQueueHandle);
+  REQUIRE_RTOS_HANDLE(uartRxQueueHandle);
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -263,7 +280,13 @@ void MX_FREERTOS_Init(void) {
   SMTaskHandle = osThreadNew(StartSMTask, NULL, &SMTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-
+  /* Validate all thread creations - fail fast on allocation failure */
+  REQUIRE_RTOS_HANDLE(uartRxTaskHandle);
+  REQUIRE_RTOS_HANDLE(ADBMSTaskHandle);
+  REQUIRE_RTOS_HANDLE(TPSTaskHandle);
+  REQUIRE_RTOS_HANDLE(BMSTaskRxHandle);
+  REQUIRE_RTOS_HANDLE(BMSTaskTxHandle);
+  REQUIRE_RTOS_HANDLE(SMTaskHandle);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
