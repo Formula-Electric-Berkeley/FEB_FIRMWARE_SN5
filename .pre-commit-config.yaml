@@ -47,4 +47,4 @@ repos:
         entry: ./scripts/cubemx-sync.sh --check
         language: script
         pass_filenames: false
-        files: (\.ioc$|Core/(Inc|Src)/.*\.(c|h)$|\.cubemx-manifest\.json$)
+        always_run: true
