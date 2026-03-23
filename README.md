@@ -33,6 +33,7 @@ scripts/
   format.sh                      # Code formatting (--check for CI)
   setup-hooks.sh                 # Install pre-commit hooks
   version.sh                     # Create version tags for releases
+  cubemx.sh                      # Generate HAL code from .ioc files
 .github/workflows/               # CI/CD pipelines
 ```
 
@@ -141,6 +142,26 @@ cmake --version
 ```
 
 **Alternative:** Use [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) with Ubuntu for a native Linux development experience on Windows.
+
+## STM32CubeMX Code Generation
+
+Generate HAL code from `.ioc` files without opening the STM32CubeMX GUI:
+
+```bash
+./scripts/cubemx.sh                     # Interactive menu
+./scripts/cubemx.sh -g -b BMS           # Generate code for BMS
+./scripts/cubemx.sh -i -b LVPDB         # Inspect LVPDB configuration
+./scripts/cubemx.sh -a -g               # Generate code for all boards
+./scripts/cubemx.sh --list-boards       # List all boards with .ioc status
+```
+
+The script can:
+- **Generate code** (`-g`): Run STM32CubeMX headlessly to regenerate HAL code
+- **Inspect** (`-i`): View MCU, clock, and peripheral configuration
+- **Show pins** (`--show-pins`): Display GPIO pin assignments
+- **Show peripherals** (`--show-peripherals`): List enabled peripherals
+
+> **Note:** Code generation requires STM32CubeMX. Inspection commands work without it by parsing `.ioc` files directly.
 
 ## Code Formatting
 
