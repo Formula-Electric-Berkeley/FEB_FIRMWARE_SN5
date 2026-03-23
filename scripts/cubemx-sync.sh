@@ -331,6 +331,27 @@ print(m.get('boards', {}).get('$board', {}).get('files', {}).get('$rel_path', ''
             fi
         done < <(find_generated_files "$board")
 
+        # Check manifest files exist on disk (detect deletions)
+        local manifest_files
+        manifest_files=$(python3 -c "
+import json
+with open('$MANIFEST_FILE') as f:
+    m = json.load(f)
+files = m.get('boards', {}).get('$board', {}).get('files', {})
+for f in files:
+    print(f)
+" 2>/dev/null || echo "")
+
+        while IFS= read -r rel_path; do
+            [ -z "$rel_path" ] && continue
+            local full_path="$board_dir/$rel_path"
+            if [ ! -f "$full_path" ]; then
+                log_error "  Missing file (in manifest but not on disk): $rel_path"
+                log_error "  Regenerate with: ./scripts/cubemx.sh -g -b $board && ./scripts/cubemx-sync.sh --update -b $board"
+                ((file_errors++))
+            fi
+        done <<< "$manifest_files"
+
         if [ $file_errors -gt 0 ]; then
             log_error "  $file_errors generated file(s) differ from manifest"
             log_error "  Regenerate with: ./scripts/cubemx.sh -g -b $board && ./scripts/cubemx-sync.sh --update -b $board"
@@ -418,6 +439,17 @@ check_staged() {
             elif [ "$generated_staged" = false ]; then
                 log_warn "$board: .ioc and manifest staged but no generated files"
                 log_warn "  Did you forget to stage the regenerated code?"
+            fi
+        fi
+
+        # Check if any generated files are being DELETED without manifest update
+        local staged_deletions
+        staged_deletions=$(git diff --cached --name-only --diff-filter=D 2>/dev/null || echo "")
+        if echo "$staged_deletions" | grep -q "^$board/Core/"; then
+            if [ "$manifest_staged" = false ]; then
+                log_error "$board: Generated files deleted but manifest not updated"
+                log_error "  Run: ./scripts/cubemx-sync.sh --update -b $board"
+                ((errors++))
             fi
         fi
     done
