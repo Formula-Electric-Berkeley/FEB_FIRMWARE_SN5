@@ -11,7 +11,7 @@
 #   ./scripts/cubemx-sync.sh --update            # Update manifest (all boards)
 #   ./scripts/cubemx-sync.sh --update -b BMS     # Update manifest (single board)
 #   ./scripts/cubemx-sync.sh --validate          # CI: verify manifest matches files
-#   ./scripts/cubemx-sync.sh --check             # Pre-commit: verify staged changes
+#   ./scripts/cubemx-sync.sh --check             # Pre-commit: verify current state matches manifest
 #   ./scripts/cubemx-sync.sh -h                  # Show help
 #
 set -e
@@ -102,6 +102,73 @@ compute_ioc_checksum() {
 compute_file_checksum() {
     local file="$1"
     shasum -a 256 "$file" 2>/dev/null | cut -d' ' -f1
+}
+
+# Check if peripheral source files match enabled HAL modules
+# Returns number of missing files (0 = all good)
+check_peripheral_files() {
+    local board="$1"
+    local board_dir="$REPO_ROOT/$board"
+    local src_dir="$board_dir/Core/Src"
+    local missing=0
+
+    # Find HAL config file (supports F4 and other series)
+    local hal_conf=""
+    for conf in "$board_dir/Core/Inc/stm32"*"_hal_conf.h"; do
+        if [ -f "$conf" ]; then
+            hal_conf="$conf"
+            break
+        fi
+    done
+
+    if [ ! -f "$hal_conf" ]; then
+        return 0
+    fi
+
+    # Peripheral to source file mapping
+    # Format: "HAL_MODULE_PATTERN:source_file"
+    local peripherals=(
+        "HAL_UART_MODULE_ENABLED:usart.c"
+        "HAL_USART_MODULE_ENABLED:usart.c"
+        "HAL_CAN_MODULE_ENABLED:can.c"
+        "HAL_FDCAN_MODULE_ENABLED:fdcan.c"
+        "HAL_I2C_MODULE_ENABLED:i2c.c"
+        "HAL_SPI_MODULE_ENABLED:spi.c"
+        "HAL_ADC_MODULE_ENABLED:adc.c"
+        "HAL_TIM_MODULE_ENABLED:tim.c"
+        "HAL_DMA_MODULE_ENABLED:dma.c"
+        "HAL_DAC_MODULE_ENABLED:dac.c"
+        "HAL_RTC_MODULE_ENABLED:rtc.c"
+        "HAL_SDIO_MODULE_ENABLED:sdio.c"
+        "HAL_SD_MODULE_ENABLED:sdio.c"
+        "HAL_SAI_MODULE_ENABLED:sai.c"
+        "HAL_QSPI_MODULE_ENABLED:quadspi.c"
+        "HAL_LTDC_MODULE_ENABLED:ltdc.c"
+        "HAL_DSI_MODULE_ENABLED:dsihost.c"
+        "HAL_DMA2D_MODULE_ENABLED:dma2d.c"
+        "HAL_CRC_MODULE_ENABLED:crc.c"
+        "HAL_FMC_MODULE_ENABLED:fmc.c"
+    )
+
+    for mapping in "${peripherals[@]}"; do
+        local hal_module="${mapping%%:*}"
+        local src_file="${mapping##*:}"
+
+        # Check if HAL module is enabled (uncommented #define)
+        if grep -q "^#define $hal_module" "$hal_conf" 2>/dev/null; then
+            if [ ! -f "$src_dir/$src_file" ]; then
+                # Only error for UART/USART since those are commonly configured explicitly
+                # Other HAL modules may be enabled for internal use (e.g., TIM for FreeRTOS)
+                if [[ "$hal_module" == *"UART"* ]] || [[ "$hal_module" == *"USART"* ]]; then
+                    log_error "$board: $hal_module enabled but $src_file missing"
+                    log_error "  Regenerate with: ./scripts/cubemx.sh -g -b $board"
+                    ((missing++))
+                fi
+            fi
+        fi
+    done
+
+    return $missing
 }
 
 # Check if a file is CubeMX-generated (has USER CODE markers or @author marker)
@@ -369,6 +436,14 @@ for f in files:
             fi
         done <<< "$manifest_files"
 
+        # Check for missing peripheral source files (HAL enabled but source missing)
+        local peripheral_errors=0
+        check_peripheral_files "$board"
+        peripheral_errors=$?
+        if [ $peripheral_errors -gt 0 ]; then
+            ((file_errors += peripheral_errors))
+        fi
+
         if [ $file_errors -gt 0 ]; then
             log_error "  $file_errors generated file(s) differ from manifest"
             log_error "  Regenerate with: ./scripts/cubemx.sh -g -b $board && ./scripts/cubemx-sync.sh --update -b $board"
@@ -405,83 +480,10 @@ for f in files:
     return 0
 }
 
-# Pre-commit check: verify staged changes are consistent
+# Pre-commit check: validate current state matches manifest
 check_staged() {
-    log_header "Pre-commit CubeMX Sync Check"
-
-    if [ ! -f "$MANIFEST_FILE" ]; then
-        log_error "Manifest file not found: $MANIFEST_FILE"
-        log_error "Generate code and create manifest with:"
-        log_error "  ./scripts/cubemx.sh -g -b <BOARD>"
-        log_error "  ./scripts/cubemx-sync.sh --update"
-        return 1
-    fi
-
-    # Get list of staged files
-    local staged_files
-    staged_files=$(git diff --cached --name-only 2>/dev/null || echo "")
-
-    if [ -z "$staged_files" ]; then
-        log_info "No staged files"
-        return 0
-    fi
-
-    local errors=0
-
-    # Check each board
-    for board in "${BOARDS[@]}"; do
-        local ioc_staged=false
-        local manifest_staged=false
-        local generated_staged=false
-
-        # Check if .ioc is staged
-        if echo "$staged_files" | grep -q "^$board/$board.ioc$"; then
-            ioc_staged=true
-        fi
-
-        # Check if manifest is staged
-        if echo "$staged_files" | grep -q "^\.cubemx-manifest\.json$"; then
-            manifest_staged=true
-        fi
-
-        # Check if any generated files are staged
-        if echo "$staged_files" | grep -q "^$board/Core/"; then
-            generated_staged=true
-        fi
-
-        # Validation logic
-        if [ "$ioc_staged" = true ]; then
-            if [ "$manifest_staged" = false ]; then
-                log_error "$board: .ioc file staged but manifest not updated"
-                log_error "  Run: ./scripts/cubemx.sh -g -b $board && ./scripts/cubemx-sync.sh --update -b $board"
-                ((errors++))
-            elif [ "$generated_staged" = false ]; then
-                log_warn "$board: .ioc and manifest staged but no generated files"
-                log_warn "  Did you forget to stage the regenerated code?"
-            fi
-        fi
-
-        # Check if any generated files are being DELETED without manifest update
-        local staged_deletions
-        staged_deletions=$(git diff --cached --name-only --diff-filter=D 2>/dev/null || echo "")
-        if echo "$staged_deletions" | grep -q "^$board/Core/"; then
-            if [ "$manifest_staged" = false ]; then
-                log_error "$board: Generated files deleted but manifest not updated"
-                log_error "  Regenerate with: ./scripts/cubemx.sh -g -b $board && ./scripts/cubemx-sync.sh --update -b $board"
-                ((errors++))
-            fi
-        fi
-    done
-
-    if [ $errors -gt 0 ]; then
-        echo ""
-        log_error "Pre-commit check failed"
-        log_error "Ensure .ioc changes are accompanied by regenerated code and updated manifest"
-        return 1
-    fi
-
-    log_info "Pre-commit check passed"
-    return 0
+    # Just run full validation - ensures all boards are in sync
+    validate_manifest
 }
 
 # Show sync status for all boards
@@ -608,7 +610,7 @@ Commands:
   --status            Show sync status for all boards
   --update            Update manifest for all boards
   --validate          Validate manifest matches current files (for CI)
-  --check             Check staged changes for consistency (for pre-commit)
+  --check             Validate current state matches manifest (for pre-commit)
   -h, --help          Show this help message
 
 Options:
