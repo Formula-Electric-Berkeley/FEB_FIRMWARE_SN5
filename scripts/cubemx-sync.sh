@@ -410,9 +410,11 @@ check_staged() {
     log_header "Pre-commit CubeMX Sync Check"
 
     if [ ! -f "$MANIFEST_FILE" ]; then
-        log_warn "Manifest file not found - skipping check"
-        log_warn "Run './scripts/cubemx-sync.sh --update' to create it"
-        return 0
+        log_error "Manifest file not found: $MANIFEST_FILE"
+        log_error "Generate code and create manifest with:"
+        log_error "  ./scripts/cubemx.sh -g -b <BOARD>"
+        log_error "  ./scripts/cubemx-sync.sh --update"
+        return 1
     fi
 
     # Get list of staged files

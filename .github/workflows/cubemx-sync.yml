@@ -20,21 +20,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Check manifest exists
-        id: check
-        run: |
-          if [ ! -f ".cubemx-manifest.json" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::CubeMX manifest not found - skipping validation"
-            echo "### CubeMX Sync Validation Skipped" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "No \`.cubemx-manifest.json\` found. Run \`./scripts/cubemx-sync.sh --update\` to create it." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Validate CubeMX sync
-        if: steps.check.outputs.skip != 'true'
         run: |
           set +e
           OUTPUT=$(./scripts/cubemx-sync.sh --validate 2>&1)
