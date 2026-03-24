@@ -465,7 +465,7 @@ check_staged() {
         if echo "$staged_deletions" | grep -q "^$board/Core/"; then
             if [ "$manifest_staged" = false ]; then
                 log_error "$board: Generated files deleted but manifest not updated"
-                log_error "  Run: ./scripts/cubemx-sync.sh --update -b $board"
+                log_error "  Regenerate with: ./scripts/cubemx.sh -g -b $board && ./scripts/cubemx-sync.sh --update -b $board"
                 ((errors++))
             fi
         fi
@@ -528,7 +528,7 @@ print(m.get('boards', {}).get('$board', {}).get('ioc_checksum', ''))
         elif [ "$current_ioc_checksum" = "$manifest_ioc_checksum" ]; then
             ioc_status="${GREEN}match${NC}"
 
-            # Check generated files
+            # Check generated files on disk against manifest
             local file_mismatches=0
             local total_files=0
             while IFS= read -r rel_path; do
@@ -551,11 +551,34 @@ print(m.get('boards', {}).get('$board', {}).get('files', {}).get('$rel_path', ''
                 fi
             done < <(find_generated_files "$board")
 
-            if [ $file_mismatches -eq 0 ]; then
-                files_status="${GREEN}$total_files ok${NC}"
+            # Check for missing files (in manifest but not on disk)
+            local missing_files=0
+            local manifest_files
+            manifest_files=$(python3 -c "
+import json
+with open('$MANIFEST_FILE') as f:
+    m = json.load(f)
+files = m.get('boards', {}).get('$board', {}).get('files', {})
+for f in files:
+    print(f)
+" 2>/dev/null || echo "")
+
+            while IFS= read -r rel_path; do
+                [ -z "$rel_path" ] && continue
+                local full_path="$board_dir/$rel_path"
+                if [ ! -f "$full_path" ]; then
+                    ((missing_files++))
+                fi
+            done <<< "$manifest_files"
+
+            if [ $file_mismatches -eq 0 ] && [ $missing_files -eq 0 ]; then
+                files_status="${GREEN}${total_files} ok${NC}"
                 overall_status="${GREEN}in sync${NC}"
+            elif [ $missing_files -gt 0 ]; then
+                files_status="${RED}${missing_files} missing${NC}"
+                overall_status="${RED}files missing${NC}"
             else
-                files_status="${RED}$file_mismatches/$total_files${NC}"
+                files_status="${RED}${file_mismatches}/${total_files}${NC}"
                 overall_status="${RED}files modified${NC}"
             fi
         else
@@ -564,7 +587,7 @@ print(m.get('boards', {}).get('$board', {}).get('files', {}).get('$rel_path', ''
             overall_status="${RED}needs regen${NC}"
         fi
 
-        printf "%-15s %b %-12s %b\n" "$board" "$ioc_status" "$files_status" "$overall_status"
+        printf "%-15s %-12b %-12b %b\n" "$board" "$ioc_status" "$files_status" "$overall_status"
     done
 }
 
