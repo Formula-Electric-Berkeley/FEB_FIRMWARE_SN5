@@ -304,7 +304,7 @@ generate_code() {
 
     cat > "$script_file" << EOF
 config load "$ioc_file"
-generate code "$project_dir"
+project generate
 exit
 EOF
 
@@ -347,6 +347,103 @@ generate_all() {
     echo -e "  ${GREEN}Succeeded:${NC} $success"
     echo -e "  ${RED}Failed:${NC}    $failed"
     echo -e "  ${YELLOW}Skipped:${NC}   $skipped"
+}
+
+# Migrate .ioc file to current CubeMX version
+migrate_ioc() {
+    local board="$1"
+    local ioc_file
+    ioc_file=$(get_ioc_path "$board")
+
+    if [ ! -f "$ioc_file" ]; then
+        log_error "IOC file not found: $ioc_file"
+        return 1
+    fi
+
+    local old_version
+    old_version=$(ioc_get_value "$ioc_file" "MxCube.Version")
+    log_info "Migrating $board (current version: ${old_version:-unknown})..."
+
+    # Create temporary script file for CubeMX
+    local script_file
+    script_file=$(mktemp)
+
+    # Loading and saving with newer CubeMX auto-migrates the .ioc file
+    cat > "$script_file" << EOF
+config load "$ioc_file"
+config saveext "$ioc_file"
+exit
+EOF
+
+    # Run STM32CubeMX in script mode
+    if "$CUBEMX_PATH" -q "$script_file"; then
+        local new_version
+        new_version=$(ioc_get_value "$ioc_file" "MxCube.Version")
+        log_info "Migration completed for $board (now version: ${new_version:-unknown})"
+        rm -f "$script_file"
+        return 0
+    else
+        log_error "Migration failed for $board"
+        rm -f "$script_file"
+        return 1
+    fi
+}
+
+# Migrate all boards
+migrate_all() {
+    log_header "Migrating All Boards to Current CubeMX Version"
+
+    local success=0
+    local failed=0
+    local skipped=0
+
+    for board in "${BOARDS[@]}"; do
+        if has_ioc_file "$board"; then
+            echo -e "${CYAN}→${NC} Processing $board..."
+            if migrate_ioc "$board"; then
+                ((success++))
+            else
+                ((failed++))
+            fi
+        else
+            log_warn "Skipping $board (no .ioc file)"
+            ((skipped++))
+        fi
+    done
+
+    echo ""
+    log_header "Summary"
+    echo -e "  ${GREEN}Succeeded:${NC} $success"
+    echo -e "  ${RED}Failed:${NC}    $failed"
+    echo -e "  ${YELLOW}Skipped:${NC}   $skipped"
+}
+
+# Update STM32 firmware packs
+update_packs() {
+    log_header "Updating STM32 Firmware Packs"
+
+    log_info "Checking for firmware pack updates..."
+
+    # Create temporary script file for CubeMX
+    local script_file
+    script_file=$(mktemp)
+
+    cat > "$script_file" << EOF
+swupdate refresh
+swupdate install all
+exit
+EOF
+
+    # Run STM32CubeMX in script mode
+    if "$CUBEMX_PATH" -q "$script_file"; then
+        log_info "Firmware pack update completed"
+        rm -f "$script_file"
+        return 0
+    else
+        log_error "Firmware pack update failed"
+        rm -f "$script_file"
+        return 1
+    fi
 }
 
 # List all boards with .ioc status
@@ -494,9 +591,11 @@ Usage:
 
 Options:
   -g, --generate         Generate HAL code from .ioc file
+  -m, --migrate          Migrate .ioc file to current CubeMX version
   -i, --inspect          Display .ioc configuration summary
   -b, --board <BOARD>    Target specific board
   -a, --all              Process all boards
+  --update-packs         Update STM32 firmware packs to latest versions
   --show-pins            Display pin assignments
   --show-peripherals     List enabled peripherals
   --list-boards          Show all boards with .ioc status
@@ -507,13 +606,17 @@ Boards: ${BOARDS[*]}
 Examples:
   ./scripts/cubemx.sh                    # Interactive menu
   ./scripts/cubemx.sh -g -b BMS          # Generate code for BMS
-  ./scripts/cubemx.sh -i -b LVPDB        # Inspect LVPDB configuration
+  ./scripts/cubemx.sh -m -b BMS          # Migrate BMS to current CubeMX version
+  ./scripts/cubemx.sh -m -g -b BMS       # Migrate and generate for BMS
+  ./scripts/cubemx.sh -a -m              # Migrate all boards
   ./scripts/cubemx.sh -a -g              # Generate code for all boards
+  ./scripts/cubemx.sh --update-packs     # Update firmware packs
+  ./scripts/cubemx.sh -i -b LVPDB        # Inspect LVPDB configuration
   ./scripts/cubemx.sh --show-pins -b PCU # Show PCU pin assignments
   ./scripts/cubemx.sh --list-boards      # List all boards
 
 Prerequisites:
-  - STM32CubeMX (for code generation)
+  - STM32CubeMX (for code generation, migration, and pack updates)
 
 Note: Inspection commands work without STM32CubeMX by parsing .ioc files directly.
 EOF
@@ -524,12 +627,18 @@ main() {
     local board=""
     local operation=""
     local process_all=false
+    local do_migrate=false
+    local do_generate=false
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -g|--generate)
-                operation="generate"
+                do_generate=true
+                shift
+                ;;
+            -m|--migrate)
+                do_migrate=true
                 shift
                 ;;
             -i|--inspect)
@@ -546,6 +655,10 @@ main() {
                 ;;
             -a|--all)
                 process_all=true
+                shift
+                ;;
+            --update-packs)
+                operation="update-packs"
                 shift
                 ;;
             --show-pins)
@@ -573,11 +686,30 @@ main() {
         esac
     done
 
+    # Convert flags to operation (for backwards compatibility)
+    if [ "$do_migrate" = true ] && [ "$do_generate" = true ]; then
+        operation="migrate-generate"
+    elif [ "$do_migrate" = true ]; then
+        operation="migrate"
+    elif [ "$do_generate" = true ]; then
+        operation="generate"
+    fi
+
     log_header "FEB CubeMX Manager"
 
     # Handle list-boards (no CubeMX needed)
     if [ "$operation" = "list" ]; then
         list_boards
+        exit 0
+    fi
+
+    # Handle update-packs (no board needed)
+    if [ "$operation" = "update-packs" ]; then
+        if ! check_cubemx; then
+            show_cubemx_install_instructions
+            exit 1
+        fi
+        update_packs
         exit 0
     fi
 
@@ -591,12 +723,27 @@ main() {
     fi
 
     # Handle batch operations
-    if [ "$process_all" = true ] && [ "$operation" = "generate" ]; then
+    if [ "$process_all" = true ]; then
         if ! check_cubemx; then
             show_cubemx_install_instructions
             exit 1
         fi
-        generate_all
+        case "$operation" in
+            generate)
+                generate_all
+                ;;
+            migrate)
+                migrate_all
+                ;;
+            migrate-generate)
+                migrate_all
+                generate_all
+                ;;
+            *)
+                log_error "Specify an operation: -g (generate), -m (migrate), or both"
+                exit 1
+                ;;
+        esac
         exit 0
     fi
 
@@ -608,6 +755,21 @@ main() {
                     show_cubemx_install_instructions
                     exit 1
                 fi
+                generate_code "$board"
+                ;;
+            migrate)
+                if ! check_cubemx; then
+                    show_cubemx_install_instructions
+                    exit 1
+                fi
+                migrate_ioc "$board"
+                ;;
+            migrate-generate)
+                if ! check_cubemx; then
+                    show_cubemx_install_instructions
+                    exit 1
+                fi
+                migrate_ioc "$board"
                 generate_code "$board"
                 ;;
             inspect)

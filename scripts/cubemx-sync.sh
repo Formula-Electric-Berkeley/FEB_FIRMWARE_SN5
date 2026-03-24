@@ -138,6 +138,23 @@ find_generated_files() {
         done < <(find "$board_dir/Core/Src" -name "*.c" -print0 2>/dev/null)
     fi
 
+    # Middlewares (FreeRTOS, etc.) - track .c and .h files
+    if [ -d "$board_dir/Middlewares" ]; then
+        while IFS= read -r -d '' file; do
+            files+=("${file#$board_dir/}")
+        done < <(find "$board_dir/Middlewares" \( -name "*.c" -o -name "*.h" \) -print0 2>/dev/null)
+    fi
+
+    # Linker scripts (*.ld files in board root)
+    while IFS= read -r -d '' file; do
+        files+=("${file#$board_dir/}")
+    done < <(find "$board_dir" -maxdepth 1 -name "*.ld" -print0 2>/dev/null)
+
+    # Startup assembly files (startup_*.s in board root)
+    while IFS= read -r -d '' file; do
+        files+=("${file#$board_dir/}")
+    done < <(find "$board_dir" -maxdepth 1 -name "startup_*.s" -print0 2>/dev/null)
+
     # Sort for consistent ordering
     printf '%s\n' "${files[@]}" | LC_ALL=C sort
 }

@@ -211,14 +211,7 @@ void MX_FREERTOS_Init(void) {
   uartTxMutexHandle = osMutexNew(&uartTxMutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
-  /* Validate all mutex creations - fail fast on allocation failure */
-  REQUIRE_RTOS_HANDLE(ADBMSMutexHandle);
-  REQUIRE_RTOS_HANDLE(canTxMutexHandle);
-  REQUIRE_RTOS_HANDLE(canRxMutexHandle);
-  REQUIRE_RTOS_HANDLE(tpsDataMutexHandle);
-  REQUIRE_RTOS_HANDLE(tpsI2cMutexHandle);
-  REQUIRE_RTOS_HANDLE(logMutexHandle);
-  REQUIRE_RTOS_HANDLE(uartTxMutexHandle);
+  /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
   /* Create the semaphores(s) */
@@ -229,8 +222,7 @@ void MX_FREERTOS_Init(void) {
   uartTxSemHandle = osSemaphoreNew(1, 0, &uartTxSem_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  REQUIRE_RTOS_HANDLE(canTxMailboxSemHandle);
-  REQUIRE_RTOS_HANDLE(uartTxSemHandle);
+  /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
@@ -248,9 +240,7 @@ void MX_FREERTOS_Init(void) {
   uartRxQueueHandle = osMessageQueueNew (8, sizeof(FEB_UART_RxQueueMsg_t), &uartRxQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  REQUIRE_RTOS_HANDLE(canTxQueueHandle);
-  REQUIRE_RTOS_HANDLE(canRxQueueHandle);
-  REQUIRE_RTOS_HANDLE(uartRxQueueHandle);
+  /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -273,34 +263,27 @@ void MX_FREERTOS_Init(void) {
   SMTaskHandle = osThreadNew(StartSMTask, NULL, &SMTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* Validate all thread creations - fail fast on allocation failure */
-  REQUIRE_RTOS_HANDLE(uartRxTaskHandle);
-  REQUIRE_RTOS_HANDLE(ADBMSTaskHandle);
-  REQUIRE_RTOS_HANDLE(TPSTaskHandle);
-  REQUIRE_RTOS_HANDLE(BMSTaskRxHandle);
-  REQUIRE_RTOS_HANDLE(BMSTaskTxHandle);
-  REQUIRE_RTOS_HANDLE(SMTaskHandle);
+  /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
-
+  /* add events, ... */
   /* USER CODE END RTOS_EVENTS */
 
 }
 
 /* USER CODE BEGIN Header_StartUartRxTask */
 /**
-* @brief Function implementing the uartRxTask thread.
-* @param argument: Not used
-* @retval None
-*/
+  * @brief  Function implementing the uartRxTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
 /* USER CODE END Header_StartUartRxTask */
 __weak void StartUartRxTask(void *argument)
 {
   /* USER CODE BEGIN StartUartRxTask */
-  (void)argument;
-  /* Weak stub - override in FEB_Main.c with queue-based implementation */
-  for (;;)
+  /* Infinite loop */
+  for(;;)
   {
     osDelay(1);
   }
@@ -320,7 +303,7 @@ __weak void StartADBMSTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(pdMS_TO_TICKS(1));
+    osDelay(1);
   }
   /* USER CODE END StartADBMSTask */
 }
