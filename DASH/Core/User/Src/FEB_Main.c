@@ -17,6 +17,7 @@
 #include "FEB_Commands.h"
 #include "cmsis_os2.h"
 #include "FEB_CAN_BMS.h"
+#include "FEB_CAN_LVPDB.h"
 
 /* External HAL handles from CubeMX-generated code */
 extern UART_HandleTypeDef huart3;
@@ -91,6 +92,7 @@ void FEB_Init(void)
   FEB_CAN_State_Init();
   FEB_CAN_BMS_Init();
   FEB_CAN_PCU_Init();
+  FEB_CAN_LVPDB_Init();
 
   /* Startup banner */
   FEB_Console_Printf("\r\n");

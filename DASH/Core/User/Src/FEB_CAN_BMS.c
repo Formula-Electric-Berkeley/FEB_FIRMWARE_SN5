@@ -13,6 +13,7 @@
 #include "feb_uart.h"
 #include "feb_log.h"
 #include "stm32f4xx_hal.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -22,10 +23,16 @@
  * ============================================================================
  */
 
-static BMS_State_t state = 0;
+typedef struct
+{
+  volatile BMS_State_t state;
+  volatile int16_t cell_max_temperature;
+  volatile uint16_t accumulator_total_voltage;
+  volatile uint32_t last_rx_tick;
+} BMS_CAN_Data_t;
 
-static int16_t cell_max_temperature = 67;
-static uint16_t accumulator_total_voltage = 67;
+static BMS_CAN_Data_t bms_data = {
+    .state = 0, .cell_max_temperature = 67, .accumulator_total_voltage = 67, .last_rx_tick = 0};
 
 /* ============================================================================
  * RX Callback Handlers
@@ -39,19 +46,29 @@ static void rx_callback_bms_state(FEB_CAN_Instance_t instance, uint32_t can_id, 
                                   const uint8_t *data, uint8_t length, void *user_data)
 {
   FEB_Console_Printf("BMS State: %X", data[0]);
-  state = data[0] >> 3;
+  bms_data.state = data[0] >> 3;
+  __DMB();
+  bms_data.last_rx_tick = HAL_GetTick();
 }
 
 static void rx_callback_bms_temperature(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                         const uint8_t *data, uint8_t length, void *user_data)
 {
-  memcpy(&cell_max_temperature, &data[4], sizeof(int16_t));
+  int16_t temp;
+  memcpy(&temp, &data[4], sizeof(int16_t));
+  bms_data.cell_max_temperature = temp;
+  __DMB();
+  bms_data.last_rx_tick = HAL_GetTick();
 }
 
 static void rx_callback_bms_voltage(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                     const uint8_t *data, uint8_t length, void *user_data)
 {
-  memcpy(&accumulator_total_voltage, &data[0], sizeof(uint16_t));
+  uint16_t voltage;
+  memcpy(&voltage, &data[0], sizeof(uint16_t));
+  bms_data.accumulator_total_voltage = voltage;
+  __DMB();
+  bms_data.last_rx_tick = HAL_GetTick();
 }
 
 /* ============================================================================
@@ -103,15 +120,23 @@ void FEB_CAN_BMS_Init(void)
 
 BMS_State_t FEB_CAN_BMS_GetLastState(void)
 {
-  return state;
+  return bms_data.state;
 }
 
 int16_t FEB_CAN_BMS_GetLastCellMaxTemperature(void)
 {
-  return cell_max_temperature;
+  return bms_data.cell_max_temperature;
 }
 
 uint16_t FEB_CAN_BMS_GetLastAccumulatorTotalVoltage(void)
 {
-  return accumulator_total_voltage;
+  return bms_data.accumulator_total_voltage;
+}
+
+bool FEB_CAN_BMS_IsDataFresh(uint32_t timeout_ms)
+{
+  uint32_t last = bms_data.last_rx_tick;
+  if (last == 0)
+    return false;
+  return (HAL_GetTick() - last) < timeout_ms;
 }

@@ -12,6 +12,7 @@
 #include "feb_uart.h"
 #include "feb_log.h"
 #include "stm32f4xx_hal.h"
+#include <stdbool.h>
 #include <string.h>
 
 /* ============================================================================
@@ -20,19 +21,21 @@
 
 typedef struct
 {
-  int16_t torque;
-  uint8_t direction;
-  uint8_t enabled;
+  volatile int16_t torque;
+  volatile uint8_t direction;
+  volatile uint8_t enabled;
+  volatile uint32_t last_rx_tick;
 } RMS_State_t;
 
-RMS_State_t rms_state = {.torque = 0x0000, .direction = 0xFF, .enabled = 0xFF};
+static RMS_State_t rms_state = {.torque = 0x0000, .direction = 0xFF, .enabled = 0xFF, .last_rx_tick = 0};
 
 typedef struct
 {
-  uint16_t break_position;
+  volatile uint16_t break_position;
+  volatile uint32_t last_rx_tick;
 } Break_State_t;
 
-Break_State_t break_state = {.break_position = 0};
+static Break_State_t break_state = {.break_position = 0, .last_rx_tick = 0};
 
 /* ============================================================================
  * RX Callback Handlers
@@ -46,9 +49,13 @@ Break_State_t break_state = {.break_position = 0};
 static void rx_callback_torque(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                const uint8_t *data, uint8_t length, void *user_data)
 {
-  memcpy(&rms_state.torque, &data[0], sizeof(int16_t));
+  int16_t torque;
+  memcpy(&torque, &data[0], sizeof(int16_t));
+  rms_state.torque = torque;
   rms_state.direction = data[4];
   rms_state.enabled = data[5];
+  __DMB();
+  rms_state.last_rx_tick = HAL_GetTick();
 }
 
 // FEB_CAN_RMS_COMMAND_FRAME_ID:
@@ -58,7 +65,11 @@ static void rx_callback_torque(FEB_CAN_Instance_t instance, uint32_t can_id, FEB
 static void rx_callback_break_position(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                        const uint8_t *data, uint8_t length, void *user_data)
 {
-  memcpy(&break_state.break_position, &data[0], sizeof(int16_t));
+  uint16_t position;
+  memcpy(&position, &data[0], sizeof(uint16_t));
+  break_state.break_position = position;
+  __DMB();
+  break_state.last_rx_tick = HAL_GetTick();
 }
 
 /* ============================================================================
@@ -110,4 +121,20 @@ int8_t FEB_CAN_PCU_GetLastRMSEnabled(void)
 uint16_t FEB_CAN_PCU_GetLastBreakPosition(void)
 {
   return break_state.break_position;
+}
+
+bool FEB_CAN_PCU_IsRMSDataFresh(uint32_t timeout_ms)
+{
+  uint32_t last = rms_state.last_rx_tick;
+  if (last == 0)
+    return false;
+  return (HAL_GetTick() - last) < timeout_ms;
+}
+
+bool FEB_CAN_PCU_IsBreakDataFresh(uint32_t timeout_ms)
+{
+  uint32_t last = break_state.last_rx_tick;
+  if (last == 0)
+    return false;
+  return (HAL_GetTick() - last) < timeout_ms;
 }
