@@ -23,9 +23,13 @@
  */
 
 static BMS_State_t state = 0;
-
+static BMS_State_t previous_state = 0;
+static BMS_State_t previous_curr_state = 0;
 static int16_t cell_max_temperature = 67;
 static uint16_t accumulator_total_voltage = 67;
+
+//  FEB_CAN_BMS_GETLAST
+//
 
 /* ============================================================================
  * RX Callback Handlers
@@ -40,6 +44,11 @@ static void rx_callback_bms_state(FEB_CAN_Instance_t instance, uint32_t can_id, 
 {
   FEB_Console_Printf("BMS State: %X", data[0]);
   state = data[0] >> 3;
+  if (state != previous_curr_state)
+  {
+    previous_state = previous_curr_state;
+    previous_curr_state = state;
+  }
 }
 
 static void rx_callback_bms_temperature(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
@@ -104,6 +113,11 @@ void FEB_CAN_BMS_Init(void)
 BMS_State_t FEB_CAN_BMS_GetLastState(void)
 {
   return state;
+}
+
+BMS_State_t FEB_CAN_BMS_GetPreviousState(void)
+{
+  return previous_state;
 }
 
 int16_t FEB_CAN_BMS_GetLastCellMaxTemperature(void)

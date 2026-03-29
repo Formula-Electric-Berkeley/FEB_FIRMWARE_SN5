@@ -1,0 +1,18 @@
+/**
+ ******************************************************************************
+ * @file           : FEB_RTD.h
+ * @brief          : RTD State Handler
+ * @author         : Formula Electric @ Berkeley
+ ******************************************************************************
+ */
+
+#ifndef FEB_RTD_H
+#define FEB_RTD_H
+
+#define RTD_BUTTON_HOLD_DURATION 2000
+#define BUZZER_DURATION_RTD_ENTER 2000
+#define BUZZER_DURATION_RTD_EXIT 500
+
+void FEB_State_Update_RTD(void);
+
+#endif /* FEB_RTD_H */

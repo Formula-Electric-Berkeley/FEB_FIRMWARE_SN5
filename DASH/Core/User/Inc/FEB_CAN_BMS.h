@@ -34,5 +34,5 @@ void FEB_CAN_BMS_Init(void);
 BMS_State_t FEB_CAN_BMS_GetLastState(void);
 int16_t FEB_CAN_BMS_GetLastCellMaxTemperature(void);
 uint16_t FEB_CAN_BMS_GetLastAccumulatorTotalVoltage(void);
-
+BMS_State_t FEB_CAN_BMS_GetPreviousState(void);
 #endif /* FEB_CAN_BMS_H */
