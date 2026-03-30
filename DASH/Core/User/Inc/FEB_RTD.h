@@ -13,6 +13,13 @@
 #define BUZZER_DURATION_RTD_ENTER 2000
 #define BUZZER_DURATION_RTD_EXIT 500
 
+typedef enum
+{
+  NOT_BUZZED = 0,
+  BUZZED_ENTER_RTD,
+  BUZZED_EXIT_RTD
+} Buzzing_State_t;
+
 void FEB_State_Update_RTD(void);
 
 #endif /* FEB_RTD_H */
