@@ -34,6 +34,9 @@ typedef struct
 static BMS_CAN_Data_t bms_data = {
     .state = 0, .cell_max_temperature = 67, .accumulator_total_voltage = 67, .last_rx_tick = 0};
 
+//  FEB_CAN_BMS_GETLAST
+//
+
 /* ============================================================================
  * RX Callback Handlers
  * ============================================================================
@@ -121,6 +124,11 @@ void FEB_CAN_BMS_Init(void)
 BMS_State_t FEB_CAN_BMS_GetLastState(void)
 {
   return bms_data.state;
+}
+
+BMS_State_t FEB_CAN_BMS_GetPreviousState(void)
+{
+  return previous_state;
 }
 
 int16_t FEB_CAN_BMS_GetLastCellMaxTemperature(void)

@@ -4,7 +4,7 @@
 // ********************************** ADBMS Configuration Constants **************
 
 // Number of ADBMS6830 ICs per bank
-#define FEB_NUM_ICPBANK 2
+#define FEB_NUM_ICPBANK 1
 
 // Number of banks in the system
 #define FEB_NBANKS 1
@@ -13,7 +13,7 @@
 #define FEB_NUM_IC (FEB_NUM_ICPBANK * FEB_NBANKS)
 
 // Number of cells per IC
-#define FEB_NUM_CELLS_PER_IC 10
+#define FEB_NUM_CELLS_PER_IC 14
 
 // Total number of cells per bank
 #define FEB_NUM_CELLS_PER_BANK (FEB_NUM_CELLS_PER_IC * FEB_NUM_ICPBANK)
@@ -22,7 +22,7 @@
 #define FEB_NUM_CELL_PER_BANK FEB_NUM_CELLS_PER_BANK
 
 // Total number of temperature sensors per bank (10 per IC × 2 ICs)
-#define FEB_NUM_TEMP_SENSORS 20
+#define FEB_NUM_TEMP_SENSORS 41
 
 // Number of temperature sensors per IC (for MUX reading)
 #define FEB_NUM_TEMP_SENSE_PER_IC 10

@@ -5,6 +5,7 @@
 
 #include "FEB_UI_Helpers.h"
 #include "FEB_CAN_PCU.h"
+#include "FEB_RTD.h"
 #include "UI_Elements/FEB_UI_BMS_State.h"
 #include "lvgl.h"
 #include "src/core/lv_obj_pos.h"
@@ -26,7 +27,7 @@ void ui_init(void)
 {
   FEB_IO_Init();
   printf("initializing screen");
-  FEB_IO_Buzzer_Update(false);
+  FEB_IO_Set_Buzzer(false);
 
   // ── Screen ───────────────────────────────────────────────────────
   ui_Screen1 = lv_obj_create(NULL);
@@ -47,14 +48,14 @@ void ui_update(void)
 {
   fake_torque += 1;
 
-  // FEB_IO_Buzzer_Update((fake_torque / 50) % 2 == 0 ? true : false);
-
   FEB_UI_Update_Torque(FEB_CAN_PCU_GetLastTorque());
 
-  FEB_IO_Handle_GPIO();
+  FEB_IO_Update_GPIO();
   FEB_UI_Update_IO_States();
 
   FEB_UI_Update_BMS_State();
+
+  FEB_State_Update_RTD();
 
   lv_timer_handler();
 }
