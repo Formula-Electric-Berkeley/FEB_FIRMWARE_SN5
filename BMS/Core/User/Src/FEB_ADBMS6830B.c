@@ -24,6 +24,7 @@ extern osMutexId_t ADBMSMutexHandle;
 /* Debug macros using UART logging */
 #define TAG_VOLTAGE "[VOLT]"
 #define TAG_TEMP "[TEMP]"
+#define TAG_BALANCE "[BALANCE]"
 // #define DEBUG_VOLTAGE_PRINT(...) LOG_D(TAG_VOLTAGE, __VA_ARGS__)
 // #define DEBUG_TEMP_PRINT(...) LOG_D(TAG_TEMP, __VA_ARGS__)
 #define DEBUG_VOLTAGE_PRINT(...) ((void)0)
@@ -657,6 +658,7 @@ void FEB_ADBMS_Print_Accumulator(void)
 
 void FEB_Cell_Balance_Start()
 {
+  LOG_I(TAG_BALANCE, "Starting cell balancing");
   FEB_cs_high();
   ADBMS6830B_init_cfg(FEB_NUM_IC, IC_Config);
   ADBMS6830B_wrALL(FEB_NUM_IC, IC_Config);
@@ -675,12 +677,16 @@ void FEB_Cell_Balance_Process()
   if (balancing_cycle == 3)
   {
     balancing_mask = ~balancing_mask;
+    LOG_D(TAG_BALANCE, "Mask flipped to 0x%04X", balancing_mask);
     balancing_cycle = 0;
   }
   balancing_cycle++;
   // Use the actual minimum voltage from the pack instead of static value
   float min_cell_voltage = FEB_ACC.pack_min_voltage_V;
+  LOG_D(TAG_BALANCE, "Cycle %d: min=%.3fV max=%.3fV mask=0x%04X", balancing_cycle, min_cell_voltage,
+        FEB_ACC.pack_max_voltage_V, balancing_mask);
 
+  uint8_t total_balancing = 0;
   for (uint8_t icn = 0; icn < FEB_NUM_IC; icn++)
   {
     uint16_t bits = 0x0000;
@@ -701,8 +707,21 @@ void FEB_Cell_Balance_Process()
             0b0;
       }
     }
-    ADBMS6830B_set_cfgr(icn, IC_Config, refon, cth_bits, gpio_bits, (bits & balancing_mask), dcto_bits, uv, ov);
+    uint16_t applied = bits & balancing_mask;
+    if (applied != 0)
+    {
+      LOG_D(TAG_BALANCE, "IC%d: discharge=0x%04X (raw=0x%04X)", icn, applied, bits);
+      total_balancing += __builtin_popcount(applied);
+    }
+    ADBMS6830B_set_cfgr(icn, IC_Config, refon, cth_bits, gpio_bits, applied, dcto_bits, uv, ov);
   }
+
+  if (total_balancing > 0)
+  {
+    LOG_I(TAG_BALANCE, "Balancing %d cells, delta=%.0fmV", total_balancing,
+          (FEB_ACC.pack_max_voltage_V - min_cell_voltage) * 1000);
+  }
+
   ADBMS6830B_wrcfgb(FEB_NUM_IC, IC_Config);
 }
 
@@ -720,6 +739,7 @@ bool FEB_Cell_Balancing_Status(void)
 
       if (temp >= FEB_CONFIG_CELL_SOFT_MAX_TEMP_dC)
       {
+        LOG_W(TAG_BALANCE, "Temp limit: Bank%zu Cell%zu = %.1fC, stopping", i, j, temp / 10.0f);
         return false;
       }
 
@@ -737,21 +757,26 @@ bool FEB_Cell_Balancing_Status(void)
 
   if (max_v < 0 || min_v > 1e8f)
   {
+    LOG_W(TAG_BALANCE, "Invalid voltage readings, cannot balance");
     return false;
   }
 
   const float delta_v = max_v - min_v;
+  LOG_D(TAG_BALANCE, "Status: delta=%.0fmV (threshold=%.0fmV)", delta_v, FEB_MIN_SLIPPAGE_V * 1000.0f);
+
   // delta_v is in millivolts, FEB_MIN_SLIPPAGE_V is in volts (0.03V = 30mV)
   if (delta_v >= FEB_MIN_SLIPPAGE_V * 1000.0f)
   {
     return true;
   }
 
+  LOG_D(TAG_BALANCE, "Cells balanced within threshold");
   return false;
 }
 
 void FEB_Stop_Balance()
 {
+  LOG_D(TAG_BALANCE, "Stopping all cell discharge");
   for (uint8_t ic = 0; ic < FEB_NUM_IC; ic++)
   {
     ADBMS6830B_set_cfgr(ic, IC_Config, refon, cth_bits, gpio_bits, 0, dcto_bits, uv, ov);
