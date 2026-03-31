@@ -126,11 +126,6 @@ BMS_State_t FEB_CAN_BMS_GetLastState(void)
   return bms_data.state;
 }
 
-BMS_State_t FEB_CAN_BMS_GetPreviousState(void)
-{
-  return previous_state;
-}
-
 int16_t FEB_CAN_BMS_GetLastCellMaxTemperature(void)
 {
   return bms_data.cell_max_temperature;
