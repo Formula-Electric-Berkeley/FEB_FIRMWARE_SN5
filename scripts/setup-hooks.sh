@@ -1,5 +1,5 @@
 #!/bin/bash
-#
+#hi
 # Pre-commit Hooks Setup Script
 #
 # Installs pre-commit and configures git hooks for the repository.

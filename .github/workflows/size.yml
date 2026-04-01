@@ -22,7 +22,7 @@ jobs:
           - project: LVPDB
             flash_limit: 524288
           - project: DART
-            flash_limit: 524288
+            flash_limit: 32768
           - project: DCU
             flash_limit: 524288
           - project: Sensor_Nodes

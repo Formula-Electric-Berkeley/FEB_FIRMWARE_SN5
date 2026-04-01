@@ -9,7 +9,7 @@ Firmware for the FEB SN5 Formula E vehicle. Each subdirectory corresponds to a b
 | `LVPDB/` | Low Voltage Power Distribution Board | STM32F446RE | |
 | `BMS/` | Battery Management System | STM32F446RE | |
 | `DASH/` | Dashboard | STM32F469RE | FreeRTOS, FatFS |
-| `DART/` | DART | STM32F446RE | |
+| `DART/` | DART | STM32F042K6Tx | Cortex-M0 |
 | `DCU/` | Data Control Unit | STM32F446RE | |
 | `PCU/` | Powertrain Control Unit | STM32F446RE | |
 | `Sensor_Nodes/` | Sensor Nodes | STM32F446RE | |
@@ -353,8 +353,10 @@ GitHub Actions runs on pushes and pull requests to `main`:
 
 | Board | Flash Limit | MCU |
 |-------|-------------|-----|
-| BMS, PCU, LVPDB, DART, DCU, Sensor_Nodes | 512 KB | STM32F446RE |
+| BMS, PCU, LVPDB, DCU, Sensor_Nodes, UART | 512 KB | STM32F446RE |
+| DART | 32 KB | STM32F042K6Tx |
 | DASH | 2 MB | STM32F469RE |
+| UART_TEST | 2 MB | STM32U575ZI |
 
 ## Releases
 
