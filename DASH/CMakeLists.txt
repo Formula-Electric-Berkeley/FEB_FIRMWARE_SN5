@@ -21,6 +21,7 @@ add_compile_definitions(
     USE_HAL_DRIVER
     STM32F469xx
     $<$<CONFIG:Debug>:DEBUG>
+    FEB_UART_USE_FREERTOS=1
 )
 
 # ══════════════════════════════════════════════════════════════════════
@@ -37,8 +38,30 @@ file(GLOB STARTUP_ASM "startup_*.s")
 file(GLOB HAL_SOURCES "Drivers/STM32F4xx_HAL_Driver/Src/*.c")
 list(FILTER HAL_SOURCES EXCLUDE REGEX "_template\\.c$")
 
+# Collect LVGL Core Sources
+file(GLOB_RECURSE LVGL_SOURCES Drivers/lvgl/src/*.c)
+
+# Collect LVGL HAL Sources
+file(GLOB_RECURSE LVGL_HAL_SOURCES Drivers/hal_stm_lvgl/*.c)
+
 # Combine base sources
-set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES})
+set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES} ${LVGL_SOURCES} ${LVGL_HAL_SOURCES} ${SQUARELINE_SOURCES})
+
+# CAN library generated source (from common submodule)
+list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can.c")
+
+list(APPEND ALL_SOURCES
+    Core/User/Src
+    Core/User/Src/UI_Elements
+
+    # BSP
+    Drivers/BSP/STM32469I-Discovery/stm32469i_discovery.c
+    Drivers/BSP/STM32469I-Discovery/stm32469i_discovery_lcd.c
+    Drivers/BSP/STM32469I-Discovery/stm32469i_discovery_sdram.c
+    Drivers/BSP/Components/otm8009a/otm8009a.c
+    Drivers/BSP/Components/nt35510/nt35510.c
+    Drivers/BSP/Components/ft6x06/ft6x06.c
+)
 
 # ── Middleware: FATFS application layer ──────────────────────────────
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/FATFS")
@@ -62,6 +85,13 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FatFs")
     list(APPEND ALL_SOURCES ${FATFS_CORE} ${FATFS_OPTION})
 endif()
 
+# ── SN5 CAN library sources ───────────────────────────────────────────
+file(GLOB CAN_LIB_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.c"
+)
+list(APPEND ALL_SOURCES ${CAN_LIB_SOURCES})
+
 # ══════════════════════════════════════════════════════════════════════
 #  INCLUDE DIRECTORIES
 # ══════════════════════════════════════════════════════════════════════
@@ -72,6 +102,18 @@ set(BASE_INCLUDES
     Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
     Drivers/CMSIS/Device/ST/STM32F4xx/Include
     Drivers/CMSIS/Include
+)
+
+# # Auto-discover Core/User/Inc if it exists
+# if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
+#     list(APPEND BASE_INCLUDES Core/User/Inc)
+# endif()
+
+# Common CAN library (submodule)
+set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4")
+list(APPEND BASE_INCLUDES
+    "${CAN_LIB_DIR}/.."          # resolves #include "FEB_CAN_Library_SN4/gen/feb_can.h"
+    "${CAN_LIB_DIR}/gen"         # resolves #include "feb_can.h" directly
 )
 
 # FATFS includes
@@ -93,10 +135,37 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FatFs")
     list(APPEND BASE_INCLUDES Middlewares/Third_Party/FatFs/src)
 endif()
 
+# Common CAN library
+set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library")
+list(APPEND BASE_INCLUDES
+    "${CAN_LIB_DIR}/Inc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen"
+)
+
 # Auto-discover Core/User/Inc if it exists
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
     list(APPEND BASE_INCLUDES Core/User/Inc)
 endif()
+
+list(APPEND BASE_INCLUDES
+    # BSP Drivers
+    Drivers/BSP/STM32469I-Discovery
+    Drivers/BSP/Components
+    Drivers/BSP/Components/otm8009a
+    Drivers/BSP/Components/nt35510
+    Drivers/BSP/Components/Common
+    Drivers/BSP/Components/ft6x06
+
+    # LVGL + HAL
+    Drivers/lvgl
+    Drivers/hal_stm_lvgl
+
+    # Fonts & Utilities
+    Drivers/Utilities/Fonts
+
+    # LVGL config header location (directory, not file)
+    Drivers
+)
 
 # ══════════════════════════════════════════════════════════════════════
 #  EXECUTABLE TARGET
@@ -106,7 +175,7 @@ add_executable(${PROJECT_NAME} ${ALL_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE m)
+target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_rtos_utils)
 
 # Enable floating-point printf/scanf for newlib-nano
 target_link_options(${PROJECT_NAME} PRIVATE

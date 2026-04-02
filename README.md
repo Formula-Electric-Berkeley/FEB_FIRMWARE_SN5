@@ -13,6 +13,8 @@ Firmware for the FEB SN5 Formula E vehicle. Each subdirectory corresponds to a b
 | `DCU/` | Data Control Unit | STM32F446RE | |
 | `PCU/` | Powertrain Control Unit | STM32F446RE | |
 | `Sensor_Nodes/` | Sensor Nodes | STM32F446RE | |
+| `UART/` | UART Communication Board | STM32F446RE | FreeRTOS |
+| `UART_TEST/` | UART/Console Test Board | STM32U575ZI | Test platform for UART/Console libraries |
 
 All boards are fully buildable with CMake.
 
@@ -31,6 +33,7 @@ scripts/
   format.sh                      # Code formatting (--check for CI)
   setup-hooks.sh                 # Install pre-commit hooks
   version.sh                     # Create version tags for releases
+  cubemx.sh                      # Generate HAL code from .ioc files
 .github/workflows/               # CI/CD pipelines
 ```
 
@@ -93,6 +96,72 @@ cmake --version    # 3.22+
 ninja --version
 echo $CUBE_BUNDLE_PATH   # should print your CubeCLT path
 ```
+
+### Windows Development
+
+The repository scripts are bash-based and work with Git Bash (included with [Git for Windows](https://git-scm.com/download/win)).
+
+**Quick Setup:**
+
+1. **Install Git for Windows** -- includes Git Bash terminal
+2. **Install STM32CubeCLT** to default location (`C:\ST\STM32CubeCLT`)
+   - Download from [ST website](https://www.st.com/en/development-tools/stm32cubeclt.html)
+3. **Run setup script** in Git Bash:
+   ```bash
+   ./scripts/setup.sh
+   ```
+   The script will detect STM32CubeCLT and offer to configure your PATH automatically.
+
+**Manual Setup (if needed):**
+
+If the automatic setup doesn't work, manually add to `~/.bashrc`:
+```bash
+# STM32CubeCLT tools (adjust path if installed elsewhere)
+export PATH="/c/ST/STM32CubeCLT/GNU-tools-for-STM32/bin:$PATH"
+export PATH="/c/ST/STM32CubeCLT/CMake/bin:$PATH"
+export PATH="/c/ST/STM32CubeCLT/Ninja/bin:$PATH"
+export PATH="/c/ST/STM32CubeCLT/STM32CubeProgrammer/bin:$PATH"
+export CUBE_BUNDLE_PATH="/c/ST/STM32CubeCLT"
+```
+
+If `~/.bash_profile` doesn't exist, create it to source `~/.bashrc`:
+```bash
+# ~/.bash_profile
+if [ -f "$HOME/.bashrc" ]; then
+    source "$HOME/.bashrc"
+fi
+```
+
+Then restart Git Bash or run `source ~/.bashrc`.
+
+**Verify tools are found:**
+```bash
+ninja --version
+arm-none-eabi-gcc --version
+cmake --version
+```
+
+**Alternative:** Use [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) with Ubuntu for a native Linux development experience on Windows.
+
+## STM32CubeMX Code Generation
+
+Generate HAL code from `.ioc` files without opening the STM32CubeMX GUI:
+
+```bash
+./scripts/cubemx.sh                     # Interactive menu
+./scripts/cubemx.sh -g -b BMS           # Generate code for BMS
+./scripts/cubemx.sh -i -b LVPDB         # Inspect LVPDB configuration
+./scripts/cubemx.sh -a -g               # Generate code for all boards
+./scripts/cubemx.sh --list-boards       # List all boards with .ioc status
+```
+
+The script can:
+- **Generate code** (`-g`): Run STM32CubeMX headlessly to regenerate HAL code
+- **Inspect** (`-i`): View MCU, clock, and peripheral configuration
+- **Show pins** (`--show-pins`): Display GPIO pin assignments
+- **Show peripherals** (`--show-peripherals`): List enabled peripherals
+
+> **Note:** Code generation requires STM32CubeMX. Inspection commands work without it by parsing `.ioc` files directly.
 
 ## Code Formatting
 
@@ -293,7 +362,7 @@ GitHub Actions runs on pushes and pull requests to `main`:
 
 | Workflow | Trigger | Description |
 |----------|---------|-------------|
-| **Build** (`build.yml`) | Push/PR to main | Matrix build of all 7 boards. Skips boards missing `CMakeLists.txt` or `Core/`. |
+| **Build** (`build.yml`) | Push/PR to main | Matrix build of all 9 boards. Skips boards missing `CMakeLists.txt` or `Core/`. |
 | **Code Quality** (`quality.yml`) | Push/PR to main | `clang-format` on `Core/User/` files, `cppcheck` static analysis. |
 | **CAN Validation** (`can-validate.yml`) | Push/PR to main | Checks submodule is up-to-date with upstream, validates generated files match definitions. |
 | **Firmware Size** (`size.yml`) | Push/PR to main | Tracks Flash/RAM usage per board. Warns at 90%, fails at 98%. |
@@ -322,7 +391,7 @@ Pre-built firmware binaries are available from [GitHub Releases](https://github.
 - **Versioned Releases**: Stable releases are tagged with version numbers (e.g., `v1.0.0`).
 
 Each release includes:
-- `.elf`, `.bin`, and `.hex` files for all 7 boards
+- `.elf`, `.bin`, and `.hex` files for all 9 boards
 - `FEB_Firmware_{version}.zip` - Complete firmware package with bundled `flash.sh`
 - `SHA256SUMS.txt` - Checksums for individual firmware files
 - `.zip.sha256` - Checksum for the release archive
@@ -369,7 +438,14 @@ common/
     gen/                    # Generated C code (feb_can.c, feb_can.h)
     *_messages.py           # Python message definitions per board
     generate_can.sh         # Generation script
+  FEB_Serial_Library/       # UART, Logging, and Console
+    FEB_UART/               # DMA UART driver (feb_uart.h)
+    FEB_Log/                # Logging system (feb_log.h)
+    FEB_Console/            # CLI interface (feb_console.h)
+    FEB_Commands/           # Default commands (feb_commands.h)
 ```
+
+See [FEB_Serial_Library/README.md](common/FEB_Serial_Library/README.md) for detailed usage documentation.
 
 ### Board Directory Structure
 

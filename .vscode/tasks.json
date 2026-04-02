@@ -67,13 +67,38 @@
         },
         {
             "type": "shell",
-            "label": "Build All",
+            "label": "Build UART",
             "command": "cmake",
-            "args": ["--build", "build/Debug"],
+            "args": ["--build", "build/Debug", "--target", "UART"],
+            "group": "build",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "type": "shell",
+            "label": "Build UART_TEST",
+            "command": "cmake",
+            "args": ["--build", "build/Debug", "--target", "UART_TEST"],
+            "group": "build",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "type": "cmake",
+            "label": "CMake: Build Selected Target",
+            "command": "build",
+            "targets": ["${command:cmake.buildTargetName}"],
+            "preset": "${command:cmake.activeBuildPresetName}",
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "type": "shell",
+            "label": "Build All",
+            "command": "cmake",
+            "args": ["--build", "build/Debug"],
+            "group": "build",
             "problemMatcher": "$gcc"
         },
         {
@@ -120,7 +145,7 @@
             "id": "boardName",
             "type": "pickString",
             "description": "Select board to flash",
-            "options": ["BMS", "DASH", "DART", "DCU", "LVPDB", "PCU", "Sensor_Nodes"],
+            "options": ["BMS", "DASH", "DART", "DCU", "LVPDB", "PCU", "Sensor_Nodes", "UART", "UART_TEST"],
             "default": "LVPDB"
         }
     ]

@@ -15,8 +15,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Install clang-format
-        run: sudo apt-get install -y clang-format
+      - name: Install clang-format-18
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-18
+          sudo ln -sf /usr/bin/clang-format-18 /usr/bin/clang-format
 
       - name: Check formatting (user code)
         run: ./scripts/format.sh --check
@@ -27,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes]
+        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes, UART, UART_TEST]
 
     steps:
       - name: Checkout

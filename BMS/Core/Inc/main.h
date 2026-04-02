@@ -7,7 +7,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2026 STMicroelectronics.
+  * Copyright (c) 2025 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -59,26 +59,34 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define INDICATOR_Pin GPIO_PIN_13
 #define INDICATOR_GPIO_Port GPIOC
-#define BMS_INDICATOR_Pin GPIO_PIN_0
-#define BMS_INDICATOR_GPIO_Port GPIOC
-#define BMS_LED_INDICATOR_Pin GPIO_PIN_1
-#define BMS_LED_INDICATOR_GPIO_Port GPIOC
-#define PC_AIR__Pin GPIO_PIN_2
-#define PC_AIR__GPIO_Port GPIOC
+#define BMS_IND_Pin GPIO_PIN_0
+#define BMS_IND_GPIO_Port GPIOC
+#define BMS_A_Pin GPIO_PIN_1
+#define BMS_A_GPIO_Port GPIOC
+#define PC_AIR_Pin GPIO_PIN_2
+#define PC_AIR_GPIO_Port GPIOC
 #define SPI1_CS_Pin GPIO_PIN_3
 #define SPI1_CS_GPIO_Port GPIOC
-#define BUZZER_Pin GPIO_PIN_0
-#define BUZZER_GPIO_Port GPIOA
+#define BUZZER_EN_Pin GPIO_PIN_0
+#define BUZZER_EN_GPIO_Port GPIOA
+#define IV_VLT_Pin GPIO_PIN_4
+#define IV_VLT_GPIO_Port GPIOA
 #define AIR_M_SENSE_Pin GPIO_PIN_4
 #define AIR_M_SENSE_GPIO_Port GPIOC
 #define AIR_P_SENSE_Pin GPIO_PIN_5
 #define AIR_P_SENSE_GPIO_Port GPIOC
-#define WAKE_Pin GPIO_PIN_0
-#define WAKE_GPIO_Port GPIOB
-#define INTERRUPT_Pin GPIO_PIN_1
-#define INTERRUPT_GPIO_Port GPIOB
+#define WAKE1_Pin GPIO_PIN_0
+#define WAKE1_GPIO_Port GPIOB
+#define INT1_Pin GPIO_PIN_1
+#define INT1_GPIO_Port GPIOB
 #define TSSI_IN_Pin GPIO_PIN_2
 #define TSSI_IN_GPIO_Port GPIOB
+#define SPI2_CS_Pin GPIO_PIN_6
+#define SPI2_CS_GPIO_Port GPIOC
+#define WAKE2_Pin GPIO_PIN_7
+#define WAKE2_GPIO_Port GPIOC
+#define INT2_Pin GPIO_PIN_8
+#define INT2_GPIO_Port GPIOC
 #define SHS_IMD_Pin GPIO_PIN_10
 #define SHS_IMD_GPIO_Port GPIOC
 #define SHS_TSMS_Pin GPIO_PIN_11

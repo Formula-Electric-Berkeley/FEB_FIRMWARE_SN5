@@ -3,9 +3,9 @@
 
 #include "stm32f4xx_hal.h"
 
-#include "FEB_CAN_TX.h"
+#include "feb_can_lib.h"
 #include "FEB_PINOUT.h"
-#include "FEB_CAN_IDs.h"
+#include "feb_can.h"
 
 typedef struct BSPD_TYPE
 {

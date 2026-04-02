@@ -4,9 +4,12 @@
 // **************************************** Includes ****************************************
 
 #include "stm32f4xx_hal.h"
-#include <stdio.h>
-#include <string.h>
+#include <stdint.h>
+
+// Include generated pack/unpack functions from SN4 CAN library
 #include "FEB_CAN_Library_SN4/gen/feb_can.h"
+
+// **************************************** Types ****************************************
 
 typedef struct __attribute__((packed))
 {
@@ -32,15 +35,8 @@ typedef struct __attribute__((packed))
   uint16_t l_current;
   uint16_t as_current;
   uint16_t ab_current;
-  uint16_t zero;      // byte stuffing
-  uint32_t ids[5];    // 9 messages total so 9 id's sent out
-} FEB_LVPDB_CAN_Data; // Make sure that all edits do not input bit stuffing
+  uint16_t zero;   // byte stuffing
+  uint32_t ids[5]; // 9 messages total so 9 id's sent out
+} FEB_LVPDB_CAN_Data;
 
-// **************************************** Functions ****************************************
-
-void FEB_CAN_Init(void (*CAN_Callback)(CAN_RxHeaderTypeDef *, void *));
-void FEB_CAN_Filter_Config(void);
-uint8_t FEB_CAN_LVPDB_Filter(CAN_HandleTypeDef *hcan, unsigned char FIFO_assignment, uint8_t filter_bank);
-// void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef* hcan);
-void FEB_CAN_Transmit(CAN_HandleTypeDef *hcan, FEB_LVPDB_CAN_Data *can_data);
 #endif /* INC_FEB_CAN_H_ */

@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2026 STMicroelectronics.
+  * Copyright (c) 2025 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -21,10 +21,15 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "main.h"
+#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "FEB_Main.h"
+#include "feb_uart.h"
+#include "feb_console.h"
+#include "feb_can_lib.h"
+#include "feb_rtos_utils.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,11 +51,112 @@
 /* USER CODE BEGIN Variables */
 
 /* USER CODE END Variables */
+/* Definitions for btnTxLoopTask */
+osThreadId_t btnTxLoopTaskHandle;
+const osThreadAttr_t btnTxLoopTask_attributes = {
+  .name = "btnTxLoopTask",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityHigh1,
+};
+/* Definitions for displayTask */
+osThreadId_t displayTaskHandle;
+const osThreadAttr_t displayTask_attributes = {
+  .name = "displayTask",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityHigh,
+};
+/* Definitions for uartRxTask */
+osThreadId_t uartRxTaskHandle;
+const osThreadAttr_t uartRxTask_attributes = {
+  .name = "uartRxTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal1,
+};
+/* Definitions for uartTxTask */
+osThreadId_t uartTxTaskHandle;
+const osThreadAttr_t uartTxTask_attributes = {
+  .name = "uartTxTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for DASHTaskRx */
+osThreadId_t DASHTaskRxHandle;
+const osThreadAttr_t DASHTaskRx_attributes = {
+  .name = "DASHTaskRx",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for DASHTaskTx */
+osThreadId_t DASHTaskTxHandle;
+const osThreadAttr_t DASHTaskTx_attributes = {
+  .name = "DASHTaskTx",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for canTxQueue */
+osMessageQueueId_t canTxQueueHandle;
+const osMessageQueueAttr_t canTxQueue_attributes = {
+  .name = "canTxQueue"
+};
+/* Definitions for canRxQueue */
+osMessageQueueId_t canRxQueueHandle;
+const osMessageQueueAttr_t canRxQueue_attributes = {
+  .name = "canRxQueue"
+};
+/* Definitions for uartRxQueue */
+osMessageQueueId_t uartRxQueueHandle;
+const osMessageQueueAttr_t uartRxQueue_attributes = {
+  .name = "uartRxQueue"
+};
+/* Definitions for FEB_I2C_Mutex */
+osMutexId_t FEB_I2C_MutexHandle;
+const osMutexAttr_t FEB_I2C_Mutex_attributes = {
+  .name = "FEB_I2C_Mutex"
+};
+/* Definitions for canTxMutex */
+osMutexId_t canTxMutexHandle;
+const osMutexAttr_t canTxMutex_attributes = {
+  .name = "canTxMutex"
+};
+/* Definitions for canRxMutex */
+osMutexId_t canRxMutexHandle;
+const osMutexAttr_t canRxMutex_attributes = {
+  .name = "canRxMutex"
+};
+/* Definitions for logMutex */
+osMutexId_t logMutexHandle;
+const osMutexAttr_t logMutex_attributes = {
+  .name = "logMutex"
+};
+/* Definitions for uartTxMutex */
+osMutexId_t uartTxMutexHandle;
+const osMutexAttr_t uartTxMutex_attributes = {
+  .name = "uartTxMutex"
+};
+/* Definitions for canTxMailboxSem */
+osSemaphoreId_t canTxMailboxSemHandle;
+const osSemaphoreAttr_t canTxMailboxSem_attributes = {
+  .name = "canTxMailboxSem"
+};
+/* Definitions for uartTxSem */
+osSemaphoreId_t uartTxSemHandle;
+const osSemaphoreAttr_t uartTxSem_attributes = {
+  .name = "uartTxSem"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 
 /* USER CODE END FunctionPrototypes */
+
+void StartBtnTxLoop(void *argument);
+void StartDisplayTask(void *argument);
+void StartUartRxTask(void *argument);
+void StartUartTxTask(void *argument);
+void StartDASHTaskRx(void *argument);
+void StartDASHTaskTx(void *argument);
+
+void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
 /* Hook prototypes */
 void vApplicationIdleHook(void);
@@ -58,7 +164,7 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
 void vApplicationMallocFailedHook(void);
 
 /* USER CODE BEGIN 2 */
-void vApplicationIdleHook( void )
+__weak void vApplicationIdleHook( void )
 {
    /* vApplicationIdleHook() will only be called if configUSE_IDLE_HOOK is set
    to 1 in FreeRTOSConfig.h. It will be called on each iteration of the idle
@@ -73,7 +179,7 @@ void vApplicationIdleHook( void )
 /* USER CODE END 2 */
 
 /* USER CODE BEGIN 4 */
-void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
+__weak void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
 {
    /* Run time stack overflow checking is performed if
    configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
@@ -82,7 +188,7 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN 5 */
-void vApplicationMallocFailedHook(void)
+__weak void vApplicationMallocFailedHook(void)
 {
    /* vApplicationMallocFailedHook() will only be called if
    configUSE_MALLOC_FAILED_HOOK is set to 1 in FreeRTOSConfig.h. It is a hook
@@ -96,6 +202,217 @@ void vApplicationMallocFailedHook(void)
    provide information on how the remaining heap might be fragmented). */
 }
 /* USER CODE END 5 */
+
+/**
+  * @brief  FreeRTOS initialization
+  * @param  None
+  * @retval None
+  */
+void MX_FREERTOS_Init(void) {
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+  /* Create the mutex(es) */
+  /* creation of FEB_I2C_Mutex */
+  FEB_I2C_MutexHandle = osMutexNew(&FEB_I2C_Mutex_attributes);
+
+  /* creation of canTxMutex */
+  canTxMutexHandle = osMutexNew(&canTxMutex_attributes);
+
+  /* creation of canRxMutex */
+  canRxMutexHandle = osMutexNew(&canRxMutex_attributes);
+
+  /* creation of logMutex */
+  logMutexHandle = osMutexNew(&logMutex_attributes);
+
+  /* creation of uartTxMutex */
+  uartTxMutexHandle = osMutexNew(&uartTxMutex_attributes);
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* Create the semaphores(s) */
+  /* creation of canTxMailboxSem */
+  canTxMailboxSemHandle = osSemaphoreNew(3, 3, &canTxMailboxSem_attributes);
+
+  /* creation of uartTxSem */
+  uartTxSemHandle = osSemaphoreNew(1, 0, &uartTxSem_attributes);
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* Create the queue(s) */
+  /* creation of canTxQueue */
+  canTxQueueHandle = osMessageQueueNew (16, sizeof(FEB_CAN_Message_t), &canTxQueue_attributes);
+
+  /* creation of canRxQueue */
+  canRxQueueHandle = osMessageQueueNew (32, sizeof(FEB_CAN_Message_t), &canRxQueue_attributes);
+
+  /* creation of uartRxQueue */
+  uartRxQueueHandle = osMessageQueueNew (8, sizeof(FEB_UART_RxQueueMsg_t), &uartRxQueue_attributes);
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* Validate all RTOS objects - fail fast on low heap */
+  REQUIRE_RTOS_HANDLE(FEB_I2C_MutexHandle);
+  REQUIRE_RTOS_HANDLE(canTxMutexHandle);
+  REQUIRE_RTOS_HANDLE(canRxMutexHandle);
+  REQUIRE_RTOS_HANDLE(logMutexHandle);
+  REQUIRE_RTOS_HANDLE(uartTxMutexHandle);
+  REQUIRE_RTOS_HANDLE(canTxMailboxSemHandle);
+  REQUIRE_RTOS_HANDLE(uartTxSemHandle);
+  REQUIRE_RTOS_HANDLE(canTxQueueHandle);
+  REQUIRE_RTOS_HANDLE(canRxQueueHandle);
+  REQUIRE_RTOS_HANDLE(uartRxQueueHandle);
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of btnTxLoopTask */
+  btnTxLoopTaskHandle = osThreadNew(StartBtnTxLoop, NULL, &btnTxLoopTask_attributes);
+
+  /* creation of displayTask */
+  displayTaskHandle = osThreadNew(StartDisplayTask, NULL, &displayTask_attributes);
+
+  /* creation of uartRxTask */
+  uartRxTaskHandle = osThreadNew(StartUartRxTask, NULL, &uartRxTask_attributes);
+
+  /* creation of uartTxTask */
+  uartTxTaskHandle = osThreadNew(StartUartTxTask, NULL, &uartTxTask_attributes);
+
+  /* creation of DASHTaskRx */
+  DASHTaskRxHandle = osThreadNew(StartDASHTaskRx, NULL, &DASHTaskRx_attributes);
+
+  /* creation of DASHTaskTx */
+  DASHTaskTxHandle = osThreadNew(StartDASHTaskTx, NULL, &DASHTaskTx_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* Validate all thread creations - fail fast on low heap */
+  REQUIRE_RTOS_HANDLE(btnTxLoopTaskHandle);
+  REQUIRE_RTOS_HANDLE(displayTaskHandle);
+  REQUIRE_RTOS_HANDLE(uartRxTaskHandle);
+  REQUIRE_RTOS_HANDLE(uartTxTaskHandle);
+  REQUIRE_RTOS_HANDLE(DASHTaskRxHandle);
+  REQUIRE_RTOS_HANDLE(DASHTaskTxHandle);
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+}
+
+/* USER CODE BEGIN Header_StartBtnTxLoop */
+/**
+  * @brief  Function implementing the btnTxLoopTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartBtnTxLoop */
+__weak void StartBtnTxLoop(void *argument)
+{
+  /* USER CODE BEGIN StartBtnTxLoop */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartBtnTxLoop */
+}
+
+/* USER CODE BEGIN Header_StartDisplayTask */
+/**
+* @brief Function implementing the displayTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartDisplayTask */
+__weak void StartDisplayTask(void *argument)
+{
+  /* USER CODE BEGIN StartDisplayTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartDisplayTask */
+}
+
+/* USER CODE BEGIN Header_StartUartRxTask */
+/**
+* @brief Function implementing the uartRxTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartUartRxTask */
+__weak void StartUartRxTask(void *argument)
+{
+  /* USER CODE BEGIN StartUartRxTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartUartRxTask */
+}
+
+/* USER CODE BEGIN Header_StartUartTxTask */
+/**
+* @brief Function implementing the uartTxTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartUartTxTask */
+__weak void StartUartTxTask(void *argument)
+{
+  /* USER CODE BEGIN StartUartTxTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartUartTxTask */
+}
+
+/* USER CODE BEGIN Header_StartDASHTaskRx */
+/**
+* @brief Function implementing the DASHTaskRx thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartDASHTaskRx */
+__weak void StartDASHTaskRx(void *argument)
+{
+  /* USER CODE BEGIN StartDASHTaskRx */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartDASHTaskRx */
+}
+
+/* USER CODE BEGIN Header_StartDASHTaskTx */
+/**
+* @brief Function implementing the DASHTaskTx thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartDASHTaskTx */
+__weak void StartDASHTaskTx(void *argument)
+{
+  /* USER CODE BEGIN StartDASHTaskTx */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartDASHTaskTx */
+}
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */

@@ -115,8 +115,23 @@ check_toolchain() {
     echo ""
 
     if [ "$all_good" = false ]; then
-        log_error "Missing required tools. Please install them before continuing."
+        log_error "Missing required tools."
         echo ""
+
+        # On Windows, try to auto-configure PATH
+        case "$(uname -s)" in
+            MINGW*|MSYS*|CYGWIN*)
+                if configure_windows_path; then
+                    echo ""
+                    log_info "Retrying tool detection..."
+                    echo ""
+                    # Re-check after PATH update (recursive call)
+                    check_toolchain
+                    return $?
+                fi
+                ;;
+        esac
+
         show_install_instructions
         return 1
     fi
@@ -155,15 +170,84 @@ show_install_instructions() {
         MINGW*|MSYS*|CYGWIN*)
             echo -e "${BOLD}Windows Installation:${NC}"
             echo ""
-            echo "  # Download and install:"
-            echo "  - CMake: https://cmake.org/download/"
-            echo "  - Ninja: https://ninja-build.org/"
-            echo "  - ARM GCC: https://developer.arm.com/downloads/-/gnu-rm"
-            echo "  - STM32CubeCLT: https://www.st.com/en/development-tools/stm32cubeclt.html"
+            echo "  Install STM32CubeCLT (bundles all required tools):"
+            echo "  https://www.st.com/en/development-tools/stm32cubeclt.html"
             echo ""
-            echo "  Make sure to add all tools to your PATH."
+            echo "  Default install location: C:\\ST\\STM32CubeCLT"
+            echo ""
+            echo "  After installing, re-run this setup script to configure PATH."
             ;;
     esac
+}
+
+# Configure PATH for Windows Git Bash
+configure_windows_path() {
+    local cubeclt_path="/c/ST/STM32CubeCLT"
+    local bashrc="$HOME/.bashrc"
+
+    # Check if STM32CubeCLT exists at default location
+    if [ ! -d "$cubeclt_path" ]; then
+        log_warn "STM32CubeCLT not found at $cubeclt_path"
+        echo "  Please install STM32CubeCLT first."
+        return 1
+    fi
+
+    # Check if already configured
+    if grep -q "STM32CubeCLT" "$bashrc" 2>/dev/null; then
+        log_info "PATH already configured in ~/.bashrc"
+        echo "  Try running: source ~/.bashrc"
+        return 1
+    fi
+
+    echo ""
+    log_info "Found STM32CubeCLT at $cubeclt_path"
+    echo ""
+    echo "  The following will be added to ~/.bashrc:"
+    echo ""
+    echo "    export PATH=\"$cubeclt_path/GNU-tools-for-STM32/bin:\$PATH\""
+    echo "    export PATH=\"$cubeclt_path/CMake/bin:\$PATH\""
+    echo "    export PATH=\"$cubeclt_path/Ninja/bin:\$PATH\""
+    echo "    export PATH=\"$cubeclt_path/STM32CubeProgrammer/bin:\$PATH\""
+    echo "    export CUBE_BUNDLE_PATH=\"$cubeclt_path\""
+    echo ""
+
+    read -p "Add to ~/.bashrc? [Y/n] " -n 1 -r
+    echo ""
+
+    if [[ $REPLY =~ ^[Nn]$ ]]; then
+        log_warn "Skipping PATH configuration. You'll need to configure manually."
+        return 1
+    fi
+
+    # Create ~/.bash_profile if it doesn't exist (Git Bash sources this for login shells)
+    if [ ! -f "$HOME/.bash_profile" ]; then
+        log_step "Creating ~/.bash_profile to source ~/.bashrc..."
+        cat > "$HOME/.bash_profile" << 'PROFILE_EOF'
+# Load .bashrc if it exists
+if [ -f "$HOME/.bashrc" ]; then
+    source "$HOME/.bashrc"
+fi
+PROFILE_EOF
+    fi
+
+    # Append to bashrc
+    cat >> "$bashrc" << BASHRC_EOF
+
+# STM32CubeCLT tools (added by FEB setup script)
+export PATH="$cubeclt_path/GNU-tools-for-STM32/bin:\$PATH"
+export PATH="$cubeclt_path/CMake/bin:\$PATH"
+export PATH="$cubeclt_path/Ninja/bin:\$PATH"
+export PATH="$cubeclt_path/STM32CubeProgrammer/bin:\$PATH"
+export CUBE_BUNDLE_PATH="$cubeclt_path"
+BASHRC_EOF
+
+    log_info "PATH configuration added to ~/.bashrc"
+    echo ""
+
+    # Source it now so setup can continue
+    source "$bashrc"
+    log_info "PATH updated for current session"
+    return 0
 }
 
 # Step 2: Initialize submodules
@@ -269,7 +353,6 @@ show_summary() {
     echo ""
     echo -e "${BOLD}Documentation:${NC}"
     echo "  - README.md        General project info"
-    echo "  - CLAUDE.md        AI assistant guidelines"
     echo ""
     echo -e "${GREEN}Happy coding!${NC}"
 }

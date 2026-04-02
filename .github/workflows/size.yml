@@ -27,6 +27,10 @@ jobs:
             flash_limit: 524288
           - project: Sensor_Nodes
             flash_limit: 524288
+          - project: UART
+            flash_limit: 524288
+          - project: UART_TEST
+            flash_limit: 2097152
 
     name: Size ${{ matrix.project }}
 
@@ -50,7 +54,7 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         uses: carlosperate/arm-none-eabi-gcc-action@v1
         with:
-          release: latest
+          release: '14.2.Rel1'
 
       - name: Install Ninja
         if: steps.check.outputs.skip != 'true'
