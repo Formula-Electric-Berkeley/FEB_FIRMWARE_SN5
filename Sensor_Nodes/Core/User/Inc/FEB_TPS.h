@@ -23,6 +23,7 @@ extern "C"
 #define SIGN_MAGNITUDE(n) (int16_t)((((n >> 15) & 0x01) == 1) ? -(n & 0x7FFF) : (n & 0x7FFF))
 #define FLOAT_TO_INT16_T(n) ((int16_t)(n * 1000))
 
+  void i2c1_scan(void);
   void tps_init(void);
   void read_TPS(void);
 

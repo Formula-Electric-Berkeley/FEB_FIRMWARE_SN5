@@ -7,10 +7,6 @@
 #include <string.h>
 #include "FEB_Main.h"
 
-extern I2C_HandleTypeDef hi2c1;
-
-static int32_t ping_pong_counter = 0;
-
 void FEB_CAN_Rx_Callback(FEB_CAN_Bus_t bus, CAN_RxHeaderTypeDef *rx_header, void *data)
 {
   // Handle received CAN messages
@@ -21,47 +17,19 @@ void FEB_CAN_Rx_Callback(FEB_CAN_Bus_t bus, CAN_RxHeaderTypeDef *rx_header, void
 
 void FEB_Update()
 {
-  // Send ping pong counter for testing
-  FEB_CAN_PingPong_Send(FEB_CAN_BUS_1, 0, ping_pong_counter++);
-
   read_Acceleration();
   read_Angular_Rate();
-  read_Magnetic_Field_Data();
-  read_TPS();
+  // read_Magnetic_Field_Data();
   printf("\r\n");
-
-  LOGI("Starting I2C Scanning: \r\n");
-
-  uint8_t i = 0, ret;
-  for (i = 1; i < 128; i++)
-  {
-    ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i << 1), 3, 5);
-    if (ret != HAL_OK)
-    { /* No ACK Received At That Address */
-      printf("-");
-    }
-    else if (ret == HAL_OK)
-    {
-      printf("0x%X", i);
-      // address: 0x40 w hi2c1, nothing with hi2c3
-    }
-  }
-  printf("Done! \r\n\r\n");
 }
 
 void FEB_Init(void)
 {
-  // Initialize printf redirect (already enabled by __io_putchar)
-  LOGI("[SETUP] Sensor Node Starting...\r\n");
+  // LOGI("[SETUP] Sensor Node Starting - IMU Test Mode\r\n");
 
-  // Initialize CAN (both CAN1 and CAN2)
-  FEB_CAN_Init(FEB_CAN_Rx_Callback);
-  LOGI("[SETUP] CAN initialized\r\n");
-
-  // Initialize sensors
+  // Initialize IMU only
   lsm6dsox_init();
-  lis3mdl_init();
-  tps_init();
+  // LOGI("[SETUP] IMU initialized\r\n");
 }
 
 void FEB_Main_Loop(void)
