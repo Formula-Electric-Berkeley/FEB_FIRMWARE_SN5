@@ -4,11 +4,14 @@
 #include "stm32f4xx_hal.h"
 #include "feb_can_lib.h"
 #include "feb_can.h"
-#include "TPS2482.h"
+#include "feb_tps.h"
 #include <string.h>
 
-/* Conversion helper macros - TPS2482 conversion macros are in TPS2482.h */
-#define SIGN_MAGNITUDE(n) ((int16_t)((((n >> 15) & 0x01) == 1) ? -(n & 0x7FFF) : (n & 0x7FFF)))
+/* Status flag bit definitions */
+#define TPS_STATUS_VOLTAGE_OVERFLOW (1U << 0) /* Bus voltage exceeded uint16 max */
+#define TPS_STATUS_CURRENT_OVERFLOW (1U << 1) /* Current exceeded int16 range */
+#define TPS_STATUS_CURRENT_NEGATIVE (1U << 2) /* Current reading is negative */
+#define TPS_STATUS_POLL_ERROR (1U << 3)       /* Poll failed, values may be stale */
 
 /* Message structure */
 typedef struct
@@ -16,6 +19,7 @@ typedef struct
   uint16_t bus_voltage_mv;  /* Bus voltage in millivolts */
   int16_t current_ma;       /* Current in milliamps */
   int32_t shunt_voltage_uv; /* Shunt voltage in microvolts */
+  uint8_t status_flags;     /* Status flags for overflow/negative current */
 } TPS_MESSAGE_TYPE;
 
 /* Data type for console command access */

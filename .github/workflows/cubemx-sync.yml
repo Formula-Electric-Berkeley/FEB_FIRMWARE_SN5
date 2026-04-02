@@ -1,0 +1,32 @@
+name: CubeMX Sync Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-sync:
+    name: Validate IOC/Code Sync
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate CubeMX sync
+        run: |
+          set +e
+          OUTPUT=$(./scripts/cubemx-sync.sh --validate 2>&1)
+          EXIT_CODE=$?
+          echo "$OUTPUT"
+
+          if [ $EXIT_CODE -ne 0 ]; then
+            exit $EXIT_CODE
+          fi

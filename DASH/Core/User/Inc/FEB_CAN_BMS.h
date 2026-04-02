@@ -9,6 +9,7 @@
 #ifndef FEB_CAN_BMS_H
 #define FEB_CAN_BMS_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef enum
@@ -34,5 +35,6 @@ void FEB_CAN_BMS_Init(void);
 BMS_State_t FEB_CAN_BMS_GetLastState(void);
 int16_t FEB_CAN_BMS_GetLastCellMaxTemperature(void);
 uint16_t FEB_CAN_BMS_GetLastAccumulatorTotalVoltage(void);
-BMS_State_t FEB_CAN_BMS_GetPreviousState(void);
+bool FEB_CAN_BMS_IsDataFresh(uint32_t timeout_ms);
+
 #endif /* FEB_CAN_BMS_H */

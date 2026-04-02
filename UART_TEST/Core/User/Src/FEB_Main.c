@@ -12,7 +12,7 @@
 #include "FEB_Main.h"
 #include "main.h"
 #include "feb_uart.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 #include "feb_console.h"
 #include "uart_test_commands.h"
 #include "cmsis_os2.h"
@@ -27,6 +27,11 @@ extern DMA_HandleTypeDef handle_GPDMA1_Channel1; /* TX */
 /* UART buffers */
 static uint8_t uart_tx_buf[512];
 static uint8_t uart_rx_buf[256];
+
+/* External FreeRTOS handles from .ioc-generated code */
+#if FEB_LOG_USE_FREERTOS
+extern osMutexId_t logMutexHandle;
+#endif
 
 #undef TAG_MAIN
 #define TAG_MAIN "MAIN"
@@ -48,9 +53,6 @@ void FEB_Main_Setup(void)
       .tx_buffer_size = sizeof(uart_tx_buf),
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
-      .log_level = FEB_UART_LOG_DEBUG,
-      .enable_colors = true,
-      .enable_timestamps = true,
       .get_tick_ms = HAL_GetTick,
   };
 
@@ -66,8 +68,27 @@ void FEB_Main_Setup(void)
 
   HAL_UART_Transmit(&huart1, (uint8_t *)"DBG:3-PostUARTInit\r\n", 20, 100);
 
+  /* Initialize logging system */
+  FEB_Log_Config_t log_cfg = {
+      .uart_instance = FEB_UART_INSTANCE_1,
+      .level = FEB_LOG_DEBUG,
+      .colors = true,
+      .timestamps = true,
+      .get_tick_ms = HAL_GetTick,
+#if FEB_LOG_USE_FREERTOS
+      .mutex = logMutexHandle,
+#endif
+  };
+  if (FEB_Log_Init(&log_cfg) != 0)
+  {
+    HAL_UART_Transmit(&huart1, (uint8_t *)"DBG:FAIL-LogInit\r\n", 18, 100);
+    while (1)
+    {
+    }
+  }
+
   /* Initialize console (registers built-in commands) */
-  FEB_Console_Init();
+  FEB_Console_Init(true);
 
   HAL_UART_Transmit(&huart1, (uint8_t *)"DBG:4-PostConsole\r\n", 19, 100);
 

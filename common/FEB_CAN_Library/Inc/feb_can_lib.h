@@ -44,6 +44,8 @@ extern "C"
 #include <stddef.h>
 #include <stdint.h>
 
+#include "feb_can_config.h"
+
   /* ============================================================================
    * Forward Declarations
    * ============================================================================ */
@@ -53,6 +55,42 @@ extern "C"
    * struct, which cannot be forward declared portably. User code should include
    * the HAL headers and cast appropriately. */
   typedef void *FEB_CAN_Handle_t;
+
+  /* ============================================================================
+   * FreeRTOS Sync Primitive Types
+   * ============================================================================ */
+#if FEB_CAN_USE_FREERTOS
+#include "cmsis_os2.h"
+  typedef osMutexId_t FEB_CAN_MutexHandle_t;
+  typedef osSemaphoreId_t FEB_CAN_SemaphoreHandle_t;
+  typedef osMessageQueueId_t FEB_CAN_QueueHandle_t;
+#else
+  typedef void *FEB_CAN_MutexHandle_t;
+  typedef void *FEB_CAN_SemaphoreHandle_t;
+  typedef void *FEB_CAN_QueueHandle_t;
+#endif
+
+  /* ============================================================================
+   * CAN Message Structure (for Queue Creation)
+   * ============================================================================
+   *
+   * This type is public so CubeMX-generated freertos.c can use it for queue
+   * item size calculation when creating CAN TX/RX queues.
+   */
+
+  /**
+   * @brief CAN message structure for queue operations
+   */
+  typedef struct
+  {
+    uint32_t can_id;    /**< CAN identifier */
+    uint8_t data[8];    /**< Message data */
+    uint8_t length;     /**< Data length (0-8) */
+    uint8_t id_type;    /**< 0=Standard, 1=Extended */
+    uint8_t instance;   /**< CAN1 or CAN2 */
+    uint8_t reserved;   /**< Padding for alignment */
+    uint32_t timestamp; /**< Reception/transmission timestamp */
+  } FEB_CAN_Message_t;
 
   /* ============================================================================
    * Status Enumeration
@@ -73,6 +111,8 @@ extern "C"
     FEB_CAN_ERROR_HAL,            /**< HAL layer error */
     FEB_CAN_ERROR_NOT_INIT,       /**< Library not initialized */
     FEB_CAN_ERROR_QUEUE,          /**< Queue operation failed */
+    FEB_CAN_ERROR_NO_MUTEX,       /**< Required mutex not provided (FreeRTOS) */
+    FEB_CAN_ERROR_NO_SEMAPHORE,   /**< Required semaphore not provided (FreeRTOS) */
   } FEB_CAN_Status_t;
 
   /* ============================================================================
@@ -123,6 +163,15 @@ extern "C"
 
   /**
    * @brief CAN library initialization configuration
+   *
+   * FreeRTOS Mode (FEB_CAN_USE_FREERTOS == 1):
+   *   - All sync primitives are REQUIRED (created in CubeMX .ioc)
+   *   - tx_queue, rx_queue: message queues for decoupled TX/RX
+   *   - tx_mutex, rx_mutex: protect TX/RX state
+   *   - tx_mailbox_sem: counting semaphore for mailbox flow control
+   *
+   * Bare-Metal Mode (FEB_CAN_USE_FREERTOS == 0):
+   *   - Sync primitive fields are ignored
    */
   typedef struct
   {
@@ -130,12 +179,33 @@ extern "C"
     FEB_CAN_Handle_t hcan1; /**< HAL CAN1 handle (must be initialized) */
     FEB_CAN_Handle_t hcan2; /**< HAL CAN2 handle (NULL if not used) */
 
-    /* Optional: Queue sizes (FreeRTOS mode, 0 = use defaults) */
-    uint16_t tx_queue_size; /**< TX queue depth (default: 16) */
-    uint16_t rx_queue_size; /**< RX queue depth (default: 32) */
-
     /* Optional: Timestamp source (defaults to HAL_GetTick if NULL) */
     uint32_t (*get_tick_ms)(void); /**< Function returning millisecond tick */
+
+#if FEB_CAN_USE_FREERTOS
+    /* ========================================================================
+     * REQUIRED Sync Primitives (FreeRTOS mode)
+     * ========================================================================
+     *
+     * These MUST be created by the user (typically via CubeMX .ioc) and passed
+     * to this config. The library does NOT create these internally.
+     */
+
+    /** @brief TX queue - REQUIRED. For queued TX messages. Create in CubeMX. */
+    FEB_CAN_QueueHandle_t tx_queue;
+
+    /** @brief RX queue - REQUIRED. For received messages. Create in CubeMX. */
+    FEB_CAN_QueueHandle_t rx_queue;
+
+    /** @brief TX mutex - REQUIRED. Protects TX state. Create in CubeMX. */
+    FEB_CAN_MutexHandle_t tx_mutex;
+
+    /** @brief RX mutex - REQUIRED. Protects RX callbacks. Create in CubeMX. */
+    FEB_CAN_MutexHandle_t rx_mutex;
+
+    /** @brief TX mailbox semaphore - REQUIRED. Counting semaphore (max=3, init=3). */
+    FEB_CAN_SemaphoreHandle_t tx_mailbox_sem;
+#endif
 
   } FEB_CAN_Config_t;
 
@@ -577,6 +647,39 @@ extern "C"
    * @param hcan CAN handle (CAN_HandleTypeDef*)
    */
   void FEB_CAN_ErrorCallback(FEB_CAN_Handle_t hcan);
+
+  /* ============================================================================
+   * Weak Task Functions (FreeRTOS Mode)
+   * ============================================================================
+   *
+   * These are weak default implementations that can be overridden by user code.
+   * Create tasks in CubeMX .ioc pointing to these entry functions.
+   *
+   * CubeMX Task Configuration:
+   *   - Task name: e.g., "CAN_TX_Task", "CAN_RX_Task"
+   *   - Entry function: FEB_CAN_TxTaskFunc, FEB_CAN_RxTaskFunc
+   *   - Argument: NULL
+   *   - Stack size: User choice (recommend 256+ words)
+   *   - Priority: User choice
+   */
+
+#if FEB_CAN_USE_FREERTOS
+
+  /**
+   * @brief Weak default TX processing task entry function
+   *
+   * @param argument Not used (pass NULL)
+   */
+  void FEB_CAN_TxTaskFunc(void *argument);
+
+  /**
+   * @brief Weak default RX processing task entry function
+   *
+   * @param argument Not used (pass NULL)
+   */
+  void FEB_CAN_RxTaskFunc(void *argument);
+
+#endif /* FEB_CAN_USE_FREERTOS */
 
 #ifdef __cplusplus
 }

@@ -9,6 +9,7 @@
 #include "rtc_commands.h"
 #include "feb_console.h"
 #include "feb_rtc.h"
+#include "feb_string_utils.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,19 +50,6 @@ void RTC_RegisterCommands(void)
 /* ============================================================================
  * Private Helper Functions
  * ============================================================================ */
-
-static int strcasecmp_local(const char *s1, const char *s2)
-{
-  while (*s1 && *s2)
-  {
-    int diff = tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
-    if (diff != 0)
-      return diff;
-    s1++;
-    s2++;
-  }
-  return tolower((unsigned char)*s1) - tolower((unsigned char)*s2);
-}
 
 static void print_status_error(FEB_RTC_Status_t status)
 {
@@ -107,27 +95,27 @@ static void cmd_rtc(int argc, char *argv[])
 
   const char *subcmd = argv[1];
 
-  if (strcasecmp_local(subcmd, "get") == 0)
+  if (FEB_strcasecmp(subcmd, "get") == 0)
   {
     cmd_get();
   }
-  else if (strcasecmp_local(subcmd, "time") == 0)
+  else if (FEB_strcasecmp(subcmd, "time") == 0)
   {
     cmd_time();
   }
-  else if (strcasecmp_local(subcmd, "date") == 0)
+  else if (FEB_strcasecmp(subcmd, "date") == 0)
   {
     cmd_date();
   }
-  else if (strcasecmp_local(subcmd, "set") == 0)
+  else if (FEB_strcasecmp(subcmd, "set") == 0)
   {
     cmd_set(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "settime") == 0)
+  else if (FEB_strcasecmp(subcmd, "settime") == 0)
   {
     cmd_settime(argc - 1, argv + 1);
   }
-  else if (strcasecmp_local(subcmd, "setdate") == 0)
+  else if (FEB_strcasecmp(subcmd, "setdate") == 0)
   {
     cmd_setdate(argc - 1, argv + 1);
   }

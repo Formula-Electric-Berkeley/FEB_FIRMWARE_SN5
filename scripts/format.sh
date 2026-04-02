@@ -23,7 +23,7 @@ REQUIRED_VERSION=18
 BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART_TEST")
 
 # Common libraries to format
-COMMON_LIBS=("common/FEB_UART_Library" "common/FEB_Console_Library")
+COMMON_LIBS=("common/FEB_Serial_Library")
 
 # Colors for output
 RED='\033[0;31m'

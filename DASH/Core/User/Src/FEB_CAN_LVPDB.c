@@ -9,13 +9,17 @@
 #include "FEB_CAN_LVPDB.h"
 #include "feb_can.h"
 #include "feb_can_lib.h"
+#include "stm32f4xx_hal.h"
+#include <stdbool.h>
+
 typedef struct
 {
-  uint16_t lv_24v_voltage;
-  uint16_t lv_12v_voltage;
+  volatile uint16_t lv_24v_voltage;
+  volatile uint16_t lv_12v_voltage;
+  volatile uint32_t last_rx_tick;
 } LVPDB_State_t;
 
-static LVPDB_State_t lvpdb_state = {.lv_24v_voltage = 0, .lv_12v_voltage = 0};
+static LVPDB_State_t lvpdb_state = {.lv_24v_voltage = 0, .lv_12v_voltage = 0, .last_rx_tick = 0};
 
 /* ============================================================================
  * RX Callback Handlers
@@ -33,6 +37,8 @@ static void rx_callback_lv_voltages(FEB_CAN_Instance_t instance, uint32_t can_id
   {
     lvpdb_state.lv_24v_voltage = msg.lv_24v_voltage;
     lvpdb_state.lv_12v_voltage = msg.lv_12v_voltage;
+    __DMB();
+    lvpdb_state.last_rx_tick = HAL_GetTick();
   }
 }
 
@@ -63,4 +69,12 @@ uint16_t FEB_CAN_LVPDB_GetLast24VVoltage(void)
 uint16_t FEB_CAN_LVPDB_GetLast12VVoltage(void)
 {
   return lvpdb_state.lv_12v_voltage;
+}
+
+bool FEB_CAN_LVPDB_IsDataFresh(uint32_t timeout_ms)
+{
+  uint32_t last = lvpdb_state.last_rx_tick;
+  if (last == 0)
+    return false;
+  return (HAL_GetTick() - last) < timeout_ms;
 }

@@ -9,7 +9,7 @@
 #include "FEB_Main.h"
 #include "main.h"
 #include "feb_uart.h"
-#include "feb_uart_config.h"
+#include "feb_log.h"
 #include "feb_console.h"
 #include "uart_commands.h"
 #include "feb_rtc.h"
@@ -21,9 +21,19 @@ extern UART_HandleTypeDef huart2;
 extern DMA_HandleTypeDef hdma_usart2_rx;
 extern DMA_HandleTypeDef hdma_usart2_tx;
 
+/* FreeRTOS handles from CubeMX (freertos.c) */
+extern osMutexId_t uartTxMutexHandle;
+extern osSemaphoreId_t uartTxSemHandle;
+extern osMessageQueueId_t uartRxQueueHandle;
+
 /* UART buffers */
 static uint8_t uart_tx_buf[512];
 static uint8_t uart_rx_buf[256];
+
+/* External FreeRTOS handles from .ioc-generated code */
+#if FEB_LOG_USE_FREERTOS
+extern osMutexId_t logMutexHandle;
+#endif
 
 /* ============================================================================
  * Application Entry Points
@@ -40,11 +50,11 @@ void FEB_Main_Setup(void)
       .tx_buffer_size = sizeof(uart_tx_buf),
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
-      .log_level = FEB_UART_LOG_DEBUG,
-      .enable_colors = true,
-      .enable_timestamps = true,
       .get_tick_ms = HAL_GetTick,
+      .tx_mutex = uartTxMutexHandle,
+      .tx_complete_sem = uartTxSemHandle,
       .enable_rx_queue = true,
+      .rx_queue = uartRxQueueHandle,
   };
 
   if (FEB_UART_Init(FEB_UART_INSTANCE_1, &cfg) != 0)
@@ -55,11 +65,24 @@ void FEB_Main_Setup(void)
     }
   }
 
+  /* Initialize logging system */
+  FEB_Log_Config_t log_cfg = {
+      .uart_instance = FEB_UART_INSTANCE_1,
+      .level = FEB_LOG_DEBUG,
+      .colors = true,
+      .timestamps = true,
+      .get_tick_ms = HAL_GetTick,
+#if FEB_LOG_USE_FREERTOS
+      .mutex = logMutexHandle,
+#endif
+  };
+  FEB_Log_Init(&log_cfg);
+
   /* Initialize RTC helper (creates mutex) */
   FEB_RTC_Init();
 
   /* Initialize console (registers built-in commands) */
-  FEB_Console_Init();
+  FEB_Console_Init(true);
 
   /* Register UART custom commands */
   UART_RegisterCommands();
@@ -101,14 +124,5 @@ void StartUartRxTask(void *argument)
     {
       FEB_Console_ProcessLine(line_buf, line_len);
     }
-  }
-}
-
-void StartUartTxTask(void *argument)
-{
-  (void)argument;
-  for (;;)
-  {
-    osDelay(100); /* TX task placeholder - currently unused */
   }
 }

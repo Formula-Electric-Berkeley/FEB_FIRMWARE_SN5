@@ -11,12 +11,13 @@
 #include "FEB_CAN_PingPong.h"
 #include "main.h"
 #include "feb_uart.h"
-#include "feb_uart_config.h"
+#include "feb_log.h"
 #include "feb_console.h"
 #include "FEB_CAN_State.h"
 #include "FEB_Commands.h"
 #include "cmsis_os2.h"
 #include "FEB_CAN_BMS.h"
+#include "FEB_CAN_LVPDB.h"
 
 /* External HAL handles from CubeMX-generated code */
 extern UART_HandleTypeDef huart3;
@@ -26,6 +27,17 @@ extern DMA_HandleTypeDef hdma_usart3_tx;
 /* UART buffers */
 static uint8_t uart_tx_buf[512];
 static uint8_t uart_rx_buf[256];
+
+/* External FreeRTOS handles from .ioc-generated code */
+#if FEB_LOG_USE_FREERTOS
+extern osMutexId_t logMutexHandle;
+#endif
+
+#if FEB_UART_USE_FREERTOS
+extern osMutexId_t uartTxMutexHandle;
+extern osSemaphoreId_t uartTxSemHandle;
+extern osMessageQueueId_t uartRxQueueHandle;
+#endif
 
 /* ============================================================================
  * Application Entry Points
@@ -42,11 +54,13 @@ void FEB_Init(void)
       .tx_buffer_size = sizeof(uart_tx_buf),
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
-      .log_level = FEB_UART_LOG_DEBUG,
-      .enable_colors = true,
-      .enable_timestamps = true,
       .get_tick_ms = HAL_GetTick,
+#if FEB_UART_USE_FREERTOS
+      .tx_mutex = uartTxMutexHandle,
+      .tx_complete_sem = uartTxSemHandle,
       .enable_rx_queue = true,
+      .rx_queue = uartRxQueueHandle,
+#endif
   };
 
   if (FEB_UART_Init(FEB_UART_INSTANCE_1, &cfg) != 0)
@@ -57,14 +71,28 @@ void FEB_Init(void)
     }
   }
 
+  /* Initialize logging system */
+  FEB_Log_Config_t log_cfg = {
+      .uart_instance = FEB_UART_INSTANCE_1,
+      .level = FEB_LOG_DEBUG,
+      .colors = true,
+      .timestamps = true,
+      .get_tick_ms = HAL_GetTick,
+#if FEB_LOG_USE_FREERTOS
+      .mutex = logMutexHandle,
+#endif
+  };
+  FEB_Log_Init(&log_cfg);
+
   /* Initialize console (registers built-in commands: echo, help, version, uptime, reboot, log) */
-  FEB_Console_Init();
+  FEB_Console_Init(true);
   DASH_RegisterCommands();
 
   /* Initialize CAN state publisher */
   FEB_CAN_State_Init();
   FEB_CAN_BMS_Init();
   FEB_CAN_PCU_Init();
+  FEB_CAN_LVPDB_Init();
 
   /* Startup banner */
   FEB_Console_Printf("\r\n");

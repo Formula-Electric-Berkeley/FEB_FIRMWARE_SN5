@@ -6,11 +6,13 @@
  ******************************************************************************
  */
 
+#include "FEB_CAN_RMS.h"
 #include "feb_can.h"
 #include "feb_can_lib.h"
 #include "feb_uart.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 #include "stm32f4xx_hal.h"
+#include <stdbool.h>
 #include <string.h>
 
 /* ============================================================================
@@ -19,12 +21,13 @@
 
 typedef struct
 {
-  int16_t torque;
-  uint8_t direction;
-  uint8_t enabled;
+  volatile int16_t torque;
+  volatile uint8_t direction;
+  volatile uint8_t enabled;
+  volatile uint32_t last_rx_tick;
 } RMS_State_t;
 
-RMS_State_t state = {.torque = 0xFF, .direction = 0xFF, .enabled = 0xFF};
+static RMS_State_t rms_state = {.torque = 0xFF, .direction = 0xFF, .enabled = 0xFF, .last_rx_tick = 0};
 
 /* ============================================================================
  * RX Callback Handlers
@@ -40,9 +43,13 @@ RMS_State_t state = {.torque = 0xFF, .direction = 0xFF, .enabled = 0xFF};
 static void rx_callback_ch1(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                             const uint8_t *data, uint8_t length, void *user_data)
 {
-  memcpy(&state.torque, &data[0], sizeof(int16_t));
-  state.torque = data[4];
-  state.torque = data[5];
+  int16_t torque;
+  memcpy(&torque, &data[0], sizeof(int16_t));
+  rms_state.torque = torque;
+  rms_state.direction = data[4];
+  rms_state.enabled = data[5];
+  __DMB();
+  rms_state.last_rx_tick = HAL_GetTick();
 }
 
 /* ============================================================================
@@ -65,15 +72,23 @@ void FEB_CAN_RMS_Init(void)
 
 int16_t FEB_CAN_RMS_GetLastTorque(void)
 {
-  return state.torque;
+  return rms_state.torque;
 }
 
 int8_t FEB_CAN_RMS_GetLastDirection(void)
 {
-  return state.direction;
+  return rms_state.direction;
 }
 
 int8_t FEB_CAN_RMS_GetLastEnabled(void)
 {
-  return state.direction;
+  return rms_state.enabled;
+}
+
+bool FEB_CAN_RMS_IsDataFresh(uint32_t timeout_ms)
+{
+  uint32_t last = rms_state.last_rx_tick;
+  if (last == 0)
+    return false;
+  return (HAL_GetTick() - last) < timeout_ms;
 }
