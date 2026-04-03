@@ -1,10 +1,13 @@
 #include "lis3mdl_reg.h"   //
 #include "stm32f4xx_hal.h" //
 #include "stm32f4xx_hal_def.h"
-#include <stdio.h>
 #include <string.h>
 #include "FEB_Main.h"
-#include <FEB_IMU.h>
+#include "FEB_IMU.h"
+
+#include "feb_log.h"
+
+#define TAG_MAG "[MAG]"
 
 stmdev_ctx_t lis3mdl_ctx;
 extern I2C_HandleTypeDef hi2c3;
@@ -42,5 +45,5 @@ void read_Magnetic_Field_Data()
   magnetic_mG[1] = 1000 * lis3mdl_from_fs16_to_gauss(data_raw_magnetic[1]);
   magnetic_mG[2] = 1000 * lis3mdl_from_fs16_to_gauss(data_raw_magnetic[2]);
 
-  printf("Magnetic field [mG]: %4.2f\t%4.2f\t%4.2f\r\n", magnetic_mG[0], magnetic_mG[1], magnetic_mG[2]);
+  LOG_D(TAG_MAG, "Magnetic field [mG]: %4.2f\t%4.2f\t%4.2f", magnetic_mG[0], magnetic_mG[1], magnetic_mG[2]);
 }

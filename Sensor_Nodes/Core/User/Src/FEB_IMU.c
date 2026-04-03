@@ -2,9 +2,12 @@
 #include "stm32f4xx_hal.h" //
 #include "stm32f4xx_hal_def.h"
 #include "FEB_IMU.h"
-#include <stdio.h>
 #include <string.h>
 #include "FEB_Main.h"
+
+#include "feb_log.h"
+
+#define TAG_IMU "[IMU]"
 
 stmdev_ctx_t lsm6dsox_ctx;
 extern I2C_HandleTypeDef hi2c3;
@@ -46,15 +49,15 @@ int32_t lsm6dsox_write(void *handle, uint8_t reg, const uint8_t *bufp, uint16_t 
 
 void i2c_scan(void)
 {
-  printf("Scanning I2C3...\r\n");
+  LOG_I(TAG_IMU, "Scanning I2C3...");
   for (uint8_t addr = 0x00; addr < 0x80; addr++)
   {
     if (HAL_I2C_IsDeviceReady(&hi2c3, addr << 1, 1, 10) == HAL_OK)
     {
-      printf("  Device found at 0x%02X\r\n", addr);
+      LOG_I(TAG_IMU, "Device found at 0x%02X", addr);
     }
   }
-  printf("Scan complete.\r\n");
+  LOG_I(TAG_IMU, "Scan complete");
 }
 
 void lsm6dsox_init(void)
@@ -72,7 +75,7 @@ void lsm6dsox_init(void)
   lsm6dsox_device_id_get(&lsm6dsox_ctx, &whoamI);
   if (whoamI != LSM6DSOX_ID)
   {
-    printf("IMU not found (WHO_AM_I: 0x%02X)\r\n", whoamI);
+    LOG_E(TAG_IMU, "IMU not found (WHO_AM_I: 0x%02X)", whoamI);
     return;
   }
 
@@ -84,7 +87,7 @@ void lsm6dsox_init(void)
     lsm6dsox_reset_get(&lsm6dsox_ctx, &rst);
     if (--timeout == 0)
     {
-      printf("IMU reset timeout\r\n");
+      LOG_E(TAG_IMU, "IMU reset timeout");
       return;
     }
   } while (rst);
@@ -104,7 +107,7 @@ void read_Acceleration(void)
   memset(data_raw_acceleration, 0x00, 3 * sizeof(int16_t));
   if (lsm6dsox_acceleration_raw_get(&lsm6dsox_ctx, data_raw_acceleration) != 0)
   {
-    printf("Accel read failed\r\n");
+    LOG_E(TAG_IMU, "Accel read failed");
     return;
   }
 
@@ -112,7 +115,7 @@ void read_Acceleration(void)
   acceleration_mg[1] = lsm6dsox_from_fs2_to_mg(data_raw_acceleration[1]);
   acceleration_mg[2] = lsm6dsox_from_fs2_to_mg(data_raw_acceleration[2]);
 
-  printf("Acceleration [mg]: %4.2f\t%4.2f\t%4.2f\r\n", acceleration_mg[0], acceleration_mg[1], acceleration_mg[2]);
+  LOG_D(TAG_IMU, "Acceleration [mg]: %4.2f\t%4.2f\t%4.2f", acceleration_mg[0], acceleration_mg[1], acceleration_mg[2]);
 }
 
 void read_Angular_Rate(void)
@@ -121,7 +124,7 @@ void read_Angular_Rate(void)
   memset(data_raw_angular_rate, 0x00, 3 * sizeof(int16_t));
   if (lsm6dsox_angular_rate_raw_get(&lsm6dsox_ctx, data_raw_angular_rate) != 0)
   {
-    printf("Gyro read failed\r\n");
+    LOG_E(TAG_IMU, "Gyro read failed");
     return;
   }
 
@@ -129,6 +132,6 @@ void read_Angular_Rate(void)
   angular_rate_mdps[1] = lsm6dsox_from_fs2000_to_mdps(data_raw_angular_rate[1]);
   angular_rate_mdps[2] = lsm6dsox_from_fs2000_to_mdps(data_raw_angular_rate[2]);
 
-  printf("Angular Rate [mdps]: %4.2f\t%4.2f\t%4.2f\r\n", angular_rate_mdps[0], angular_rate_mdps[1],
-         angular_rate_mdps[2]);
+  LOG_D(TAG_IMU, "Angular Rate [mdps]: %4.2f\t%4.2f\t%4.2f", angular_rate_mdps[0], angular_rate_mdps[1],
+        angular_rate_mdps[2]);
 }

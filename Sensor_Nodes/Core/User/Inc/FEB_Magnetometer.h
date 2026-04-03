@@ -1,5 +1,5 @@
-#ifndef MMETER_H
-#define MMETER_H
+#ifndef FEB_MAGNETOMETER_H
+#define FEB_MAGNETOMETER_H
 
 #ifdef __cplusplus
 extern "C"
@@ -25,4 +25,4 @@ extern "C"
 }
 #endif
 
-#endif /* MMETER_H */
+#endif /* FEB_MAGNETOMETER_H */
