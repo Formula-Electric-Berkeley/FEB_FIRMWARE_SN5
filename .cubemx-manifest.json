@@ -4,7 +4,7 @@
   "boards": {
     "BMS": {
       "ioc_checksum": "24054cc5eb53473c3ff9bb8612c5eff462049220ec72427a3d74ec67300feb3a",
-      "generated_at": "2026-04-03T00:13:39Z",
+      "generated_at": "2026-04-03T00:20:48Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "363755b7a21dd5a790f0bafbfd68f00abe141fd8691720b3604bc84b7dbaa81b",
         "Core/Inc/adc.h": "0ac97025a4065f07b7b65a906bd0c45ea800215434ed43c287c1685507f3f612",
@@ -75,7 +75,7 @@
     },
     "DASH": {
       "ioc_checksum": "e95ffc17bdded4d5b6be3894345d7149e5c93fd84b09279cd8888540662ce95e",
-      "generated_at": "2026-04-03T00:13:41Z",
+      "generated_at": "2026-04-03T00:20:50Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "692168cbc9c915133ce3f329cec850c5372c1759ec0412ced61fc14741de14be",
         "Core/Inc/can.h": "d9c82c8382c196a76d472a6b82a292a0384a086536ca280ce701ebbba9f5c682",
@@ -177,7 +177,7 @@
     },
     "DART": {
       "ioc_checksum": "ec3c85c2c8b4e4d94362ddb58b54f6882bbe337678213a16363428dc83171245",
-      "generated_at": "2026-04-03T00:13:41Z",
+      "generated_at": "2026-04-03T00:20:51Z",
       "files": {
         "Core/Inc/gpio.h": "e2d62f964a0b7f238384ed6a20a181d09df9647240a268dc547acf5b35099f74",
         "Core/Inc/main.h": "e07a43ebc634ce451e2f80884378d112e048e06235fb49fdc2d9a2b5057d28c5",
@@ -197,7 +197,7 @@
     },
     "DCU": {
       "ioc_checksum": "75f4a1174af99a72596dd7f739c38e22b0459b215bc0ddb3e22a6cfd49a8e736",
-      "generated_at": "2026-04-03T00:13:41Z",
+      "generated_at": "2026-04-03T00:20:51Z",
       "files": {
         "Core/Inc/gpio.h": "e2d62f964a0b7f238384ed6a20a181d09df9647240a268dc547acf5b35099f74",
         "Core/Inc/main.h": "e07a43ebc634ce451e2f80884378d112e048e06235fb49fdc2d9a2b5057d28c5",
@@ -217,7 +217,7 @@
     },
     "LVPDB": {
       "ioc_checksum": "35fab767f9e0e1027a136ca482edf00568850e7bd941f793ae156215fec1ca33",
-      "generated_at": "2026-04-03T00:13:42Z",
+      "generated_at": "2026-04-03T00:20:52Z",
       "files": {
         "Core/Inc/can.h": "17611aeff90b90e352bc2ace2749644663492ecb10c71539567ef9b1441fd5d9",
         "Core/Inc/dma.h": "7cf6f7450a29d26303cbba5a3ca8c6cb24a02635d6a5ba4d05141fdfc75c4c49",
@@ -245,7 +245,7 @@
     },
     "PCU": {
       "ioc_checksum": "dd91de27d45363f02d89b5341de246826cc4d72a9f77d219c6bf4ac072c24126",
-      "generated_at": "2026-04-03T00:13:43Z",
+      "generated_at": "2026-04-03T00:20:52Z",
       "files": {
         "Core/Inc/adc.h": "e36acfe1b822eff1de7e9f93073b8da32c94dd5b09484b716e190c6aa63eb3d0",
         "Core/Inc/can.h": "98925d7f4010f054e17d240116244377377c15248a5413a09ff811cdc23084e5",
@@ -275,7 +275,7 @@
     },
     "Sensor_Nodes": {
       "ioc_checksum": "1c63ba671240fd83c275813d0e27d1e7c68dc928d8f6e8c96eccdc4dbeb84590",
-      "generated_at": "2026-04-03T00:13:43Z",
+      "generated_at": "2026-04-03T00:20:53Z",
       "files": {
         "Core/Inc/adc.h": "0ac97025a4065f07b7b65a906bd0c45ea800215434ed43c287c1685507f3f612",
         "Core/Inc/can.h": "98925d7f4010f054e17d240116244377377c15248a5413a09ff811cdc23084e5",
@@ -290,7 +290,7 @@
         "Core/Src/can.c": "589dc8b641d52fdd91ac9df2efabb17e604228248601e5017359fd25c7778525",
         "Core/Src/gpio.c": "223a7c7c67a608e0063f54807fb18707ad2513bd7973947554d7619aea58642d",
         "Core/Src/i2c.c": "ad7c6a964844941003cc19eac436fd531c82106f18ef2e2e24afddd6363c3425",
-        "Core/Src/main.c": "421f1f8493ca388aa030556fe275e99bc4dff4204da219402cdcc053f5e2fe13",
+        "Core/Src/main.c": "60cd07b51bbfebc060d3382b9b1de09cee9c221d2d35c06ec8ec6644e8819ed0",
         "Core/Src/stm32f4xx_hal_msp.c": "3217d99dc7006dc46ac384717641fe84386f05fc71db0a3340fa0eae810bc1b7",
         "Core/Src/stm32f4xx_it.c": "6cdfba6e76754e5838ae60c659793a49f4f635f7aa5d7451c0bbd0bbc502e1c7",
         "Core/Src/syscalls.c": "03c06c72eafb44b499814cf9234aba57dd830f345d9b8779b5d7090e78517600",
@@ -303,7 +303,7 @@
     },
     "UART_TEST": {
       "ioc_checksum": "06c9618835096e44e3f73cd158bbc2e3fcf76e65dc9a29db68fe607180843efd",
-      "generated_at": "2026-04-03T00:13:44Z",
+      "generated_at": "2026-04-03T00:20:54Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "773dad076864ff18d5d85603d348d4931d29dde9925486e58f95a97ac98b8404",
         "Core/Inc/app_freertos.h": "6229601c2ebf192d40ceef377f3c1785571eaf6407f10bc87be5b06357dd3515",
