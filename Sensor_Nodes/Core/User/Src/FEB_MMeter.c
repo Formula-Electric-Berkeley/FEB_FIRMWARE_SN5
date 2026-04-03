@@ -3,7 +3,6 @@
 #include "stm32f4xx_hal_def.h"
 #include <stdio.h>
 #include <string.h>
-#include <FEB_MAIN.h>
 #include "FEB_Main.h"
 #include <FEB_IMU.h>
 

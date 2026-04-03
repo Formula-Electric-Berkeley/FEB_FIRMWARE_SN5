@@ -13852,7 +13852,7 @@ int32_t lsm6dsox_mode_get(const stmdev_ctx_t *ctx, stmdev_ctx_t *aux_ctx, lsm6ds
  */
 int32_t lsm6dsox_data_get(const stmdev_ctx_t *ctx, stmdev_ctx_t *aux_ctx, lsm6dsox_md_t *md, lsm6dsox_data_t *data)
 {
-  uint8_t buff[14];
+  uint8_t buff[14] = {0};
   int32_t ret;
 
   uint8_t i;
