@@ -13,6 +13,8 @@
 #define TAG_MAIN "[MAIN]"
 
 extern UART_HandleTypeDef huart2;
+extern DMA_HandleTypeDef hdma_usart2_tx;
+extern DMA_HandleTypeDef hdma_usart2_rx;
 
 static uint8_t uart_tx_buf[1024];
 static uint8_t uart_rx_buf[256];
@@ -27,11 +29,10 @@ void FEB_Update()
 void FEB_Init(void)
 {
   // Initialize UART library first (before any LOG calls)
-  // Note: No DMA on Sensor Node UART2
   FEB_UART_Config_t uart_cfg = {
       .huart = &huart2,
-      .hdma_tx = NULL,
-      .hdma_rx = NULL,
+      .hdma_tx = &hdma_usart2_tx,
+      .hdma_rx = &hdma_usart2_rx,
       .tx_buffer = uart_tx_buf,
       .tx_buffer_size = sizeof(uart_tx_buf),
       .rx_buffer = uart_rx_buf,
@@ -57,16 +58,16 @@ void FEB_Init(void)
   // Register Sensor Node specific commands
   SN_RegisterCommands();
 
-  LOG_I(TAG_MAIN, "Sensor Node Starting");
+  FEB_Console_Printf("Sensor Node Starting\r\n");
 
   // Initialize sensors
   lsm6dsox_init();
-  LOG_I(TAG_MAIN, "IMU initialized");
+  FEB_Console_Printf("IMU initialized\r\n");
 
   lis3mdl_init();
-  LOG_I(TAG_MAIN, "Magnetometer initialized");
+  FEB_Console_Printf("Magnetometer initialized\r\n");
 
-  LOG_I(TAG_MAIN, "Sensor Node Setup Complete");
+  FEB_Console_Printf("Sensor Node Setup Complete\r\n");
 }
 
 void FEB_Main_Loop(void)
