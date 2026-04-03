@@ -11,6 +11,7 @@ extern "C"
 #include "FEB_IMU.h" // for shared platform_read / platform_write
 
   extern I2C_HandleTypeDef hi2c3;
+  extern stmdev_ctx_t lis3mdl_ctx;
 
   /* Public initialization */
   void lis3mdl_init(void);

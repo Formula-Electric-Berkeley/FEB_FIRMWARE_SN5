@@ -5,6 +5,7 @@
 #include "lsm6dsox_reg.h"
 
 extern I2C_HandleTypeDef hi2c3;
+extern stmdev_ctx_t lsm6dsox_ctx;
 /* Public initialization */
 void lsm6dsox_init(void);
 

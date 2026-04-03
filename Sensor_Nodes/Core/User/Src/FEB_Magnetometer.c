@@ -33,13 +33,33 @@ void lis3mdl_init()
   lis3mdl_ctx.read_reg = lis3mdl_read;
   lis3mdl_ctx.mdelay = HAL_Delay;
   lis3mdl_ctx.handle = &hi2c3;
+
+  HAL_Delay(10);
+
+  uint8_t whoamI;
+  lis3mdl_device_id_get(&lis3mdl_ctx, &whoamI);
+  if (whoamI != LIS3MDL_ID)
+  {
+    LOG_E(TAG_MAG, "Magnetometer not found (WHO_AM_I: 0x%02X)", whoamI);
+    return;
+  }
+
+  lis3mdl_block_data_update_set(&lis3mdl_ctx, PROPERTY_ENABLE);
+  lis3mdl_temperature_meas_set(&lis3mdl_ctx, PROPERTY_ENABLE);
+  lis3mdl_data_rate_set(&lis3mdl_ctx, LIS3MDL_HP_80Hz);
+  lis3mdl_full_scale_set(&lis3mdl_ctx, LIS3MDL_16_GAUSS);
+  lis3mdl_operating_mode_set(&lis3mdl_ctx, LIS3MDL_CONTINUOUS_MODE);
 }
 
 void read_Magnetic_Field_Data()
 {
   /* Read and Print Magnetic Field Data */
   memset(data_raw_magnetic, 0x00, 3 * sizeof(int16_t));
-  lis3mdl_magnetic_raw_get(&lis3mdl_ctx, data_raw_magnetic);
+  if (lis3mdl_magnetic_raw_get(&lis3mdl_ctx, data_raw_magnetic) != 0)
+  {
+    LOG_E(TAG_MAG, "Mag read failed");
+    return;
+  }
 
   magnetic_mG[0] = 1000 * lis3mdl_from_fs16_to_gauss(data_raw_magnetic[0]);
   magnetic_mG[1] = 1000 * lis3mdl_from_fs16_to_gauss(data_raw_magnetic[1]);

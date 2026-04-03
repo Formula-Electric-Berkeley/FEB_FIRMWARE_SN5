@@ -1,5 +1,6 @@
 #include "FEB_IMU.h"
 #include "FEB_Magnetometer.h"
+#include "FEB_SN_Commands.h"
 #include "main.h"
 #include <string.h>
 #include "FEB_Main.h"
@@ -20,7 +21,7 @@ void FEB_Update()
 {
   read_Acceleration();
   read_Angular_Rate();
-  // read_Magnetic_Field_Data();
+  read_Magnetic_Field_Data();
 }
 
 void FEB_Init(void)
@@ -53,11 +54,17 @@ void FEB_Init(void)
   FEB_Console_Init(true);
   FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
 
+  // Register Sensor Node specific commands
+  SN_RegisterCommands();
+
   LOG_I(TAG_MAIN, "Sensor Node Starting");
 
   // Initialize sensors
   lsm6dsox_init();
   LOG_I(TAG_MAIN, "IMU initialized");
+
+  lis3mdl_init();
+  LOG_I(TAG_MAIN, "Magnetometer initialized");
 
   LOG_I(TAG_MAIN, "Sensor Node Setup Complete");
 }
