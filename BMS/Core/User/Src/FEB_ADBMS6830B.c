@@ -7,7 +7,7 @@
 #include "FEB_Config.h"
 // #include "FEB_CAN_IVT.h"
 #include "FEB_CMDCODES.h"
-#include "FEB_Cell_Temp_LUT.h"
+#include "FEB_Thermistor.h"
 #include "FEB_AD68xx_Interface.h"
 #include "FEB_ADBMS6830B_Driver.h"
 
@@ -310,8 +310,8 @@ static void store_cell_temps(uint8_t channel)
       float V1 = (convert_voltage(mux1) * 1000);
       float V2 = (convert_voltage(mux2) * 1000);
 
-      float T1 = FEB_Cell_Temp_LUT_Get_Temp_100mC((int)V1) * 0.1f;
-      float T2 = FEB_Cell_Temp_LUT_Get_Temp_100mC((int)V2) * 0.1f;
+      float T1 = FEB_Thermistor_Voltage_To_Temp_C(V1);
+      float T2 = FEB_Thermistor_Voltage_To_Temp_C(V2);
 
       DEBUG_TEMP_PRINT("Bank %d IC %d: V1=%.1fmV V2=%.1fmV T1=%.1fC T2=%.1fC", bank, icn, V1, V2, T1, T2);
 
