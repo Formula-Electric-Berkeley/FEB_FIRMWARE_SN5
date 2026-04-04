@@ -1,40 +1,78 @@
 #include "FEB_IMU.h"
-#include "FEB_MMeter.h"
-#include "FEB_TPS.h"
-#include "FEB_CAN.h"
+#include "FEB_Magnetometer.h"
+#include "FEB_SN_Commands.h"
 #include "main.h"
-#include <stdio.h>
 #include <string.h>
 #include "FEB_Main.h"
 
-void FEB_CAN_Rx_Callback(FEB_CAN_Bus_t bus, CAN_RxHeaderTypeDef *rx_header, void *data)
-{
-  // Handle received CAN messages
-  (void)bus;
-  (void)rx_header;
-  (void)data;
-}
+// Common libraries
+#include "feb_uart.h"
+#include "feb_log.h"
+#include "feb_console.h"
+
+#define TAG_MAIN "[MAIN]"
+
+extern UART_HandleTypeDef huart2;
+extern DMA_HandleTypeDef hdma_usart2_tx;
+extern DMA_HandleTypeDef hdma_usart2_rx;
+
+static uint8_t uart_tx_buf[1024];
+static uint8_t uart_rx_buf[256];
 
 void FEB_Update()
 {
   read_Acceleration();
   read_Angular_Rate();
-  // read_Magnetic_Field_Data();
-  printf("\r\n");
+  read_Magnetic_Field_Data();
 }
 
 void FEB_Init(void)
 {
-  // LOGI("[SETUP] Sensor Node Starting - IMU Test Mode\r\n");
+  // Initialize UART library first (before any LOG calls)
+  FEB_UART_Config_t uart_cfg = {
+      .huart = &huart2,
+      .hdma_tx = &hdma_usart2_tx,
+      .hdma_rx = &hdma_usart2_rx,
+      .tx_buffer = uart_tx_buf,
+      .tx_buffer_size = sizeof(uart_tx_buf),
+      .rx_buffer = uart_rx_buf,
+      .rx_buffer_size = sizeof(uart_rx_buf),
+      .get_tick_ms = HAL_GetTick,
+  };
+  FEB_UART_Init(FEB_UART_INSTANCE_1, &uart_cfg);
 
-  // Initialize IMU only
+  // Initialize logging system
+  FEB_Log_Config_t log_cfg = {
+      .uart_instance = FEB_UART_INSTANCE_1,
+      .level = FEB_LOG_DEBUG,
+      .colors = true,
+      .timestamps = true,
+      .get_tick_ms = HAL_GetTick,
+  };
+  FEB_Log_Init(&log_cfg);
+
+  // Initialize console with default commands
+  FEB_Console_Init(true);
+  FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
+
+  // Register Sensor Node specific commands
+  SN_RegisterCommands();
+
+  FEB_Console_Printf("Sensor Node Starting\r\n");
+
+  // Initialize sensors
   lsm6dsox_init();
-  // LOGI("[SETUP] IMU initialized\r\n");
+  FEB_Console_Printf("IMU initialized\r\n");
+
+  lis3mdl_init();
+  FEB_Console_Printf("Magnetometer initialized\r\n");
+
+  FEB_Console_Printf("Sensor Node Setup Complete\r\n");
 }
 
 void FEB_Main_Loop(void)
 {
-  // Update sensor readings and send CAN messages
   FEB_Update();
+  FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
   HAL_Delay(100);
 }

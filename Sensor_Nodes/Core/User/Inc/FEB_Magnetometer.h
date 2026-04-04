@@ -1,5 +1,5 @@
-#ifndef MMETER_H
-#define MMETER_H
+#ifndef FEB_MAGNETOMETER_H
+#define FEB_MAGNETOMETER_H
 
 #ifdef __cplusplus
 extern "C"
@@ -11,6 +11,7 @@ extern "C"
 #include "FEB_IMU.h" // for shared platform_read / platform_write
 
   extern I2C_HandleTypeDef hi2c3;
+  extern stmdev_ctx_t lis3mdl_ctx;
 
   /* Public initialization */
   void lis3mdl_init(void);
@@ -25,4 +26,4 @@ extern "C"
 }
 #endif
 
-#endif /* MMETER_H */
+#endif /* FEB_MAGNETOMETER_H */
