@@ -5,6 +5,7 @@
 
 #include "FEB_CAN_State.h"
 #include "FEB_IO.h"
+#include "FEB_RTD.h"
 #include "feb_can_lib.h"
 #include "feb_can.h"
 #include <stdbool.h>
@@ -71,10 +72,11 @@ void FEB_CAN_State_Tick(void)
   memset(tx_data, 0x00, sizeof(tx_data));
 
   IO_States_t states = FEB_IO_GetLastIOStates();
+  bool rtd = FEB_State_GetLastRTD();
 
   tx_data[0] = (states.button_rtd << 0) + (states.switch_coolant_pump_radiator_fan << 4) +
                (states.switch_accumulator_fans << 5) + (states.switch_logging << 6);
-  // tx_data[1] =
+  tx_data[1] = (states.buzzer_enabled << 0) + (rtd << 1);
 
   FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_DASH_STATE_FRAME_ID, FEB_CAN_ID_STD, tx_data, FEB_CAN_DASH_STATE_LENGTH);
 }

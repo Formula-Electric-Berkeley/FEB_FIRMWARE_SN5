@@ -33,6 +33,9 @@ typedef struct
 
   // Button states
   bool button_rtd;
+
+  // Buzzer state
+  bool buzzer_enabled;
 } IO_State_t;
 
 IO_State_t FEB_IO_GetLastIOStates(void);

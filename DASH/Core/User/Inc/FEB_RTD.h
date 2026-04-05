@@ -22,4 +22,6 @@ typedef enum
 
 void FEB_State_Update_RTD(void);
 
+bool FEB_State_GetLastRTD(void);
+
 #endif /* FEB_RTD_H */
