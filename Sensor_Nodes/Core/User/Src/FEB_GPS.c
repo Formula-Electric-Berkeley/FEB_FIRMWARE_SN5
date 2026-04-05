@@ -38,6 +38,7 @@ static bool gps_data_updated = false;
 
 /* Module state */
 static bool gps_initialized = false;
+static bool gps_had_fix = false; /* Track previous fix state for change detection */
 
 /* Forward declaration */
 static void gps_rx_line_callback(const char *line, size_t len);
@@ -128,46 +129,81 @@ void FEB_GPS_Process(void)
  */
 static void gps_rx_line_callback(const char *line, size_t len)
 {
-  if (len == 0 || line[0] != '$')
+  if (len == 0)
   {
+    LOG_T(TAG_GPS, "RX: empty line");
     return;
   }
+
+  if (line[0] != '$')
+  {
+    LOG_T(TAG_GPS, "RX: non-NMEA data (len=%zu, first=0x%02X)", len, (uint8_t)line[0]);
+    return;
+  }
+
+  /* Log raw NMEA sentence */
+  LOG_T(TAG_GPS, "RX: %.*s", (int)len, line);
 
   /* Feed the NMEA sentence to LwGPS parser */
   uint8_t result = lwgps_process(&gps_handle, line, len);
 
-  if (result > 0)
+  if (result == 0)
   {
-    /* Update our data structure from LwGPS */
-    gps_data.latitude = gps_handle.latitude;
-    gps_data.longitude = gps_handle.longitude;
-    gps_data.altitude = gps_handle.altitude;
-    gps_data.speed_kmh = lwgps_to_speed(gps_handle.speed, LWGPS_SPEED_KPH);
-    gps_data.course = gps_handle.course;
-
-    gps_data.hours = gps_handle.hours;
-    gps_data.minutes = gps_handle.minutes;
-    gps_data.seconds = gps_handle.seconds;
-
-    gps_data.day = gps_handle.date;
-    gps_data.month = gps_handle.month;
-    gps_data.year = gps_handle.year;
-
-    gps_data.fix = gps_handle.fix;
-    gps_data.fix_mode = gps_handle.fix_mode;
-    gps_data.sats_in_use = gps_handle.sats_in_use;
-    gps_data.sats_in_view = gps_handle.sats_in_view;
-
-    gps_data.hdop = gps_handle.dop_h;
-    gps_data.vdop = gps_handle.dop_v;
-    gps_data.pdop = gps_handle.dop_p;
-
-    gps_data.valid = gps_handle.is_valid;
-    gps_data.has_fix = (gps_handle.fix >= 1) && (gps_handle.fix_mode >= 2);
-    gps_data.last_update_ms = HAL_GetTick();
-
-    gps_data_updated = true;
+    LOG_W(TAG_GPS, "Parse failed for: %.20s...", line);
+    return;
   }
+
+  LOG_D(TAG_GPS, "Parsed %d statement(s)", result);
+
+  /* Update our data structure from LwGPS */
+  gps_data.latitude = gps_handle.latitude;
+  gps_data.longitude = gps_handle.longitude;
+  gps_data.altitude = gps_handle.altitude;
+  gps_data.speed_kmh = lwgps_to_speed(gps_handle.speed, LWGPS_SPEED_KPH);
+  gps_data.course = gps_handle.course;
+
+  gps_data.hours = gps_handle.hours;
+  gps_data.minutes = gps_handle.minutes;
+  gps_data.seconds = gps_handle.seconds;
+
+  gps_data.day = gps_handle.date;
+  gps_data.month = gps_handle.month;
+  gps_data.year = gps_handle.year;
+
+  gps_data.fix = gps_handle.fix;
+  gps_data.fix_mode = gps_handle.fix_mode;
+  gps_data.sats_in_use = gps_handle.sats_in_use;
+  gps_data.sats_in_view = gps_handle.sats_in_view;
+
+  gps_data.hdop = gps_handle.dop_h;
+  gps_data.vdop = gps_handle.dop_v;
+  gps_data.pdop = gps_handle.dop_p;
+
+  gps_data.valid = gps_handle.is_valid;
+  gps_data.has_fix = (gps_handle.fix >= 1) && (gps_handle.fix_mode >= 2);
+  gps_data.last_update_ms = HAL_GetTick();
+
+  gps_data_updated = true;
+
+  /* Log fix status changes */
+  if (gps_data.has_fix && !gps_had_fix)
+  {
+    LOG_I(TAG_GPS, "Fix acquired: mode=%d, sats=%d", gps_data.fix_mode, gps_data.sats_in_use);
+  }
+  else if (!gps_data.has_fix && gps_had_fix)
+  {
+    LOG_I(TAG_GPS, "Fix lost");
+  }
+  gps_had_fix = gps_data.has_fix;
+
+  /* Log detailed position data */
+  LOG_D(TAG_GPS, "Pos: lat=%.6f, lon=%.6f, alt=%.1fm", gps_data.latitude, gps_data.longitude, gps_data.altitude);
+  LOG_D(TAG_GPS, "Fix: type=%d, mode=%d, valid=%d, sats=%d/%d", gps_data.fix, gps_data.fix_mode, gps_data.valid,
+        gps_data.sats_in_use, gps_data.sats_in_view);
+  LOG_D(TAG_GPS, "DOP: h=%.2f, v=%.2f, p=%.2f", gps_data.hdop, gps_data.vdop, gps_data.pdop);
+  LOG_D(TAG_GPS, "Motion: speed=%.1f km/h, course=%.1f deg", gps_data.speed_kmh, gps_data.course);
+  LOG_D(TAG_GPS, "Time: %02d:%02d:%02d UTC, Date: %02d/%02d/20%02d", gps_data.hours, gps_data.minutes, gps_data.seconds,
+        gps_data.month, gps_data.day, gps_data.year);
 }
 
 /**
@@ -214,16 +250,29 @@ static uint8_t pmtk_checksum(const char *cmd)
  */
 int FEB_GPS_SendPMTKCommand(const char *cmd)
 {
-  if (!gps_initialized || cmd == NULL)
+  if (!gps_initialized)
   {
+    LOG_W(TAG_GPS, "SendPMTK: not initialized");
+    return -1;
+  }
+  if (cmd == NULL)
+  {
+    LOG_W(TAG_GPS, "SendPMTK: NULL command");
     return -1;
   }
 
   /* Calculate checksum */
   uint8_t checksum = pmtk_checksum(cmd);
 
+  LOG_D(TAG_GPS, "TX: $%s*%02X", cmd, checksum);
+
   /* Format and send: $<cmd>*XX\r\n */
-  return FEB_UART_Printf(FEB_UART_INSTANCE_2, "$%s*%02X\r\n", cmd, checksum);
+  int result = FEB_UART_Printf(FEB_UART_INSTANCE_2, "$%s*%02X\r\n", cmd, checksum);
+  if (result < 0)
+  {
+    LOG_E(TAG_GPS, "PMTK send failed: %d", result);
+  }
+  return result;
 }
 
 /**
@@ -245,8 +294,11 @@ int FEB_GPS_SetUpdateRate(uint8_t hz)
     period_ms = 100;
     break;
   default:
+    LOG_W(TAG_GPS, "Invalid update rate: %d Hz (must be 1, 5, or 10)", hz);
     return -1;
   }
+
+  LOG_I(TAG_GPS, "Setting update rate to %d Hz (%d ms)", hz, period_ms);
 
   char cmd[32];
   snprintf(cmd, sizeof(cmd), "PMTK220,%u", period_ms);
@@ -262,6 +314,8 @@ int FEB_GPS_SetUpdateRate(uint8_t hz)
  */
 int FEB_GPS_ConfigureOutput(bool gga, bool gsa, bool gsv, bool rmc)
 {
+  LOG_I(TAG_GPS, "Configuring output: GGA=%d, GSA=%d, GSV=%d, RMC=%d", gga, gsa, gsv, rmc);
+
   char cmd[64];
 
   /* Build PMTK314 command with desired sentence frequencies */
@@ -278,7 +332,19 @@ int FEB_GPS_ConfigureOutput(bool gga, bool gsa, bool gsv, bool rmc)
  */
 void FEB_GPS_SetEnabled(bool enable)
 {
+  LOG_I(TAG_GPS, "GPS %s", enable ? "enabled" : "disabled");
+
   HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, enable ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+  if (!enable)
+  {
+    /* Clear stale GPS data when disabling to prevent false fix reports */
+    lwgps_init(&gps_handle);
+    memset(&gps_data, 0, sizeof(gps_data));
+    gps_data_updated = false;
+    gps_had_fix = false;
+    LOG_D(TAG_GPS, "Cleared GPS data and fix state");
+  }
 }
 
 /**

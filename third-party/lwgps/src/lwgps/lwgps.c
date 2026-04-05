@@ -68,6 +68,7 @@
     (((x) >= '0' && (x) <= '9')                                                                                        \
          ? ((x) - '0')                                                                                                 \
          : (((x) >= 'a' && (x) <= 'z') ? ((x) - 'a' + 10) : (((x) >= 'A' && (x) <= 'Z') ? ((x) - 'A' + 10) : 0)))
+#define TERM_LEN_OK(_gh, _min) ((_gh)->p.term_pos >= (_min))
 
 /**
  * \brief           Parse number as integer
@@ -187,9 +188,11 @@ prv_parse_term(lwgps_t* gh) {
     } else if (gh->p.stat == STAT_GGA) { /* Process GPGGA statement */
         switch (gh->p.term_num) {
             case 1: /* Process UTC time */
-                gh->p.data.gga.hours = 10 * CTN(gh->p.term_str[0]) + CTN(gh->p.term_str[1]);
-                gh->p.data.gga.minutes = 10 * CTN(gh->p.term_str[2]) + CTN(gh->p.term_str[3]);
-                gh->p.data.gga.seconds = 10 * CTN(gh->p.term_str[4]) + CTN(gh->p.term_str[5]);
+                if (TERM_LEN_OK(gh, 6)) {
+                    gh->p.data.gga.hours = 10 * CTN(gh->p.term_str[0]) + CTN(gh->p.term_str[1]);
+                    gh->p.data.gga.minutes = 10 * CTN(gh->p.term_str[2]) + CTN(gh->p.term_str[3]);
+                    gh->p.data.gga.seconds = 10 * CTN(gh->p.term_str[4]) + CTN(gh->p.term_str[5]);
+                }
                 break;
             case 2:                                               /* Latitude */
                 gh->p.data.gga.latitude = prv_parse_lat_long(gh); /* Parse latitude */
@@ -267,9 +270,11 @@ prv_parse_term(lwgps_t* gh) {
             case 7: /* Process ground speed in knots */ gh->p.data.rmc.speed = prv_parse_float_number(gh, NULL); break;
             case 8: /* Process true ground coarse */ gh->p.data.rmc.course = prv_parse_float_number(gh, NULL); break;
             case 9: /* Process date */
-                gh->p.data.rmc.date = (uint8_t)(10 * CTN(gh->p.term_str[0]) + CTN(gh->p.term_str[1]));
-                gh->p.data.rmc.month = (uint8_t)(10 * CTN(gh->p.term_str[2]) + CTN(gh->p.term_str[3]));
-                gh->p.data.rmc.year = (uint8_t)(10 * CTN(gh->p.term_str[4]) + CTN(gh->p.term_str[5]));
+                if (TERM_LEN_OK(gh, 6)) {
+                    gh->p.data.rmc.date = (uint8_t)(10 * CTN(gh->p.term_str[0]) + CTN(gh->p.term_str[1]));
+                    gh->p.data.rmc.month = (uint8_t)(10 * CTN(gh->p.term_str[2]) + CTN(gh->p.term_str[3]));
+                    gh->p.data.rmc.year = (uint8_t)(10 * CTN(gh->p.term_str[4]) + CTN(gh->p.term_str[5]));
+                }
                 break;
             case 10: /* Process magnetic variation */
                 gh->p.data.rmc.variation = prv_parse_float_number(gh, NULL);
@@ -564,12 +569,13 @@ lwgps_to_speed(lwgps_float_t sik, lwgps_speed_t ts) {
         case LWGPS_SPEED_MPH: return FLT(sik * FLT(1.151));
         case LWGPS_SPEED_FPS: return FLT(sik * FLT(1.688));
         case LWGPS_SPEED_FPM: return FLT(sik * FLT(101.3));
-        case LWGPS_SPEED_MPK: return FLT(sik * FLT(32.4));
-        case LWGPS_SPEED_SPK: return FLT(sik * FLT(1944.0));
-        case LWGPS_SPEED_SP100M: return FLT(sik * FLT(194.4));
-        case LWGPS_SPEED_MIPM: return FLT(sik * FLT(52.14));
-        case LWGPS_SPEED_SPM: return FLT(sik * FLT(3128.0));
-        case LWGPS_SPEED_SP100Y: return FLT(sik * FLT(177.7));
+        /* Pace conversions (time per distance) - use reciprocal with zero guard */
+        case LWGPS_SPEED_MPK: return sik > FLT(0.0) ? FLT(FLT(32.4) / sik) : FLT(0.0);
+        case LWGPS_SPEED_SPK: return sik > FLT(0.0) ? FLT(FLT(1944.0) / sik) : FLT(0.0);
+        case LWGPS_SPEED_SP100M: return sik > FLT(0.0) ? FLT(FLT(194.4) / sik) : FLT(0.0);
+        case LWGPS_SPEED_MIPM: return sik > FLT(0.0) ? FLT(FLT(52.14) / sik) : FLT(0.0);
+        case LWGPS_SPEED_SPM: return sik > FLT(0.0) ? FLT(FLT(3128.0) / sik) : FLT(0.0);
+        case LWGPS_SPEED_SP100Y: return sik > FLT(0.0) ? FLT(FLT(177.7) / sik) : FLT(0.0);
         case LWGPS_SPEED_SMPH: return FLT(sik * FLT(1.0));
         default: return 0;
     }

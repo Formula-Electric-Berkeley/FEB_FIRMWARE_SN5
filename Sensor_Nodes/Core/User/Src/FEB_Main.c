@@ -40,12 +40,16 @@ void FEB_Init(void)
       .rx_buffer_size = sizeof(uart_rx_buf),
       .get_tick_ms = HAL_GetTick,
   };
-  FEB_UART_Init(FEB_UART_INSTANCE_1, &uart_cfg);
+  int uart_result = FEB_UART_Init(FEB_UART_INSTANCE_1, &uart_cfg);
+  if (uart_result != FEB_UART_OK)
+  {
+    Error_Handler();
+  }
 
   // Initialize logging system
   FEB_Log_Config_t log_cfg = {
       .uart_instance = FEB_UART_INSTANCE_1,
-      .level = FEB_LOG_DEBUG,
+      .level = FEB_LOG_TRACE,
       .colors = true,
       .timestamps = true,
       .get_tick_ms = HAL_GetTick,
@@ -69,9 +73,20 @@ void FEB_Init(void)
   FEB_Console_Printf("Magnetometer initialized\r\n");
 
   // Initialize GPS
-  FEB_GPS_Init();
-  FEB_GPS_ConfigureOutput(true, true, false, true); // GGA, GSA, RMC (no GSV)
-  FEB_Console_Printf("GPS initialized\r\n");
+  int gps_result = FEB_GPS_Init();
+  if (gps_result != 0)
+  {
+    LOG_E(TAG_MAIN, "GPS init failed: %d", gps_result);
+  }
+  else
+  {
+    int cfg_result = FEB_GPS_ConfigureOutput(true, true, false, true); // GGA, GSA, RMC (no GSV)
+    if (cfg_result < 0)
+    {
+      LOG_W(TAG_MAIN, "GPS config output failed: %d", cfg_result);
+    }
+    FEB_Console_Printf("GPS initialized\r\n");
+  }
 
   FEB_Console_Printf("Sensor Node Setup Complete\r\n");
 }

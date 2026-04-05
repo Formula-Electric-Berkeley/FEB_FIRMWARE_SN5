@@ -293,8 +293,10 @@ uint8_t lwgps_process(lwgps_t* gh, const void* data, size_t len, lwgps_process_f
 #else  /* LWGPS_CFG_STATUS */
 uint8_t lwgps_process(lwgps_t* gh, const void* data, size_t len);
 #endif /* !LWGPS_CFG_STATUS */
+#if LWESP_CFG_DISTANCE_BEARING || __DOXYGEN__
 uint8_t lwgps_distance_bearing(lwgps_float_t las, lwgps_float_t los, lwgps_float_t lae, lwgps_float_t loe,
                                lwgps_float_t* d, lwgps_float_t* b);
+#endif /* LWESP_CFG_DISTANCE_BEARING || __DOXYGEN__ */
 lwgps_float_t lwgps_to_speed(lwgps_float_t sik, lwgps_speed_t ts);
 
 /**

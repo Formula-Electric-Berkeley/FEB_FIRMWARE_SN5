@@ -40,7 +40,7 @@ void FEB_CAN_DASH_Init(void)
   /* Register for dash_io message (0x10) */
   FEB_CAN_RX_Params_t params = {
       .instance = FEB_CAN_INSTANCE_1,
-      .can_id = FEB_CAN_DASH_IO_FRAME_ID,
+      .can_id = FEB_CAN_DASH_STATE_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,
       .mask = 0,
@@ -65,22 +65,22 @@ static void FEB_CAN_DASH_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, 
   (void)id_type;
   (void)user_data;
 
-  if (length < FEB_CAN_DASH_IO_LENGTH)
+  if (length < FEB_CAN_DASH_STATE_LENGTH)
   {
     return; /* Invalid message length */
   }
 
   /* Unpack using generated function */
-  struct feb_can_dash_io_t msg;
-  feb_can_dash_io_unpack(&msg, data, length);
+  struct feb_can_dash_state_t msg;
+  feb_can_dash_state_unpack(&msg, data, length);
 
   /* Update volatile data - order matters for consistency
    * Write data first, then timestamp to indicate fresh data */
-  DASH_IO.ready_to_drive = (msg.b1_ready_to_drive != 0);
-  DASH_IO.data_logging = (msg.b2_data_logging != 0);
-  DASH_IO.coolant_pump = (msg.s1_coolant_pump != 0);
-  DASH_IO.radiator_fan = (msg.s2_radiator_fan != 0);
-  DASH_IO.accumulator_fan = (msg.s3_accumulator_fan != 0);
+  DASH_IO.ready_to_drive = (msg.ready_to_drive != 0);
+  DASH_IO.data_logging = (msg.button2 != 0);
+  DASH_IO.coolant_pump = (msg.switch1 != 0);
+  DASH_IO.radiator_fan = (msg.switch2 != 0);
+  DASH_IO.accumulator_fan = (msg.switch3 != 0);
 
   /* Compiler barrier to ensure writes complete before timestamp */
   __DMB();

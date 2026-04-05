@@ -66,7 +66,7 @@ static uint8_t FEB_CAN_LVPDB_Filter(CAN_HandleTypeDef *hcan, unsigned char FIFO_
 
   // For standard IDs, place them in the top 11 bits of each 16-bit half-word (left shift by 5)
   filter_config.FilterIdHigh = FEB_CAN_BRAKE_FRAME_ID << 5;
-  filter_config.FilterIdLow = FEB_CAN_DASH_IO_FRAME_ID << 5;
+  filter_config.FilterIdLow = FEB_CAN_DASH_STATE_FRAME_ID << 5;
 
   // Not used in IDLIST mode but must be initialized
   filter_config.FilterMaskIdHigh = 0;
