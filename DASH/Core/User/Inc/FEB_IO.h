@@ -33,9 +33,9 @@ typedef struct
 
   // Button states
   bool button_rtd;
-} IO_Switch_States_t;
+} IO_State_t;
 
-IO_Switch_States_t FEB_IO_GetLastIOStates(void);
+IO_State_t FEB_IO_GetLastIOStates(void);
 
 void FEB_IO_Set_Buzzer(bool new_state);
 

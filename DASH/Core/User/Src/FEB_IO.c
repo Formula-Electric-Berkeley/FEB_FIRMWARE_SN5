@@ -27,10 +27,10 @@ extern UART_HandleTypeDef huart3;
 
 static uint32_t end_buzzer_tick = 0;
 
-static IO_Switch_States_t state = {.switch_coolant_pump_radiator_fan = false,
-                                   .switch_accumulator_fans = false,
-                                   .button_rtd = false,
-                                   .switch_logging = false};
+static IO_States_t state = {.switch_coolant_pump_radiator_fan = false,
+                            .switch_accumulator_fans = false,
+                            .button_rtd = false,
+                            .switch_logging = false};
 
 static bool buzzer_enabled = false;
 
@@ -244,7 +244,7 @@ void FEB_IO_Play_Buzzer(uint32_t duration)
 // FEB_CAN_ICS_Transmit_Button_State(IO_state);
 // }
 
-IO_Switch_States_t FEB_IO_GetLastIOStates(void)
+IO_States_t FEB_IO_GetLastIOStates(void)
 {
   return state;
 }

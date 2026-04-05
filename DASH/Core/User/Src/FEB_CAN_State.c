@@ -4,6 +4,7 @@
  */
 
 #include "FEB_CAN_State.h"
+#include "FEB_IO.h"
 #include "feb_can_lib.h"
 #include "feb_can.h"
 #include <stdbool.h>
@@ -53,4 +54,27 @@ void FEB_CAN_State_Tick(void)
     FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_DASH_HEARTBEAT_FRAME_ID, FEB_CAN_ID_STD, tx_data,
                     FEB_CAN_DASH_HEARTBEAT_LENGTH);
   }
+
+  // CAN_DASH_STATE_FRAME Bits
+  // 0: button1
+  // 1: button2
+  // 2: button3
+  // 3: button4
+  // 4: switch4
+  // 5: switch5
+  // 6: switch6
+  // 7: switch7
+  // 8: buzzer on/off
+  // 9: ready_to_drive
+
+  uint8_t tx_data[2];
+  memset(tx_data, 0x00, sizeof(tx_data));
+
+  IO_States_t states = FEB_IO_GetLastIOStates();
+
+  tx_data[0] = (states.button_rtd << 0) + (states.switch_coolant_pump_radiator_fan << 4) +
+               (states.switch_accumulator_fans << 5) + (states.switch_logging << 6);
+  // tx_data[1] =
+
+  FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_DASH_STATE_FRAME_ID, FEB_CAN_ID_STD, tx_data, FEB_CAN_DASH_STATE_LENGTH);
 }
