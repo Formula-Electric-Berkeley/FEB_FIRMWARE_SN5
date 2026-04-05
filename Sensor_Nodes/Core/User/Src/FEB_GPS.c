@@ -142,10 +142,22 @@ static void gps_rx_line_callback(const char *line, size_t len)
   }
 
   /* Log raw NMEA sentence */
-  LOG_T(TAG_GPS, "RX: %.*s", (int)len, line);
+  LOG_D(TAG_GPS, "RX: %.*s", (int)len, line);
 
   /* Feed the NMEA sentence to LwGPS parser */
-  uint8_t result = lwgps_process(&gps_handle, line, len);
+  /* Append \r because lwgps requires it to commit parsed data from temp storage */
+  char line_with_cr[256];
+  size_t parse_len = len;
+  const char *parse_buf = line;
+  if (len < sizeof(line_with_cr) - 2)
+  {
+    memcpy(line_with_cr, line, len);
+    line_with_cr[len] = '\r';
+    line_with_cr[len + 1] = '\0';
+    parse_len = len + 1;
+    parse_buf = line_with_cr;
+  }
+  uint8_t result = lwgps_process(&gps_handle, parse_buf, parse_len);
 
   if (result == 0)
   {
