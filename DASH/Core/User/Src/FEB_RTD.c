@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+static bool rtd = false;
+
 static uint32_t rtd_button_press_start_tick = 0;
 static bool previous_rtd_button = false;
 
@@ -32,7 +34,7 @@ void FEB_State_Update_RTD(void)
 
   // MARK: Signal enter rtd code
   // Send the ready to drive message over CAN when all the conditions are met
-  IO_Switch_States_t states = FEB_IO_GetLastIOStates();
+  IO_States_t states = FEB_IO_GetLastIOStates();
   uint8_t brake_pressure = FEB_CAN_PCU_GetLastBreakPosition();
   uint8_t inv_enabled = FEB_CAN_PCU_GetLastRMSEnabled();
 
@@ -43,13 +45,14 @@ void FEB_State_Update_RTD(void)
 
   if (states.button_rtd && rtd_button_press_start_tick + RTD_BUTTON_HOLD_DURATION < HAL_GetTick())
   {
-    FEB_IO_Play_Buzzer(BUZZER_DURATION_RTD_ENTER);
+    // FEB_IO_Play_Buzzer(BUZZER_DURATION_RTD_ENTER);
+    rtd = true;
   }
 
   previous_rtd_button = states.button_rtd;
+}
 
-  if (states.button_rtd)
-  {
-    printf("Button pressed");
-  }
+bool FEB_State_GetLastRTD(void)
+{
+  return rtd;
 }

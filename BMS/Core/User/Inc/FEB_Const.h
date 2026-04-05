@@ -34,12 +34,23 @@
 #define ADBMS_ADC_LSB_V 0.000150f // ADC resolution in volts
 #define ADBMS_ADC_OFFSET_V 1.5f   // ADC bipolar offset voltage
 
-// ********************************** Thermistor Conversion Constants *************
-// Placeholder values - calibrate for actual hardware
+// ********************************** Thermistor Beta Parameter Constants *********
+// NTC Thermistor conversion using Beta parameter equation
 
-#define THERM_REF_VOLTAGE_MV 2500        // Reference voltage at 25°C
-#define THERM_REF_TEMP_C 25.0f           // Reference temperature
-#define THERM_SENSITIVITY_MV_PER_C 10.0f // mV per degree C
+#define THERM_R_REF_OHMS 10000.0f    // Reference resistance at 25°C (10k NTC)
+#define THERM_T_REF_K 298.15f        // Reference temperature in Kelvin (25°C)
+#define THERM_BETA 3428.0f           // Beta coefficient from datasheet
+#define THERM_R_PULLUP_OHMS 10000.0f // Pull-up resistor value (R1)
+#define THERM_VS_MV 5000.0f          // Supply voltage in mV (5V)
+
+// Pre-computed values for optimization
+#define THERM_INV_T_REF (1.0f / THERM_T_REF_K) // 1/T_ref
+#define THERM_INV_BETA (1.0f / THERM_BETA)     // 1/B
+#define THERM_KELVIN_OFFSET 273.15f            // K to C conversion
+
+// Voltage bounds for valid thermistor readings (in mV)
+#define THERM_MIN_VOLTAGE_MV 100.0f  // Below this: open circuit / disconnected
+#define THERM_MAX_VOLTAGE_MV 4900.0f // Above this: short circuit / sensor fault
 
 // ********************************** Error Type Codes ****************************
 
