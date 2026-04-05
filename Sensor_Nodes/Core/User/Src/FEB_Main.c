@@ -1,5 +1,6 @@
 #include "FEB_IMU.h"
 #include "FEB_Magnetometer.h"
+#include "FEB_GPS.h"
 #include "FEB_SN_Commands.h"
 #include "main.h"
 #include <string.h>
@@ -67,6 +68,11 @@ void FEB_Init(void)
   lis3mdl_init();
   FEB_Console_Printf("Magnetometer initialized\r\n");
 
+  // Initialize GPS
+  FEB_GPS_Init();
+  FEB_GPS_ConfigureOutput(true, true, false, true); // GGA, GSA, RMC (no GSV)
+  FEB_Console_Printf("GPS initialized\r\n");
+
   FEB_Console_Printf("Sensor Node Setup Complete\r\n");
 }
 
@@ -74,5 +80,6 @@ void FEB_Main_Loop(void)
 {
   FEB_Update();
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
+  FEB_GPS_Process();
   HAL_Delay(100);
 }
