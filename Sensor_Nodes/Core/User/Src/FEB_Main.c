@@ -5,7 +5,7 @@
 #include "main.h"
 #include <string.h>
 #include "FEB_Main.h"
-
+#include "FEB_CAN_IMU.h"
 // Common libraries
 #include "feb_uart.h"
 #include "feb_log.h"
@@ -25,6 +25,7 @@ void FEB_Update()
   read_Acceleration();
   read_Angular_Rate();
   read_Magnetic_Field_Data();
+  FEB_CAN_IMU_Tick();
 }
 
 void FEB_Init(void)
@@ -94,6 +95,7 @@ void FEB_Init(void)
 void FEB_Main_Loop(void)
 {
   FEB_Update();
+
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
   FEB_GPS_Process();
   HAL_Delay(100);

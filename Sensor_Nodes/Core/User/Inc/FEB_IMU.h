@@ -6,6 +6,13 @@
 
 extern I2C_HandleTypeDef hi2c3;
 extern stmdev_ctx_t lsm6dsox_ctx;
+
+extern int16_t data_raw_acceleration[3];
+extern float_t acceleration_mg[3];
+
+extern int16_t data_raw_angular_rate[3];
+extern float_t angular_rate_mdps[3];
+
 /* Public initialization */
 void lsm6dsox_init(void);
 

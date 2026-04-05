@@ -15,11 +15,11 @@ extern I2C_HandleTypeDef hi2c3;
 #define I2C_TIMEOUT_MS 100
 extern UART_HandleTypeDef huart2;
 
-static int16_t data_raw_acceleration[3];
-static float_t acceleration_mg[3];
+int16_t data_raw_acceleration[3];
+float_t acceleration_mg[3];
 
-static int16_t data_raw_angular_rate[3];
-static float_t angular_rate_mdps[3];
+int16_t data_raw_angular_rate[3];
+float_t angular_rate_mdps[3];
 
 // static uint8_t tx_buffer[1000];
 
