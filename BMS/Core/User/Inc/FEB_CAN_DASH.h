@@ -15,24 +15,6 @@
 #include <stdint.h>
 
 /**
- * @brief DASH IO signal storage
- * @note Updated from CAN RX callback (ISR context)
- * @note Read from main task context
- */
-typedef struct
-{
-  volatile bool ready_to_drive;   // b1_ready_to_drive signal
-  volatile bool data_logging;     // b2_data_logging signal
-  volatile bool coolant_pump;     // s1_coolant_pump signal
-  volatile bool radiator_fan;     // s2_radiator_fan signal
-  volatile bool accumulator_fan;  // s3_accumulator_fan signal
-  volatile uint32_t last_rx_tick; // HAL_GetTick() when last message received
-} FEB_DASH_IO_t;
-
-/* Global instance - defined in FEB_CAN_DASH.c */
-extern FEB_DASH_IO_t DASH_IO;
-
-/**
  * @brief Initialize DASH CAN message reception
  * @note Call after FEB_CAN_Init() in StartBMSTaskRx
  */
