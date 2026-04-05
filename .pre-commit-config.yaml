@@ -35,8 +35,16 @@ repos:
       # cppcheck static analysis on user code only (skips if not installed)
       - id: cppcheck
         name: cppcheck
-        entry: bash -c 'if ! command -v cppcheck &>/dev/null; then echo "cppcheck not installed, skipping (install via brew install cppcheck)"; exit 0; fi; for board in BMS DASH DART DCU LVPDB PCU Sensor_Nodes; do if [ -d "$board/Core/User" ] && find "$board/Core/User" -name "*.c" -print -quit 2>/dev/null | grep -q .; then cppcheck --quiet --enable=warning,performance,portability --suppress=missingIncludeSystem --suppress=unmatchedSuppression --error-exitcode=1 "$board/Core/User/"; fi; done'
+        entry: bash -c 'if ! command -v cppcheck &>/dev/null; then echo "cppcheck not installed, skipping (install via brew install cppcheck)"; exit 0; fi; for board in BMS DASH DART DCU LVPDB PCU Sensor_Nodes; do if [ -d "$board/Core/User" ] && find "$board/Core/User" -name "*.c" -print -quit 2>/dev/null | grep -q .; then cppcheck --quiet --enable=warning,performance,portability --suppress=missingIncludeSystem --suppress=unmatchedSuppression --suppress=uninitvar:*lsm6dsox_reg.c* --suppress=legacyUninitvar:*lsm6dsox_reg.c* --error-exitcode=1 "$board/Core/User/"; fi; done'
         language: system
         types: [c]
         pass_filenames: false
         files: Core/User/
+
+      # CubeMX sync check - ensures .ioc changes include regenerated code
+      - id: cubemx-sync
+        name: cubemx-sync
+        entry: ./scripts/cubemx-sync.sh --check
+        language: script
+        pass_filenames: false
+        always_run: true

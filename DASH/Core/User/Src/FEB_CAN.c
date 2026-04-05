@@ -21,12 +21,21 @@
 #include "feb_can_lib.h"
 #include "cmsis_os2.h"
 #include "main.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
 
 /* ========================== External HAL handles ========================== */
 extern CAN_HandleTypeDef hcan1;
+
+/* ========================== External FreeRTOS handles (from CubeMX) ========================== */
+/* NOTE: These are created in CubeMX .ioc and defined in freertos.c */
+/* Names in .ioc are without "Handle" suffix; CubeMX adds it automatically */
+extern osMessageQueueId_t canTxQueueHandle;
+extern osMessageQueueId_t canRxQueueHandle;
+extern osMutexId_t canTxMutexHandle;
+extern osMutexId_t canRxMutexHandle;
+extern osSemaphoreId_t canTxMailboxSemHandle;
 
 /* ========================== Module tag for logging ========================== */
 #define TAG_CAN "[CAN]"
@@ -56,9 +65,14 @@ static void DASH_CAN_Init(void)
   FEB_CAN_Config_t cfg = {
       .hcan1 = &hcan1,
       .hcan2 = NULL,
-      .tx_queue_size = 16,
-      .rx_queue_size = 32,
       .get_tick_ms = HAL_GetTick,
+#if FEB_CAN_USE_FREERTOS
+      .tx_queue = canTxQueueHandle,
+      .rx_queue = canRxQueueHandle,
+      .tx_mutex = canTxMutexHandle,
+      .rx_mutex = canRxMutexHandle,
+      .tx_mailbox_sem = canTxMailboxSemHandle,
+#endif
   };
 
   if (FEB_CAN_Init(&cfg) != FEB_CAN_OK)

@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2026 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2025 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -37,10 +37,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdio.h>
 #include "FEB_Main.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -127,6 +127,10 @@ int main(void)
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
   printf("[BOOT] UART ready @115200 (USART3)\r\n");
+  /* Note: FEB_Init calls FEB_Log_Init which uses logMutexHandle.
+   * The mutex is NULL here (created in MX_FREERTOS_Init below).
+   * feb_log.c has NULL guards so early logs are unprotected but safe
+   * since we're still single-threaded at this point. */
   FEB_Init();
   /* USER CODE END 2 */
 

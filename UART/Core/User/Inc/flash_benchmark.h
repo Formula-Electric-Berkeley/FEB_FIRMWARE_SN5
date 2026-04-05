@@ -57,6 +57,7 @@ extern "C"
     FLASH_BENCH_ERR_PROGRAM,
     FLASH_BENCH_ERR_VERIFY,
     FLASH_BENCH_ERR_LOCK,
+    FLASH_BENCH_ERR_MUTEX,
   } FlashBench_Status_t;
 
   typedef struct

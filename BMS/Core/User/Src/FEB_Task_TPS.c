@@ -7,61 +7,144 @@
  */
 
 #include "FEB_Task_TPS.h"
-#include "TPS2482.h"
-#include "i2c.h"
+#include "i2c.h" /* Must be before feb_tps.h for HAL types */
+#include "feb_tps.h"
 #include "cmsis_os.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 #include <stdbool.h>
 
 #define TAG_TPS "[TPS]"
 
-/* TPS2482 configuration */
-#define BMS_TPS_ADDR TPS2482_I2C_ADDR(TPS2482_I2C_ADDR_GND, TPS2482_I2C_ADDR_GND)
-#define BMS_TPS_R_SHUNT 0.002 /* 2 mOhm shunt resistor (WSR52L000FEA) */
-#define BMS_TPS_I_MAX 5.0     /* 5A fuse max */
-#define BMS_TPS_CURRENT_LSB TPS2482_CURRENT_LSB_EQ(BMS_TPS_I_MAX)
-#define BMS_TPS_CAL TPS2482_CAL_EQ(BMS_TPS_CURRENT_LSB, BMS_TPS_R_SHUNT)
+/* ========================== External FreeRTOS handles (from CubeMX) ========================== */
+/* NOTE: These are created in CubeMX .ioc and defined in freertos.c */
+extern osMutexId_t tpsDataMutexHandle;
+extern osMutexId_t tpsI2cMutexHandle;
 
-/* ===== StartTPSTask =====
-   Low-priority task for TPS2482 power monitoring
-   - Monitors LV bus voltage and current
-   - Single TPS2482 with A0=GND, A1=GND */
+/* TPS2482 configuration */
+#define BMS_TPS_R_SHUNT 0.002f /* 2 mOhm shunt resistor (WSR52L000FEA) */
+#define BMS_TPS_I_MAX 5.0f     /* 5A fuse max */
+
+/* Device handle */
+static FEB_TPS_Handle_t bms_tps_handle = NULL;
+
+/**
+ * Forward TPS library log messages to the application logger with level mapping.
+ *
+ * Maps FEB_TPS log levels to
+ * the system LOG_* macros and logs the provided message.
+ *
+ * @param level Log level from the FEB_TPS library.
+ *
+ * @param msg   Null-terminated message string to be logged.
+ */
+static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg)
+{
+  switch (level)
+  {
+  case FEB_TPS_LOG_ERROR:
+    LOG_E(TAG_TPS, "%s", msg);
+    break;
+  case FEB_TPS_LOG_WARN:
+    LOG_W(TAG_TPS, "%s", msg);
+    break;
+  case FEB_TPS_LOG_INFO:
+    LOG_I(TAG_TPS, "%s", msg);
+    break;
+  case FEB_TPS_LOG_DEBUG:
+    LOG_D(TAG_TPS, "%s", msg);
+    break;
+  default:
+    break;
+  }
+}
+
+/**
+ * Start the TPS power-monitoring task.
+ *
+ * Initializes the TPS monitoring library, registers the BMS TPS2482
+ * device
+ * (A0=GND, A1=GND), and continuously polls bus voltage, shunt voltage,
+ * current, and power at approximately
+ * 1 Hz.
+ *
+ * @param argument FreeRTOS task argument (unused).
+ */
 void StartTPSTask(void *argument)
 {
   (void)argument;
 
-  uint8_t addr = BMS_TPS_ADDR;
-  TPS2482_Configuration config = {.config = TPS2482_CONFIG_DEFAULT, .cal = BMS_TPS_CAL, .mask = 0, .alert_lim = 0};
-  uint16_t id = 0;
-  bool init_result = false;
-
-  LOG_I(TAG_TPS, "Initializing TPS2482 at address 0x%02X", addr);
-
-  TPS2482_Init(&hi2c1, &addr, &config, &id, &init_result, 1);
-
-  if (!init_result)
+  /* Initialize TPS library */
+  FEB_TPS_LibConfig_t lib_cfg = {
+      .log_func = tps_log_callback,
+      .log_level = FEB_TPS_LOG_INFO,
+#if FEB_TPS_USE_FREERTOS
+      .data_mutex = tpsDataMutexHandle,
+      .i2c_mutex = tpsI2cMutexHandle,
+      .poll_interval_ms = 100,
+#endif
+  };
+  FEB_TPS_Status_t init_status = FEB_TPS_Init(&lib_cfg);
+  if (init_status != FEB_TPS_OK)
   {
-    LOG_W(TAG_TPS, "TPS2482 initialization failed");
+    LOG_E(TAG_TPS, "TPS library init failed: %s", FEB_TPS_StatusToString(init_status));
+    for (;;)
+    {
+      osDelay(pdMS_TO_TICKS(1000));
+    }
+  }
+
+  /* Configure and register the TPS2482 device */
+  FEB_TPS_DeviceConfig_t cfg = {
+      .hi2c = &hi2c1,
+      .i2c_addr = FEB_TPS_ADDR(FEB_TPS_PIN_GND, FEB_TPS_PIN_GND),
+      .r_shunt_ohms = BMS_TPS_R_SHUNT,
+      .i_max_amps = BMS_TPS_I_MAX,
+      .config_reg = FEB_TPS_CONFIG_DEFAULT,
+      .name = "BMS",
+  };
+
+  LOG_I(TAG_TPS, "Initializing TPS2482 at address 0x%02X", cfg.i2c_addr);
+
+  FEB_TPS_Status_t status = FEB_TPS_DeviceRegister(&cfg, &bms_tps_handle);
+
+  if (status != FEB_TPS_OK)
+  {
+    LOG_W(TAG_TPS, "TPS2482 initialization failed: %s", FEB_TPS_StatusToString(status));
   }
   else
   {
-    LOG_I(TAG_TPS, "TPS2482 initialized, ID: 0x%04X", id);
+    uint16_t id = 0;
+    FEB_TPS_Status_t id_status = FEB_TPS_ReadID(bms_tps_handle, &id);
+    if (id_status == FEB_TPS_OK)
+    {
+      LOG_I(TAG_TPS, "TPS2482 initialized, ID: 0x%04X", id);
+    }
+    else
+    {
+      LOG_W(TAG_TPS, "TPS2482 initialized, ReadID failed: %s", FEB_TPS_StatusToString(id_status));
+    }
   }
+
+  /* Polling loop */
+  FEB_TPS_Measurement_t meas;
 
   for (;;)
   {
-    uint16_t current_raw = 0;
-    uint16_t voltage_raw = 0;
+    if (bms_tps_handle != NULL)
+    {
+      status = FEB_TPS_Poll(bms_tps_handle, &meas);
 
-    TPS2482_Poll_Current(&hi2c1, &addr, &current_raw, 1);
-    TPS2482_Poll_Bus_Voltage(&hi2c1, &addr, &voltage_raw, 1);
-
-    /* Convert to physical units */
-    /* Current: raw * current_LSB (in Amps) */
-    /* Voltage: raw * 1.25mV/LSB = raw * 0.00125 V */
-    (void)((float)((int16_t)current_raw) * BMS_TPS_CURRENT_LSB);
-    (void)((float)voltage_raw * TPS2482_CONV_VBUS);
-    // LOG_D(TAG_TPS, "V=%.2fV I=%.3fA", voltage_V, current_A);
+      if (status == FEB_TPS_OK)
+      {
+        /* Measurement data is now available in meas struct:
+         * - meas.bus_voltage_v (float, in Volts)
+         * - meas.current_a (float, in Amps, correctly sign-converted)
+         * - meas.shunt_voltage_mv (float, in millivolts)
+         * - meas.power_w (float, in Watts)
+         */
+        // LOG_D(TAG_TPS, "V=%.2fV I=%.3fA", meas.bus_voltage_v, meas.current_a);
+      }
+    }
 
     osDelay(pdMS_TO_TICKS(1000)); /* 1 Hz polling */
   }

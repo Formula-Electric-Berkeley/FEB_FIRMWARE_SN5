@@ -29,9 +29,10 @@
 #include "FEB_Task_TPS.h"
 #include "FEB_Main.h"
 #include "i2c.h"
-#include "TPS2482.h"
 #include "feb_uart.h"
 #include "feb_console.h"
+#include "feb_can_lib.h"
+#include "feb_rtos_utils.h"
 #include <stdio.h>
 /* USER CODE END Includes */
 
@@ -96,10 +97,65 @@ const osThreadAttr_t SMTask_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* Definitions for canTxQueue */
+osMessageQueueId_t canTxQueueHandle;
+const osMessageQueueAttr_t canTxQueue_attributes = {
+  .name = "canTxQueue"
+};
+/* Definitions for canRxQueue */
+osMessageQueueId_t canRxQueueHandle;
+const osMessageQueueAttr_t canRxQueue_attributes = {
+  .name = "canRxQueue"
+};
+/* Definitions for uartRxQueue */
+osMessageQueueId_t uartRxQueueHandle;
+const osMessageQueueAttr_t uartRxQueue_attributes = {
+  .name = "uartRxQueue"
+};
 /* Definitions for ADBMSMutex */
 osMutexId_t ADBMSMutexHandle;
 const osMutexAttr_t ADBMSMutex_attributes = {
   .name = "ADBMSMutex"
+};
+/* Definitions for canTxMutex */
+osMutexId_t canTxMutexHandle;
+const osMutexAttr_t canTxMutex_attributes = {
+  .name = "canTxMutex"
+};
+/* Definitions for canRxMutex */
+osMutexId_t canRxMutexHandle;
+const osMutexAttr_t canRxMutex_attributes = {
+  .name = "canRxMutex"
+};
+/* Definitions for tpsDataMutex */
+osMutexId_t tpsDataMutexHandle;
+const osMutexAttr_t tpsDataMutex_attributes = {
+  .name = "tpsDataMutex"
+};
+/* Definitions for tpsI2cMutex */
+osMutexId_t tpsI2cMutexHandle;
+const osMutexAttr_t tpsI2cMutex_attributes = {
+  .name = "tpsI2cMutex"
+};
+/* Definitions for logMutex */
+osMutexId_t logMutexHandle;
+const osMutexAttr_t logMutex_attributes = {
+  .name = "logMutex"
+};
+/* Definitions for uartTxMutex */
+osMutexId_t uartTxMutexHandle;
+const osMutexAttr_t uartTxMutex_attributes = {
+  .name = "uartTxMutex"
+};
+/* Definitions for canTxMailboxSem */
+osSemaphoreId_t canTxMailboxSemHandle;
+const osSemaphoreAttr_t canTxMailboxSem_attributes = {
+  .name = "canTxMailboxSem"
+};
+/* Definitions for uartTxSem */
+osSemaphoreId_t uartTxSemHandle;
+const osSemaphoreAttr_t uartTxSem_attributes = {
+  .name = "uartTxSem"
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -136,9 +192,34 @@ void MX_FREERTOS_Init(void) {
   /* creation of ADBMSMutex */
   ADBMSMutexHandle = osMutexNew(&ADBMSMutex_attributes);
 
+  /* creation of canTxMutex */
+  canTxMutexHandle = osMutexNew(&canTxMutex_attributes);
+
+  /* creation of canRxMutex */
+  canRxMutexHandle = osMutexNew(&canRxMutex_attributes);
+
+  /* creation of tpsDataMutex */
+  tpsDataMutexHandle = osMutexNew(&tpsDataMutex_attributes);
+
+  /* creation of tpsI2cMutex */
+  tpsI2cMutexHandle = osMutexNew(&tpsI2cMutex_attributes);
+
+  /* creation of logMutex */
+  logMutexHandle = osMutexNew(&logMutex_attributes);
+
+  /* creation of uartTxMutex */
+  uartTxMutexHandle = osMutexNew(&uartTxMutex_attributes);
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
+
+  /* Create the semaphores(s) */
+  /* creation of canTxMailboxSem */
+  canTxMailboxSemHandle = osSemaphoreNew(3, 3, &canTxMailboxSem_attributes);
+
+  /* creation of uartTxSem */
+  uartTxSemHandle = osSemaphoreNew(1, 0, &uartTxSem_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -148,8 +229,18 @@ void MX_FREERTOS_Init(void) {
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
-  /* USER CODE BEGIN RTOS_QUEUES */
+  /* Create the queue(s) */
+  /* creation of canTxQueue */
+  canTxQueueHandle = osMessageQueueNew (16, sizeof(FEB_CAN_Message_t), &canTxQueue_attributes);
 
+  /* creation of canRxQueue */
+  canRxQueueHandle = osMessageQueueNew (32, sizeof(FEB_CAN_Message_t), &canRxQueue_attributes);
+
+  /* creation of uartRxQueue */
+  uartRxQueueHandle = osMessageQueueNew (8, sizeof(FEB_UART_RxQueueMsg_t), &uartRxQueue_attributes);
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -172,28 +263,27 @@ void MX_FREERTOS_Init(void) {
   SMTaskHandle = osThreadNew(StartSMTask, NULL, &SMTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-
+  /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
-
+  /* add events, ... */
   /* USER CODE END RTOS_EVENTS */
 
 }
 
 /* USER CODE BEGIN Header_StartUartRxTask */
 /**
-* @brief Function implementing the uartRxTask thread.
-* @param argument: Not used
-* @retval None
-*/
+  * @brief  Function implementing the uartRxTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
 /* USER CODE END Header_StartUartRxTask */
 __weak void StartUartRxTask(void *argument)
 {
   /* USER CODE BEGIN StartUartRxTask */
-  (void)argument;
-  /* Weak stub - override in FEB_Main.c with queue-based implementation */
-  for (;;)
+  /* Infinite loop */
+  for(;;)
   {
     osDelay(1);
   }
@@ -213,7 +303,7 @@ __weak void StartADBMSTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(pdMS_TO_TICKS(1));
+    osDelay(1);
   }
   /* USER CODE END StartADBMSTask */
 }

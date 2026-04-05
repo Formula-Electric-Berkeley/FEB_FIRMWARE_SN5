@@ -13,8 +13,9 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "FEB_ADC.h"
-#include "feb_uart_log.h"
-extern UART_HandleTypeDef huart2;
+#include "feb_log.h"
+#include "adc.h"
+#include "usart.h"
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct

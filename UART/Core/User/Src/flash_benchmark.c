@@ -27,8 +27,10 @@
  * Private Variables
  * ============================================================================ */
 
+/* External FreeRTOS handles from .ioc-generated code */
+extern osMutexId_t flashMutexHandle;
+
 static bool dwt_initialized = false;
-static osMutexId_t flash_mutex = NULL;
 static osMessageQueueId_t flash_queue = NULL;
 
 /* ============================================================================
@@ -164,9 +166,17 @@ FlashBench_Status_t FlashBench_Erase(uint32_t sector_num, FlashBench_Timing_t *t
   }
 
   /* Acquire mutex for task-level serialization */
-  if (flash_mutex != NULL)
+  bool mutex_acquired = false;
+  if (flashMutexHandle != NULL)
   {
-    osMutexAcquire(flash_mutex, osWaitForever);
+    if (osMutexAcquire(flashMutexHandle, osWaitForever) == osOK)
+    {
+      mutex_acquired = true;
+    }
+    else
+    {
+      return FLASH_BENCH_ERR_MUTEX;
+    }
   }
 
   FLASH_EraseInitTypeDef erase_init;
@@ -183,9 +193,9 @@ FlashBench_Status_t FlashBench_Erase(uint32_t sector_num, FlashBench_Timing_t *t
   if (HAL_FLASH_Unlock() != HAL_OK)
   {
     taskEXIT_CRITICAL();
-    if (flash_mutex != NULL)
+    if (mutex_acquired)
     {
-      osMutexRelease(flash_mutex);
+      osMutexRelease(flashMutexHandle);
     }
     return FLASH_BENCH_ERR_UNLOCK;
   }
@@ -205,9 +215,9 @@ FlashBench_Status_t FlashBench_Erase(uint32_t sector_num, FlashBench_Timing_t *t
   HAL_FLASH_Lock();
   taskEXIT_CRITICAL();
 
-  if (flash_mutex != NULL)
+  if (mutex_acquired)
   {
-    osMutexRelease(flash_mutex);
+    osMutexRelease(flashMutexHandle);
   }
 
   if (hal_status != HAL_OK)
@@ -226,9 +236,17 @@ FlashBench_Status_t FlashBench_Write(uint32_t addr, const uint8_t *data, uint32_
   const uint32_t *word_data = (const uint32_t *)data;
 
   /* Acquire mutex for task-level serialization */
-  if (flash_mutex != NULL)
+  bool mutex_acquired = false;
+  if (flashMutexHandle != NULL)
   {
-    osMutexAcquire(flash_mutex, osWaitForever);
+    if (osMutexAcquire(flashMutexHandle, osWaitForever) == osOK)
+    {
+      mutex_acquired = true;
+    }
+    else
+    {
+      return FLASH_BENCH_ERR_MUTEX;
+    }
   }
 
   /* Enter critical section for flash unlock and flag clear */
@@ -237,9 +255,9 @@ FlashBench_Status_t FlashBench_Write(uint32_t addr, const uint8_t *data, uint32_
   if (HAL_FLASH_Unlock() != HAL_OK)
   {
     taskEXIT_CRITICAL();
-    if (flash_mutex != NULL)
+    if (mutex_acquired)
     {
-      osMutexRelease(flash_mutex);
+      osMutexRelease(flashMutexHandle);
     }
     return FLASH_BENCH_ERR_UNLOCK;
   }
@@ -259,9 +277,9 @@ FlashBench_Status_t FlashBench_Write(uint32_t addr, const uint8_t *data, uint32_
       taskENTER_CRITICAL();
       HAL_FLASH_Lock();
       taskEXIT_CRITICAL();
-      if (flash_mutex != NULL)
+      if (mutex_acquired)
       {
-        osMutexRelease(flash_mutex);
+        osMutexRelease(flashMutexHandle);
       }
       return FLASH_BENCH_ERR_PROGRAM;
     }
@@ -272,9 +290,9 @@ FlashBench_Status_t FlashBench_Write(uint32_t addr, const uint8_t *data, uint32_
   HAL_FLASH_Lock();
   taskEXIT_CRITICAL();
 
-  if (flash_mutex != NULL)
+  if (mutex_acquired)
   {
-    osMutexRelease(flash_mutex);
+    osMutexRelease(flashMutexHandle);
   }
 
   ComputeTiming(timing, start, end, size);
@@ -408,9 +426,15 @@ void FlashBench_TaskEntry(void *argument)
 {
   (void)argument;
 
-  /* Initialize mutex and queue */
-  flash_mutex = osMutexNew(NULL);
+  /* Initialize queue (mutex is created via .ioc file) */
   flash_queue = osMessageQueueNew(FLASH_BENCH_QUEUE_DEPTH, sizeof(FlashBench_Request_t), NULL);
+
+  /* Validate queue creation - suspend task if failed */
+  if (flash_queue == NULL)
+  {
+    osThreadSuspend(osThreadGetId());
+    return;
+  }
 
   /* Initialize DWT cycle counter */
   FlashBench_Init();

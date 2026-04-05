@@ -1,5 +1,5 @@
 #include "FEB_BSPD.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 
 /* Global BSPD data */
 BSPD_TYPE BSPD;

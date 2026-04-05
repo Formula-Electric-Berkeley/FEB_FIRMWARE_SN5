@@ -1,5 +1,5 @@
 #include "FEB_CAN_BMS.h"
-#include "feb_uart_log.h"
+#include "feb_log.h"
 #include <stdbool.h>
 
 /* Timeout for BMS CAN communication (ms) */

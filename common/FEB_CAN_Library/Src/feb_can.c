@@ -8,7 +8,7 @@
 
 #include "feb_can_lib.h"
 #include "feb_can_internal.h"
-#include "stm32f4xx_hal.h"
+#include "main.h"
 #include <string.h>
 
 /* ============================================================================
@@ -81,25 +81,26 @@ FEB_CAN_Status_t FEB_CAN_Init(const FEB_CAN_Config_t *config)
   feb_can_ctx.get_tick_ms = config->get_tick_ms ? config->get_tick_ms : feb_can_default_get_tick;
 
 #if FEB_CAN_USE_FREERTOS
-  /* Create queues */
-  uint16_t tx_queue_size = config->tx_queue_size > 0 ? config->tx_queue_size : FEB_CAN_TX_QUEUE_SIZE;
-  uint16_t rx_queue_size = config->rx_queue_size > 0 ? config->rx_queue_size : FEB_CAN_RX_QUEUE_SIZE;
-
-  feb_can_ctx.tx_queue = FEB_CAN_QUEUE_CREATE(tx_queue_size, sizeof(FEB_CAN_Message_t));
-  feb_can_ctx.rx_queue = FEB_CAN_QUEUE_CREATE(rx_queue_size, sizeof(FEB_CAN_Message_t));
-
-  if (feb_can_ctx.tx_queue == NULL || feb_can_ctx.rx_queue == NULL)
+  /* Validate REQUIRED sync primitives */
+  if (config->tx_queue == NULL || config->rx_queue == NULL)
   {
-    FEB_CAN_DeInit();
     return FEB_CAN_ERROR_QUEUE;
   }
+  if (config->tx_mutex == NULL || config->rx_mutex == NULL)
+  {
+    return FEB_CAN_ERROR_NO_MUTEX;
+  }
+  if (config->tx_mailbox_sem == NULL)
+  {
+    return FEB_CAN_ERROR_NO_SEMAPHORE;
+  }
 
-  /* Create mutexes */
-  feb_can_ctx.tx_mutex = FEB_CAN_MUTEX_CREATE();
-  feb_can_ctx.rx_mutex = FEB_CAN_MUTEX_CREATE();
-
-  /* Create TX complete semaphore (3 mailboxes available) */
-  feb_can_ctx.tx_sem = FEB_CAN_SEM_CREATE(3, 3);
+  /* Store user-provided sync primitives (NOT created internally) */
+  feb_can_ctx.tx_queue = config->tx_queue;
+  feb_can_ctx.rx_queue = config->rx_queue;
+  feb_can_ctx.tx_mutex = config->tx_mutex;
+  feb_can_ctx.rx_mutex = config->rx_mutex;
+  feb_can_ctx.tx_sem = config->tx_mailbox_sem;
 #endif
 
   /* Cast handles for HAL functions */
@@ -176,27 +177,17 @@ void FEB_CAN_DeInit(void)
     HAL_CAN_Stop(hcan2);
   }
 
+  /*
+   * NOTE: We do NOT delete user-provided sync primitives (queues, mutexes, semaphores).
+   * The user created them in CubeMX/.ioc and owns their lifecycle.
+   * We only clear our references.
+   */
 #if FEB_CAN_USE_FREERTOS
-  if (feb_can_ctx.tx_queue != NULL)
-  {
-    FEB_CAN_QUEUE_DELETE(feb_can_ctx.tx_queue);
-  }
-  if (feb_can_ctx.rx_queue != NULL)
-  {
-    FEB_CAN_QUEUE_DELETE(feb_can_ctx.rx_queue);
-  }
-  if (feb_can_ctx.tx_mutex != NULL)
-  {
-    FEB_CAN_MUTEX_DELETE(feb_can_ctx.tx_mutex);
-  }
-  if (feb_can_ctx.rx_mutex != NULL)
-  {
-    FEB_CAN_MUTEX_DELETE(feb_can_ctx.rx_mutex);
-  }
-  if (feb_can_ctx.tx_sem != NULL)
-  {
-    FEB_CAN_SEM_DELETE(feb_can_ctx.tx_sem);
-  }
+  feb_can_ctx.tx_queue = NULL;
+  feb_can_ctx.rx_queue = NULL;
+  feb_can_ctx.tx_mutex = NULL;
+  feb_can_ctx.rx_mutex = NULL;
+  feb_can_ctx.tx_sem = NULL;
 #endif
 
   memset(&feb_can_ctx, 0, sizeof(feb_can_ctx));
@@ -428,7 +419,55 @@ const char *FEB_CAN_StatusToString(FEB_CAN_Status_t status)
     return "NOT_INIT";
   case FEB_CAN_ERROR_QUEUE:
     return "QUEUE_ERROR";
+  case FEB_CAN_ERROR_NO_MUTEX:
+    return "NO_MUTEX";
+  case FEB_CAN_ERROR_NO_SEMAPHORE:
+    return "NO_SEMAPHORE";
   default:
     return "UNKNOWN";
   }
 }
+
+/* ============================================================================
+ * Weak Task Function Implementations (FreeRTOS Mode)
+ * ============================================================================ */
+
+#if FEB_CAN_USE_FREERTOS
+
+/**
+ * @brief Weak default TX processing task
+ *
+ * Processes TX queue. Override to customize behavior.
+ *
+ * @param argument Not used (pass NULL)
+ */
+__attribute__((weak)) void FEB_CAN_TxTaskFunc(void *argument)
+{
+  (void)argument;
+
+  for (;;)
+  {
+    FEB_CAN_TX_Process();
+    osDelay(1); /* Yield to other tasks */
+  }
+}
+
+/**
+ * @brief Weak default RX processing task
+ *
+ * Processes RX queue and invokes callbacks. Override to customize.
+ *
+ * @param argument Not used (pass NULL)
+ */
+__attribute__((weak)) void FEB_CAN_RxTaskFunc(void *argument)
+{
+  (void)argument;
+
+  for (;;)
+  {
+    FEB_CAN_RX_Process();
+    osDelay(1); /* Yield to other tasks */
+  }
+}
+
+#endif /* FEB_CAN_USE_FREERTOS */

@@ -63,11 +63,29 @@ extern "C"
    */
 
 #ifndef FEB_CAN_USE_FREERTOS
-#if defined(INCLUDE_xSemaphoreGetMutexHolder) || defined(configUSE_MUTEXES) || defined(USE_FREERTOS)
+#if ((defined(INCLUDE_xSemaphoreGetMutexHolder) && (INCLUDE_xSemaphoreGetMutexHolder != 0)) || \
+     (defined(configUSE_MUTEXES) && (configUSE_MUTEXES != 0)) || \
+     (defined(USE_FREERTOS) && (USE_FREERTOS != 0)))
 #define FEB_CAN_USE_FREERTOS 1
 #else
 #define FEB_CAN_USE_FREERTOS 0
 #endif
+#endif
+
+  /* ============================================================================
+   * Bare-Metal Safety Mode
+   * ============================================================================
+   *
+   * When FreeRTOS is NOT detected and FORCE_BARE_METAL is NOT set:
+   *   - Mutex operations are NO-OPs (safe default for single-threaded use)
+   *
+   * When FORCE_BARE_METAL is explicitly set to 1:
+   *   - Mutex operations use __disable_irq() / __enable_irq() critical sections
+   *   - Use this for bare-metal projects that need ISR protection
+   */
+
+#ifndef FEB_CAN_FORCE_BARE_METAL
+#define FEB_CAN_FORCE_BARE_METAL 0
 #endif
 
   /* ============================================================================

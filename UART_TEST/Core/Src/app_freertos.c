@@ -22,7 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "feb_rtos_utils.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,6 +58,11 @@ const osThreadAttr_t uartRxTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal1,
   .stack_size = 512 * 4
 };
+/* Definitions for logMutex */
+osMutexId_t logMutexHandle;
+const osMutexAttr_t logMutex_attributes = {
+  .name = "logMutex"
+};
 /* Definitions for UartTxQueue */
 osMessageQueueId_t UartTxQueueHandle;
 const osMessageQueueAttr_t UartTxQueue_attributes = {
@@ -83,6 +88,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
   extern UART_HandleTypeDef huart1;
   /* USER CODE END Init */
+  /* creation of logMutex */
+  logMutexHandle = osMutexNew(&logMutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -110,18 +117,17 @@ void MX_FREERTOS_Init(void) {
   uartRxTaskHandle = osThreadNew(StartUartRxTask, NULL, &uartRxTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* Diagnostic: check if task creation succeeded */
-  if (uartRxTaskHandle == NULL || uartTxTaskHandle == NULL)
+  /* Validate all RTOS object creations - fail fast on any NULL */
+  REQUIRE_RTOS_HANDLE(logMutexHandle);
+  REQUIRE_RTOS_HANDLE(UartTxQueueHandle);
+  REQUIRE_RTOS_HANDLE(UartRxQueueHandle);
+  REQUIRE_RTOS_HANDLE(uartRxTaskHandle);
+  REQUIRE_RTOS_HANDLE(uartTxTaskHandle);
+
   {
     extern UART_HandleTypeDef huart1;
-    const char *err = "Task create FAILED!\r\n";
-    HAL_UART_Transmit(&huart1, (uint8_t *)err, 21, 1000);
-  }
-  else
-  {
-    extern UART_HandleTypeDef huart1;
-    const char *ok = "Tasks created OK\r\n";
-    HAL_UART_Transmit(&huart1, (uint8_t *)ok, 18, 1000);
+    const char *ok = "RTOS objects OK\r\n";
+    HAL_UART_Transmit(&huart1, (uint8_t *)ok, 17, 1000);
   }
   /* USER CODE END RTOS_THREADS */
 
