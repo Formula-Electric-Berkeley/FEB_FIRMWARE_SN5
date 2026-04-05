@@ -36,9 +36,9 @@ typedef struct
 
   // Buzzer state
   bool buzzer_enabled;
-} IO_State_t;
+} IO_States_t;
 
-IO_State_t FEB_IO_GetLastIOStates(void);
+IO_States_t FEB_IO_GetLastIOStates(void);
 
 void FEB_IO_Set_Buzzer(bool new_state);
 
