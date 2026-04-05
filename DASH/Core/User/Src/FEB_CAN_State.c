@@ -71,7 +71,7 @@ void FEB_CAN_State_Tick(void)
   uint8_t tx_data[2];
   memset(tx_data, 0x00, sizeof(tx_data));
 
-  IO_States_t states = FEB_IO_GetLastIOStates();
+  IO_State_t states = FEB_IO_GetLastIOStates();
   bool rtd = FEB_State_GetLastRTD();
 
   tx_data[0] = (states.button_rtd << 0) + (states.switch_coolant_pump_radiator_fan << 4) +

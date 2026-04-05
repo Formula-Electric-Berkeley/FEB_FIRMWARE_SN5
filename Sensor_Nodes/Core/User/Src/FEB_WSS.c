@@ -1,5 +1,6 @@
 #include "FEB_WSS.h"
 #include "main.h"
+#include <math.h>
 
 extern UART_HandleTypeDef huart2;
 
