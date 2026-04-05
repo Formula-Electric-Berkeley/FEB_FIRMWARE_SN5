@@ -115,7 +115,8 @@ void read_Acceleration(void)
   acceleration_mg[1] = lsm6dsox_from_fs2_to_mg(data_raw_acceleration[1]);
   acceleration_mg[2] = lsm6dsox_from_fs2_to_mg(data_raw_acceleration[2]);
 
-  LOG_D(TAG_IMU, "Acceleration [mg]: %4.2f\t%4.2f\t%4.2f", acceleration_mg[0], acceleration_mg[1], acceleration_mg[2]);
+  // LOG_D(TAG_IMU, "Acceleration [mg]: %4.2f\t%4.2f\t%4.2f", acceleration_mg[0], acceleration_mg[1],
+  // acceleration_mg[2]);
 }
 
 void read_Angular_Rate(void)
@@ -132,6 +133,6 @@ void read_Angular_Rate(void)
   angular_rate_mdps[1] = lsm6dsox_from_fs2000_to_mdps(data_raw_angular_rate[1]);
   angular_rate_mdps[2] = lsm6dsox_from_fs2000_to_mdps(data_raw_angular_rate[2]);
 
-  LOG_D(TAG_IMU, "Angular Rate [mdps]: %4.2f\t%4.2f\t%4.2f", angular_rate_mdps[0], angular_rate_mdps[1],
-        angular_rate_mdps[2]);
+  // LOG_D(TAG_IMU, "Angular Rate [mdps]: %4.2f\t%4.2f\t%4.2f", angular_rate_mdps[0], angular_rate_mdps[1],
+  //       angular_rate_mdps[2]);
 }

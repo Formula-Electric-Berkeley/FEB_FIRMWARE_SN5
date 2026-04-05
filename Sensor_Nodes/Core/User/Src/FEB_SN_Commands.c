@@ -382,7 +382,9 @@ static void cmd_gps_all(void)
   FEB_Console_Printf("=== GPS Data ===\r\n");
   FEB_Console_Printf("Module: %s | Valid: %s | Fix: %s\r\n", FEB_GPS_IsEnabled() ? "ON" : "OFF",
                      data.valid ? "Yes" : "No", data.has_fix ? "Yes" : "No");
-  FEB_Console_Printf("Position: %.6f, %.6f | Alt: %.1f m\r\n", data.latitude, data.longitude, data.altitude);
+  FEB_Console_Printf("Position: %.6f%c, %.6f%c | Alt: %.1f m\r\n", data.latitude >= 0 ? data.latitude : -data.latitude,
+                     data.latitude >= 0 ? 'N' : 'S', data.longitude >= 0 ? data.longitude : -data.longitude,
+                     data.longitude >= 0 ? 'E' : 'W', data.altitude);
   FEB_Console_Printf("Speed: %.2f km/h | Course: %.1f deg\r\n", data.speed_kmh, data.course);
   FEB_Console_Printf("Time: %02u:%02u:%02u | Date: 20%02u-%02u-%02u\r\n", data.hours, data.minutes, data.seconds,
                      data.year, data.month, data.day);

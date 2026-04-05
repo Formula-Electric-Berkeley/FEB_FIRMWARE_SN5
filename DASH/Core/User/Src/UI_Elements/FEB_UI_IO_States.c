@@ -12,7 +12,7 @@ static lv_obj_t *ui_IO_States[4];
 
 void FEB_UI_Update_IO_States()
 {
-  IO_States_t states = FEB_IO_GetLastIOStates();
+  IO_State_t states = FEB_IO_GetLastIOStates();
 
   helper_set_text_color(states.switch_coolant_pump_radiator_fan, 0);
   helper_set_text_color(states.switch_accumulator_fans, 1);

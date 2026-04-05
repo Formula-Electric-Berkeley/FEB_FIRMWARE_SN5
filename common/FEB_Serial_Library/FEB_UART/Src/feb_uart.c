@@ -588,7 +588,7 @@ void FEB_UART_SetRxLineCallback(FEB_UART_Instance_t instance, FEB_UART_RxLineCal
 }
 
 // DEBUG: Set to 1 to enable verbose RX debugging
-#define FEB_UART_DEBUG_RX 1
+#define FEB_UART_DEBUG_RX 0
 
 /* Forward declaration for binary processing */
 static void process_rx_binary(int inst);
