@@ -175,6 +175,7 @@ static bool FEB_TPS_Init_Devices(void)
       LOG_E(TAG_MAIN, "TPS init failed for %s: %s", tps_device_configs[i].name, FEB_TPS_StatusToString(status));
       return false; // Abort immediately to prevent index misalignment
     }
+    HAL_Delay(50); // Allow I2C bus to settle after device registration
     LOG_D(TAG_MAIN, "TPS %s registered at 0x%02X", tps_device_configs[i].name, tps_device_configs[i].i2c_addr);
   }
 
@@ -279,45 +280,45 @@ void FEB_Main_Setup(void)
   }
   printf("Done! \r\n\r\n");
 
-  // // Initialize TPS devices using the new library
-  // int maxiter = 0;
-  // tps_init_success = false;
+  // Initialize TPS devices using the new library
+  int maxiter = 0;
+  tps_init_success = false;
 
-  // while (!tps_init_success && maxiter < 100)
-  // {
-  //   tps_init_success = FEB_TPS_Init_Devices();
-  //   if (!tps_init_success)
-  //   {
-  //     LOG_W(TAG_MAIN, "TPS init attempt %d failed, retrying...", maxiter);
-  //     FEB_TPS_DeInit(); /* Clean up partial state before retry */
-  //     for (uint8_t i = 0; i < NUM_TPS2482; i++)
-  //     {
-  //       tps_handles[i] = NULL;
-  //     }
-  //     HAL_Delay(100); /* 100ms delay to avoid I2C bus contention */
-  //   }
-  //   maxiter++;
-  // }
+  while (!tps_init_success && maxiter < 100)
+  {
+    tps_init_success = FEB_TPS_Init_Devices();
+    if (!tps_init_success)
+    {
+      LOG_W(TAG_MAIN, "TPS init attempt %d failed, retrying...", maxiter);
+      FEB_TPS_DeInit(); /* Clean up partial state before retry */
+      for (uint8_t i = 0; i < NUM_TPS2482; i++)
+      {
+        tps_handles[i] = NULL;
+      }
+      HAL_Delay(100); /* 100ms delay to avoid I2C bus contention */
+    }
+    maxiter++;
+  }
 
-  // if (tps_init_success)
-  // {
-  //   LOG_I(TAG_MAIN, "TPS2482 I2C init complete");
+  if (tps_init_success)
+  {
+    LOG_I(TAG_MAIN, "TPS2482 I2C init complete");
 
-  //   // Start with all rails disabled (library skips devices without EN pin)
-  //   FEB_TPS_EnableAll(false);
+    // Start with all rails disabled (library skips devices without EN pin)
+    FEB_TPS_EnableAll(false);
 
-  //   // Check power good states
-  //   FEB_TPS_Check_Power_Good();
+    // Check power good states
+    FEB_TPS_Check_Power_Good();
 
-  //   LOG_I(TAG_MAIN, "TPS2482 power rails configured");
-  // }
-  // else
-  // {
-  //   LOG_E(TAG_MAIN, "TPS2482 init failed after %d retries - skipping power rail config", maxiter);
-  // }
+    LOG_I(TAG_MAIN, "TPS2482 power rails configured");
+  }
+  else
+  {
+    LOG_E(TAG_MAIN, "TPS2482 init failed after %d retries - skipping power rail config", maxiter);
+  }
 
-  // // Initialize brake light to be off
-  // HAL_GPIO_WritePin(BL_Switch_GPIO_Port, BL_Switch_Pin, GPIO_PIN_RESET);
+  // Initialize brake light to be off
+  HAL_GPIO_WritePin(BL_Switch_GPIO_Port, BL_Switch_Pin, GPIO_PIN_RESET);
 
   // Initialize CAN library
   FEB_CAN_Config_t can_cfg = {
@@ -347,41 +348,41 @@ void FEB_Main_Setup(void)
  */
 void FEB_Main_Loop(void)
 {
-  // static uint32_t last_poll_tick = 0;
-  // static uint8_t consecutive_failures = 0;
-  // uint32_t now = HAL_GetTick();
+  static uint32_t last_poll_tick = 0;
+  static uint8_t consecutive_failures = 0;
+  uint32_t now = HAL_GetTick();
 
-  // if (tps_init_success && (now - last_poll_tick >= MAIN_LOOP_POLL_INTERVAL_MS))
-  // {
-  //   last_poll_tick = now;
+  if (tps_init_success && (now - last_poll_tick >= MAIN_LOOP_POLL_INTERVAL_MS))
+  {
+    last_poll_tick = now;
 
-  //   // Poll all TPS devices using the new library's batch operation
-  //   uint8_t polled =
-  //       FEB_TPS_PollAllRaw(tps2482_bus_voltage_raw, tps2482_current_raw, tps2482_shunt_voltage_raw, NUM_TPS2482);
-  //   if (polled < NUM_TPS2482)
-  //   {
-  //     LOG_W(TAG_MAIN, "TPS poll: only %d/%d devices succeeded", polled, NUM_TPS2482);
-  //   }
+    // Poll all TPS devices using the new library's batch operation
+    uint8_t polled =
+        FEB_TPS_PollAllRaw(tps2482_bus_voltage_raw, tps2482_current_raw, tps2482_shunt_voltage_raw, NUM_TPS2482);
+    if (polled < NUM_TPS2482)
+    {
+      LOG_W(TAG_MAIN, "TPS poll: only %d/%d devices succeeded", polled, NUM_TPS2482);
+    }
 
-  //   // Track consecutive complete failures and attempt I2C bus recovery
-  //   if (polled == 0)
-  //   {
-  //     consecutive_failures++;
-  //     if (consecutive_failures >= 3)
-  //     {
-  //       // Attempt I2C bus recovery after 3 consecutive complete failures
-  //       FEB_TPS_BusRecovery();
-  //       consecutive_failures = 0;
-  //       LOG_W(TAG_MAIN, "I2C bus recovery attempted");
-  //     }
-  //   }
-  //   else
-  //   {
-  //     consecutive_failures = 0;
-  //   }
+    // Track consecutive complete failures and attempt I2C bus recovery
+    if (polled == 0)
+    {
+      consecutive_failures++;
+      if (consecutive_failures >= 3)
+      {
+        // Attempt I2C bus recovery after 3 consecutive complete failures
+        FEB_TPS_BusRecovery();
+        consecutive_failures = 0;
+        LOG_W(TAG_MAIN, "I2C bus recovery attempted");
+      }
+    }
+    else
+    {
+      consecutive_failures = 0;
+    }
 
-  //   FEB_Variable_Conversion();
-  // }
+    FEB_Variable_Conversion();
+  }
 
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
 }
@@ -404,17 +405,17 @@ void FEB_1ms_Callback(void)
     FEB_CAN_PingPong_Tick();
   }
 
-  // // Process CAN TPS reading every 100ms
-  // static uint16_t tps_divider = 0;
-  // tps_divider++;
-  // if (tps_divider >= 100)
-  // {
-  //   tps_divider = 0;
-  //   if (tps_init_success)
-  //   {
-  //     FEB_CAN_TPS_Tick(tps2482_current_raw, tps2482_bus_voltage_raw, NUM_TPS2482);
-  //   }
-  // }
+  // Process CAN TPS reading every 100ms
+  static uint16_t tps_divider = 0;
+  tps_divider++;
+  if (tps_divider >= 100)
+  {
+    tps_divider = 0;
+    if (tps_init_success)
+    {
+      FEB_CAN_TPS_Tick(tps2482_current_raw, tps2482_bus_voltage_raw, NUM_TPS2482);
+    }
+  }
 }
 
 /* ============================================================================
