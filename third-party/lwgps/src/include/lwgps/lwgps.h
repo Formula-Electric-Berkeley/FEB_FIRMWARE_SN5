@@ -102,9 +102,9 @@ typedef struct {
 
 #if LWGPS_CFG_STATEMENT_GPGSA || __DOXYGEN__
     /* Information related to GPGSA statement */
-    lwgps_float_t dop_h;        /*!< Dolution of precision, horizontal */
-    lwgps_float_t dop_v;        /*!< Dolution of precision, vertical */
-    lwgps_float_t dop_p;        /*!< Dolution of precision, position */
+    lwgps_float_t dop_h;        /*!< Dilution of precision, horizontal */
+    lwgps_float_t dop_v;        /*!< Dilution of precision, vertical */
+    lwgps_float_t dop_p;        /*!< Dilution of precision, position */
     uint8_t fix_mode;           /*!< Fix mode. `1` = NO fix, `2` = 2D fix, `3` = 3D fix */
     uint8_t satellites_ids[12]; /*!< List of satellite IDs in use. Valid range is `0` to `sats_in_use` */
 #endif                          /* LWGPS_CFG_STATEMENT_GPGSA || __DOXYGEN__ */

@@ -37,7 +37,7 @@ void FEB_CAN_DASH_Init(void)
   DASH_IO.accumulator_fan = false;
   DASH_IO.last_rx_tick = 0; /* Never received */
 
-  /* Register for dash_io message (0x10) */
+  /* Register for dash state message (FEB_CAN_DASH_STATE_FRAME_ID) */
   FEB_CAN_RX_Params_t params = {
       .instance = FEB_CAN_INSTANCE_1,
       .can_id = FEB_CAN_DASH_STATE_FRAME_ID,

@@ -371,9 +371,17 @@ void FEB_Main_Loop(void)
       if (consecutive_failures >= 3)
       {
         // Attempt I2C bus recovery after 3 consecutive complete failures
-        FEB_TPS_BusRecovery();
-        consecutive_failures = 0;
-        LOG_W(TAG_MAIN, "I2C bus recovery attempted");
+        FEB_TPS_Status_t recovery_status = FEB_TPS_BusRecovery();
+        if (recovery_status == FEB_TPS_OK)
+        {
+          consecutive_failures = 0;
+          LOG_I(TAG_MAIN, "I2C bus recovery succeeded");
+        }
+        else
+        {
+          LOG_E(TAG_MAIN, "I2C bus recovery failed: %s", FEB_TPS_StatusToString(recovery_status));
+          // Don't clear consecutive_failures - allows continued recovery attempts
+        }
       }
     }
     else

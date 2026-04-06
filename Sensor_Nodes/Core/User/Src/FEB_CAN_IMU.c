@@ -36,19 +36,32 @@ void FEB_CAN_IMU_Init(void) {}
  * @param accel_raw Pointer to data_raw_acceleration[3] from FEB_IMU.c
  * @param gyro_raw  Pointer to data_raw_angular_rate[3] from FEB_IMU.c
  */
+/* Error counter for throttled error reporting */
+static uint32_t can_tx_error_count = 0;
+
 void FEB_CAN_IMU_Tick(void)
 {
   uint8_t tx_data[6] = {0};
   memcpy(&tx_data[0], &data_raw_acceleration[0], sizeof(int16_t));
   memcpy(&tx_data[2], &data_raw_acceleration[1], sizeof(int16_t));
   memcpy(&tx_data[4], &data_raw_acceleration[2], sizeof(int16_t));
-  FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_IMU_ACCELERATION_DATA_FRAME_ID, FEB_CAN_ID_STD, tx_data,
-                  FEB_CAN_IMU_ACCELERATION_DATA_LENGTH); // Acceleration X, Y, Z
+
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_IMU_ACCELERATION_DATA_FRAME_ID, FEB_CAN_ID_STD,
+                                            tx_data, FEB_CAN_IMU_ACCELERATION_DATA_LENGTH);
+  if (status != FEB_CAN_OK)
+  {
+    can_tx_error_count++;
+  }
 
   memset(tx_data, 0, sizeof(tx_data));
   memcpy(&tx_data[0], &data_raw_angular_rate[0], sizeof(int16_t));
   memcpy(&tx_data[2], &data_raw_angular_rate[1], sizeof(int16_t));
   memcpy(&tx_data[4], &data_raw_angular_rate[2], sizeof(int16_t));
-  FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_IMU_GYRO_DATA_FRAME_ID, FEB_CAN_ID_STD, tx_data,
-                  FEB_CAN_IMU_GYRO_DATA_LENGTH); // Gyro X, Y, Z
+
+  status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_IMU_GYRO_DATA_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                           FEB_CAN_IMU_GYRO_DATA_LENGTH);
+  if (status != FEB_CAN_OK)
+  {
+    can_tx_error_count++;
+  }
 }

@@ -1169,22 +1169,11 @@ FEB_TPS_Status_t FEB_TPS_BusRecovery(void) {
 
     FEB_TPS_MUTEX_LOCK(feb_tps_ctx.i2c_mutex);
 
-    /* Disable the I2C peripheral */
-    __HAL_I2C_DISABLE(hi2c);
-
-    /* Small delay to allow bus to settle */
-    /* Note: Using a simple delay loop instead of HAL_Delay to avoid
-     * potential issues if called from contexts where HAL_Delay might not work */
-    for (volatile uint32_t i = 0; i < 10000; i++) {
-        __NOP();
-    }
-
-    /* Re-enable the I2C peripheral */
-    __HAL_I2C_ENABLE(hi2c);
-
-    /* Reset the I2C state machine to ready state */
-    hi2c->State = HAL_I2C_STATE_READY;
-    hi2c->Mode = HAL_I2C_MODE_NONE;
+    /* Perform a full HAL reset to properly reinitialize the I2C peripheral
+     * and its internal state machine. This is more robust than manually
+     * manipulating hi2c->State and hi2c->Mode. */
+    HAL_I2C_DeInit(hi2c);
+    HAL_I2C_Init(hi2c);
 
     FEB_TPS_MUTEX_UNLOCK(feb_tps_ctx.i2c_mutex);
 

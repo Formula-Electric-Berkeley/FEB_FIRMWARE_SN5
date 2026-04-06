@@ -18,6 +18,9 @@ static uint8_t uart_rx_buf[256];
  */
 static uint8_t tps_i2c_address;
 
+/* CAN initialization status - gates CAN-dependent subsystems */
+static bool can_init_success = false;
+
 /**
  * Initialize and configure primary hardware subsystems and start the system timer.
  *
@@ -77,11 +80,13 @@ void FEB_Main_Setup(void)
   };
   if (FEB_CAN_Init(&can_cfg) != FEB_CAN_OK)
   {
-    LOG_E(TAG_MAIN, "CAN initialization failed!");
+    LOG_E(TAG_MAIN, "CAN initialization failed! Running in degraded mode.");
+    can_init_success = false;
     HAL_Delay(50);
   }
   else
   {
+    can_init_success = true;
     // === CHECKPOINT 3: CAN ready ===
     LOG_I(TAG_MAIN, "[3/8] CAN initialized");
     HAL_Delay(50);
@@ -95,21 +100,30 @@ void FEB_Main_Setup(void)
   LOG_I(TAG_MAIN, "[4/8] ADC initialized");
   HAL_Delay(50);
 
-  // RMS and BMS initialization
-  FEB_CAN_RMS_Init();
+  // RMS and BMS initialization (requires CAN)
+  if (can_init_success)
+  {
+    FEB_CAN_RMS_Init();
 
-  // === CHECKPOINT 5: RMS ready ===
-  LOG_I(TAG_MAIN, "[5/8] RMS initialized");
-  HAL_Delay(50);
+    // === CHECKPOINT 5: RMS ready ===
+    LOG_I(TAG_MAIN, "[5/8] RMS initialized");
+    HAL_Delay(50);
 
-  // Clear RMS lockout (2-second blocking sequence - runs once at startup)
-  FEB_RMS_Process();
+    // Clear RMS lockout (2-second blocking sequence - runs once at startup)
+    FEB_RMS_Process();
 
-  FEB_CAN_BMS_Init();
+    FEB_CAN_BMS_Init();
 
-  // === CHECKPOINT 6: BMS ready ===
-  LOG_I(TAG_MAIN, "[6/8] BMS initialized");
-  HAL_Delay(50);
+    // === CHECKPOINT 6: BMS ready ===
+    LOG_I(TAG_MAIN, "[6/8] BMS initialized");
+    HAL_Delay(50);
+  }
+  else
+  {
+    LOG_W(TAG_MAIN, "[5/8] RMS skipped (CAN unavailable)");
+    LOG_W(TAG_MAIN, "[6/8] BMS skipped (CAN unavailable)");
+    HAL_Delay(50);
+  }
 
   // TPS2482 power monitoring initialization
   tps_i2c_address = FEB_TPS_ADDR(FEB_TPS_PIN_GND, FEB_TPS_PIN_GND); // 0x40
@@ -125,7 +139,14 @@ void FEB_Main_Setup(void)
 
   HAL_TIM_Base_Start_IT(&htim1);
 
-  LOG_I(TAG_MAIN, "=== PCU Setup Complete ===");
+  if (can_init_success)
+  {
+    LOG_I(TAG_MAIN, "=== PCU Setup Complete ===");
+  }
+  else
+  {
+    LOG_W(TAG_MAIN, "=== PCU Setup Complete (DEGRADED - CAN FAILED) ===");
+  }
   HAL_Delay(50);
 }
 
@@ -146,12 +167,18 @@ void FEB_Main_Loop(void)
   {
     last_tps_tick = now;
     FEB_CAN_TPS_Update(&hi2c1, &tps_i2c_address, 1);
-    FEB_CAN_TPS_Transmit();
+    if (can_init_success)
+    {
+      FEB_CAN_TPS_Transmit();
+    }
   }
 
-  // CAN TX processing
-  FEB_CAN_TX_Process();
-  FEB_CAN_TX_ProcessPeriodic();
+  // CAN TX processing (skip if CAN failed)
+  if (can_init_success)
+  {
+    FEB_CAN_TX_Process();
+    FEB_CAN_TX_ProcessPeriodic();
+  }
 
   // NOTE: FEB_RMS_Torque() and diagnostics run from FEB_1ms_Callback every 10-20ms
 }
@@ -167,6 +194,12 @@ void FEB_1ms_Callback(void)
 {
   static uint16_t torque_divider = 0;
   static uint16_t diagnostics_divider = 0;
+
+  // Skip CAN-dependent operations if CAN init failed
+  if (!can_init_success)
+  {
+    return;
+  }
 
   FEB_CAN_BMS_ProcessHeartbeat();
 

@@ -34,7 +34,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "lwgps/lwgps.h"
-#if LWESP_CFG_DISTANCE_BEARING
+#if LWGPS_CFG_DISTANCE_BEARING
 #include <math.h>
 #endif
 
@@ -470,7 +470,7 @@ lwgps_process(lwgps_t* gh, const void* data, size_t len) {
     return 1;
 }
 
-#if LWESP_CFG_DISTANCE_BEARING || __DOXYGEN__
+#if LWGPS_CFG_DISTANCE_BEARING || __DOXYGEN__
 
 /**
  * \brief           Calculate distance and bearing between `2` latitude and longitude coordinates
@@ -550,7 +550,7 @@ lwgps_distance_bearing(lwgps_float_t las, lwgps_float_t los, lwgps_float_t lae, 
     return 1;
 }
 
-#endif /* LWESP_CFG_DISTANCE_BEARING || __DOXYGEN__ */
+#endif /* LWGPS_CFG_DISTANCE_BEARING || __DOXYGEN__ */
 
 /**
  * \brief           Convert NMEA GPS speed (in knots = nautical mile per hour) to different speed format

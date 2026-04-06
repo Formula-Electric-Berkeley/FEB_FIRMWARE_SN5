@@ -18,8 +18,8 @@ void FEB_State_Update_RTD(void)
 {
   // MARK: Start buzzer code
   // to react to BMS entering and exiting drive state
+  static BMS_State_t previous_bms_state = BMS_STATE_BOOT;
   BMS_State_t bms_state = FEB_CAN_BMS_GetLastState();
-  BMS_State_t previous_bms_state = FEB_CAN_BMS_GetLastState();
   if (previous_bms_state == BMS_STATE_ENERGIZED && bms_state == BMS_STATE_DRIVE && buzzing_state != BUZZED_ENTER_RTD)
   {
     FEB_IO_Play_Buzzer(BUZZER_DURATION_RTD_ENTER);
@@ -31,6 +31,7 @@ void FEB_State_Update_RTD(void)
     FEB_IO_Play_Buzzer(BUZZER_DURATION_RTD_EXIT);
     buzzing_state = BUZZED_EXIT_RTD;
   }
+  previous_bms_state = bms_state;
 
   // MARK: Signal enter rtd code
   // Send the ready to drive message over CAN when all the conditions are met

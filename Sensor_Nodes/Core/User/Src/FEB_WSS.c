@@ -106,22 +106,22 @@ void WSS_Main(void)
   enc_right.last_count = right_count;
   __enable_irq();
 
-  float left_rpm = 0.0f;
+  float left_rpm_calc = 0.0f;
   if ((now - left_tick) <= STALE_MS)
   {
     float rotations = fabsf((float)(left_count - left_prev) / TICKS_PER_ROTATION);
-    left_rpm = rotations * (60000.0f / (float)elapsed);
+    left_rpm_calc = rotations * (60000.0f / (float)elapsed);
   }
 
-  float right_rpm = 0.0f;
+  float right_rpm_calc = 0.0f;
   if ((now - right_tick) <= STALE_MS)
   {
     float rotations = fabsf((float)(right_count - right_prev) / TICKS_PER_ROTATION);
-    right_rpm = rotations * (60000.0f / (float)elapsed);
+    right_rpm_calc = rotations * (60000.0f / (float)elapsed);
   }
 
-  float left_scaled = left_rpm * RPM_TO_U8_SCALE;
-  float right_scaled = right_rpm * RPM_TO_U8_SCALE;
+  float left_scaled = left_rpm_calc * RPM_TO_U8_SCALE;
+  float right_scaled = right_rpm_calc * RPM_TO_U8_SCALE;
 
   left_rpm = (left_scaled >= 255.0f) ? 255 : (uint8_t)left_scaled;
   right_rpm = (right_scaled >= 255.0f) ? 255 : (uint8_t)right_scaled;

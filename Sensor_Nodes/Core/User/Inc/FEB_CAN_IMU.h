@@ -19,7 +19,8 @@
 
 /**
  * @brief Process IMU data transmissions
- * @note Current values are sign-corrected by the TPS library
+ *
+ * Packs and transmits acceleration and gyroscope data over CAN.
  */
 
 void FEB_CAN_IMU_Tick(void);

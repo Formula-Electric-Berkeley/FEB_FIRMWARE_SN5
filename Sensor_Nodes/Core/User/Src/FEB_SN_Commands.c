@@ -418,7 +418,7 @@ static void cmd_gps_rate(int argc, char *argv[])
     return;
   }
 
-  if (FEB_GPS_SetUpdateRate((uint8_t)hz) == 0)
+  if (FEB_GPS_SetUpdateRate((uint8_t)hz) >= 0)
   {
     FEB_Console_Printf("GPS update rate set to %d Hz\r\n", hz);
   }

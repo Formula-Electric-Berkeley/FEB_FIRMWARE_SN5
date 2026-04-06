@@ -2,6 +2,7 @@
 #include "FEB_Magnetometer.h"
 #include "FEB_GPS.h"
 #include "FEB_SN_Commands.h"
+#include "FEB_WSS.h"
 #include "main.h"
 #include <string.h>
 #include "FEB_Main.h"
@@ -25,6 +26,7 @@ void FEB_Update()
   read_Acceleration();
   read_Angular_Rate();
   read_Magnetic_Field_Data();
+  WSS_Main();
   FEB_CAN_IMU_Tick();
 }
 
@@ -85,8 +87,12 @@ void FEB_Init(void)
     if (cfg_result < 0)
     {
       LOG_W(TAG_MAIN, "GPS config output failed: %d", cfg_result);
+      FEB_Console_Printf("GPS initialized (degraded)\r\n");
     }
-    FEB_Console_Printf("GPS initialized\r\n");
+    else
+    {
+      FEB_Console_Printf("GPS initialized\r\n");
+    }
   }
 
   FEB_Console_Printf("Sensor Node Setup Complete\r\n");

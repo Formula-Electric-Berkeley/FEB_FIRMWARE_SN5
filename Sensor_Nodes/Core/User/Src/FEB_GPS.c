@@ -167,6 +167,21 @@ static void gps_rx_line_callback(const char *line, size_t len)
 
   LOG_D(TAG_GPS, "Parsed %d statement(s)", result);
 
+  /* Track previous timestamp to detect actual data updates */
+  static uint8_t prev_hours = 0xFF, prev_minutes = 0xFF, prev_seconds = 0xFF;
+  bool time_changed =
+      (gps_handle.hours != prev_hours) || (gps_handle.minutes != prev_minutes) || (gps_handle.seconds != prev_seconds);
+
+  /* Only update data if timestamp has changed (indicates new GPS fix) */
+  if (!time_changed && prev_hours != 0xFF)
+  {
+    LOG_T(TAG_GPS, "Skipping update - no new timestamp");
+    return;
+  }
+  prev_hours = gps_handle.hours;
+  prev_minutes = gps_handle.minutes;
+  prev_seconds = gps_handle.seconds;
+
   /* Update our data structure from LwGPS */
   gps_data.latitude = gps_handle.latitude;
   gps_data.longitude = gps_handle.longitude;
