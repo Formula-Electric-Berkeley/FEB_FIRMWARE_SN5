@@ -88,7 +88,7 @@ extern "C" {
  * @brief Default I2C timeout in milliseconds
  */
 #ifndef FEB_TPS_DEFAULT_I2C_TIMEOUT_MS
-#define FEB_TPS_DEFAULT_I2C_TIMEOUT_MS 100
+#define FEB_TPS_DEFAULT_I2C_TIMEOUT_MS HAL_MAX_DELAY
 #endif
 
 /**

@@ -52,6 +52,10 @@ void FEB_Main_Setup(void)
   };
   FEB_Log_Init(&log_cfg);
 
+  // === CHECKPOINT 1: UART/Log ready ===
+  LOG_I(TAG_MAIN, "[1/8] UART and Log initialized");
+  HAL_Delay(50);
+
   // Initialize console (registers built-in commands: help, version, uptime, reboot, log)
   FEB_Console_Init(true);
 
@@ -60,6 +64,10 @@ void FEB_Main_Setup(void)
 
   // Connect UART RX to console processor
   FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
+
+  // === CHECKPOINT 2: Console ready ===
+  LOG_I(TAG_MAIN, "[2/8] Console initialized");
+  HAL_Delay(50);
 
   // CAN initialization
   FEB_CAN_Config_t can_cfg = {
@@ -70,35 +78,55 @@ void FEB_Main_Setup(void)
   if (FEB_CAN_Init(&can_cfg) != FEB_CAN_OK)
   {
     LOG_E(TAG_MAIN, "CAN initialization failed!");
+    HAL_Delay(50);
   }
   else
   {
-    LOG_I(TAG_MAIN, "CAN initialized");
+    // === CHECKPOINT 3: CAN ready ===
+    LOG_I(TAG_MAIN, "[3/8] CAN initialized");
+    HAL_Delay(50);
   }
 
   // ADC initialization
   FEB_ADC_Init();
   FEB_ADC_Start(ADC_MODE_DMA);
-  LOG_I(TAG_MAIN, "ADC initialized");
+
+  // === CHECKPOINT 4: ADC ready ===
+  LOG_I(TAG_MAIN, "[4/8] ADC initialized");
+  HAL_Delay(50);
 
   // RMS and BMS initialization
   FEB_CAN_RMS_Init();
-  LOG_I(TAG_MAIN, "RMS initialized");
+
+  // === CHECKPOINT 5: RMS ready ===
+  LOG_I(TAG_MAIN, "[5/8] RMS initialized");
+  HAL_Delay(50);
 
   // Clear RMS lockout (2-second blocking sequence - runs once at startup)
   FEB_RMS_Process();
 
   FEB_CAN_BMS_Init();
-  LOG_I(TAG_MAIN, "BMS initialized");
+
+  // === CHECKPOINT 6: BMS ready ===
+  LOG_I(TAG_MAIN, "[6/8] BMS initialized");
+  HAL_Delay(50);
 
   // TPS2482 power monitoring initialization
   tps_i2c_address = FEB_TPS_ADDR(FEB_TPS_PIN_GND, FEB_TPS_PIN_GND); // 0x40
   FEB_CAN_TPS_Init();
-  LOG_I(TAG_MAIN, "TPS initialized (0x%02X)", tps_i2c_address);
 
-  LOG_I(TAG_MAIN, "=== Setup Complete ===");
+  // === CHECKPOINT 7: TPS ready ===
+  LOG_I(TAG_MAIN, "[7/8] TPS initialized (0x%02X)", tps_i2c_address);
+  HAL_Delay(50);
+
+  // === CHECKPOINT 8: Starting timer ===
+  LOG_I(TAG_MAIN, "[8/8] Starting 1ms timer...");
+  HAL_Delay(50);
 
   HAL_TIM_Base_Start_IT(&htim1);
+
+  LOG_I(TAG_MAIN, "=== PCU Setup Complete ===");
+  HAL_Delay(50);
 }
 
 /**

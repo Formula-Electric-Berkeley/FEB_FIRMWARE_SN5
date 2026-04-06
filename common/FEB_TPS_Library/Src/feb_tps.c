@@ -1140,6 +1140,60 @@ const char *FEB_TPS_StatusToString(FEB_TPS_Status_t status) {
 }
 
 /**
+ * Attempt to recover the I2C bus by resetting the peripheral.
+ *
+ * This function disables and re-enables the I2C peripheral to clear any
+ * stuck bus conditions that may occur when I2C transactions are interrupted
+ * (e.g., by timer interrupts with blocking operations).
+ *
+ * @returns FEB_TPS_OK if recovery was attempted successfully,
+ *          FEB_TPS_ERR_NOT_INIT if the library is not initialized or no devices are registered.
+ */
+FEB_TPS_Status_t FEB_TPS_BusRecovery(void) {
+    if (!feb_tps_ctx.initialized) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
+
+    /* Find the first registered device to get its I2C handle */
+    I2C_HandleTypeDef *hi2c = NULL;
+    for (uint8_t i = 0; i < FEB_TPS_MAX_DEVICES; i++) {
+        if (feb_tps_ctx.devices[i].in_use && feb_tps_ctx.devices[i].hi2c != NULL) {
+            hi2c = feb_tps_ctx.devices[i].hi2c;
+            break;
+        }
+    }
+
+    if (hi2c == NULL) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
+
+    FEB_TPS_MUTEX_LOCK(feb_tps_ctx.i2c_mutex);
+
+    /* Disable the I2C peripheral */
+    __HAL_I2C_DISABLE(hi2c);
+
+    /* Small delay to allow bus to settle */
+    /* Note: Using a simple delay loop instead of HAL_Delay to avoid
+     * potential issues if called from contexts where HAL_Delay might not work */
+    for (volatile uint32_t i = 0; i < 10000; i++) {
+        __NOP();
+    }
+
+    /* Re-enable the I2C peripheral */
+    __HAL_I2C_ENABLE(hi2c);
+
+    /* Reset the I2C state machine to ready state */
+    hi2c->State = HAL_I2C_STATE_READY;
+    hi2c->Mode = HAL_I2C_MODE_NONE;
+
+    FEB_TPS_MUTEX_UNLOCK(feb_tps_ctx.i2c_mutex);
+
+    TPS_LOG_I("I2C bus recovery attempted");
+
+    return FEB_TPS_OK;
+}
+
+/**
  * Get the human-readable name for a TPS device handle.
  *
  * @param handle Device handle returned by FEB_TPS_DeviceRegister; may be NULL.
