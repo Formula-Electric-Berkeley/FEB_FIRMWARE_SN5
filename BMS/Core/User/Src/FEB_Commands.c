@@ -38,18 +38,44 @@ extern osThreadId_t BMSTaskRxHandle;
 extern osThreadId_t BMSTaskTxHandle;
 
 /* ============================================================================
- * Subcommand: status - Show BMS status summary
+ * Subcommand: status - Show BMS status summary (C-code/S-code)
  * ============================================================================ */
 static void subcmd_status(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
 
+  /* Compute min/max for both C and S codes */
+  float min_c = 999.0f, max_c = 0.0f;
+  float min_s = 999.0f, max_s = 0.0f;
+  for (int bank = 0; bank < FEB_NBANKS; bank++)
+  {
+    for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
+    {
+      float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
+      float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
+      if (v_c > 0)
+      {
+        if (v_c < min_c)
+          min_c = v_c;
+        if (v_c > max_c)
+          max_c = v_c;
+      }
+      if (v_s > 0)
+      {
+        if (v_s < min_s)
+          min_s = v_s;
+        if (v_s > max_s)
+          max_s = v_s;
+      }
+    }
+  }
+
   FEB_Console_Printf("\r\n=== BMS Status ===\r\n");
   FEB_Console_Printf("State: %s\r\n", FEB_CAN_State_GetStateName(FEB_SM_Get_Current_State()));
   FEB_Console_Printf("Pack Voltage: %.2fV\r\n", FEB_ADBMS_GET_ACC_Total_Voltage());
-  FEB_Console_Printf("Min Cell: %.3fV  Max Cell: %.3fV\r\n", FEB_ADBMS_GET_ACC_MIN_Voltage(),
-                     FEB_ADBMS_GET_ACC_MAX_Voltage());
+  FEB_Console_Printf("Min Cell (C/S): %.3fV / %.3fV\r\n", min_c, min_s);
+  FEB_Console_Printf("Max Cell (C/S): %.3fV / %.3fV\r\n", max_c, max_s);
   FEB_Console_Printf("Min Temp: %.1fC  Max Temp: %.1fC  Avg: %.1fC\r\n", FEB_ADBMS_GET_ACC_MIN_Temp(),
                      FEB_ADBMS_GET_ACC_MAX_Temp(), FEB_ADBMS_GET_ACC_AVG_Temp());
   FEB_Console_Printf("Balancing: %s\r\n", FEB_Cell_Balancing_Status() ? "ON" : "OFF");
@@ -57,22 +83,23 @@ static void subcmd_status(int argc, char *argv[])
 }
 
 /* ============================================================================
- * Subcommand: cells - Show individual cell voltages
+ * Subcommand: cells - Show individual cell voltages (C-code/S-code)
  * ============================================================================ */
 static void subcmd_cells(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
 
-  FEB_Console_Printf("\r\n=== Cell Voltages ===\r\n");
+  FEB_Console_Printf("\r\n=== Cell Voltages (C/S) ===\r\n");
   for (int bank = 0; bank < FEB_NBANKS; bank++)
   {
-    FEB_Console_Printf("Bank %d: ", bank);
+    FEB_Console_Printf("Bank %d:\r\n", bank);
     for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
     {
-      FEB_Console_Printf("%.3f ", FEB_ADBMS_GET_Cell_Voltage(bank, cell));
+      float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
+      float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
+      FEB_Console_Printf("  C%02d: %.3f/%.3f\r\n", cell, v_c, v_s);
     }
-    FEB_Console_Printf("\r\n");
   }
 }
 
@@ -397,7 +424,7 @@ static void subcmd_mem(int argc, char *argv[])
 }
 
 /* ============================================================================
- * Subcommand: cell - Show single cell details
+ * Subcommand: cell - Show single cell details (C-code/S-code comparison)
  * ============================================================================ */
 static void subcmd_cell(int argc, char *argv[])
 {
@@ -423,12 +450,18 @@ static void subcmd_cell(int argc, char *argv[])
     return;
   }
 
-  float voltage = FEB_ADBMS_GET_Cell_Voltage((uint8_t)bank, (uint16_t)cell);
+  float voltage_c = FEB_ADBMS_GET_Cell_Voltage((uint8_t)bank, (uint16_t)cell);
+  float voltage_s = FEB_ADBMS_GET_Cell_Voltage_S((uint8_t)bank, (uint16_t)cell);
   float temp = FEB_ADBMS_GET_Cell_Temperature((uint8_t)bank, (uint16_t)cell);
+  uint8_t violations = FEB_ADBMS_GET_Cell_Violations((uint8_t)bank, (uint16_t)cell);
+  float delta = voltage_c - voltage_s;
 
   FEB_Console_Printf("\r\n=== Cell [Bank %d, Cell %d] ===\r\n", bank, cell);
-  FEB_Console_Printf("Voltage:       %.3f V\r\n", voltage);
+  FEB_Console_Printf("Voltage (C):   %.3f V  (Primary)\r\n", voltage_c);
+  FEB_Console_Printf("Voltage (S):   %.3f V  (Secondary)\r\n", voltage_s);
+  FEB_Console_Printf("Delta:         %.4f V\r\n", delta);
   FEB_Console_Printf("Temperature:   %.1f C\r\n", temp);
+  FEB_Console_Printf("Violations:    %d\r\n", violations);
 }
 
 /* ============================================================================

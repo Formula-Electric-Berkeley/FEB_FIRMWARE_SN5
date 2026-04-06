@@ -562,6 +562,32 @@ float FEB_ADBMS_GET_Cell_Voltage(uint8_t bank, uint16_t cell)
   return voltage;
 }
 
+float FEB_ADBMS_GET_Cell_Voltage_S(uint8_t bank, uint16_t cell)
+{
+  if (bank >= FEB_NBANKS || cell >= FEB_NUM_CELL_PER_BANK)
+  {
+    return -1.0f;
+  }
+
+  osMutexAcquire(ADBMSMutexHandle, osWaitForever);
+  float voltage = FEB_ACC.banks[bank].cells[cell].voltage_S;
+  osMutexRelease(ADBMSMutexHandle);
+  return voltage;
+}
+
+uint8_t FEB_ADBMS_GET_Cell_Violations(uint8_t bank, uint16_t cell)
+{
+  if (bank >= FEB_NBANKS || cell >= FEB_NUM_CELL_PER_BANK)
+  {
+    return 0;
+  }
+
+  osMutexAcquire(ADBMSMutexHandle, osWaitForever);
+  uint8_t violations = FEB_ACC.banks[bank].cells[cell].violations;
+  osMutexRelease(ADBMSMutexHandle);
+  return violations;
+}
+
 bool FEB_ADBMS_Precharge_Complete(void)
 {
   // float voltage_V = (float)FEB_IVT_V1_Voltage() * 0.001f;
