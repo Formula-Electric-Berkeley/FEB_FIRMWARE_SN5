@@ -502,10 +502,10 @@ const char *FEB_TPS_GetDeviceName(FEB_TPS_Handle_t handle);
  * @return Signed 16-bit integer with sign applied (negative if input bit 15 is set).
  */
 static inline int16_t FEB_TPS_SignMagnitude(uint16_t raw) {
-    if (raw & 0x8000) {
-        return -(int16_t)(raw & 0x7FFF);
+    if (raw & FEB_TPS_SIGN_BIT) {
+        return -(int16_t)(raw & FEB_TPS_MAGNITUDE_MASK);
     }
-    return (int16_t)(raw & 0x7FFF);
+    return (int16_t)(raw & FEB_TPS_MAGNITUDE_MASK);
 }
 
 /* ============================================================================

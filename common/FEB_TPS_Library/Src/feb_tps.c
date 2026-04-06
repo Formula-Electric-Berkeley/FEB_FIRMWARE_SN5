@@ -84,13 +84,22 @@ static HAL_StatusTypeDef feb_tps_read_reg(I2C_HandleTypeDef *hi2c,
     uint8_t buf[2];
     HAL_StatusTypeDef status;
 
-    status = HAL_I2C_Mem_Read(hi2c, (uint16_t)(i2c_addr << 1), reg,
-                               I2C_MEMADD_SIZE_8BIT, buf, 2,
-                               feb_tps_ctx.i2c_timeout_ms);
+    /* Retry loop for transient I2C errors */
+    for (uint8_t retry = 0; retry < FEB_TPS_I2C_MAX_RETRIES; retry++) {
+        status = HAL_I2C_Mem_Read(hi2c, (uint16_t)(i2c_addr << 1), reg,
+                                   I2C_MEMADD_SIZE_8BIT, buf, 2,
+                                   feb_tps_ctx.i2c_timeout_ms);
 
-    if (status == HAL_OK) {
-        /* TPS2482 sends MSB first */
-        *value = ((uint16_t)buf[0] << 8) | buf[1];
+        if (status == HAL_OK) {
+            /* TPS2482 sends MSB first */
+            *value = ((uint16_t)buf[0] << 8) | buf[1];
+            return status;
+        }
+
+        /* Brief delay before retry (only if not last attempt) */
+        if (retry < FEB_TPS_I2C_MAX_RETRIES - 1) {
+            FEB_TPS_DELAY_MS(1);
+        }
     }
 
     return status;
@@ -110,14 +119,29 @@ static HAL_StatusTypeDef feb_tps_write_reg(I2C_HandleTypeDef *hi2c,
                                             uint8_t reg,
                                             uint16_t value) {
     uint8_t buf[2];
+    HAL_StatusTypeDef status;
 
     /* TPS2482 expects MSB first */
     buf[0] = (uint8_t)(value >> 8);
     buf[1] = (uint8_t)(value & 0xFF);
 
-    return HAL_I2C_Mem_Write(hi2c, (uint16_t)(i2c_addr << 1), reg,
-                              I2C_MEMADD_SIZE_8BIT, buf, 2,
-                              feb_tps_ctx.i2c_timeout_ms);
+    /* Retry loop for transient I2C errors */
+    for (uint8_t retry = 0; retry < FEB_TPS_I2C_MAX_RETRIES; retry++) {
+        status = HAL_I2C_Mem_Write(hi2c, (uint16_t)(i2c_addr << 1), reg,
+                                    I2C_MEMADD_SIZE_8BIT, buf, 2,
+                                    feb_tps_ctx.i2c_timeout_ms);
+
+        if (status == HAL_OK) {
+            return status;
+        }
+
+        /* Brief delay before retry (only if not last attempt) */
+        if (retry < FEB_TPS_I2C_MAX_RETRIES - 1) {
+            FEB_TPS_DELAY_MS(1);
+        }
+    }
+
+    return status;
 }
 
 /**
@@ -369,7 +393,10 @@ cleanup:
 /**
  * Unregisters a previously registered TPS device.
  *
- * Removes the device identified by `handle` from the library's internal device list. If removal succeeds the device array is compacted (last device moved into the freed slot) and the device count is decremented. The call is a no-op if `handle` is NULL or the device is not found.
+ * Marks the device slot as unused and clears its data. The slot is NOT compacted
+ * (no array relocation), which ensures that other device handles remain valid.
+ * The device count is decremented. The call is a no-op if `handle` is NULL or
+ * the device is not found.
  *
  * @param handle Handle returned by FEB_TPS_DeviceRegister identifying the device to remove.
  */
@@ -398,9 +425,7 @@ void FEB_TPS_DeviceUnregister(FEB_TPS_Handle_t handle) {
     /* Save name for logging before clearing */
     const char *name = dev->name;
 
-    /* Mark slot as unused without relocating (preserves other handles) */
-    dev->in_use = false;
-    dev->initialized = false;
+    /* Clear slot data (memset zeros in_use and initialized flags) */
     memset(dev, 0, sizeof(FEB_TPS_Device_t));
 
     feb_tps_ctx.device_count--;
@@ -543,10 +568,13 @@ FEB_TPS_Status_t FEB_TPS_PollScaled(FEB_TPS_Handle_t handle,
     FEB_TPS_Status_t status = FEB_TPS_Poll(handle, &meas);
 
     if (status == FEB_TPS_OK && scaled != NULL) {
-        scaled->bus_voltage_mv = (uint32_t)(meas.bus_voltage_v * 1000.0f);
+        /* Clamp unsigned values to prevent undefined behavior from negative floats */
+        scaled->bus_voltage_mv = (meas.bus_voltage_v >= 0.0f) ?
+                                  (uint32_t)(meas.bus_voltage_v * 1000.0f) : 0;
         scaled->current_ma = (int32_t)(meas.current_a * 1000.0f);
         scaled->shunt_voltage_uv = (int32_t)(meas.shunt_voltage_mv * 1000.0f);
-        scaled->power_mw = (uint32_t)(meas.power_w * 1000.0f);
+        scaled->power_mw = (meas.power_w >= 0.0f) ?
+                           (uint32_t)(meas.power_w * 1000.0f) : 0;
     }
 
     return status;
@@ -812,11 +840,16 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
         uint16_t raw;
         bool success = true;
 
+        /* Use temporary variables to avoid partial data on failure */
+        uint16_t temp_bus_v = 0;
+        int16_t temp_current = 0;
+        int16_t temp_shunt_v = 0;
+
         if (bus_v_raw != NULL) {
             hal_status = feb_tps_read_reg(dev->hi2c, dev->i2c_addr,
                                            FEB_TPS_REG_BUS_VOLT, &raw);
             if (hal_status == HAL_OK) {
-                bus_v_raw[logical_index] = raw;
+                temp_bus_v = raw;
             } else {
                 success = false;
             }
@@ -826,7 +859,7 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
             hal_status = feb_tps_read_reg(dev->hi2c, dev->i2c_addr,
                                            FEB_TPS_REG_CURRENT, &raw);
             if (hal_status == HAL_OK) {
-                current_raw[logical_index] = feb_tps_sign_magnitude(raw);
+                temp_current = feb_tps_sign_magnitude(raw);
             } else {
                 success = false;
             }
@@ -836,13 +869,23 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
             hal_status = feb_tps_read_reg(dev->hi2c, dev->i2c_addr,
                                            FEB_TPS_REG_SHUNT_VOLT, &raw);
             if (hal_status == HAL_OK) {
-                shunt_v_raw[logical_index] = feb_tps_sign_magnitude(raw);
+                temp_shunt_v = feb_tps_sign_magnitude(raw);
             } else {
                 success = false;
             }
         }
 
+        /* Only write to output arrays if all requested reads succeeded */
         if (success) {
+            if (bus_v_raw != NULL) {
+                bus_v_raw[logical_index] = temp_bus_v;
+            }
+            if (current_raw != NULL) {
+                current_raw[logical_index] = temp_current;
+            }
+            if (shunt_v_raw != NULL) {
+                shunt_v_raw[logical_index] = temp_shunt_v;
+            }
             success_count++;
         }
         logical_index++;
