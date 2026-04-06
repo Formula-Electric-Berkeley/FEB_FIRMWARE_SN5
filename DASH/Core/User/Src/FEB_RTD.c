@@ -49,7 +49,7 @@ void FEB_State_Update_RTD(void)
 
   // RTD requires: button held, brake applied, and inverter enabled
   if (states.button_rtd && rtd_button_press_start_tick + RTD_BUTTON_HOLD_DURATION < HAL_GetTick() &&
-      brake_pressure >= RTD_BRAKE_THRESHOLD && inv_enabled)
+      brake_pressure >= RTD_BRAKE_THRESHOLD && inv_enabled == 1)
   {
     // FEB_IO_Play_Buzzer(BUZZER_DURATION_RTD_ENTER);
     rtd = true;

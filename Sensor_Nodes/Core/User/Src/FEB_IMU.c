@@ -71,20 +71,32 @@ int lsm6dsox_init(void)
 
   HAL_Delay(10);
 
-  uint8_t whoamI;
-  lsm6dsox_device_id_get(&lsm6dsox_ctx, &whoamI);
+  uint8_t whoamI = 0;
+  if (lsm6dsox_device_id_get(&lsm6dsox_ctx, &whoamI) != 0)
+  {
+    LOG_E(TAG_IMU, "Failed to read device ID");
+    return -1;
+  }
   if (whoamI != LSM6DSOX_ID)
   {
     LOG_E(TAG_IMU, "IMU not found (WHO_AM_I: 0x%02X)", whoamI);
     return -1;
   }
 
-  lsm6dsox_reset_set(&lsm6dsox_ctx, PROPERTY_ENABLE);
-  uint8_t rst;
+  if (lsm6dsox_reset_set(&lsm6dsox_ctx, PROPERTY_ENABLE) != 0)
+  {
+    LOG_E(TAG_IMU, "Failed to initiate reset");
+    return -2;
+  }
+  uint8_t rst = 0;
   uint32_t timeout = 1000;
   do
   {
-    lsm6dsox_reset_get(&lsm6dsox_ctx, &rst);
+    if (lsm6dsox_reset_get(&lsm6dsox_ctx, &rst) != 0)
+    {
+      LOG_E(TAG_IMU, "Failed to read reset status");
+      return -2;
+    }
     if (--timeout == 0)
     {
       LOG_E(TAG_IMU, "IMU reset timeout");
@@ -92,13 +104,15 @@ int lsm6dsox_init(void)
     }
   } while (rst);
 
-  lsm6dsox_block_data_update_set(&lsm6dsox_ctx, PROPERTY_ENABLE);
-
-  lsm6dsox_xl_data_rate_set(&lsm6dsox_ctx, LSM6DSOX_XL_ODR_104Hz);
-  lsm6dsox_xl_full_scale_set(&lsm6dsox_ctx, LSM6DSOX_2g);
-
-  lsm6dsox_gy_data_rate_set(&lsm6dsox_ctx, LSM6DSOX_GY_ODR_104Hz);
-  lsm6dsox_gy_full_scale_set(&lsm6dsox_ctx, LSM6DSOX_2000dps);
+  if (lsm6dsox_block_data_update_set(&lsm6dsox_ctx, PROPERTY_ENABLE) != 0 ||
+      lsm6dsox_xl_data_rate_set(&lsm6dsox_ctx, LSM6DSOX_XL_ODR_104Hz) != 0 ||
+      lsm6dsox_xl_full_scale_set(&lsm6dsox_ctx, LSM6DSOX_2g) != 0 ||
+      lsm6dsox_gy_data_rate_set(&lsm6dsox_ctx, LSM6DSOX_GY_ODR_104Hz) != 0 ||
+      lsm6dsox_gy_full_scale_set(&lsm6dsox_ctx, LSM6DSOX_2000dps) != 0)
+  {
+    LOG_E(TAG_IMU, "Failed to configure IMU");
+    return -3;
+  }
 
   return 0;
 }
@@ -110,6 +124,7 @@ void read_Acceleration(void)
   if (lsm6dsox_acceleration_raw_get(&lsm6dsox_ctx, data_raw_acceleration) != 0)
   {
     LOG_E(TAG_IMU, "Accel read failed");
+    memset(acceleration_mg, 0, sizeof(acceleration_mg));
     return;
   }
 
@@ -128,6 +143,7 @@ void read_Angular_Rate(void)
   if (lsm6dsox_angular_rate_raw_get(&lsm6dsox_ctx, data_raw_angular_rate) != 0)
   {
     LOG_E(TAG_IMU, "Gyro read failed");
+    memset(angular_rate_mdps, 0, sizeof(angular_rate_mdps));
     return;
   }
 
