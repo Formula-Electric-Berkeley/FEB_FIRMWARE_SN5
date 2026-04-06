@@ -369,10 +369,13 @@ uint8_t FEB_TPS_PollAllScaled(FEB_TPS_MeasurementScaled_t *scaled, uint8_t count
  * @param current_raw Array for sign-corrected current values (can be NULL)
  * @param shunt_v_raw Array for sign-corrected shunt voltage values (can be NULL)
  * @param count Number of elements in arrays
+ * @param success_mask Output bitmask indicating which device indices succeeded
+ *                     (bit N set = device N polled successfully). Can be NULL.
  * @return Number of devices successfully polled
  */
 uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
-                            int16_t *shunt_v_raw, uint8_t count);
+                            int16_t *shunt_v_raw, uint8_t count,
+                            uint8_t *success_mask);
 
 /* ============================================================================
  * GPIO Control (Enable/Power-Good/Alert)

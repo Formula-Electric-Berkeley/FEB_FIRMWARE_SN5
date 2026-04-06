@@ -568,6 +568,14 @@ FEB_TPS_Status_t FEB_TPS_PollScaled(FEB_TPS_Handle_t handle,
     FEB_TPS_Status_t status = FEB_TPS_Poll(handle, &meas);
 
     if (status == FEB_TPS_OK && scaled != NULL) {
+        /* Log diagnostic warning if clamping negative values */
+        if (meas.bus_voltage_v < 0.0f) {
+            TPS_LOG_W("Clamped negative bus_voltage: %.3f V", meas.bus_voltage_v);
+        }
+        if (meas.power_w < 0.0f) {
+            TPS_LOG_W("Clamped negative power: %.3f W", meas.power_w);
+        }
+
         /* Clamp unsigned values to prevent undefined behavior from negative floats */
         scaled->bus_voltage_mv = (meas.bus_voltage_v >= 0.0f) ?
                                   (uint32_t)(meas.bus_voltage_v * 1000.0f) : 0;
@@ -810,14 +818,17 @@ uint8_t FEB_TPS_PollAllScaled(FEB_TPS_MeasurementScaled_t *scaled, uint8_t count
  * element in the provided arrays with the raw register value. Any measurement pointer
  * may be NULL to skip that field. Devices that are not initialized are skipped.
  *
- * @param bus_v_raw  Buffer to receive BUS_VOLT raw values indexed by device; may be NULL.
- * @param current_raw Buffer to receive SIGN-MAGNITUDE CURRENT values indexed by device; may be NULL.
- * @param shunt_v_raw Buffer to receive SIGN-MAGNITUDE SHUNT_VOLT values indexed by device; may be NULL.
- * @param count      Maximum number of devices to poll (size of the provided buffers).
+ * @param bus_v_raw    Buffer to receive BUS_VOLT raw values indexed by device; may be NULL.
+ * @param current_raw  Buffer to receive SIGN-MAGNITUDE CURRENT values indexed by device; may be NULL.
+ * @param shunt_v_raw  Buffer to receive SIGN-MAGNITUDE SHUNT_VOLT values indexed by device; may be NULL.
+ * @param count        Maximum number of devices to poll (size of the provided buffers).
+ * @param success_mask Output bitmask indicating which device indices succeeded
+ *                     (bit N set = device N polled successfully). May be NULL.
  * @returns Number of devices for which all requested fields were successfully read; returns 0 if the library is not initialized.
  */
 uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
-                            int16_t *shunt_v_raw, uint8_t count) {
+                            int16_t *shunt_v_raw, uint8_t count,
+                            uint8_t *success_mask) {
     if (!feb_tps_ctx.initialized) {
         return 0;
     }
@@ -825,6 +836,11 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
     uint8_t actual_count = (count < feb_tps_ctx.device_count) ?
                            count : feb_tps_ctx.device_count;
     uint8_t success_count = 0;
+
+    /* Initialize success_mask if provided */
+    if (success_mask != NULL) {
+        *success_mask = 0;
+    }
 
     FEB_TPS_MUTEX_LOCK(feb_tps_ctx.i2c_mutex);
 
@@ -885,6 +901,9 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
             }
             if (shunt_v_raw != NULL) {
                 shunt_v_raw[logical_index] = temp_shunt_v;
+            }
+            if (success_mask != NULL) {
+                *success_mask |= (1u << logical_index);
             }
             success_count++;
         }

@@ -358,7 +358,7 @@ void FEB_Main_Loop(void)
 
     // Poll all TPS devices using the new library's batch operation
     uint8_t polled =
-        FEB_TPS_PollAllRaw(tps2482_bus_voltage_raw, tps2482_current_raw, tps2482_shunt_voltage_raw, NUM_TPS2482);
+        FEB_TPS_PollAllRaw(tps2482_bus_voltage_raw, tps2482_current_raw, tps2482_shunt_voltage_raw, NUM_TPS2482, NULL);
     if (polled < NUM_TPS2482)
     {
       LOG_W(TAG_MAIN, "TPS poll: only %d/%d devices succeeded", polled, NUM_TPS2482);
