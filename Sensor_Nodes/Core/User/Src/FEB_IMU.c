@@ -60,7 +60,7 @@ void i2c_scan(void)
   LOG_I(TAG_IMU, "Scan complete");
 }
 
-void lsm6dsox_init(void)
+int lsm6dsox_init(void)
 {
   lsm6dsox_ctx.write_reg = lsm6dsox_write;
   lsm6dsox_ctx.read_reg = lsm6dsox_read;
@@ -76,7 +76,7 @@ void lsm6dsox_init(void)
   if (whoamI != LSM6DSOX_ID)
   {
     LOG_E(TAG_IMU, "IMU not found (WHO_AM_I: 0x%02X)", whoamI);
-    return;
+    return -1;
   }
 
   lsm6dsox_reset_set(&lsm6dsox_ctx, PROPERTY_ENABLE);
@@ -88,7 +88,7 @@ void lsm6dsox_init(void)
     if (--timeout == 0)
     {
       LOG_E(TAG_IMU, "IMU reset timeout");
-      return;
+      return -2;
     }
   } while (rst);
 
@@ -99,6 +99,8 @@ void lsm6dsox_init(void)
 
   lsm6dsox_gy_data_rate_set(&lsm6dsox_ctx, LSM6DSOX_GY_ODR_104Hz);
   lsm6dsox_gy_full_scale_set(&lsm6dsox_ctx, LSM6DSOX_2000dps);
+
+  return 0;
 }
 
 void read_Acceleration(void)

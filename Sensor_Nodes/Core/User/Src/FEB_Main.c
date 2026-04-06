@@ -14,6 +14,8 @@
 
 #define TAG_MAIN "[MAIN]"
 
+static bool gps_ready = false;
+
 extern UART_HandleTypeDef huart2;
 extern DMA_HandleTypeDef hdma_usart2_tx;
 extern DMA_HandleTypeDef hdma_usart2_rx;
@@ -69,8 +71,15 @@ void FEB_Init(void)
   FEB_Console_Printf("Sensor Node Starting\r\n");
 
   // Initialize sensors
-  lsm6dsox_init();
-  FEB_Console_Printf("IMU initialized\r\n");
+  int imu_result = lsm6dsox_init();
+  if (imu_result != 0)
+  {
+    LOG_E(TAG_MAIN, "IMU init failed: %d", imu_result);
+  }
+  else
+  {
+    FEB_Console_Printf("IMU initialized\r\n");
+  }
 
   lis3mdl_init();
   FEB_Console_Printf("Magnetometer initialized\r\n");
@@ -80,6 +89,7 @@ void FEB_Init(void)
   if (gps_result != 0)
   {
     LOG_E(TAG_MAIN, "GPS init failed: %d", gps_result);
+    gps_ready = false;
   }
   else
   {
@@ -93,6 +103,7 @@ void FEB_Init(void)
     {
       FEB_Console_Printf("GPS initialized\r\n");
     }
+    gps_ready = true;
   }
 
   FEB_Console_Printf("Sensor Node Setup Complete\r\n");
@@ -103,6 +114,9 @@ void FEB_Main_Loop(void)
   FEB_Update();
 
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
-  FEB_GPS_Process();
+  if (gps_ready)
+  {
+    FEB_GPS_Process();
+  }
   HAL_Delay(100);
 }

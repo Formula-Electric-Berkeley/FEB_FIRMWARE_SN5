@@ -13,8 +13,8 @@ extern float_t acceleration_mg[3];
 extern int16_t data_raw_angular_rate[3];
 extern float_t angular_rate_mdps[3];
 
-/* Public initialization */
-void lsm6dsox_init(void);
+/* Public initialization - returns 0 on success, negative on failure */
+int lsm6dsox_init(void);
 
 /* Read functions */
 void read_Acceleration(void);

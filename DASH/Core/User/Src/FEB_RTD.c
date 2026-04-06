@@ -9,6 +9,9 @@
 static bool rtd = false;
 
 static uint32_t rtd_button_press_start_tick = 0;
+
+// Minimum brake pressure required for RTD activation (safety interlock)
+#define RTD_BRAKE_THRESHOLD 25
 static bool previous_rtd_button = false;
 
 static Buzzing_State_t buzzing_state =
@@ -36,15 +39,17 @@ void FEB_State_Update_RTD(void)
   // MARK: Signal enter rtd code
   // Send the ready to drive message over CAN when all the conditions are met
   IO_State_t states = FEB_IO_GetLastIOStates();
-  uint8_t brake_pressure = FEB_CAN_PCU_GetLastBreakPosition();
-  uint8_t inv_enabled = FEB_CAN_PCU_GetLastRMSEnabled();
+  uint16_t brake_pressure = FEB_CAN_PCU_GetLastBreakPosition();
+  int8_t inv_enabled = FEB_CAN_PCU_GetLastRMSEnabled();
 
   if (previous_rtd_button == false && states.button_rtd)
   {
     rtd_button_press_start_tick = HAL_GetTick();
   }
 
-  if (states.button_rtd && rtd_button_press_start_tick + RTD_BUTTON_HOLD_DURATION < HAL_GetTick())
+  // RTD requires: button held, brake applied, and inverter enabled
+  if (states.button_rtd && rtd_button_press_start_tick + RTD_BUTTON_HOLD_DURATION < HAL_GetTick() &&
+      brake_pressure >= RTD_BRAKE_THRESHOLD && inv_enabled)
   {
     // FEB_IO_Play_Buzzer(BUZZER_DURATION_RTD_ENTER);
     rtd = true;

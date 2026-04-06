@@ -1172,14 +1172,29 @@ FEB_TPS_Status_t FEB_TPS_BusRecovery(void) {
     /* Perform a full HAL reset to properly reinitialize the I2C peripheral
      * and its internal state machine. This is more robust than manually
      * manipulating hi2c->State and hi2c->Mode. */
-    HAL_I2C_DeInit(hi2c);
-    HAL_I2C_Init(hi2c);
+    HAL_StatusTypeDef hal_status;
+    FEB_TPS_Status_t status = FEB_TPS_OK;
 
+    hal_status = HAL_I2C_DeInit(hi2c);
+    if (hal_status != HAL_OK) {
+        TPS_LOG_E("I2C DeInit failed: %d", hal_status);
+        status = FEB_TPS_ERR_I2C;
+        goto cleanup;
+    }
+
+    hal_status = HAL_I2C_Init(hi2c);
+    if (hal_status != HAL_OK) {
+        TPS_LOG_E("I2C Init failed: %d", hal_status);
+        status = FEB_TPS_ERR_I2C;
+        goto cleanup;
+    }
+
+    TPS_LOG_I("I2C bus recovery succeeded");
+
+cleanup:
     FEB_TPS_MUTEX_UNLOCK(feb_tps_ctx.i2c_mutex);
 
-    TPS_LOG_I("I2C bus recovery attempted");
-
-    return FEB_TPS_OK;
+    return status;
 }
 
 /**

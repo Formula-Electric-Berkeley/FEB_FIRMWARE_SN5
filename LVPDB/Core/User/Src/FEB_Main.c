@@ -367,7 +367,10 @@ void FEB_Main_Loop(void)
     // Track consecutive complete failures and attempt I2C bus recovery
     if (polled == 0)
     {
-      consecutive_failures++;
+      if (consecutive_failures < 255) // Saturate to prevent overflow
+      {
+        consecutive_failures++;
+      }
       if (consecutive_failures >= 3)
       {
         // Attempt I2C bus recovery after 3 consecutive complete failures
