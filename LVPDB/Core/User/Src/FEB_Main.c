@@ -175,6 +175,7 @@ static bool FEB_TPS_Init_Devices(void)
       LOG_E(TAG_MAIN, "TPS init failed for %s: %s", tps_device_configs[i].name, FEB_TPS_StatusToString(status));
       return false; // Abort immediately to prevent index misalignment
     }
+    HAL_Delay(50); // Allow I2C bus to settle after device registration
     LOG_D(TAG_MAIN, "TPS %s registered at 0x%02X", tps_device_configs[i].name, tps_device_configs[i].i2c_addr);
   }
 
@@ -348,6 +349,7 @@ void FEB_Main_Setup(void)
 void FEB_Main_Loop(void)
 {
   static uint32_t last_poll_tick = 0;
+  static uint8_t consecutive_failures = 0;
   uint32_t now = HAL_GetTick();
 
   if (tps_init_success && (now - last_poll_tick >= MAIN_LOOP_POLL_INTERVAL_MS))
@@ -360,6 +362,34 @@ void FEB_Main_Loop(void)
     if (polled < NUM_TPS2482)
     {
       LOG_W(TAG_MAIN, "TPS poll: only %d/%d devices succeeded", polled, NUM_TPS2482);
+    }
+
+    // Track consecutive complete failures and attempt I2C bus recovery
+    if (polled == 0)
+    {
+      if (consecutive_failures < 255) // Saturate to prevent overflow
+      {
+        consecutive_failures++;
+      }
+      if (consecutive_failures >= 3)
+      {
+        // Attempt I2C bus recovery after 3 consecutive complete failures
+        FEB_TPS_Status_t recovery_status = FEB_TPS_BusRecovery();
+        if (recovery_status == FEB_TPS_OK)
+        {
+          consecutive_failures = 0;
+          LOG_I(TAG_MAIN, "I2C bus recovery succeeded");
+        }
+        else
+        {
+          LOG_E(TAG_MAIN, "I2C bus recovery failed: %s", FEB_TPS_StatusToString(recovery_status));
+          // Don't clear consecutive_failures - allows continued recovery attempts
+        }
+      }
+    }
+    else
+    {
+      consecutive_failures = 0;
     }
 
     FEB_Variable_Conversion();

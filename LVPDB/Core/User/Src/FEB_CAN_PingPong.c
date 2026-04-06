@@ -230,6 +230,12 @@ void FEB_CAN_PingPong_Tick(void)
         {
           break;
         }
+        /* Only retry on transient full conditions - permanent errors should not retry */
+        if (status != FEB_CAN_ERROR_QUEUE && status != FEB_CAN_ERROR_FULL)
+        {
+          LOG_W(TAG_PING, "CAN TX error ch%d: %d", i + 1, status);
+          break;
+        }
       } while ((HAL_GetTick() - retry_start) < 5); /* 5ms timeout */
 
       LOG_D(TAG_PING, "TX ch%d ID:0x%02X cnt:%ld", i + 1, (unsigned int)frame_ids[i], (long)ch->tx_counter);
