@@ -34,6 +34,12 @@
 #define ADBMS_ADC_LSB_V 0.000150f // ADC resolution in volts
 #define ADBMS_ADC_OFFSET_V 1.5f   // ADC bipolar offset voltage
 
+// ********************************** ADBMS6830B Open Wire Detection **************
+// Open Wire (OW) detection configuration for cell voltage measurements
+// OW detection applies a test current to detect disconnected sense wires
+// Options: 0x00=OFF, 0x01=EVEN_CH, 0x02=ODD_CH, 0x03=ALL_CH
+#define ADBMS_OW_DETECTION_MODE 0x00 // OW detection disabled
+
 // ********************************** Thermistor Beta Parameter Constants *********
 // NTC Thermistor conversion using Beta parameter equation
 

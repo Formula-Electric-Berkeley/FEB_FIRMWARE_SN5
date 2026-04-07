@@ -65,13 +65,20 @@ static inline float convert_voltage(int16_t raw_code)
 static void start_adc_cell_voltage_measurements()
 {
   DEBUG_VOLTAGE_PRINT("Starting ADC cell voltage measurements");
-  ADBMS6830B_adcv(1, 0, 1, 0, OWVR);
+
+  // Start C-ADC (primary voltage)
+  ADBMS6830B_adcv(1, 0, 1, 0, ADBMS_OW_DETECTION_MODE);
   /* Note: Using osDelay instead of ADBMS6830B_pollAdc() because:
    * - pollAdc() uses busy-wait which blocks the RTOS task scheduler
    * - ADBMS6830B typical ADC conversion time is ~500µs to 1ms
    * - 2ms delay provides sufficient margin and allows other tasks to run
    */
   osDelay(pdMS_TO_TICKS(2));
+
+  // Start S-ADC (secondary/redundant voltage)
+  transmitCMD(ADSV);
+  osDelay(pdMS_TO_TICKS(2));
+
   DEBUG_VOLTAGE_PRINT("ADC cell voltage measurement command sent");
 }
 

@@ -115,9 +115,6 @@ int main(void)
   osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
   MX_FREERTOS_Init();
 
-  /* Initialize FEB libraries after FreeRTOS objects are created */
-  FEB_Init();
-
   /* Start scheduler */
   osKernelStart();
 
