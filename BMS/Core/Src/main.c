@@ -109,12 +109,14 @@ int main(void)
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
   printf("[BOOT] UART ready @115200 (USART2)\r\n");
-  FEB_Init();
   /* USER CODE END 2 */
 
   /* Init scheduler */
   osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
   MX_FREERTOS_Init();
+
+  /* Initialize FEB libraries after FreeRTOS objects are created */
+  FEB_Init();
 
   /* Start scheduler */
   osKernelStart();
