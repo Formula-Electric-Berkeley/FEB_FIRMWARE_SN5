@@ -76,6 +76,7 @@ void StartADBMSTask(void *argument)
   uint32_t voltage_tick = osKernelGetTickCount();
   uint32_t temp_tick = osKernelGetTickCount();
   uint32_t print_tick = osKernelGetTickCount();
+  uint32_t balance_tick = osKernelGetTickCount();
 
   for (;;)
   {
@@ -106,14 +107,18 @@ void StartADBMSTask(void *argument)
       print_tick = now;
     }
 
-    /* Cell balancing (only in BALANCE state) */
-    // FEB_SM_State_t current_state = FEB_SM_Get_Current_State();
-    // if (current_state == FEB_SM_ST_BALANCING)
-    // {
-    //   osMutexAcquire(ADBMSMutexHandle, osWaitForever);
-    //   FEB_Cell_Balance_Process();
-    //   osMutexRelease(ADBMSMutexHandle);
-    // }
+    /* Cell balancing (only in BALANCE or BATTERY_FREE state) */
+    BMS_State_t current_state = FEB_SM_Get_Current_State();
+    if (current_state == BMS_STATE_BALANCE || current_state == BMS_STATE_BATTERY_FREE)
+    {
+      if (now - balance_tick >= pdMS_TO_TICKS(FEB_CELL_BALANCE_INTERVAL_MS))
+      {
+        osMutexAcquire(ADBMSMutexHandle, osWaitForever);
+        FEB_Cell_Balance_Process();
+        osMutexRelease(ADBMSMutexHandle);
+        balance_tick = now;
+      }
+    }
 
     /* Task runs at 10ms period (100 Hz) */
     osDelay(pdMS_TO_TICKS(10));

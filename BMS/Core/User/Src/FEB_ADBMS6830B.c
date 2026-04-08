@@ -700,11 +700,6 @@ void FEB_Cell_Balance_Start()
 
 void FEB_Cell_Balance_Process()
 {
-  // if (FEB_SM_Get_Current_State() != FEB_SM_ST_BALANCING) {
-  // 	return;
-  // }
-
-  FEB_Stop_Balance();
   determineMinV();
 
   if (balancing_cycle == 3)
