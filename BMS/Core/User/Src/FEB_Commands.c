@@ -98,7 +98,7 @@ static void subcmd_cells(int argc, char *argv[])
     {
       float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
       float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
-      FEB_Console_Printf("  C%02d: %.3f/%.3f\r\n", cell, v_c, v_s);
+      FEB_Console_Printf("  C%02d: %.3f/%.3f\r\n", cell + 1, v_c, v_s);
     }
   }
 }
