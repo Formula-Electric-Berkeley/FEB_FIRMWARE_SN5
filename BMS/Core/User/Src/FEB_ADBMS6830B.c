@@ -77,7 +77,7 @@ static void start_adc_cell_voltage_measurements()
 
   // Start S-ADC (secondary/redundant voltage)
   transmitCMD(ADSV);
-  osDelay(pdMS_TO_TICKS(2));
+  osDelay(pdMS_TO_TICKS(5)); // Increased from 2ms to investigate S-voltage timing
 
   DEBUG_VOLTAGE_PRINT("ADC cell voltage measurement command sent");
 }
@@ -177,6 +177,13 @@ static void store_cell_voltages()
           FEB_ACC.banks[bank].badReadV++;
           DEBUG_VOLTAGE_PRINT("PEC error: Bank %d IC %d Cell %d Reg %d", bank, ic, cell, reg_idx);
           continue;
+        }
+
+        // Debug: Print raw codes for cells 9-11 to investigate S-voltage issue
+        if (cell >= 9 && cell <= 11)
+        {
+          LOG_D(TAG_VOLTAGE, "IC%d Cell%d: c_code=%u s_code=%u", ic_idx, cell, IC_Config[ic_idx].cells.c_codes[cell],
+                IC_Config[ic_idx].cells.s_codes[cell]);
         }
 
         float CVoltage = convert_voltage(IC_Config[ic_idx].cells.c_codes[cell]);
