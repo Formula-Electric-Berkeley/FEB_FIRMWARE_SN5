@@ -66,13 +66,11 @@ static void DASH_CAN_Init(void)
       .hcan1 = &hcan1,
       .hcan2 = NULL,
       .get_tick_ms = HAL_GetTick,
-#if FEB_CAN_USE_FREERTOS
       .tx_queue = canTxQueueHandle,
       .rx_queue = canRxQueueHandle,
       .tx_mutex = canTxMutexHandle,
       .rx_mutex = canRxMutexHandle,
       .tx_mailbox_sem = canTxMailboxSemHandle,
-#endif
   };
 
   if (FEB_CAN_Init(&cfg) != FEB_CAN_OK)

@@ -22,6 +22,8 @@ add_compile_definitions(
     STM32F469xx
     $<$<CONFIG:Debug>:DEBUG>
     FEB_UART_USE_FREERTOS=1
+    FEB_CAN_USE_FREERTOS=1
+    FEB_LOG_USE_FREERTOS=1
 )
 
 # ══════════════════════════════════════════════════════════════════════

@@ -29,15 +29,9 @@ static uint8_t uart_tx_buf[512];
 static uint8_t uart_rx_buf[256];
 
 /* External FreeRTOS handles from .ioc-generated code */
-#if FEB_LOG_USE_FREERTOS
 extern osMutexId_t logMutexHandle;
-#endif
-
-#if FEB_UART_USE_FREERTOS
 extern osMutexId_t uartTxMutexHandle;
 extern osSemaphoreId_t uartTxSemHandle;
-extern osMessageQueueId_t uartRxQueueHandle;
-#endif
 
 /* ============================================================================
  * Application Entry Points
@@ -55,12 +49,8 @@ void FEB_Init(void)
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
       .get_tick_ms = HAL_GetTick,
-#if FEB_UART_USE_FREERTOS
       .tx_mutex = uartTxMutexHandle,
       .tx_complete_sem = uartTxSemHandle,
-      .enable_rx_queue = true,
-      .rx_queue = uartRxQueueHandle,
-#endif
   };
 
   if (FEB_UART_Init(FEB_UART_INSTANCE_1, &cfg) != 0)
@@ -78,15 +68,16 @@ void FEB_Init(void)
       .colors = true,
       .timestamps = true,
       .get_tick_ms = HAL_GetTick,
-#if FEB_LOG_USE_FREERTOS
       .mutex = logMutexHandle,
-#endif
   };
   FEB_Log_Init(&log_cfg);
 
   /* Initialize console (registers built-in commands: echo, help, version, uptime, reboot, log) */
   FEB_Console_Init(true);
   DASH_RegisterCommands();
+
+  /* Connect UART RX to console processor */
+  FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
 
   /* Initialize CAN state publisher */
   FEB_CAN_State_Init();
@@ -112,19 +103,10 @@ void StartUartRxTask(void *argument)
 {
   (void)argument;
 
-  char line_buf[FEB_UART_QUEUE_LINE_SIZE];
-  size_t line_len;
-
   for (;;)
   {
-    /* Process RX data - extracts from buffer, posts complete lines to queue */
     FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
-
-    /* Receive from queue with 10ms timeout */
-    if (FEB_UART_QueueReceiveLine(FEB_UART_INSTANCE_1, line_buf, sizeof(line_buf), &line_len, 10))
-    {
-      FEB_Console_ProcessLine(line_buf, line_len);
-    }
+    osDelay(1);
   }
 }
 
