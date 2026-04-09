@@ -6,7 +6,7 @@
 #include "FEB_Const.h"
 #include "FEB_Config.h"
 // #include "FEB_CAN_IVT.h"
-#include "FEB_CMDCODES.h"
+#include "ADBMS6830B_Commands.h"
 #include "FEB_Thermistor.h"
 #include "FEB_AD68xx_Interface.h"
 #include "FEB_ADBMS6830B_Driver.h"
@@ -415,7 +415,7 @@ static void validate_temps()
 
 static void determineMinV()
 {
-  transmitCMD(ADCV | AD_CONT | AD_RD);
+  transmitCMD(ADCV | ADCV_CONT | ADCV_RD);
   osDelay(pdMS_TO_TICKS(1));
   read_cell_voltages();
   store_cell_voltages();
@@ -824,7 +824,7 @@ void FEB_Stop_Balance()
     ADBMS6830B_set_cfgr(ic, IC_Config, refon, cth_bits, gpio_bits, 0, dcto_bits, uv, ov);
   }
   ADBMS6830B_wrALL(FEB_NUM_IC, IC_Config);
-  transmitCMD(ADCV | AD_DCP);
+  transmitCMD(ADCV | ADCV_DCP);
 }
 
 // ********************************** Error Type *********************************

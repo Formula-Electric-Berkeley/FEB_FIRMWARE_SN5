@@ -2,7 +2,7 @@
 
 #include "FEB_ADBMS6830B_Driver.h"
 #include "FEB_HW.h"
-#include "FEB_CMDCODES.h"
+#include "ADBMS6830B_Commands.h"
 #include "FEB_AD68xx_Interface.h"
 #include "FreeRTOS.h"
 #include "cmsis_os.h"
