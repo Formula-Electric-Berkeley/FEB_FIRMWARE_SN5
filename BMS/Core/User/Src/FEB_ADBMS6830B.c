@@ -65,14 +65,19 @@ static inline float convert_voltage(int16_t raw_code)
 static void start_adc_cell_voltage_measurements()
 {
   DEBUG_VOLTAGE_PRINT("Starting ADC cell voltage measurements");
-  ADBMS6830B_adcv(1, 0, 1, 0, OWVR);
+
+  // Start C-ADC (primary voltage)
+  ADBMS6830B_adcv(1, 0, 1, 0, ADBMS_OW_DETECTION_MODE);
   /* Note: Using osDelay instead of ADBMS6830B_pollAdc() because:
    * - pollAdc() uses busy-wait which blocks the RTOS task scheduler
    * - ADBMS6830B typical ADC conversion time is ~500µs to 1ms
    * - 2ms delay provides sufficient margin and allows other tasks to run
    */
   osDelay(pdMS_TO_TICKS(2));
-  DEBUG_VOLTAGE_PRINT("ADC cell voltage measurement command sent");
+
+  // Start S-ADC (secondary/redundant voltage)
+  transmitCMD(ADSV);
+  osDelay(pdMS_TO_TICKS(2));
 }
 
 // Helper function to check and report PEC errors to redundancy system
@@ -562,6 +567,32 @@ float FEB_ADBMS_GET_Cell_Voltage(uint8_t bank, uint16_t cell)
   return voltage;
 }
 
+float FEB_ADBMS_GET_Cell_Voltage_S(uint8_t bank, uint16_t cell)
+{
+  if (bank >= FEB_NBANKS || cell >= FEB_NUM_CELL_PER_BANK)
+  {
+    return -1.0f;
+  }
+
+  osMutexAcquire(ADBMSMutexHandle, osWaitForever);
+  float voltage = FEB_ACC.banks[bank].cells[cell].voltage_S;
+  osMutexRelease(ADBMSMutexHandle);
+  return voltage;
+}
+
+uint8_t FEB_ADBMS_GET_Cell_Violations(uint8_t bank, uint16_t cell)
+{
+  if (bank >= FEB_NBANKS || cell >= FEB_NUM_CELL_PER_BANK)
+  {
+    return 0;
+  }
+
+  osMutexAcquire(ADBMSMutexHandle, osWaitForever);
+  uint8_t violations = FEB_ACC.banks[bank].cells[cell].violations;
+  osMutexRelease(ADBMSMutexHandle);
+  return violations;
+}
+
 bool FEB_ADBMS_Precharge_Complete(void)
 {
   // float voltage_V = (float)FEB_IVT_V1_Voltage() * 0.001f;
@@ -667,11 +698,6 @@ void FEB_Cell_Balance_Start()
 
 void FEB_Cell_Balance_Process()
 {
-  // if (FEB_SM_Get_Current_State() != FEB_SM_ST_BALANCING) {
-  // 	return;
-  // }
-
-  FEB_Stop_Balance();
   determineMinV();
 
   if (balancing_cycle == 3)
