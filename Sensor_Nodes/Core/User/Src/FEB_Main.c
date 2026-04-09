@@ -11,6 +11,7 @@
 #include "feb_uart.h"
 #include "feb_log.h"
 #include "feb_console.h"
+#include "feb_can_lib.h"
 
 #define TAG_MAIN "[MAIN]"
 
@@ -19,6 +20,8 @@ static bool gps_ready = false;
 extern UART_HandleTypeDef huart2;
 extern DMA_HandleTypeDef hdma_usart2_tx;
 extern DMA_HandleTypeDef hdma_usart2_rx;
+extern CAN_HandleTypeDef hcan1;
+extern CAN_HandleTypeDef hcan2;
 
 static uint8_t uart_tx_buf[1024];
 static uint8_t uart_rx_buf[256];
@@ -105,6 +108,15 @@ void FEB_Init(void)
     }
     gps_ready = true;
   }
+
+  // Initialize CAN library
+  FEB_CAN_Config_t can_cfg = {
+      .hcan1 = &hcan1,
+      .hcan2 = &hcan2,
+      .get_tick_ms = HAL_GetTick,
+  };
+  FEB_CAN_Init(&can_cfg);
+  FEB_Console_Printf("CAN initialized\r\n");
 
   FEB_Console_Printf("Sensor Node Setup Complete\r\n");
 }
