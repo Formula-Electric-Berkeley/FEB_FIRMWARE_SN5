@@ -717,7 +717,8 @@ void FEB_Cell_Balance_Process()
   }
   balancing_cycle++;
   // Use the actual minimum voltage from the pack instead of static value
-  float min_cell_voltage = FEB_ACC.pack_min_voltage_V;
+  // float min_cell_voltage = FEB_ACC.pack_min_voltage_V;
+  float min_cell_voltage = 3;
   LOG_D(TAG_BALANCE, "Cycle %d: min=%.3fV max=%.3fV mask=0x%04X", balancing_cycle, min_cell_voltage,
         FEB_ACC.pack_max_voltage_V, balancing_mask);
 
