@@ -39,9 +39,9 @@
 
 // ****************** S Voltage Register Read Commands ******************
 #define CMD_READ_S_VOLTAGE_REG_A 0x0003 // S1-S3
-#define CMD_READ_S_VOLTAGE_REG_B 0x0007 // S4-S6
-#define CMD_READ_S_VOLTAGE_REG_C 0x000D // S7-S9
-#define CMD_READ_S_VOLTAGE_REG_D 0x000F // S10-S12
+#define CMD_READ_S_VOLTAGE_REG_B 0x0005 // S4-S6
+#define CMD_READ_S_VOLTAGE_REG_C 0x0007 // S7-S9
+#define CMD_READ_S_VOLTAGE_REG_D 0x000D // S10-S12
 #define CMD_READ_S_VOLTAGE_REG_E 0x000C // S13-S15
 #define CMD_READ_S_VOLTAGE_REG_F 0x000E // S16-S18
 #define CMD_READ_S_VOLTAGE_ALL 0x0011   // Read all S voltages
