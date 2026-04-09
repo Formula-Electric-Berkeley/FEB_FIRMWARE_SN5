@@ -24,6 +24,8 @@
 #include "feb_log.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
+#include "feb_can.h"
+#include "feb_can_lib.h"
 
 /* ========================== External HAL handles ========================== */
 extern CAN_HandleTypeDef hcan1;
@@ -132,10 +134,18 @@ void StartDASHTaskTx(void *argument)
 {
   (void)argument;
 
+  /* Hardcoded */
+  FEB_CAN_TX_Params_t tx_params = {
+      .instance = FEB_CAN_INSTANCE_1,
+      .can_id = FEB_CAN_FEB_PING_PONG_COUNTER1_FRAME_ID, // FEB_CAN_FEB_PING_PONG_COUNTER1_FRAME_ID (0xe0u)
+      .id_type = FEB_CAN_ID_STD,
+  };
+
+  uint8_t tx_data[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+
   for (;;)
   {
-    /* Drain TX queue into CAN mailboxes */
-    FEB_CAN_TX_Process();
-    osDelay(1);
+    FEB_CAN_TX_Send(tx_params.instance, tx_params.can_id, tx_params.id_type, tx_data, 8);
+    osDelay(100);
   }
 }
