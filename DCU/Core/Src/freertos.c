@@ -27,6 +27,7 @@
 /* USER CODE BEGIN Includes */
 #include "FEB_Task_Radio.h"
 #include "feb_rtos_utils.h"
+#include "FEB_Main.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -105,7 +106,7 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
-
+  FEB_Init();
   /* USER CODE END Init */
   /* Create the mutex(es) */
   /* creation of spiMutex */
@@ -121,7 +122,7 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the timer(s) */
   /* creation of rxTimeoutTimer */
-  rxTimeoutTimerHandle = osTimerNew(rxTimeoutCallback, osTimerOnce, (void*) Dynamic, &rxTimeoutTimer_attributes);
+  rxTimeoutTimerHandle = osTimerNew(rxTimeoutCallback, osTimerOnce, NULL, &rxTimeoutTimer_attributes);
 
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
@@ -166,9 +167,11 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
+  (void)argument;
   /* Infinite loop */
   for(;;)
   {
+    FEB_Main_Loop();
     osDelay(1);
   }
   /* USER CODE END StartDefaultTask */
