@@ -36,8 +36,8 @@ volatile EncoderState enc_right = {0, 0, 0, 0, 0, 0};
 // -----------------------------------------------------------------------
 // Return type
 // -----------------------------------------------------------------------
-uint8_t left_rpm;
-uint8_t right_rpm;
+extern uint8_t left_rpm;  // hetvi: extern
+extern uint8_t right_rpm; // uint8_t = 1 byte for CAN payload
 
 // -----------------------------------------------------------------------
 // ISR callback

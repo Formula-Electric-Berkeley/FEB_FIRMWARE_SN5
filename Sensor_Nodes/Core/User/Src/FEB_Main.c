@@ -4,9 +4,12 @@
 #include "FEB_SN_Commands.h"
 #include "FEB_WSS.h"
 #include "main.h"
+
 #include <string.h>
 #include "FEB_Main.h"
 #include "FEB_CAN_IMU.h"
+#include "FEB_CAN_Magnetometer.h"
+#include "FEB_CAN_WSS.h"
 // Common libraries
 #include "feb_uart.h"
 #include "feb_log.h"
@@ -33,6 +36,8 @@ void FEB_Update()
   read_Magnetic_Field_Data();
   WSS_Main();
   FEB_CAN_IMU_Tick();
+  FEB_CAN_Magnetometer_Tick();
+  // FEB_CAN_WSS_Tick();
 }
 
 void FEB_Init(void)
