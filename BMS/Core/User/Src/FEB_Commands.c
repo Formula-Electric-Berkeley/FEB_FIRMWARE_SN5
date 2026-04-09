@@ -13,6 +13,7 @@
 #include "feb_log.h"
 #include "feb_string_utils.h"
 #include "FEB_ADBMS6830B.h"
+#include "ADBMS6830B_Registers.h"
 #include "FEB_CAN_IVT.h"
 #include "FEB_CAN_PingPong.h"
 #include "FEB_CAN_State.h"
@@ -692,6 +693,14 @@ static void print_bms_help(void)
   FEB_Console_Printf("  BMS|errors              - Show error summary\r\n");
   FEB_Console_Printf("  BMS|config              - Show configuration\r\n");
   FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("Register Access:\r\n");
+  FEB_Console_Printf("  BMS|reg|list            - List all ADBMS commands\r\n");
+  FEB_Console_Printf("  BMS|reg|read|<name>     - Read register (e.g. RDCFGA)\r\n");
+  FEB_Console_Printf("  BMS|reg|write|<name>|<hex> - Write register\r\n");
+  FEB_Console_Printf("  BMS|reg|cmd|<name>      - Send command (e.g. ADCV)\r\n");
+  FEB_Console_Printf("  BMS|reg|dump            - Dump all registers\r\n");
+  FEB_Console_Printf("  BMS|reg|status          - Status summary\r\n");
+  FEB_Console_Printf("\r\n");
   FEB_Console_Printf("CAN Ping/Pong:\r\n");
   FEB_Console_Printf("  BMS|ping|<ch>           - Start ping mode (1-4)\r\n");
   FEB_Console_Printf("  BMS|pong|<ch>           - Start pong mode (1-4)\r\n");
@@ -789,6 +798,10 @@ static void cmd_bms(int argc, char *argv[])
   else if (FEB_strcasecmp(subcmd, "config") == 0)
   {
     subcmd_config(argc - 1, argv + 1);
+  }
+  else if (FEB_strcasecmp(subcmd, "reg") == 0)
+  {
+    ADBMS_RegSubcmd(argc - 1, argv + 1);
   }
   else
   {
