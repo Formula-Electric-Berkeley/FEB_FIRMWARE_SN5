@@ -10,8 +10,6 @@
 #include <stdio.h>
 #include "feb_log.h"
 
-#define TAG_SPI "[SPI]"
-
 // ********************************** Functions **********************************
 
 uint16_t SetOverVoltageThreshold(float voltage)
@@ -376,13 +374,6 @@ uint8_t ADBMS6830B_rdsv(uint8_t total_ic, // The number of ICs in the system
   {
     wakeup_sleep(FEB_NUM_IC);
     transmitCMDR(codes[REGGRP], cell_data, TxSize * total_ic);
-
-    // Debug: Print raw bytes for Register D (cells 9-11) to investigate S-voltage issue
-    if (REGGRP == 3)
-    {
-      LOG_D(TAG_SPI, "RDSVD raw: %02X %02X %02X %02X %02X %02X", cell_data[0], cell_data[1], cell_data[2], cell_data[3],
-            cell_data[4], cell_data[5]);
-    }
 
     uint8_t bytesInGroup = (REGGRP == 5) ? 2 : 6;
     for (int icn = 0; icn < total_ic; icn++)
