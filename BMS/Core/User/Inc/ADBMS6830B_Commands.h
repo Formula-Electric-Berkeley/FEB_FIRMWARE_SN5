@@ -43,18 +43,18 @@
  * S-Voltage Register Commands (Redundant ADC Results)
  *============================================================================*/
 #define RDSVA 0x0003  // Read S Voltage Register Group A (S1-S3)
-#define RDSVB 0x0007  // Read S Voltage Register Group B (S4-S6)
-#define RDSVC 0x000D  // Read S Voltage Register Group C (S7-S9)
-#define RDSVD 0x000F  // Read S Voltage Register Group D (S10-S12)
-#define RDSVE 0x000C  // Read S Voltage Register Group E (S13-S15)
-#define RDSVF 0x000E  // Read S Voltage Register Group F (S16-S18)
-#define RDSALL 0x0011 // Read All S Results
+#define RDSVB 0x0005  // Read S Voltage Register Group B (S4-S6)
+#define RDSVC 0x0007  // Read S Voltage Register Group C (S7-S9)
+#define RDSVD 0x000D  // Read S Voltage Register Group D (S10-S12)
+#define RDSVE 0x000E  // Read S Voltage Register Group E (S13-S15)
+#define RDSVF 0x000F  // Read S Voltage Register Group F (S16-S18)
+#define RDSALL 0x0010 // Read All S Results
 
 /*============================================================================
  * Combined Cell and S-Voltage Commands
  *============================================================================*/
-#define RDCSALL 0x0051  // Read all C and S Results
-#define RDACSALL 0x0052 // Read all Average C and S Results
+#define RDCSALL 0x0011  // Read all C and S Results
+#define RDACSALL 0x0051 // Read all Average C and S Results
 
 /*============================================================================
  * Filtered Cell Voltage Register Commands (F-ADC Results)
@@ -85,13 +85,15 @@
 
 /*============================================================================
  * Status Register Commands
+ * err: 0: Reading Status Register C without error injection
+ *      1: Reading Status Register C with error injection for latent fault detection, Bit SPIFLT must be set
  *============================================================================*/
-#define RDSTATA 0x0030 // Read Status Register Group A
-#define RDSTATB 0x0031 // Read Status Register Group B
-#define RDSTATC 0x0032 // Read Status Register Group C
-#define RDSTATD 0x0033 // Read Status Register Group D
-#define RDSTATE 0x0034 // Read Status Register Group E
-#define RDASALL 0x0035 // Read all AUX/Status Registers
+#define RDSTATA 0x0030                              // Read Status Register Group A
+#define RDSTATB 0x0031                              // Read Status Register Group B
+#define RDSTATC(err) (0x0032 | ((err & 0x01) << 6)) // Read Status Register Group C
+#define RDSTATD 0x0033                              // Read Status Register Group D
+#define RDSTATE 0x0034                              // Read Status Register Group E
+#define RDASALL 0x0035                              // Read all AUX/Status Registers
 
 /*============================================================================
  * PWM Register Commands
@@ -106,15 +108,15 @@
  *============================================================================*/
 #define CMDIS 0x0040     // LPCM Disable
 #define CMEN 0x0041      // LPCM Enable
-#define CMHB 0x0011      // LPCM Heartbeat
-#define WRCMCFG 0x00C4   // Write LPCM Configuration Register
-#define RDCMCFG 0x00C5   // Read LPCM Configuration Register
-#define WRCMCELLT 0x00C6 // Write LPCM Cell Threshold
-#define RDCMCELLT 0x00C7 // Read LPCM Cell Threshold
-#define WRCMGPIOT 0x00C8 // Write LPCM GPIO Threshold
-#define RDCMGPIOT 0x00C9 // Read LPCM GPIO Threshold
-#define CLRCMFLAG 0x00CA // Clear LPCM Flags
-#define RDCMFLAG 0x00CB  // Read LPCM Flags
+#define CMHB 0x0043      // LPCM Heartbeat
+#define WRCMCFG 0x0058   // Write LPCM Configuration Register
+#define RDCMCFG 0x0059   // Read LPCM Configuration Register
+#define WRCMCELLT 0x005A // Write LPCM Cell Threshold
+#define RDCMCELLT 0x005B // Read LPCM Cell Threshold
+#define WRCMGPIOT 0x005C // Write LPCM GPIO Threshold
+#define RDCMGPIOT 0x005D // Read LPCM GPIO Threshold
+#define CLRCMFLAG 0x005E // Clear LPCM Flags
+#define RDCMFLAG 0x005F  // Read LPCM Flags
 
 /*============================================================================
  * ADC Conversion Commands
@@ -122,23 +124,22 @@
  * Note: ADCV, ADSV, ADAX, ADAX2 have configurable bits for mode selection.
  * The base values below are starting points - OR with flag bits as needed.
  *
- * ADCV bits: CONT[7], RD[4], DCP[4], RSTF[1], OW[1:0]
- * ADSV bits: CONT[7], DCP[4], OW[1:0]
- * ADAX bits: OW[3], PUP[2], CH[4:0]
+ * ADCV bits:
+ * ADSV bits:
+ * ADAX bits:
  *============================================================================*/
-#define ADCV 0x0260  // Start Cell Voltage ADC Conversion and Poll Status
-#define ADSV 0x0168  // Start S-ADC Conversion and Poll Status
-#define ADAX 0x0410  // Start AUX ADC Conversions and Poll Status
-#define ADAX2 0x0400 // Start AUX2 ADC Conversions and Poll Status
+// Start Cell Voltage ADC Conversion and Poll Status
+#define ADCV(rd, cont, dcp, rstf, ow)                                                                                  \
+  (0x0260 | ((rd & 0x01) << 8) | ((cont & 0x01) << 7) | ((dcp & 0x01) << 4) | ((rstf & 0x01) << 2) | ((ow & 0x03) << 0))
 
-/*============================================================================
- * Poll Commands
- *============================================================================*/
-#define PLADC 0x0718  // Poll Any ADC Status
-#define PLCADC 0x0719 // Poll C-ADC
-#define PLSADC 0x071A // Poll S-ADC
-#define PLAUX 0x071B  // Poll AUX ADC
-#define PLAUX2 0x071C // Poll AUX2 ADC
+// Start S-ADC Conversion and Poll Status
+#define ADSV(cont, dcp, ow) (0x0168 | ((cont & 0x01) << 7) | ((dcp & 0x01) << 4) | ((ow & 0x03) << 0))
+
+// Start AUX ADC Conversions and Poll Status
+#define ADAX(ow, pup, ch) (0x0410 | ((ow & 0x01) << 8) | ((pup & 0x01) << 7) | ((ch & 0x10) << 6) | ((ch & 0x0F) << 0))
+
+// Start AUX2 ADC Conversions and Poll Status
+#define ADAX2(ch) (0x0400 | ((ch & 0x0F) << 0))
 
 /*============================================================================
  * Clear Register Commands
@@ -149,6 +150,15 @@
 #define CLRSPIN 0x0716 // Clear S-Voltage Register Groups
 #define CLRFLAG 0x0717 // Clear Flags
 #define CLOVUV 0x0715  // Clear OVUV
+
+/*============================================================================
+ * Poll Commands
+ *============================================================================*/
+#define PLADC 0x0718  // Poll Any ADC Status
+#define PLCADC 0x071C // Poll C-ADC
+#define PLSADC 0x071D // Poll S-ADC
+#define PLAUX 0x071E  // Poll AUX ADC
+#define PLAUX2 0x071F // Poll AUX2 ADC
 
 /*============================================================================
  * Communication Commands (I2C/SPI Master)
@@ -175,38 +185,139 @@
 /*============================================================================
  * Retention Register Commands
  *============================================================================*/
-#define ULRR 0x000A // Unlock Retention Register
-#define WRRR 0x000B // Write Retention Registers
-#define RDRR 0x000C // Read Retention Registers
+#define ULRR 0x0038 // Unlock Retention Register
+#define WRRR 0x0039 // Write Retention Registers
+#define RDRR 0x003A // Read Retention Registers
 
 /*============================================================================
- * ADC Mode Bit Flags (for building ADCV/ADSV/ADAX commands)
+ * ADC Mode Bit Flags (for building ADCV/ADSV/ADAX commands) — Table 51 & 52
  *============================================================================*/
 
-/* ADCV Command Flags */
-#define ADCV_CONT 0x0080   // Continuous mode
-#define ADCV_RD 0x0010     // Redundancy bit
-#define ADCV_DCP 0x0010    // Discharge permitted
-#define ADCV_RSTF 0x0004   // Reset filter
-#define ADCV_OW_OFF 0x0000 // Open-wire off
-#define ADCV_OW_PUP 0x0001 // Open-wire pull-up
-#define ADCV_OW_PDN 0x0002 // Open-wire pull-down
+/**
+ * @brief ADC Channel Selection for ADAX/ADAX2 commands.
+ *
+ * Channel definitions:
+ *   0   : All channels
+ *   1   : GPIO1 only
+ *   2   : GPIO2 only
+ *   3   : GPIO3 only
+ *   4   : GPIO4 only
+ *   5   : GPIO5 only
+ *   6   : GPIO6 only
+ *   7   : GPIO7 only
+ *   8   : GPIO8 only
+ *   9   : GPIO9 only
+ *   10  : GPIO10 only
+ *   11  : VREF2 only
+ *   12  : VD only
+ *   13  : VA only
+ *   14  : ITEMP only
+ *   15  : VPV only
+ *   16  : VMV only
+ *   17  : RES only
+ */
+typedef enum
+{
+  ADC_CONV_CH_ALL = 0x0000,
+  ADC_CONV_CH_GPIO1 = 0x0001,
+  ADC_CONV_CH_GPIO2 = 0x0002,
+  ADC_CONV_CH_GPIO3 = 0x0003,
+  ADC_CONV_CH_GPIO4 = 0x0004,
+  ADC_CONV_CH_GPIO5 = 0x0005,
+  ADC_CONV_CH_GPIO6 = 0x0006,
+  ADC_CONV_CH_GPIO7 = 0x0007,
+  ADC_CONV_CH_GPIO8 = 0x0008,
+  ADC_CONV_CH_GPIO9 = 0x0009,
+  ADC_CONV_CH_GPIO10 = 0x000A,
+  ADC_CONV_CH_VREF2 = 0x0010,
+  ADC_CONV_CH_VD = 0x0011,
+  ADC_CONV_CH_VA = 0x0012,
+  ADC_CONV_CH_ITEMP = 0x0013,
+  ADC_CONV_CH_VPV = 0x0014,
+  ADC_CONV_CH_VMV = 0x0015,
+  ADC_CONV_CH_RES = 0x0016
+} adc_conv_channel_selection_t;
 
-/* ADAX Command Flags */
-#define ADAX_OW 0x0008        // Open-wire mode
-#define ADAX_PUP 0x0004       // Pull-up current
-#define ADAX_CH_ALL 0x0000    // All channels
-#define ADAX_CH_GPIO1 0x0001  // GPIO1 only
-#define ADAX_CH_GPIO2 0x0002  // GPIO2 only
-#define ADAX_CH_GPIO3 0x0003  // GPIO3 only
-#define ADAX_CH_GPIO4 0x0004  // GPIO4 only
-#define ADAX_CH_GPIO5 0x0005  // GPIO5 only
-#define ADAX_CH_GPIO6 0x0006  // GPIO6 only
-#define ADAX_CH_GPIO7 0x0007  // GPIO7 only
-#define ADAX_CH_GPIO8 0x0008  // GPIO8 only
-#define ADAX_CH_GPIO9 0x0009  // GPIO9 only
-#define ADAX_CH_GPIO10 0x000A // GPIO10 only
-#define ADAX_CH_VREF2 0x000B  // VREF2 only
-#define ADAX_CH_ITEMP 0x000C  // Internal temp only
+/**
+ * @brief ADC Conversion Mode
+ *
+ * - ADC_CONV_SINGLE_SHOT: Single shot conversion (0)
+ * - ADC_CONV_CONTINUOUS : Continuous conversion (1)
+ */
+typedef enum
+{
+  ADC_CONV_SINGLE_SHOT = 0x0000,
+  ADC_CONV_CONTINUOUS = 0x0001,
+} adc_conv_mode_t;
+
+/**
+ * @brief Open-Wire Detection Modes for ADC Conversion
+ *
+ * OW[1:0] settings:
+ *   0b00: Open-wire detection off
+ *   0b01: Open-wire detection on even channels
+ *   0b10: Open-wire detection on odd channels
+ *   0b11: Open-wire detection on all channels
+ * OW (for single-bit fields):
+ *   0: Open-wire detection off
+ *   1: Open-wire detection on
+ */
+typedef enum
+{
+  ADC_CONV_OW_OFF = 0x0000,     ///< Open-wire detection off (single-bit)
+  ADC_CONV_OW_ON = 0x0001,      ///< Open-wire detection on (single-bit)
+  ADC_CONV_OW_OFF_CH = 0x0000,  ///< 2-bit: detection off
+  ADC_CONV_OW_EVEN_CH = 0x0001, ///< 2-bit: detection on even channels
+  ADC_CONV_OW_ODD_CH = 0x0002,  ///< 2-bit: detection on odd channels
+  ADC_CONV_OW_ALL_CH = 0x0003,  ///< 2-bit: detection on all channels
+} adc_conv_open_wire_detection_mode_t;
+
+/**
+ * @brief ADC Pull Up / Pull Down Selection
+ *
+ * - ADC_CONV_PUP_DOWN: Pull-down selected (0)
+ * - ADC_CONV_PUP_UP: Pull-up selected (1)
+ */
+typedef enum
+{
+  ADC_CONV_PUP_DOWN = 0x0000, ///< Pull-down selected
+  ADC_CONV_PUP_UP = 0x0001,   ///< Pull-up selected
+} adc_conv_pull_up_pull_down_t;
+
+/**
+ * @brief Discharge Permitted State for ADC Conversion
+ *
+ * - ADC_CONV_DCP_NOT_PERMITTED: Discharge not permitted (0)
+ * - ADC_CONV_DCP_PERMITTED: Discharge permitted (1)
+ */
+typedef enum
+{
+  ADC_CONV_DCP_NOT_PERMITTED = 0x0000, ///< Discharge not permitted
+  ADC_CONV_DCP_PERMITTED = 0x0001,     ///< Discharge permitted
+} adc_conv_discharge_permitted_t;
+
+/**
+ * @brief ADC Reset Filter Control
+ *
+ * - ADC_CONV_RSTF_DO_NOT_RESET: Do not reset filter (0)
+ * - ADC_CONV_RSTF_RESET: Reset digital filter (1)
+ */
+typedef enum
+{
+  ADC_CONV_RSTF_DO_NOT_RESET = 0x0000, ///< Do not reset filter
+  ADC_CONV_RSTF_RESET = 0x0001,        ///< Reset digital filter
+} adc_conv_reset_filter_t;
+
+/**
+ * @brief ADC Error Injection Enable/Disable
+ *
+ * - ADC_CONV_ERR_INJECTION_OFF: Error injection off (0)
+ * - ADC_CONV_ERR_INJECTION_ON: Error injection on (1) - To test for latent fault detection - Bit SPIFLT must be set
+ */
+typedef enum
+{
+  ADC_CONV_ERR_INJECTION_OFF = 0x0000, ///< Error injection disabled
+  ADC_CONV_ERR_INJECTION_ON = 0x0001,  ///< Error injection enabled
+} adc_conv_error_injection_t;
 
 #endif /* ADBMS6830B_COMMANDS_H */
