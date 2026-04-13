@@ -43,18 +43,18 @@
  * S-Voltage Register Commands (Redundant ADC Results)
  *============================================================================*/
 #define RDSVA 0x0003  // Read S Voltage Register Group A (S1-S3)
-#define RDSVB 0x0007  // Read S Voltage Register Group B (S4-S6)
-#define RDSVC 0x000D  // Read S Voltage Register Group C (S7-S9)
-#define RDSVD 0x000F  // Read S Voltage Register Group D (S10-S12)
-#define RDSVE 0x000C  // Read S Voltage Register Group E (S13-S15)
-#define RDSVF 0x000E  // Read S Voltage Register Group F (S16-S18)
-#define RDSALL 0x0011 // Read All S Results
+#define RDSVB 0x0005  // Read S Voltage Register Group B (S4-S6)
+#define RDSVC 0x0007  // Read S Voltage Register Group C (S7-S9)
+#define RDSVD 0x000D  // Read S Voltage Register Group D (S10-S12)
+#define RDSVE 0x000E  // Read S Voltage Register Group E (S13-S15)
+#define RDSVF 0x000F  // Read S Voltage Register Group F (S16-S18)
+#define RDSALL 0x0010 // Read All S Results
 
 /*============================================================================
  * Combined Cell and S-Voltage Commands
  *============================================================================*/
-#define RDCSALL 0x0051  // Read all C and S Results
-#define RDACSALL 0x0052 // Read all Average C and S Results
+#define RDCSALL 0x0011  // Read all C and S Results
+#define RDACSALL 0x0051 // Read all Average C and S Results
 
 /*============================================================================
  * Filtered Cell Voltage Register Commands (F-ADC Results)
@@ -135,10 +135,10 @@
  * Poll Commands
  *============================================================================*/
 #define PLADC 0x0718  // Poll Any ADC Status
-#define PLCADC 0x0719 // Poll C-ADC
-#define PLSADC 0x071A // Poll S-ADC
-#define PLAUX 0x071B  // Poll AUX ADC
-#define PLAUX2 0x071C // Poll AUX2 ADC
+#define PLCADC 0x071C // Poll C-ADC
+#define PLSADC 0x071D // Poll S-ADC
+#define PLAUX 0x071E  // Poll AUX ADC
+#define PLAUX2 0x071F // Poll AUX2 ADC
 
 /*============================================================================
  * Clear Register Commands
