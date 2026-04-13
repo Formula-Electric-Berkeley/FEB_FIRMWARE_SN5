@@ -55,12 +55,10 @@ void FEB_Init(void)
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
       .get_tick_ms = HAL_GetTick,
-#if FEB_UART_USE_FREERTOS
       .tx_mutex = uartTxMutexHandle,
       .tx_complete_sem = uartTxSemHandle,
       .enable_rx_queue = true,
       .rx_queue = uartRxQueueHandle,
-#endif
   };
 
   if (FEB_UART_Init(FEB_UART_INSTANCE_1, &cfg) != 0)
@@ -78,9 +76,7 @@ void FEB_Init(void)
       .colors = true,
       .timestamps = true,
       .get_tick_ms = HAL_GetTick,
-#if FEB_LOG_USE_FREERTOS
       .mutex = logMutexHandle,
-#endif
   };
   FEB_Log_Init(&log_cfg);
 

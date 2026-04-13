@@ -29,10 +29,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "FEB_ADBMS6830B.h"
+#include "FEB_ADBMS_App.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
-#include "FEB_HW.h"
 #include "FEB_Main.h"
 #include "FEB_SM.h"
 #include "task.h"

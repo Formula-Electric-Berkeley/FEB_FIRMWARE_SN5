@@ -17,7 +17,7 @@
 #include "FEB_HW_Relay.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_DASH.h"
-#include "FEB_ADBMS6830B.h"
+#include "FEB_ADBMS_App.h"
 #include "FEB_CAN_IVT.h"
 #include "feb_log.h"
 #include "stm32f4xx_hal.h"
@@ -172,6 +172,9 @@ static void fault_begin(BMS_State_t fault_type)
 
   SM_Current_State = fault_type;
   FEB_CAN_State_SetState(fault_type);
+
+  /* Stop cell balancing immediately */
+  FEB_Stop_Balance();
 
   /* Open BMS shutdown relay immediately (disables HV path) */
   FEB_HW_BMS_Shutdown_Set(false);
