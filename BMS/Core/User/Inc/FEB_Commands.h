@@ -16,9 +16,6 @@
 
 /**
  * @brief Register all BMS-specific console commands
- *
- * Registers: status, cells, temps, balance
- * Call after FEB_Console_Init().
  */
 void BMS_RegisterCommands(void);
 

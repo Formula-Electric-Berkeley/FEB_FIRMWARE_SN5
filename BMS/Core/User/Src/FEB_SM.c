@@ -17,7 +17,7 @@
 #include "FEB_HW_Relay.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_DASH.h"
-#include "FEB_ADBMS6830B.h"
+#include "FEB_ADBMS_App.h"
 #include "FEB_CAN_IVT.h"
 #include "feb_log.h"
 #include "stm32f4xx_hal.h"

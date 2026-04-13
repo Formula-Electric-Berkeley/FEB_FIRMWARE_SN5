@@ -320,4 +320,52 @@ typedef enum
   ADC_CONV_ERR_INJECTION_ON = 0x0001,  ///< Error injection enabled
 } adc_conv_error_injection_t;
 
+/*============================================================================
+ * Convenience Macros - Default ADC Command Configurations
+ *============================================================================*/
+
+/** ADCV with default parameters (no RD, no continuous, no DCP, no filter reset, no open-wire) */
+#define ADCV_DEFAULT ADCV(0, 0, 0, 0, 0)
+
+/** ADSV with default parameters (no continuous, no DCP, no open-wire) */
+#define ADSV_DEFAULT ADSV(0, 0, 0)
+
+/** ADAX with default parameters (no open-wire, pull-down, all channels) */
+#define ADAX_DEFAULT ADAX(0, 0, 0)
+
+/** ADAX2 with default parameters (all channels) */
+#define ADAX2_DEFAULT ADAX2(0)
+
+/*============================================================================
+ * Bit Position Flags for Building ADC Commands
+ *============================================================================*/
+
+/** ADCV bit flags for combining with base command */
+#define ADCV_RD (1 << 8)   /**< Redundant measurement (bit 8) */
+#define ADCV_CONT (1 << 7) /**< Continuous mode (bit 7) */
+#define ADCV_DCP (1 << 4)  /**< Discharge permitted (bit 4) */
+#define ADCV_RSTF (1 << 2) /**< Reset filter (bit 2) */
+
+/** ADSV bit flags for combining with base command */
+#define ADSV_CONT (1 << 7) /**< Continuous mode (bit 7) */
+#define ADSV_DCP (1 << 4)  /**< Discharge permitted (bit 4) */
+
+/** ADAX bit flags for combining with base command */
+#define ADAX_OW (1 << 8)  /**< Open-wire mode (bit 8) */
+#define ADAX_PUP (1 << 6) /**< Pull-up enable (bit 6) */
+
+/*============================================================================
+ * Backwards-Compatible Base Command Values
+ * These allow usage like: transmitCMD(ADCV_BASE | ADCV_CONT | ADCV_DCP)
+ *============================================================================*/
+
+/** Base ADCV command (0x0260 with all options cleared) */
+#define ADCV_BASE 0x0260
+
+/** Base ADSV command (0x0168 with all options cleared) */
+#define ADSV_BASE 0x0168
+
+/** Base ADAX command (0x0410 with all options cleared) */
+#define ADAX_BASE 0x0410
+
 #endif /* ADBMS6830B_COMMANDS_H */
