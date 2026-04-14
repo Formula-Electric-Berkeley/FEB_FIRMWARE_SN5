@@ -78,7 +78,7 @@
 #define FEB_CELL_MIN_VOLTAGE_MV 2500      // Minimum safe cell voltage (Li-ion typical)
 #define FEB_CELL_BALANCE_THRESHOLD_MV 10   // Start balancing if cell is >10mV above minimum
 #define FEB_CELL_BALANCE_INTERVAL_MS 1000  // Balancing cycle interval (1 second)
-#define FEB_CELL_BALANCE_ALL_AT_ONCE 1     // 1=balance all qualifying cells, 0=alternate odd/even
+#define FEB_CELL_BALANCE_ALL_AT_ONCE 0     // 1=balance all qualifying cells, 0=alternate odd/even
 
 // Cell temperature limits (in deci-Celsius, 1 dC = 0.1°C)
 #define FEB_CELL_MAX_TEMP_DC 600             // 60.0°C maximum cell temperature
