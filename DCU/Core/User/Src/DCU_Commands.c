@@ -7,16 +7,13 @@
  */
 
 #include "DCU_Commands.h"
-#include "DCU_TPS.h"
 #include "DCU_CAN.h"
-#include "feb_console.h"
+#include "DCU_SD.h"
+#include "DCU_TPS.h"
 #include "feb_can_lib.h"
+#include "feb_console.h"
 #include "feb_string_utils.h"
 #include <string.h>
-
-/* ============================================================================
- * Help Command
- * ============================================================================ */
 
 static void print_dcu_help(void)
 {
@@ -24,12 +21,8 @@ static void print_dcu_help(void)
   FEB_Console_Printf("  dcu              - Show this help\r\n");
   FEB_Console_Printf("  dcu|tps          - Show TPS power measurements\r\n");
   FEB_Console_Printf("  dcu|can          - Show CAN status and error counters\r\n");
-  FEB_Console_Printf("  dcu|radio        - Show radio status\r\n");
+  FEB_Console_Printf("  dcu|sd           - Run SD card smoke test\r\n");
 }
-
-/* ============================================================================
- * TPS Command
- * ============================================================================ */
 
 static void cmd_tps(void)
 {
@@ -43,7 +36,6 @@ static void cmd_tps(void)
     FEB_Console_Printf("  Current:     %d mA (%.3f A)\r\n", data.current_ma, data.current_ma / 1000.0f);
     FEB_Console_Printf("  Shunt:       %ld uV\r\n", (long)data.shunt_voltage_uv);
 
-    /* Calculate power */
     float power_mw = (float)data.bus_voltage_mv * data.current_ma / 1000.0f;
     FEB_Console_Printf("  Power:       %.1f mW (%.3f W)\r\n", power_mw, power_mw / 1000.0f);
   }
@@ -52,10 +44,6 @@ static void cmd_tps(void)
     FEB_Console_Printf("  Status: NO DATA (check I2C connection)\r\n");
   }
 }
-
-/* ============================================================================
- * CAN Status Command
- * ============================================================================ */
 
 static void cmd_can(void)
 {
@@ -70,20 +58,11 @@ static void cmd_can(void)
   FEB_Console_Printf("  RX Queue Overflow: %lu\r\n", (unsigned long)FEB_CAN_GetRxQueueOverflowCount());
 }
 
-/* ============================================================================
- * Radio Status Command
- * ============================================================================ */
-
-static void cmd_radio(void)
+static void cmd_sd(void)
 {
-  FEB_Console_Printf("Radio Status:\r\n");
-  FEB_Console_Printf("  See radioTask for RFM95 ping-pong status\r\n");
-  /* TODO: Add accessor functions to FEB_Task_Radio.c for live status */
+  FEB_Console_Printf("Running SD smoke test...\r\n");
+  DCU_SD_RunSmokeTest();
 }
-
-/* ============================================================================
- * Main DCU Command Handler
- * ============================================================================ */
 
 static void cmd_dcu(int argc, char *argv[])
 {
@@ -103,9 +82,9 @@ static void cmd_dcu(int argc, char *argv[])
   {
     cmd_can();
   }
-  else if (FEB_strcasecmp(subcmd, "radio") == 0)
+  else if (FEB_strcasecmp(subcmd, "sd") == 0)
   {
-    cmd_radio();
+    cmd_sd();
   }
   else
   {
@@ -116,13 +95,9 @@ static void cmd_dcu(int argc, char *argv[])
 
 static const FEB_Console_Cmd_t dcu_cmd = {
     .name = "dcu",
-    .help = "DCU board commands (dcu|tps, dcu|can, dcu|radio)",
+    .help = "DCU board commands (dcu|tps, dcu|can, dcu|sd)",
     .handler = cmd_dcu,
 };
-
-/* ============================================================================
- * Registration
- * ============================================================================ */
 
 void DCU_RegisterCommands(void)
 {

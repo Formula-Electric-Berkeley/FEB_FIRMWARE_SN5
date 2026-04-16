@@ -21,7 +21,7 @@ extern "C"
    *   - dcu       : Show help
    *   - dcu|tps   : Show TPS power measurements
    *   - dcu|can   : Show CAN status and error counters
-   *   - dcu|radio : Show radio status
+   *   - dcu|sd    : Run SD card smoke test
    */
   void DCU_RegisterCommands(void);
 

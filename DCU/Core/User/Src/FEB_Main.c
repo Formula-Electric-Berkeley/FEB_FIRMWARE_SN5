@@ -10,6 +10,7 @@
 #include "DCU_CAN.h"
 #include "DCU_TPS.h"
 #include "DCU_Commands.h"
+#include "DCU_SD.h"
 #include "main.h"
 #include "feb_uart.h"
 #include "feb_log.h"
@@ -21,6 +22,9 @@
 extern UART_HandleTypeDef huart2;
 extern DMA_HandleTypeDef hdma_usart2_rx;
 extern DMA_HandleTypeDef hdma_usart2_tx;
+extern osMutexId_t logMutexHandle;
+extern osMutexId_t uartTxMutexHandle;
+extern osSemaphoreId_t uartTxSemHandle;
 
 /* UART buffers */
 static uint8_t uart_tx_buf[512];
@@ -45,6 +49,10 @@ void FEB_Init(void)
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
       .get_tick_ms = HAL_GetTick,
+      .tx_mutex = uartTxMutexHandle,
+      .tx_complete_sem = uartTxSemHandle,
+      .enable_rx_queue = false,
+      .enable_tx_queue = false,
   };
 
   if (FEB_UART_Init(FEB_UART_INSTANCE_1, &cfg) != 0)
@@ -62,6 +70,7 @@ void FEB_Init(void)
       .colors = true,
       .timestamps = true,
       .get_tick_ms = HAL_GetTick,
+      .mutex = logMutexHandle,
   };
   FEB_Log_Init(&log_cfg);
 
@@ -87,7 +96,7 @@ void FEB_Init(void)
   FEB_Console_Printf("========================================\r\n");
   FEB_Console_Printf("         DCU Console Ready\r\n");
   FEB_Console_Printf("========================================\r\n");
-  FEB_Console_Printf("Use | as delimiter: dcu|tps\r\n");
+  FEB_Console_Printf("Use | as delimiter: dcu|tps, dcu|can, dcu|sd\r\n");
   FEB_Console_Printf("Type 'help' for available commands\r\n");
   FEB_Console_Printf("\r\n");
 }

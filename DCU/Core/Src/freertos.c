@@ -25,13 +25,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "FEB_Task_Radio.h"
-#include "feb_rtos_utils.h"
 #include "FEB_Main.h"
+#include "feb_log.h"
+#include "feb_uart.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
-typedef StaticSemaphore_t osStaticMutexDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
@@ -54,33 +53,23 @@ typedef StaticSemaphore_t osStaticMutexDef_t;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 128 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for radioTask */
-osThreadId_t radioTaskHandle;
-const osThreadAttr_t radioTask_attributes = {
-  .name = "radioTask",
-  .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityHigh,
+/* Definitions for logMutex */
+osMutexId_t logMutexHandle;
+const osMutexAttr_t logMutex_attributes = {
+  .name = "logMutex"
 };
-/* Definitions for rxDataQueue */
-osMessageQueueId_t rxDataQueueHandle;
-const osMessageQueueAttr_t rxDataQueue_attributes = {
-  .name = "rxDataQueue"
+/* Definitions for uartTxMutex */
+osMutexId_t uartTxMutexHandle;
+const osMutexAttr_t uartTxMutex_attributes = {
+  .name = "uartTxMutex"
 };
-/* Definitions for rxTimeoutTimer */
-osTimerId_t rxTimeoutTimerHandle;
-const osTimerAttr_t rxTimeoutTimer_attributes = {
-  .name = "rxTimeoutTimer"
-};
-/* Definitions for spiMutex */
-osMutexId_t spiMutexHandle;
-osStaticMutexDef_t Dynamic;
-const osMutexAttr_t spiMutex_attributes = {
-  .name = "spiMutex",
-  .cb_mem = &Dynamic,
-  .cb_size = sizeof(Dynamic),
+/* Definitions for uartTxSem */
+osSemaphoreId_t uartTxSemHandle;
+const osSemaphoreAttr_t uartTxSem_attributes = {
+  .name = "uartTxSem"
 };
 /* Definitions for radioEvents */
 osEventFlagsId_t radioEventsHandle;
@@ -94,8 +83,6 @@ const osEventFlagsAttr_t radioEvents_attributes = {
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
-void RadioTask(void *argument);
-void rxTimeoutCallback(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -106,53 +93,39 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
-  FEB_Init();
   /* USER CODE END Init */
   /* Create the mutex(es) */
-  /* creation of spiMutex */
-  spiMutexHandle = osMutexNew(&spiMutex_attributes);
+  /* creation of logMutex */
+  logMutexHandle = osMutexNew(&logMutex_attributes);
+
+  /* creation of uartTxMutex */
+  uartTxMutexHandle = osMutexNew(&uartTxMutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
+  /* Create the semaphores(s) */
+  /* creation of uartTxSem */
+  uartTxSemHandle = osSemaphoreNew(1, 0, &uartTxSem_attributes);
+
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
 
-  /* Create the timer(s) */
-  /* creation of rxTimeoutTimer */
-  rxTimeoutTimerHandle = osTimerNew(rxTimeoutCallback, osTimerOnce, NULL, &rxTimeoutTimer_attributes);
-
-  /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
-  /* USER CODE END RTOS_TIMERS */
-
-  /* Create the queue(s) */
-  /* creation of rxDataQueue */
-  rxDataQueueHandle = osMessageQueueNew (4, 64, &rxDataQueue_attributes);
-
-  /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
-  /* USER CODE END RTOS_QUEUES */
+  /* creation of radioEvents */
+  radioEventsHandle = osEventFlagsNew(&radioEvents_attributes);
 
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
-  /* creation of radioTask */
-  radioTaskHandle = osThreadNew(RadioTask, NULL, &radioTask_attributes);
-
   /* USER CODE BEGIN RTOS_THREADS */
-  REQUIRE_RTOS_HANDLE(radioTaskHandle);
-  REQUIRE_RTOS_HANDLE(radioEventsHandle);
+  /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
-  /* creation of radioEvents */
-  radioEventsHandle = osEventFlagsNew(&radioEvents_attributes);
-
   /* USER CODE BEGIN RTOS_EVENTS */
-  /* add events, ... */
+  FEB_Init();
   /* USER CODE END RTOS_EVENTS */
 
 }
@@ -169,35 +142,12 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN StartDefaultTask */
   (void)argument;
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     FEB_Main_Loop();
-    osDelay(1);
+    osDelay(10);
   }
   /* USER CODE END StartDefaultTask */
-}
-
-/* USER CODE BEGIN Header_RadioTask */
-/**
-* @brief Function implementing the radioTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_RadioTask */
-void RadioTask(void *argument)
-{
-  /* USER CODE BEGIN RadioTask */
-  StartRadioTask(argument);
-  /* USER CODE END RadioTask */
-}
-
-/* rxTimeoutCallback function */
-void rxTimeoutCallback(void *argument)
-{
-  /* USER CODE BEGIN rxTimeoutCallback */
-  (void)argument;
-  /* Timer not used - FEB_RFM95 handles timeouts internally via osEventFlagsWait */
-  /* USER CODE END rxTimeoutCallback */
 }
 
 /* Private application code --------------------------------------------------*/
