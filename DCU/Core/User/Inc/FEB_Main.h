@@ -15,14 +15,15 @@ extern "C"
 #endif
 
   /**
-   * @brief Pre-kernel initialization - called from MX_FREERTOS_Init()
+   * @brief Initialize FEB libraries - called from MX_FREERTOS_Init() after FreeRTOS objects created
    */
   void FEB_Init(void);
 
   /**
-   * @brief Main loop processing - called from StartDefaultTask()
+   * @brief UART RX task - overrides weak stub in freertos.c
+   * @param argument Not used
    */
-  void FEB_Main_Loop(void);
+  void StartUartRxTask(void *argument);
 
 #ifdef __cplusplus
 }

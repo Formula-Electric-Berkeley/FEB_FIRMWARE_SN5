@@ -12,6 +12,7 @@
 #include "DCU_Commands.h"
 #include "main.h"
 #include "feb_uart.h"
+#include "feb_uart_config.h"
 #include "feb_log.h"
 #include "feb_console.h"
 #include "feb_can_lib.h"
@@ -21,6 +22,12 @@
 extern UART_HandleTypeDef huart2;
 extern DMA_HandleTypeDef hdma_usart2_rx;
 extern DMA_HandleTypeDef hdma_usart2_tx;
+
+/* External FreeRTOS handles from CubeMX-generated code */
+extern osMutexId_t logMutexHandle;
+extern osMutexId_t uartTxMutexHandle;
+extern osSemaphoreId_t uartTxSemHandle;
+extern osMessageQueueId_t uartRxQueueHandle;
 
 /* UART buffers */
 static uint8_t uart_tx_buf[512];
@@ -45,6 +52,10 @@ void FEB_Init(void)
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
       .get_tick_ms = HAL_GetTick,
+      .tx_mutex = uartTxMutexHandle,
+      .tx_complete_sem = uartTxSemHandle,
+      .enable_rx_queue = true,
+      .rx_queue = uartRxQueueHandle,
   };
 
   if (FEB_UART_Init(FEB_UART_INSTANCE_1, &cfg) != 0)
@@ -62,6 +73,7 @@ void FEB_Init(void)
       .colors = true,
       .timestamps = true,
       .get_tick_ms = HAL_GetTick,
+      .mutex = logMutexHandle,
   };
   FEB_Log_Init(&log_cfg);
 
@@ -69,9 +81,6 @@ void FEB_Init(void)
 
   /* Initialize console (registers built-in commands: echo, help, version, uptime, reboot, log) */
   FEB_Console_Init(true);
-
-  /* Set UART RX callback to process console commands */
-  FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
 
   /* Register DCU-specific commands */
   DCU_RegisterCommands();
@@ -92,24 +101,26 @@ void FEB_Init(void)
   FEB_Console_Printf("\r\n");
 }
 
-void FEB_Main_Loop(void)
+/* ============================================================================
+ * FreeRTOS Task Implementations - Override weak stubs in freertos.c
+ * ============================================================================ */
+
+void StartUartRxTask(void *argument)
 {
-  /* Process UART RX for console */
-  FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
+  (void)argument;
 
-  /* TPS polling at ~10Hz */
-  static uint32_t last_tps_tick = 0;
-  uint32_t now = HAL_GetTick();
-  if (now - last_tps_tick >= 100)
-  {
-    last_tps_tick = now;
-    DCU_TPS_Update();
-  }
+  char line_buf[FEB_UART_QUEUE_LINE_SIZE];
+  size_t line_len;
 
-  /* CAN TX processing (for future periodic messages) */
-  if (can_init_success)
+  for (;;)
   {
-    FEB_CAN_TX_Process();
-    FEB_CAN_TX_ProcessPeriodic();
+    /* Process RX data - extracts from DMA buffer, posts complete lines to queue */
+    FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
+
+    /* Receive from queue with 10ms timeout */
+    if (FEB_UART_QueueReceiveLine(FEB_UART_INSTANCE_1, line_buf, sizeof(line_buf), &line_len, 10))
+    {
+      FEB_Console_ProcessLine(line_buf, line_len);
+    }
   }
 }

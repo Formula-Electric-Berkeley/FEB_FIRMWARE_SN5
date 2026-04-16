@@ -1,63 +1,37 @@
 /**
  * @file    FEB_RFM95.c
- * @brief   RFM95 LoRa Radio Driver Implementation
+ * @brief   RFM95 LoRa Radio Driver Wrapper
  * @author  Formula Electric @ Berkeley
+ *
+ * This is a wrapper around the stm32-hal-rfm95 library that provides
+ * the existing FEB_RFM95 API for compatibility with FEB_Task_Radio.c
  */
 
 #include "FEB_RFM95.h"
-#include "FEB_RFM95_HW.h"
-#include "FEB_RFM95_Const.h"
+#include "rfm95.h"
+#include "spi.h"
+#include "main.h"
 #include "feb_log.h"
 #include "cmsis_os.h"
 #include <string.h>
 
 #define TAG "[RFM95]"
 
+/* RFM95 handle instance */
+static rfm95_handle_t s_rfm95;
+
+/* Module state */
+static bool s_initialized = false;
+static FEB_RFM95_Stats_t s_stats = {0};
+
+/* FreeRTOS Event Group (from freertos.c) */
+extern osEventFlagsId_t radioEventsHandle;
+
 /* Event flags for ISR-to-task signaling */
 #define EVT_TX_DONE (1 << 0)
 #define EVT_RX_DONE (1 << 1)
 #define EVT_RX_TIMEOUT (1 << 2)
 #define EVT_CRC_ERROR (1 << 3)
-
-/* Module State */
-static bool s_initialized = false;
-static FEB_RFM95_Stats_t s_stats = {0};
-static int16_t s_last_rssi = 0;
-static int8_t s_last_snr = 0;
-
-/* FreeRTOS Event Group (from freertos.c) */
-extern osEventFlagsId_t radioEventsHandle;
-
-/* ============================================================================
- * Private Functions
- * ============================================================================ */
-
-static void set_mode(uint8_t mode)
-{
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_OP_MODE, RFM95_MODE_LONG_RANGE | mode);
-}
-
-static void set_frequency(uint32_t freq_hz)
-{
-  uint64_t frf = ((uint64_t)freq_hz << 19) / 32000000;
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_FRF_MSB, (uint8_t)(frf >> 16));
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_FRF_MID, (uint8_t)(frf >> 8));
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_FRF_LSB, (uint8_t)(frf));
-}
-
-static void set_tx_power(int8_t power_dbm)
-{
-  if (power_dbm < 2)
-    power_dbm = 2;
-  if (power_dbm > 17)
-    power_dbm = 17;
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_PA_CONFIG, RFM95_PA_BOOST | (power_dbm - 2));
-}
-
-static void clear_irq_flags(void)
-{
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_IRQ_FLAGS, 0xFF);
-}
 
 /* ============================================================================
  * Public API - Initialization
@@ -68,13 +42,13 @@ void FEB_RFM95_GetDefaultConfig(FEB_RFM95_Config_t *config)
   if (config == NULL)
     return;
 
-  config->frequency_hz = RFM95_DEFAULT_FREQUENCY_HZ;
-  config->tx_power_dbm = RFM95_DEFAULT_TX_POWER_DBM;
-  config->bandwidth = RFM95_DEFAULT_BANDWIDTH;
-  config->spreading_factor = RFM95_DEFAULT_SPREADING_FACTOR;
-  config->coding_rate = RFM95_DEFAULT_CODING_RATE;
-  config->sync_word = RFM95_DEFAULT_SYNC_WORD;
-  config->preamble_length = RFM95_DEFAULT_PREAMBLE_LENGTH;
+  config->frequency_hz = 915000000; /* US ISM band */
+  config->tx_power_dbm = 14;
+  config->bandwidth = 7; /* 125 kHz */
+  config->spreading_factor = 7;
+  config->coding_rate = 1; /* 4/5 */
+  config->sync_word = 0x12;
+  config->preamble_length = 8;
 }
 
 FEB_RFM95_Status_t FEB_RFM95_Init(const FEB_RFM95_Config_t *config)
@@ -87,67 +61,41 @@ FEB_RFM95_Status_t FEB_RFM95_Init(const FEB_RFM95_Config_t *config)
     config = &cfg;
   }
 
-  /* Enable module and reset */
-  FEB_RFM95_HW_Enable();
-  osDelay(10);
-  FEB_RFM95_HW_Reset();
+  /* Configure the rfm95 handle with hardware pins */
+  s_rfm95.spi_handle = &hspi3;
+  s_rfm95.nss_port = RD_CS_GPIO_Port;
+  s_rfm95.nss_pin = RD_CS_Pin;
+  s_rfm95.nrst_port = RD_RST_GPIO_Port;
+  s_rfm95.nrst_pin = RD_RST_Pin;
+  s_rfm95.en_port = RD_EN_GPIO_Port;
+  s_rfm95.en_pin = RD_EN_Pin;
 
-  /* Verify chip version */
-  uint8_t version = FEB_RFM95_HW_ReadRegister(RFM95_REG_VERSION);
-  if (version != RFM95_CHIP_VERSION)
+  /* Copy config to rfm95 handle */
+  s_rfm95.config.frequency = config->frequency_hz;
+  s_rfm95.config.tx_power = config->tx_power_dbm;
+  s_rfm95.config.bandwidth = config->bandwidth;
+  s_rfm95.config.spreading_factor = config->spreading_factor;
+  s_rfm95.config.coding_rate = config->coding_rate;
+  s_rfm95.config.sync_word = config->sync_word;
+  s_rfm95.config.preamble_length = config->preamble_length;
+  s_rfm95.config.crc_enabled = true;
+
+  /* Ensure CS is high before init */
+  HAL_GPIO_WritePin(RD_CS_GPIO_Port, RD_CS_Pin, GPIO_PIN_SET);
+
+  /* Initialize the rfm95 driver */
+  if (!rfm95_init(&s_rfm95))
   {
-    LOG_E(TAG, "Chip version mismatch: 0x%02X (expected 0x%02X)", version, RFM95_CHIP_VERSION);
+    uint8_t version = rfm95_get_version(&s_rfm95);
+    LOG_E(TAG, "Chip version mismatch: 0x%02X (expected 0x%02X)", version, 0x12);
     return FEB_RFM95_ERR_INIT;
   }
-
-  /* Enter sleep mode to configure LoRa */
-  set_mode(RFM95_MODE_SLEEP);
-  osDelay(10);
-
-  /* Set LoRa mode */
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_OP_MODE, RFM95_MODE_LONG_RANGE | RFM95_MODE_SLEEP);
-  osDelay(10);
-
-  /* Configure frequency */
-  set_frequency(config->frequency_hz);
-
-  /* Configure FIFO base addresses */
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_FIFO_TX_BASE_ADDR, 0x00);
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_FIFO_RX_BASE_ADDR, 0x00);
-
-  /* Set LNA boost */
-  uint8_t lna = FEB_RFM95_HW_ReadRegister(RFM95_REG_LNA);
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_LNA, lna | 0x03);
-
-  /* Configure modem (BW=125kHz, CR=4/5, SF=7, CRC on) */
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_MODEM_CONFIG_1, config->bandwidth | config->coding_rate);
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_MODEM_CONFIG_2, config->spreading_factor | 0x04); /* CRC on */
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_MODEM_CONFIG_3, 0x04);                            /* AGC on */
-
-  /* Configure preamble */
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_PREAMBLE_MSB, (config->preamble_length >> 8) & 0xFF);
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_PREAMBLE_LSB, config->preamble_length & 0xFF);
-
-  /* Set sync word */
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_SYNC_WORD, config->sync_word);
-
-  /* Detection optimization for SF7-12 */
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_DETECTION_OPTIMIZE, 0x03);
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_DETECTION_THRESHOLD, 0x0A);
-
-  /* Set TX power */
-  set_tx_power(config->tx_power_dbm);
-
-  /* Enter standby */
-  set_mode(RFM95_MODE_STDBY);
-
-  /* Configure DIO mapping: DIO0 = RxDone/TxDone */
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_DIO_MAPPING_1, 0x00);
 
   /* Reset stats */
   memset(&s_stats, 0, sizeof(s_stats));
   s_initialized = true;
 
+  LOG_I(TAG, "Version: 0x%02X", rfm95_get_version(&s_rfm95));
   LOG_I(TAG, "Initialized: freq=%lu Hz, power=%d dBm", config->frequency_hz, config->tx_power_dbm);
 
   return FEB_RFM95_OK;
@@ -164,36 +112,9 @@ FEB_RFM95_Status_t FEB_RFM95_Transmit(const uint8_t *data, uint8_t length, uint3
   if (data == NULL || length == 0)
     return FEB_RFM95_ERR_INVALID_PARAM;
 
-  /* Enter standby */
-  set_mode(RFM95_MODE_STDBY);
+  bool success = rfm95_transmit(&s_rfm95, data, length, timeout_ms);
 
-  /* Configure DIO0 for TxDone */
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_DIO_MAPPING_1, 0x40);
-
-  /* Set FIFO pointer */
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_FIFO_ADDR_PTR, 0x00);
-
-  /* Write payload */
-  FEB_RFM95_HW_WriteBuffer(RFM95_REG_FIFO, data, length);
-
-  /* Set payload length */
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_PAYLOAD_LENGTH, length);
-
-  /* Clear IRQ flags */
-  clear_irq_flags();
-
-  /* Clear pending events */
-  osEventFlagsClear(radioEventsHandle, EVT_TX_DONE);
-
-  /* Start TX */
-  set_mode(RFM95_MODE_TX);
-
-  /* Wait for TxDone */
-  uint32_t flags = osEventFlagsWait(radioEventsHandle, EVT_TX_DONE, osFlagsWaitAny, timeout_ms);
-
-  set_mode(RFM95_MODE_STDBY);
-
-  if (flags & EVT_TX_DONE)
+  if (success)
   {
     s_stats.tx_count++;
     return FEB_RFM95_OK;
@@ -211,78 +132,44 @@ FEB_RFM95_Status_t FEB_RFM95_Receive(uint8_t *buffer, uint8_t *length, uint32_t 
   if (buffer == NULL || length == NULL)
     return FEB_RFM95_ERR_INVALID_PARAM;
 
-  /* Clear pending events */
-  osEventFlagsClear(radioEventsHandle, EVT_RX_DONE | EVT_RX_TIMEOUT | EVT_CRC_ERROR);
+  size_t rx_len = 0;
+  bool success = rfm95_receive(&s_rfm95, buffer, &rx_len, timeout_ms);
 
-  /* Start receive */
-  FEB_RFM95_StartReceive();
-
-  /* Wait for event */
-  uint32_t flags =
-      osEventFlagsWait(radioEventsHandle, EVT_RX_DONE | EVT_RX_TIMEOUT | EVT_CRC_ERROR, osFlagsWaitAny, timeout_ms);
-
-  set_mode(RFM95_MODE_STDBY);
-
-  if (flags & EVT_RX_DONE)
+  if (success)
   {
-    /* Read packet info */
-    s_last_rssi = -157 + FEB_RFM95_HW_ReadRegister(RFM95_REG_PKT_RSSI_VALUE);
-    s_last_snr = ((int8_t)FEB_RFM95_HW_ReadRegister(RFM95_REG_PKT_SNR_VALUE)) / 4;
-
-    /* Read payload length */
-    *length = FEB_RFM95_HW_ReadRegister(RFM95_REG_RX_NB_BYTES);
-
-    /* Set FIFO pointer to RX current address */
-    uint8_t rx_addr = FEB_RFM95_HW_ReadRegister(RFM95_REG_FIFO_RX_CURRENT_ADDR);
-    FEB_RFM95_HW_WriteRegister(RFM95_REG_FIFO_ADDR_PTR, rx_addr);
-
-    /* Read payload */
-    FEB_RFM95_HW_ReadBuffer(RFM95_REG_FIFO, buffer, *length);
-
+    *length = (uint8_t)rx_len;
     s_stats.rx_count++;
-    s_stats.last_rssi = s_last_rssi;
-    s_stats.last_snr = s_last_snr;
-
+    s_stats.last_rssi = s_rfm95.last_rssi;
+    s_stats.last_snr = s_rfm95.last_snr;
     return FEB_RFM95_OK;
   }
 
-  if (flags & EVT_CRC_ERROR)
+  *length = 0;
+
+  /* Check if it was a CRC error */
+  if (s_rfm95.crc_error)
   {
     s_stats.rx_errors++;
-    *length = 0;
     return FEB_RFM95_ERR_RX_CRC;
   }
 
   s_stats.rx_timeouts++;
-  *length = 0;
   return FEB_RFM95_ERR_RX_TIMEOUT;
 }
 
 void FEB_RFM95_StartReceive(void)
 {
-  set_mode(RFM95_MODE_STDBY);
-
-  /* Configure DIO0 for RxDone */
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_DIO_MAPPING_1, 0x00);
-
-  /* Set FIFO pointer */
-  FEB_RFM95_HW_WriteRegister(RFM95_REG_FIFO_ADDR_PTR, 0x00);
-
-  /* Clear IRQ flags */
-  clear_irq_flags();
-
-  /* Enter continuous RX */
-  set_mode(RFM95_MODE_RX_CONTINUOUS);
+  rfm95_start_receive(&s_rfm95);
 }
 
 void FEB_RFM95_Standby(void)
 {
-  set_mode(RFM95_MODE_STDBY);
+  rfm95_standby(&s_rfm95);
 }
 
 void FEB_RFM95_Sleep(void)
 {
-  set_mode(RFM95_MODE_SLEEP);
+  rfm95_sleep(&s_rfm95);
 }
 
 /* ============================================================================
@@ -291,37 +178,36 @@ void FEB_RFM95_Sleep(void)
 
 void FEB_RFM95_OnDIO0(void)
 {
-  uint8_t irq_flags = FEB_RFM95_HW_ReadRegister(RFM95_REG_IRQ_FLAGS);
+  rfm95_on_interrupt(&s_rfm95, RFM95_INTERRUPT_DIO0);
 
-  if (irq_flags & RFM95_IRQ_TX_DONE)
+  /* Signal FreeRTOS events if available */
+  if (radioEventsHandle != NULL)
   {
-    clear_irq_flags();
-    osEventFlagsSet(radioEventsHandle, EVT_TX_DONE);
-  }
-
-  if (irq_flags & RFM95_IRQ_RX_DONE)
-  {
-    if (irq_flags & RFM95_IRQ_PAYLOAD_CRC_ERROR)
+    if (s_rfm95.tx_done)
     {
-      clear_irq_flags();
-      osEventFlagsSet(radioEventsHandle, EVT_CRC_ERROR);
+      osEventFlagsSet(radioEventsHandle, EVT_TX_DONE);
     }
-    else
+    if (s_rfm95.rx_done)
     {
-      clear_irq_flags();
       osEventFlagsSet(radioEventsHandle, EVT_RX_DONE);
+    }
+    if (s_rfm95.crc_error)
+    {
+      osEventFlagsSet(radioEventsHandle, EVT_CRC_ERROR);
     }
   }
 }
 
 void FEB_RFM95_OnDIO1(void)
 {
-  uint8_t irq_flags = FEB_RFM95_HW_ReadRegister(RFM95_REG_IRQ_FLAGS);
+  rfm95_on_interrupt(&s_rfm95, RFM95_INTERRUPT_DIO1);
 
-  if (irq_flags & RFM95_IRQ_RX_TIMEOUT)
+  if (radioEventsHandle != NULL)
   {
-    clear_irq_flags();
-    osEventFlagsSet(radioEventsHandle, EVT_RX_TIMEOUT);
+    if (s_rfm95.rx_timeout)
+    {
+      osEventFlagsSet(radioEventsHandle, EVT_RX_TIMEOUT);
+    }
   }
 }
 
@@ -331,11 +217,12 @@ void FEB_RFM95_OnDIO1(void)
 
 int16_t FEB_RFM95_GetRSSI(void)
 {
-  return s_last_rssi;
+  return s_rfm95.last_rssi;
 }
+
 int8_t FEB_RFM95_GetSNR(void)
 {
-  return s_last_snr;
+  return s_rfm95.last_snr;
 }
 
 void FEB_RFM95_GetStats(FEB_RFM95_Stats_t *stats)

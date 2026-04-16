@@ -13,6 +13,9 @@
 #include "feb_can_lib.h"
 #include "feb_string_utils.h"
 #include "feb_log.h"
+#include "rfm95.h"
+#include "spi.h"
+#include "main.h"
 #include <string.h>
 
 #define TAG_DCU "[DCU]"
@@ -27,7 +30,7 @@ static void print_dcu_help(void)
   FEB_Console_Printf("  dcu              - Show this help\r\n");
   FEB_Console_Printf("  dcu|tps          - Show TPS power measurements\r\n");
   FEB_Console_Printf("  dcu|can          - Show CAN status and error counters\r\n");
-  FEB_Console_Printf("  dcu|radio        - Show radio status\r\n");
+  FEB_Console_Printf("  dcu|radio        - Radio debug commands (see dcu|radio for help)\r\n");
 }
 
 /* ============================================================================
@@ -74,14 +77,84 @@ static void cmd_can(void)
 }
 
 /* ============================================================================
- * Radio Status Command
+ * Radio Debug Command
  * ============================================================================ */
 
-static void cmd_radio(void)
+/* Static handle for debug commands - initialized on first use */
+static rfm95_handle_t s_debug_handle;
+static bool s_debug_handle_init = false;
+
+static void init_debug_handle(void)
 {
-  FEB_Console_Printf("Radio Status:\r\n");
-  FEB_Console_Printf("  See radioTask for RFM95 ping-pong status\r\n");
-  /* TODO: Add accessor functions to FEB_Task_Radio.c for live status */
+  if (!s_debug_handle_init)
+  {
+    s_debug_handle.spi_handle = &hspi3;
+    s_debug_handle.nss_port = RD_CS_GPIO_Port;
+    s_debug_handle.nss_pin = RD_CS_Pin;
+    s_debug_handle.nrst_port = RD_RST_GPIO_Port;
+    s_debug_handle.nrst_pin = RD_RST_Pin;
+    s_debug_handle.en_port = RD_EN_GPIO_Port;
+    s_debug_handle.en_pin = RD_EN_Pin;
+    s_debug_handle_init = true;
+  }
+}
+
+static void print_radio_help(void)
+{
+  FEB_Console_Printf("Radio Debug Commands:\r\n");
+  FEB_Console_Printf("  dcu|radio           - Show this help\r\n");
+  FEB_Console_Printf("  dcu|radio|status    - Show GPIO pin states\r\n");
+  FEB_Console_Printf("  dcu|radio|spi       - Test SPI (full-duplex)\r\n");
+  FEB_Console_Printf("  dcu|radio|spi|sep   - Test SPI (separate TX/RX)\r\n");
+  FEB_Console_Printf("  dcu|radio|spi|raw   - Test SPI (direct register)\r\n");
+  FEB_Console_Printf("  dcu|radio|reset     - Hardware reset sequence\r\n");
+  FEB_Console_Printf("  dcu|radio|en        - Toggle EN pin test\r\n");
+}
+
+static void cmd_radio(int argc, char *argv[])
+{
+  init_debug_handle();
+
+  if (argc < 3)
+  {
+    print_radio_help();
+    return;
+  }
+
+  const char *subcmd = argv[2];
+
+  if (FEB_strcasecmp(subcmd, "status") == 0)
+  {
+    rfm95_debug_gpio_status(&s_debug_handle);
+  }
+  else if (FEB_strcasecmp(subcmd, "spi") == 0)
+  {
+    if (argc >= 4 && FEB_strcasecmp(argv[3], "sep") == 0)
+    {
+      rfm95_debug_spi_separate(&s_debug_handle);
+    }
+    else if (argc >= 4 && FEB_strcasecmp(argv[3], "raw") == 0)
+    {
+      rfm95_debug_spi_raw(&s_debug_handle);
+    }
+    else
+    {
+      rfm95_debug_spi_poll(&s_debug_handle);
+    }
+  }
+  else if (FEB_strcasecmp(subcmd, "reset") == 0)
+  {
+    rfm95_debug_reset(&s_debug_handle);
+  }
+  else if (FEB_strcasecmp(subcmd, "en") == 0)
+  {
+    rfm95_debug_enable(&s_debug_handle);
+  }
+  else
+  {
+    FEB_Console_Printf("Unknown radio subcommand: %s\r\n", subcmd);
+    print_radio_help();
+  }
 }
 
 /* ============================================================================
@@ -108,7 +181,7 @@ static void cmd_dcu(int argc, char *argv[])
   }
   else if (FEB_strcasecmp(subcmd, "radio") == 0)
   {
-    cmd_radio();
+    cmd_radio(argc, argv);
   }
   else
   {

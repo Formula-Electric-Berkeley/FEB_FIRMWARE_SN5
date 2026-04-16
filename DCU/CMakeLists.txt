@@ -21,6 +21,7 @@ add_compile_definitions(
     USE_HAL_DRIVER
     STM32F446xx
     FEB_UART_USE_FREERTOS=1
+    FEB_LOG_USE_FREERTOS=1
     $<$<CONFIG:Debug>:DEBUG>
 )
 
@@ -68,6 +69,11 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FatFs")
     list(APPEND ALL_SOURCES ${FATFS_SOURCES})
 endif()
 
+# ── Middleware: stm32-hal-rfm95 (LoRa radio driver) ─────────────────
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/stm32-hal-rfm95")
+    add_subdirectory(Middlewares/Third_Party/stm32-hal-rfm95)
+endif()
+
 
 # ── User code sources ────────────────────────────────────────────────
 file(GLOB_RECURSE USER_SOURCES "Core/User/Src/*.c")
@@ -103,6 +109,13 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FatFs")
     )
 endif()
 
+# stm32-hal-rfm95 includes
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/stm32-hal-rfm95")
+    list(APPEND BASE_INCLUDES
+        Middlewares/Third_Party/stm32-hal-rfm95
+    )
+endif()
+
 
 # FEB CAN Library includes
 set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library")
@@ -125,7 +138,7 @@ add_executable(${PROJECT_NAME} ${ALL_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_can feb_tps feb_rtos_utils)
+target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_can feb_tps feb_rtos_utils stm32-hal-rfm95)
 
 # Enable floating-point printf/scanf for newlib-nano
 target_link_options(${PROJECT_NAME} PRIVATE
