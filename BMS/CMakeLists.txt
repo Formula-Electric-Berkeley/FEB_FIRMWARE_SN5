@@ -105,7 +105,7 @@ add_executable(${PROJECT_NAME} ${ALL_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_tps feb_rtos_utils feb_uart feb_log feb_console)
+target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_tps feb_rtos_utils feb_uart feb_log feb_console feb_adbms)
 
 # Enable floating-point printf/scanf for newlib-nano
 target_link_options(${PROJECT_NAME} PRIVATE

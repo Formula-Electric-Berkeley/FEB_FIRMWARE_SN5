@@ -27,3 +27,6 @@ add_subdirectory(FEB_TPS_Library)
 
 # RTOS Utils Library - Common RTOS macros and utilities
 add_subdirectory(FEB_RTOS_Utils)
+
+# ADBMS Library - ADBMS6830B chip driver with platform abstraction
+add_subdirectory(FEB_ADBMS_Library)

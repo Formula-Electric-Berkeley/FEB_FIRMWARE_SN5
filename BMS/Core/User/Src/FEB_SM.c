@@ -173,12 +173,12 @@ static void fault_begin(BMS_State_t fault_type)
   SM_Current_State = fault_type;
   FEB_CAN_State_SetState(fault_type);
 
-  /* Stop cell balancing immediately */
-  FEB_Stop_Balance();
-
   /* Open BMS shutdown relay immediately (disables HV path) */
   FEB_HW_BMS_Shutdown_Set(false);
   LOG_W(TAG_SM, "BMS shutdown relay opened");
+
+  /* Stop cell balancing after relay is open */
+  FEB_Stop_Balance();
 
   /* Turn on fault indicator */
   FEB_HW_Fault_Indicator_Set(true);

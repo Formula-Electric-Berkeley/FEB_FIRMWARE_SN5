@@ -29,6 +29,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
 #include "FEB_ADBMS_App.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
