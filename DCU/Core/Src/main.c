@@ -29,7 +29,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "feb_can_lib.h"
+#include "feb_uart.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -181,9 +182,6 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-#include "feb_can_lib.h"
-#include "feb_uart.h"
-
 /* CAN Callbacks - route to FEB CAN Library */
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {

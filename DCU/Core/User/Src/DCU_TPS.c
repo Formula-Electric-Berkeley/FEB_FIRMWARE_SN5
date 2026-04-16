@@ -11,6 +11,7 @@
 #include "feb_tps.h"
 #include "feb_log.h"
 #include <string.h>
+#include <stdint.h>
 
 /* TPS2482 Configuration (same as PCU) */
 #define TPS_SHUNT_RESISTOR_OHMS 0.012f /* 12 milliohm shunt resistor */
@@ -48,6 +49,7 @@ static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg)
 
 void DCU_TPS_Init(void)
 {
+  g_tps_handle = NULL;
   memset(&g_tps_data, 0, sizeof(g_tps_data));
   g_tps_data.valid = false;
   LOG_I(TAG_TPS, "TPS subsystem initialized");
@@ -95,9 +97,11 @@ void DCU_TPS_Update(void)
 
   if (status == FEB_TPS_OK)
   {
-    /* Update cached data */
-    g_tps_data.bus_voltage_mv = (uint16_t)scaled.bus_voltage_mv;
-    g_tps_data.current_ma = (int16_t)scaled.current_ma;
+    /* Update cached data with clamping to prevent overflow */
+    g_tps_data.bus_voltage_mv = (scaled.bus_voltage_mv > UINT16_MAX) ? UINT16_MAX : (uint16_t)scaled.bus_voltage_mv;
+    g_tps_data.current_ma = (scaled.current_ma > INT16_MAX)   ? INT16_MAX
+                            : (scaled.current_ma < INT16_MIN) ? INT16_MIN
+                                                              : (int16_t)scaled.current_ma;
     g_tps_data.shunt_voltage_uv = scaled.shunt_voltage_uv;
     g_tps_data.valid = true;
   }

@@ -9,6 +9,8 @@
 #ifndef DCU_COMMANDS_H
 #define DCU_COMMANDS_H
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -22,8 +24,10 @@ extern "C"
    *   - dcu|tps   : Show TPS power measurements
    *   - dcu|can   : Show CAN status and error counters
    *   - dcu|sd    : Run SD card smoke test
+   *
+   * @return true on success, false if registration fails
    */
-  void DCU_RegisterCommands(void);
+  bool DCU_RegisterCommands(void);
 
 #ifdef __cplusplus
 }

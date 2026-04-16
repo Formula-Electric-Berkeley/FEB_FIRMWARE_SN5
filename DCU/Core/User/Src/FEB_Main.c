@@ -82,7 +82,10 @@ void FEB_Init(void)
   FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
 
   /* Register DCU-specific commands */
-  DCU_RegisterCommands();
+  if (!DCU_RegisterCommands())
+  {
+    LOG_E(TAG_MAIN, "Failed to register DCU console commands");
+  }
 
   /* Initialize CAN with accept-all filter */
   can_init_success = DCU_CAN_Init();
