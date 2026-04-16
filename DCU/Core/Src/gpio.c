@@ -54,7 +54,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, RD_RST_Pin|RD_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, SD_CS_Pin|RD_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, SD_CS_Pin | RD_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : RD_G0_Pin RD_G1_Pin */
   GPIO_InitStruct.Pin = RD_G0_Pin|RD_G1_Pin;
@@ -96,13 +96,13 @@ void MX_GPIO_Init(void)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-    if (GPIO_Pin == RD_G0_Pin)
-    {
-        FEB_RFM95_OnDIO0();
-    }
-    else if (GPIO_Pin == RD_G1_Pin)
-    {
-        FEB_RFM95_OnDIO1();
-    }
+  if (GPIO_Pin == RD_G0_Pin)
+  {
+    FEB_RFM95_OnDIO0();
+  }
+  else if (GPIO_Pin == RD_G1_Pin)
+  {
+    FEB_RFM95_OnDIO1();
+  }
 }
 /* USER CODE END 2 */

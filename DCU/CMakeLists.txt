@@ -21,6 +21,7 @@ add_compile_definitions(
     USE_HAL_DRIVER
     STM32F446xx
     FEB_UART_USE_FREERTOS=1
+    FEB_LOG_USE_FREERTOS=1
     $<$<CONFIG:Debug>:DEBUG>
 )
 
@@ -48,13 +49,6 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
     file(GLOB FREERTOS_PORT "Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/*.c")
     file(GLOB FREERTOS_HEAP "Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c")
     list(APPEND ALL_SOURCES ${FREERTOS_CORE} ${FREERTOS_CMSIS} ${FREERTOS_PORT} ${FREERTOS_HEAP})
-
-# ── FEB CAN Library sources ──────────────────────────────────────────
-file(GLOB CAN_LIB_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/*.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.c"
-)
-list(APPEND ALL_SOURCES ${CAN_LIB_SOURCES})
 endif()
 
 # ── Middleware: FatFS ────────────────────────────────────────────────
@@ -103,14 +97,12 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FatFs")
     )
 endif()
 
-
 # FEB CAN Library includes
 set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library")
 list(APPEND BASE_INCLUDES
     "${CAN_LIB_DIR}/Inc"
     "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen"
 )
-
 
 # Auto-discover Core/User/Inc if it exists
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
