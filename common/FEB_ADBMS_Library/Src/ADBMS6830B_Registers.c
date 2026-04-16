@@ -18,6 +18,17 @@
 ADBMS_Chain_t g_adbms = {0};
 
 /*============================================================================
+ * Static SPI Buffers
+ *
+ * These buffers are file-static rather than stack-allocated to reduce task
+ * stack usage. The driver is single-threaded-by-contract: all callers must
+ * hold ADBMSMutexHandle (or equivalent) around any driver call sequence.
+ *============================================================================*/
+
+static uint8_t s_tx_buf[4 + ADBMS_MAX_ICS * 8]; /* cmd + (data + PEC) per IC */
+static uint8_t s_rx_buf[ADBMS_MAX_ICS * 38];    /* (36 data + 2 PEC) per IC */
+
+/*============================================================================
  * PEC-15 Lookup Table
  *
  * 15-bit CRC for command codes
@@ -69,25 +80,28 @@ const uint16_t s_pec10_table[256] = {
  * Weak Platform Functions (Override These)
  *============================================================================*/
 
-__attribute__((weak)) void ADBMS_Platform_SPI_Write(const uint8_t *data, uint16_t len)
+__attribute__((weak)) ADBMS_PlatformStatus_t ADBMS_Platform_SPI_Write(const uint8_t *data, uint16_t len)
 {
   (void)data;
   (void)len;
+  return ADBMS_PLATFORM_OK;
 }
 
-__attribute__((weak)) void ADBMS_Platform_SPI_Read(uint8_t *data, uint16_t len)
+__attribute__((weak)) ADBMS_PlatformStatus_t ADBMS_Platform_SPI_Read(uint8_t *data, uint16_t len)
 {
   (void)data;
   (void)len;
+  return ADBMS_PLATFORM_OK;
 }
 
-__attribute__((weak)) void ADBMS_Platform_SPI_WriteRead(const uint8_t *tx_data, uint16_t tx_len, uint8_t *rx_data,
+__attribute__((weak)) ADBMS_PlatformStatus_t ADBMS_Platform_SPI_WriteRead(const uint8_t *tx_data, uint16_t tx_len, uint8_t *rx_data,
                                                         uint16_t rx_len)
 {
   (void)tx_data;
   (void)tx_len;
   (void)rx_data;
   (void)rx_len;
+  return ADBMS_PLATFORM_OK;
 }
 
 __attribute__((weak)) void ADBMS_Platform_CS_Low(void) {}
@@ -102,6 +116,11 @@ __attribute__((weak)) void ADBMS_Platform_DelayUs(uint32_t us)
 __attribute__((weak)) void ADBMS_Platform_DelayMs(uint32_t ms)
 {
   (void)ms;
+}
+
+__attribute__((weak)) uint32_t ADBMS_Platform_GetTickMs(void)
+{
+  return 0;
 }
 
 /*============================================================================
@@ -155,11 +174,17 @@ static uint32_t s_last_activity_ms = 0;
 
 static void _adbms_wakeup(void)
 {
-  /* Toggle CS to wake from sleep */
-  ADBMS_Platform_CS_Low();
-  ADBMS_Platform_DelayUs(400); /* t_WAKE = 400us min */
-  ADBMS_Platform_CS_High();
-  ADBMS_Platform_DelayMs(1); /* Wait for reference to stabilize */
+  /* isoSPI daisy chain: each IC consumes one pulse and propagates the next.
+   * Send num_ics pulses to wake the entire chain. */
+  uint8_t num_pulses = g_adbms.num_ics > 0 ? g_adbms.num_ics : 1;
+  for (uint8_t i = 0; i < num_pulses; i++)
+  {
+    ADBMS_Platform_CS_Low();
+    ADBMS_Platform_DelayUs(10);  /* t_CSB_low min */
+    ADBMS_Platform_CS_High();
+    ADBMS_Platform_DelayUs(400); /* t_WAKE per part */
+  }
+  ADBMS_Platform_DelayMs(1); /* Final guard for ref start-up */
   s_last_activity_ms = ADBMS_Platform_GetTickMs();
 }
 
@@ -204,8 +229,13 @@ static ADBMS_Error_t _transmit_action(uint16_t cmd_code)
   _ensure_awake();
 
   ADBMS_Platform_CS_Low();
-  ADBMS_Platform_SPI_Write(frame, 4);
+  ADBMS_PlatformStatus_t status = ADBMS_Platform_SPI_Write(frame, 4);
   ADBMS_Platform_CS_High();
+
+  if (status != ADBMS_PLATFORM_OK)
+  {
+    return ADBMS_ERR_SPI;
+  }
 
   return ADBMS_OK;
 }
@@ -224,17 +254,21 @@ static ADBMS_Error_t _transmit_read(uint16_t cmd_code, uint8_t bytes_per_ic, uin
 
   /* RX buffer: (data + PEC) per IC */
   uint16_t rx_size = (bytes_per_ic + ADBMS_PEC10_SIZE) * g_adbms.num_ics;
-  uint8_t rx_buffer[ADBMS_MAX_ICS * (36 + 2)]; /* Max bulk read size */
 
   _ensure_awake();
 
   ADBMS_Platform_CS_Low();
-  ADBMS_Platform_SPI_WriteRead(cmd_frame, 4, rx_buffer, rx_size);
+  ADBMS_PlatformStatus_t spi_status = ADBMS_Platform_SPI_WriteRead(cmd_frame, 4, s_rx_buf, rx_size);
   ADBMS_Platform_CS_High();
+
+  if (spi_status != ADBMS_PLATFORM_OK)
+  {
+    return ADBMS_ERR_SPI;
+  }
 
   /* Parse received data for each IC */
   ADBMS_Error_t result = ADBMS_OK;
-  uint8_t *ptr = rx_buffer;
+  uint8_t *ptr = s_rx_buf;
 
   for (uint8_t ic = 0; ic < g_adbms.num_ics; ic++)
   {
@@ -244,7 +278,15 @@ static ADBMS_Error_t _transmit_read(uint16_t cmd_code, uint8_t bytes_per_ic, uin
     uint8_t *data = ptr;
     ptr += bytes_per_ic;
 
-    /* PEC-10 is next 2 bytes */
+    /* PEC-10 encoding (per ADBMS6830B datasheet, Table 67):
+     * The 10-bit PEC is packed into 2 bytes as follows:
+     *   Byte 0: PEC[9:2] (upper 8 bits of PEC)
+     *   Byte 1: PEC[1:0] in bits 7:6, CC[5:0] in bits 5:0
+     *
+     * CC = Command Counter (6 bits), increments with each command.
+     * Current implementation extracts PEC only; CC is not validated.
+     * TODO: Add CC validation for enhanced communication integrity.
+     */
     uint16_t received_pec = ((uint16_t)ptr[0] << 2) | (ptr[1] >> 6);
     ptr += ADBMS_PEC10_SIZE;
 
@@ -284,10 +326,9 @@ static ADBMS_Error_t _transmit_write(uint16_t cmd_code, uint8_t bytes_per_ic, co
 
   /* Build TX buffer: cmd + (data + PEC) per IC */
   /* Note: Data is sent in reverse order (last IC first on wire) */
-  uint8_t tx_buffer[4 + ADBMS_MAX_ICS * (6 + 2)];
-  memcpy(tx_buffer, cmd_frame, 4);
+  memcpy(s_tx_buf, cmd_frame, 4);
 
-  uint8_t *ptr = tx_buffer + 4;
+  uint8_t *ptr = s_tx_buf + 4;
   for (int ic = g_adbms.num_ics - 1; ic >= 0; ic--)
   {
     /* Copy data */
@@ -312,8 +353,13 @@ static ADBMS_Error_t _transmit_write(uint16_t cmd_code, uint8_t bytes_per_ic, co
   _ensure_awake();
 
   ADBMS_Platform_CS_Low();
-  ADBMS_Platform_SPI_Write(tx_buffer, tx_len);
+  ADBMS_PlatformStatus_t status = ADBMS_Platform_SPI_Write(s_tx_buf, tx_len);
   ADBMS_Platform_CS_High();
+
+  if (status != ADBMS_PLATFORM_OK)
+  {
+    return ADBMS_ERR_SPI;
+  }
 
   return ADBMS_OK;
 }
@@ -423,6 +469,7 @@ ADBMS_Error_t ADBMS_Init(uint8_t num_ics)
 
   memset(&g_adbms, 0, sizeof(g_adbms));
   g_adbms.num_ics = num_ics;
+  g_adbms.active_cell_mask = 0xFFFF; /* Default: all 16 cells active */
 
   for (uint8_t i = 0; i < num_ics; i++)
   {
@@ -458,9 +505,98 @@ ADBMS_ICStatus_t *ADBMS_GetStatus(uint8_t ic_index)
   return &g_adbms.ics[ic_index].status;
 }
 
+void ADBMS_SetActiveCellMask(uint16_t mask)
+{
+  g_adbms.active_cell_mask = mask;
+}
+
+uint16_t ADBMS_GetActiveCellMask(void)
+{
+  return g_adbms.active_cell_mask;
+}
+
 /*============================================================================
  * Register Access
  *============================================================================*/
+
+/*============================================================================
+ * Internal: Seqlock helpers (chain-wide per-group)
+ *
+ * Writers (the acquisition task, via ADBMS_ReadRegister / ADBMS_WriteRegister)
+ * bracket their mutation with _seq_begin / _seq_end, which toggles the
+ * counter odd -> even. Readers spin on an even seq for a consistent copy.
+ *
+ * A full memory barrier (__DMB) enforces ordering against memcpy-style
+ * writes on the Cortex-M4. No atomic CAS is needed because there is a
+ * single writer per register group (the acq task).
+ *============================================================================*/
+
+static inline void _seq_begin(ADBMS_RegGroup_t reg)
+{
+  if ((unsigned)reg < ADBMS_REG_COUNT)
+  {
+    g_adbms.reg_seq[reg]++; /* even -> odd */
+    __asm volatile("dmb" ::: "memory");
+  }
+}
+
+static inline void _seq_end(ADBMS_RegGroup_t reg)
+{
+  if ((unsigned)reg < ADBMS_REG_COUNT)
+  {
+    __asm volatile("dmb" ::: "memory");
+    g_adbms.reg_seq[reg]++; /* odd -> even (+1 generation) */
+    g_adbms.reg_last_tick_ms[reg] = ADBMS_Platform_GetTickMs();
+  }
+}
+
+/* Bulk register groups cover several sub-groups in a single SPI read.
+ * To keep the seqlock semantics useful for consumers that iterate the
+ * individual groups (e.g. cells 1-3 via CVA) after a CVALL read, bump
+ * every sub-group's seq alongside the aggregate. */
+static void _seq_begin_bulk(ADBMS_RegGroup_t reg)
+{
+  _seq_begin(reg);
+  switch (reg)
+  {
+  case ADBMS_REG_CVALL:
+    for (int r = ADBMS_REG_CVA; r <= ADBMS_REG_CVF; r++) _seq_begin((ADBMS_RegGroup_t)r);
+    break;
+  case ADBMS_REG_ACALL:
+    for (int r = ADBMS_REG_ACA; r <= ADBMS_REG_ACF; r++) _seq_begin((ADBMS_RegGroup_t)r);
+    break;
+  case ADBMS_REG_SVALL:
+    for (int r = ADBMS_REG_SVA; r <= ADBMS_REG_SVF; r++) _seq_begin((ADBMS_RegGroup_t)r);
+    break;
+  case ADBMS_REG_FCALL:
+    for (int r = ADBMS_REG_FCA; r <= ADBMS_REG_FCF; r++) _seq_begin((ADBMS_RegGroup_t)r);
+    break;
+  default:
+    break;
+  }
+}
+
+static void _seq_end_bulk(ADBMS_RegGroup_t reg)
+{
+  switch (reg)
+  {
+  case ADBMS_REG_CVALL:
+    for (int r = ADBMS_REG_CVA; r <= ADBMS_REG_CVF; r++) _seq_end((ADBMS_RegGroup_t)r);
+    break;
+  case ADBMS_REG_ACALL:
+    for (int r = ADBMS_REG_ACA; r <= ADBMS_REG_ACF; r++) _seq_end((ADBMS_RegGroup_t)r);
+    break;
+  case ADBMS_REG_SVALL:
+    for (int r = ADBMS_REG_SVA; r <= ADBMS_REG_SVF; r++) _seq_end((ADBMS_RegGroup_t)r);
+    break;
+  case ADBMS_REG_FCALL:
+    for (int r = ADBMS_REG_FCA; r <= ADBMS_REG_FCF; r++) _seq_end((ADBMS_RegGroup_t)r);
+    break;
+  default:
+    break;
+  }
+  _seq_end(reg);
+}
 
 ADBMS_Error_t ADBMS_ReadRegister(ADBMS_RegGroup_t reg)
 {
@@ -475,7 +611,10 @@ ADBMS_Error_t ADBMS_ReadRegister(ADBMS_RegGroup_t reg)
     dest_ptrs[i] = ((uint8_t *)&g_adbms.ics[i].memory) + meta->memory_offset;
   }
 
-  return _transmit_read(meta->read_cmd, meta->data_size, dest_ptrs);
+  _seq_begin_bulk(reg);
+  ADBMS_Error_t rc = _transmit_read(meta->read_cmd, meta->data_size, dest_ptrs);
+  _seq_end_bulk(reg);
+  return rc;
 }
 
 ADBMS_Error_t ADBMS_WriteRegister(ADBMS_RegGroup_t reg)
@@ -494,7 +633,102 @@ ADBMS_Error_t ADBMS_WriteRegister(ADBMS_RegGroup_t reg)
     src_ptrs[i] = ((const uint8_t *)&g_adbms.ics[i].memory) + meta->memory_offset;
   }
 
-  return _transmit_write(meta->write_cmd, meta->data_size, src_ptrs);
+  _seq_begin(reg);
+  ADBMS_Error_t rc = _transmit_write(meta->write_cmd, meta->data_size, src_ptrs);
+  _seq_end(reg);
+  return rc;
+}
+
+/*============================================================================
+ * Public Seqlock + Pending-Write API
+ *============================================================================*/
+
+uint32_t ADBMS_SeqBegin(ADBMS_RegGroup_t reg)
+{
+  if ((unsigned)reg >= ADBMS_REG_COUNT) return 0;
+  /* Spin until we observe an even seq (no writer in progress). */
+  uint32_t s;
+  do
+  {
+    s = g_adbms.reg_seq[reg];
+  } while (s & 1u);
+  __asm volatile("dmb" ::: "memory");
+  return s;
+}
+
+bool ADBMS_SeqRetry(ADBMS_RegGroup_t reg, uint32_t begin_seq)
+{
+  if ((unsigned)reg >= ADBMS_REG_COUNT) return false;
+  __asm volatile("dmb" ::: "memory");
+  return (g_adbms.reg_seq[reg] != begin_seq);
+}
+
+uint32_t ADBMS_GetRegisterLastTickMs(ADBMS_RegGroup_t reg)
+{
+  if ((unsigned)reg >= ADBMS_REG_COUNT) return 0;
+  return g_adbms.reg_last_tick_ms[reg];
+}
+
+bool ADBMS_SnapshotRegisterGroup(ADBMS_RegGroup_t reg, uint8_t ic_index, void *dst, size_t size, uint32_t max_retries)
+{
+  if ((unsigned)reg >= ADBMS_REG_COUNT || ic_index >= g_adbms.num_ics || dst == NULL || size == 0)
+  {
+    return false;
+  }
+
+  const RegMeta_t *meta = &s_reg_meta[reg];
+  const uint8_t *src = ((const uint8_t *)&g_adbms.ics[ic_index].memory) + meta->memory_offset;
+  size_t copy_len = (size < meta->data_size) ? size : meta->data_size;
+
+  for (uint32_t attempt = 0; attempt < max_retries; attempt++)
+  {
+    uint32_t s = ADBMS_SeqBegin(reg);
+    memcpy(dst, src, copy_len);
+    if (!ADBMS_SeqRetry(reg, s))
+    {
+      return true;
+    }
+  }
+
+  /* Exhausted retries: return best-effort copy. */
+  memcpy(dst, src, copy_len);
+  return false;
+}
+
+bool ADBMS_SnapshotMemory(uint8_t ic_index, ADBMS_Memory_t *out, uint32_t max_retries)
+{
+  if (ic_index >= g_adbms.num_ics || out == NULL) return false;
+
+  bool all_consistent = true;
+  for (int r = 0; r < ADBMS_REG_COUNT; r++)
+  {
+    const RegMeta_t *meta = &s_reg_meta[r];
+    if (meta->data_size == 0) continue;
+
+    uint8_t *dst = ((uint8_t *)out) + meta->memory_offset;
+    if (!ADBMS_SnapshotRegisterGroup((ADBMS_RegGroup_t)r, ic_index, dst, meta->data_size, max_retries))
+    {
+      all_consistent = false;
+    }
+  }
+  return all_consistent;
+}
+
+void ADBMS_RequestWrite(ADBMS_RegGroup_t reg)
+{
+  if ((unsigned)reg >= ADBMS_REG_COUNT) return;
+  if (s_reg_meta[reg].write_cmd == 0) return; /* read-only */
+  __atomic_fetch_or(&g_adbms.pending_writes, (uint32_t)1u << (unsigned)reg, __ATOMIC_ACQ_REL);
+}
+
+uint32_t ADBMS_ConsumePendingWrites(void)
+{
+  return __atomic_exchange_n(&g_adbms.pending_writes, 0u, __ATOMIC_ACQ_REL);
+}
+
+uint32_t ADBMS_GetPendingWrites(void)
+{
+  return __atomic_load_n(&g_adbms.pending_writes, __ATOMIC_ACQUIRE);
 }
 
 /*============================================================================
@@ -786,13 +1020,16 @@ int16_t ADBMS_GetInternalTemp_dC(uint8_t ic_index)
   RDSTATA_t stat_a;
   RDSTATA_DECODE(mem->stat.groups.a.raw, &stat_a);
 
-  /* Temperature = (ITMP * 7.6uV/LSB - 276mV) / 7.6uV/degC
-   * Simplified: T = ITMP * 0.0076 - 276 / 0.0076
-   * T(degC) = ITMP * 0.0076 - 36315.8
-   * T(deci-degC) = ITMP * 0.076 - 363158
-   */
-  int32_t temp_dc = ((int32_t)stat_a.ITMP * 76 - 3631580) / 1000;
-  return (int16_t)temp_dc;
+  /* Per ADBMS6830B datasheet:
+   *   T(°C) = (ITMP * 150 uV + 1.5 V) / 7.5 mV/°C  -  273 °C
+   *         = ITMP * 0.02  -  73
+   * In deci-Celsius:
+   *   T(dC)  = ITMP * 0.2  -  730
+   *          = (ITMP * 2 - 7300) / 10
+   * ITMP is read as the same 150 uV/LSB signed code format used for
+   * cell voltages. */
+  int16_t signed_code = (int16_t)stat_a.ITMP;
+  return (int16_t)(((int32_t)signed_code * 2 - 7300) / 10);
 }
 
 float ADBMS_GetInternalTemp_C(uint8_t ic_index)
@@ -833,8 +1070,11 @@ int32_t ADBMS_GetPackVoltage_mV(uint8_t ic_index)
     return -1;
 
   int32_t sum = 0;
+  uint16_t mask = g_adbms.active_cell_mask;
   for (uint8_t i = 0; i < ADBMS_NUM_CELLS; i++)
   {
+    if (!(mask & (1u << i)))
+      continue; /* Skip masked-out cells */
     int32_t v = ADBMS_GetCellVoltage_mV(ic_index, i);
     if (v > 0)
       sum += v;
@@ -849,9 +1089,12 @@ int32_t ADBMS_GetMinCellVoltage_mV(uint8_t ic_index, uint8_t *min_cell_index)
 
   int32_t min_v = INT32_MAX;
   uint8_t min_idx = 0;
+  uint16_t mask = g_adbms.active_cell_mask;
 
   for (uint8_t i = 0; i < ADBMS_NUM_CELLS; i++)
   {
+    if (!(mask & (1u << i)))
+      continue; /* Skip masked-out cells */
     int32_t v = ADBMS_GetCellVoltage_mV(ic_index, i);
     if (v > 0 && v < min_v)
     {
@@ -872,9 +1115,12 @@ int32_t ADBMS_GetMaxCellVoltage_mV(uint8_t ic_index, uint8_t *max_cell_index)
 
   int32_t max_v = 0;
   uint8_t max_idx = 0;
+  uint16_t mask = g_adbms.active_cell_mask;
 
   for (uint8_t i = 0; i < ADBMS_NUM_CELLS; i++)
   {
+    if (!(mask & (1u << i)))
+      continue; /* Skip masked-out cells */
     int32_t v = ADBMS_GetCellVoltage_mV(ic_index, i);
     if (v > max_v)
     {

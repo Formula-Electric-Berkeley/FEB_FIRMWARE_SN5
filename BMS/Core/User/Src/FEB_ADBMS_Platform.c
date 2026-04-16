@@ -30,28 +30,52 @@
  *============================================================================*/
 
 /**
+ * @brief Map HAL status to platform status
+ */
+static ADBMS_PlatformStatus_t _hal_to_platform_status(HAL_StatusTypeDef hal_status)
+{
+  switch (hal_status)
+  {
+  case HAL_OK:
+    return ADBMS_PLATFORM_OK;
+  case HAL_TIMEOUT:
+    return ADBMS_PLATFORM_ERR_TIMEOUT;
+  default:
+    return ADBMS_PLATFORM_ERR_SPI;
+  }
+}
+
+/**
  * @brief SPI write (transmit only)
  */
-void ADBMS_Platform_SPI_Write(const uint8_t *data, uint16_t len)
+ADBMS_PlatformStatus_t ADBMS_Platform_SPI_Write(const uint8_t *data, uint16_t len)
 {
-  HAL_SPI_Transmit(ADBMS_SPI_HANDLE, (uint8_t *)data, len, ADBMS_SPI_TIMEOUT_MS);
+  HAL_StatusTypeDef status = HAL_SPI_Transmit(ADBMS_SPI_HANDLE, (uint8_t *)data, len, ADBMS_SPI_TIMEOUT_MS);
+  return _hal_to_platform_status(status);
 }
 
 /**
  * @brief SPI read (receive only)
  */
-void ADBMS_Platform_SPI_Read(uint8_t *data, uint16_t len)
+ADBMS_PlatformStatus_t ADBMS_Platform_SPI_Read(uint8_t *data, uint16_t len)
 {
-  HAL_SPI_Receive(ADBMS_SPI_HANDLE, data, len, ADBMS_SPI_TIMEOUT_MS);
+  HAL_StatusTypeDef status = HAL_SPI_Receive(ADBMS_SPI_HANDLE, data, len, ADBMS_SPI_TIMEOUT_MS);
+  return _hal_to_platform_status(status);
 }
 
 /**
  * @brief SPI write then read (separate transactions)
  */
-void ADBMS_Platform_SPI_WriteRead(const uint8_t *tx_data, uint16_t tx_len, uint8_t *rx_data, uint16_t rx_len)
+ADBMS_PlatformStatus_t ADBMS_Platform_SPI_WriteRead(const uint8_t *tx_data, uint16_t tx_len, uint8_t *rx_data,
+                                                    uint16_t rx_len)
 {
-  HAL_SPI_Transmit(ADBMS_SPI_HANDLE, (uint8_t *)tx_data, tx_len, ADBMS_SPI_TIMEOUT_MS);
-  HAL_SPI_Receive(ADBMS_SPI_HANDLE, rx_data, rx_len, ADBMS_SPI_TIMEOUT_MS);
+  HAL_StatusTypeDef status = HAL_SPI_Transmit(ADBMS_SPI_HANDLE, (uint8_t *)tx_data, tx_len, ADBMS_SPI_TIMEOUT_MS);
+  if (status != HAL_OK)
+  {
+    return _hal_to_platform_status(status);
+  }
+  status = HAL_SPI_Receive(ADBMS_SPI_HANDLE, rx_data, rx_len, ADBMS_SPI_TIMEOUT_MS);
+  return _hal_to_platform_status(status);
 }
 
 /**

@@ -60,6 +60,20 @@ typedef enum
 } ADBMS_Error_t;
 
 /*============================================================================
+ * Platform Status Codes (for SPI hooks)
+ *============================================================================*/
+
+/**
+ * @brief Return codes for platform SPI hooks
+ */
+typedef enum
+{
+  ADBMS_PLATFORM_OK = 0,          /**< Success */
+  ADBMS_PLATFORM_ERR_SPI = -1,    /**< Generic SPI error */
+  ADBMS_PLATFORM_ERR_TIMEOUT = -2 /**< SPI timeout */
+} ADBMS_PlatformStatus_t;
+
+/*============================================================================
  * Register Group Identifiers
  *============================================================================*/
 
@@ -333,12 +347,18 @@ typedef struct __attribute__((packed))
 
 /**
  * @brief Status and error tracking for a single IC
+ *
+ * @note The ADBMS6830B response frame includes a 6-bit Command Counter (CC)
+ *       that increments with each command. Tracking cc_last allows detection
+ *       of missed or duplicated commands. TODO: Populate and validate CC
+ *       after bench verification confirms expected IC behavior.
  */
 typedef struct
 {
   uint32_t pec_error_count; /**< Total PEC errors since initialization */
   uint32_t tx_count;        /**< Total transactions */
   uint8_t last_pec_status;  /**< Bitmask of which registers had PEC errors on last read */
+  uint8_t cc_last;          /**< Last received Command Counter (0-63), unpopulated */
   bool comm_ok;             /**< True if last communication succeeded */
 } ADBMS_ICStatus_t;
 
@@ -362,12 +382,39 @@ typedef struct
 
 /**
  * @brief Complete state for entire daisy chain
+ *
+ * @note Consumers that want a consistent snapshot of a register group
+ *       without taking a mutex should use the seqlock helpers:
+ *       - ADBMS_SeqBegin(reg) before a read
+ *       - ADBMS_SeqRetry(reg, seq) after copying, retry if true
+ *       Or use the higher-level ADBMS_SnapshotRegisterGroup() helper.
+ *
+ *       The acquisition task is the sole producer for reg_seq[] /
+ *       reg_last_tick_ms[] updates (incremented odd->read->even around
+ *       SPI transfers in ADBMS_ReadRegister / ADBMS_WriteRegister).
+ *
+ *       Pending writes are request flags set by consumer tasks
+ *       (e.g. processing task staging discharge bits) and consumed by
+ *       the acquisition task during its scheduler loop. Use
+ *       ADBMS_RequestWrite() / ADBMS_ConsumePendingWrites() for
+ *       atomic set / fetch-and-clear semantics.
  */
 typedef struct
 {
   ADBMS_IC_t ics[ADBMS_MAX_ICS]; /**< Array of IC instances */
   uint8_t num_ics;               /**< Number of ICs in chain */
   bool initialized;              /**< True if driver is initialized */
+  uint16_t active_cell_mask;     /**< Bitmask of populated cells (bit i = cell i+1). Default 0xFFFF. */
+
+  /* Seqlock state (chain-wide; one entry per register group) */
+  volatile uint32_t reg_seq[ADBMS_REG_COUNT];           /**< Seqlock counter (even = stable, odd = writer in progress) */
+  volatile uint32_t reg_last_tick_ms[ADBMS_REG_COUNT];  /**< Last successful read/write tick (ms), 0 if never */
+
+  /* Pending register-group writes requested by non-acquisition tasks.
+   * Bitmask of (1u << ADBMS_RegGroup_t). Chain-wide because ADBMS writes
+   * broadcast to all ICs in one daisy-chain transaction, with per-IC data
+   * already staged in g_adbms.ics[].memory by the requester. */
+  volatile uint32_t pending_writes;
 } ADBMS_Chain_t;
 
 /** Global chain state - accessible from application code */
@@ -384,15 +431,17 @@ extern ADBMS_Chain_t g_adbms;
  * @brief SPI write only
  * @param data Data to transmit
  * @param len Number of bytes
+ * @return ADBMS_PLATFORM_OK on success, or error code
  */
-void ADBMS_Platform_SPI_Write(const uint8_t *data, uint16_t len);
+ADBMS_PlatformStatus_t ADBMS_Platform_SPI_Write(const uint8_t *data, uint16_t len);
 
 /**
  * @brief SPI read only
  * @param data Buffer to receive into
  * @param len Number of bytes to read
+ * @return ADBMS_PLATFORM_OK on success, or error code
  */
-void ADBMS_Platform_SPI_Read(uint8_t *data, uint16_t len);
+ADBMS_PlatformStatus_t ADBMS_Platform_SPI_Read(uint8_t *data, uint16_t len);
 
 /**
  * @brief SPI write then read (separate operations, not full duplex)
@@ -400,8 +449,9 @@ void ADBMS_Platform_SPI_Read(uint8_t *data, uint16_t len);
  * @param tx_len Number of bytes to transmit
  * @param rx_data Buffer to receive into
  * @param rx_len Number of bytes to receive
+ * @return ADBMS_PLATFORM_OK on success, or error code
  */
-void ADBMS_Platform_SPI_WriteRead(const uint8_t *tx_data, uint16_t tx_len, uint8_t *rx_data, uint16_t rx_len);
+ADBMS_PlatformStatus_t ADBMS_Platform_SPI_WriteRead(const uint8_t *tx_data, uint16_t tx_len, uint8_t *rx_data, uint16_t rx_len);
 
 /**
  * @brief Assert chip select (drive low)
@@ -467,6 +517,117 @@ ADBMS_Memory_t *ADBMS_GetMemory(uint8_t ic_index);
  * @return Pointer to ADBMS_ICStatus_t, or NULL if invalid index
  */
 ADBMS_ICStatus_t *ADBMS_GetStatus(uint8_t ic_index);
+
+/**
+ * @brief Set which of the 16 cell channels are physically populated.
+ *
+ * Applies uniformly to every IC in the chain. Aggregate functions
+ * (GetPackVoltage, GetMinCell, GetMaxCell) will skip masked-out cells.
+ *
+ * @param mask Bitmask where bit i corresponds to cell i+1. Default 0xFFFF.
+ */
+void ADBMS_SetActiveCellMask(uint16_t mask);
+
+/**
+ * @brief Get the current active cell mask.
+ * @return Current bitmask of active cells.
+ */
+uint16_t ADBMS_GetActiveCellMask(void);
+
+/*============================================================================
+ * Seqlock + Pending Writes (lock-free producer/consumer helpers)
+ *
+ * Pattern:
+ *   uint32_t seq;
+ *   do {
+ *     seq = ADBMS_SeqBegin(reg);
+ *     // copy needed bytes out of g_adbms.ics[i].memory
+ *   } while (ADBMS_SeqRetry(reg, seq));
+ *
+ * A read is consistent iff seq is even before and after copying AND
+ * the two observations are equal.
+ *============================================================================*/
+
+/**
+ * @brief Begin a seqlock read for a register group.
+ * @param reg Register group
+ * @return Seq value to pass to ADBMS_SeqRetry()
+ */
+uint32_t ADBMS_SeqBegin(ADBMS_RegGroup_t reg);
+
+/**
+ * @brief Check whether a seqlock read should retry.
+ * @param reg Register group
+ * @param begin_seq Value returned by ADBMS_SeqBegin()
+ * @return true if the caller must retry (copy was inconsistent)
+ */
+bool ADBMS_SeqRetry(ADBMS_RegGroup_t reg, uint32_t begin_seq);
+
+/**
+ * @brief Last successful read/write tick (ms) for a register group.
+ * @param reg Register group
+ * @return Tick count in ms, 0 if group has never been touched
+ */
+uint32_t ADBMS_GetRegisterLastTickMs(ADBMS_RegGroup_t reg);
+
+/**
+ * @brief Snapshot a register group from one IC into an output buffer.
+ *
+ * Uses the seqlock to guarantee the copy is consistent with respect to
+ * the acquisition task. Falls back to a best-effort copy if @p max_retries
+ * is exhausted (extremely unlikely under normal scheduling).
+ *
+ * @param reg Register group (must be a *simple* group with a data_size,
+ *            not a bulk aggregate - use the individual groups such as
+ *            ADBMS_REG_CVA .. ADBMS_REG_CVF for cell voltages).
+ * @param ic_index IC index
+ * @param dst Output buffer (at least ADBMS_REG_SIZE bytes)
+ * @param size Size of @p dst buffer
+ * @param max_retries Maximum retries before giving up (e.g. 8)
+ * @return true if copy is guaranteed consistent, false if best-effort
+ */
+bool ADBMS_SnapshotRegisterGroup(ADBMS_RegGroup_t reg, uint8_t ic_index, void *dst, size_t size, uint32_t max_retries);
+
+/**
+ * @brief Snapshot entire memory mirror of one IC into an output struct.
+ *
+ * Walks every register group and copies it atomically w.r.t. the
+ * acquisition task. Intended for diagnostic/command-line memory dumps;
+ * not a hot-path primitive.
+ *
+ * @param ic_index IC index
+ * @param out Output struct
+ * @param max_retries Max retries per group
+ * @return true if every group copy was consistent
+ */
+bool ADBMS_SnapshotMemory(uint8_t ic_index, ADBMS_Memory_t *out, uint32_t max_retries);
+
+/**
+ * @brief Request a register-group write to be performed by the acquisition task.
+ *
+ * Staging must have already been done in g_adbms.ics[].memory by the caller.
+ * The actual SPI write is deferred until the acquisition task's scheduler
+ * loop picks it up (typically within the next tick).
+ *
+ * @param reg Writable register group (CFGA/CFGB/PWMA/PWMB/...)
+ */
+void ADBMS_RequestWrite(ADBMS_RegGroup_t reg);
+
+/**
+ * @brief Atomically fetch and clear all pending-write flags.
+ *
+ * Called by the acquisition task. The bitmask returned tells it which
+ * register groups to write this iteration. Per-IC data has already been
+ * staged in g_adbms.ics[].memory by the requester.
+ *
+ * @return Bitmask of (1u << ADBMS_RegGroup_t) that were pending
+ */
+uint32_t ADBMS_ConsumePendingWrites(void);
+
+/**
+ * @brief Peek at currently pending writes without consuming them.
+ */
+uint32_t ADBMS_GetPendingWrites(void);
 
 /*============================================================================
  * Register Read/Write Functions

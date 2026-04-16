@@ -97,6 +97,13 @@ const osThreadAttr_t SMTask_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* Definitions for BMSProcessingTask */
+osThreadId_t BMSProcessingTaskHandle;
+const osThreadAttr_t BMSProcessingTask_attributes = {
+  .name = "BMSProcessingTask",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityAboveNormal,
+};
 /* Definitions for canTxQueue */
 osMessageQueueId_t canTxQueueHandle;
 const osMessageQueueAttr_t canTxQueue_attributes = {
@@ -169,6 +176,7 @@ void StartTPSTask(void *argument);
 void StartBMSTaskRx(void *argument);
 void StartBMSTaskTx(void *argument);
 void StartSMTask(void *argument);
+void StartBMSProcessingTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -261,6 +269,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of SMTask */
   SMTaskHandle = osThreadNew(StartSMTask, NULL, &SMTask_attributes);
+
+  /* creation of BMSProcessingTask */
+  BMSProcessingTaskHandle = osThreadNew(StartBMSProcessingTask, NULL, &BMSProcessingTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -379,6 +390,24 @@ __weak void StartSMTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END StartSMTask */
+}
+
+/* USER CODE BEGIN Header_StartBMSProcessingTask */
+/**
+* @brief Function implementing the BMSProcessingTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartBMSProcessingTask */
+__weak void StartBMSProcessingTask(void *argument)
+{
+  /* USER CODE BEGIN StartBMSProcessingTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartBMSProcessingTask */
 }
 
 /* Private application code --------------------------------------------------*/

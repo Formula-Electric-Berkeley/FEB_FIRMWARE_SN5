@@ -48,6 +48,16 @@ typedef enum
   BMS_APP_ERR_SENSOR      /**< Sensor fault (open/short) */
 } BMS_AppError_t;
 
+/**
+ * @brief Error source bitmask for per-subsystem latched errors
+ */
+typedef enum
+{
+  BMS_ERR_SRC_VOLTAGE = 1u << 0, /**< Voltage subsystem */
+  BMS_ERR_SRC_TEMP = 1u << 1,    /**< Temperature subsystem */
+  BMS_ERR_SRC_COMM = 1u << 2     /**< Communication subsystem */
+} BMS_ErrorSource_t;
+
 /*============================================================================
  * Data Structures
  *============================================================================*/
@@ -109,11 +119,24 @@ typedef struct
   float pack_max_temp_C;
   float pack_avg_temp_C;
 
-  /* Error tracking */
+  /* Error tracking (legacy - most recent error) */
   BMS_AppError_t last_error;
   uint8_t error_bank; /**< Bank index where error occurred */
   uint8_t error_ic;   /**< IC index where error occurred */
   uint8_t error_cell; /**< Cell index where error occurred */
+
+  /* Per-subsystem latched errors */
+  uint32_t active_error_mask;   /**< Bitmask of BMS_ErrorSource_t currently latched */
+  BMS_AppError_t voltage_error; /**< Most recent voltage-subsystem error */
+  BMS_AppError_t temp_error;    /**< Most recent temperature-subsystem error */
+  BMS_AppError_t comm_error;    /**< Most recent communication-subsystem error */
+
+  /* Temperature-specific error location (decoupled from voltage error_cell) */
+  uint8_t temp_error_bank;   /**< Bank of most recent temp fault */
+  uint8_t temp_error_sensor; /**< Sensor index (0..BMS_TEMP_TOTAL_SENSORS-1) */
+
+  /* PEC error tracking */
+  uint8_t consecutive_pec_errors; /**< Consecutive comm failures, reset on success */
 
   /* Statistics */
   uint32_t voltage_read_count;
@@ -125,9 +148,19 @@ typedef struct
   bool initialized;
   bool voltage_valid;
   bool temp_valid;
+
+  /* Seqlock for lock-free reads by non-processing tasks.
+   * Sole writer is the BMS processing task, which bumps this odd around
+   * a full frame update (see BMS_Pack_BeginWrite / EndWrite). */
+  volatile uint32_t snapshot_seq;
+
+  /* Freshness of the last complete processing frame (ms). */
+  volatile uint32_t last_update_tick_ms;
 } BMS_PackData_t;
 
-/** Global pack data - protected by ADBMSMutexHandle */
+/** Global pack data. Sole writer is the BMS processing task.
+ *  Consumers should use BMS_Pack_SeqBegin/Retry (see FEB_BMS_Processing.h)
+ *  for a lock-free consistent snapshot when reading multiple fields. */
 extern BMS_PackData_t g_bms_pack;
 
 /*============================================================================
@@ -150,51 +183,19 @@ extern BMS_PackData_t g_bms_pack;
 BMS_AppError_t BMS_App_Init(void);
 
 /*============================================================================
- * Periodic Processing (Call from FEB_Task_ADBMS)
+ * Balancing
+ *
+ * Note: periodic voltage/temperature/balancing work has moved into the
+ * BMS acquisition and processing tasks (see FEB_BMS_Acquisition.h and
+ * FEB_BMS_Processing.h). The API below is the legacy control surface
+ * that the state machine uses.
  *============================================================================*/
 
 /**
- * @brief Execute voltage measurement cycle (call at 10 Hz)
+ * @brief Stop all balancing.
  *
- * 1. Start C-ADC and S-ADC conversions
- * 2. Poll for completion
- * 3. Read all cell voltages
- * 4. Validate against thresholds
- * 5. Update g_bms_pack
- *
- * @return BMS_APP_OK or error code
- */
-BMS_AppError_t BMS_App_ProcessVoltage(void);
-
-/**
- * @brief Execute temperature measurement cycle (call at 2 Hz)
- *
- * 1. For each MUX channel (0-6):
- *    a. Set GPO select lines
- *    b. Start AUX ADC
- *    c. Read GPIO voltages
- *    d. Convert to temperature
- * 2. Validate against thresholds
- * 3. Update g_bms_pack
- *
- * @return BMS_APP_OK or error code
- */
-BMS_AppError_t BMS_App_ProcessTemperature(void);
-
-/**
- * @brief Execute balancing iteration (call at 1 Hz when in BALANCE state)
- *
- * 1. Read current voltages
- * 2. Find minimum cell voltage
- * 3. Enable discharge on cells > min + threshold
- * 4. Write discharge config to ICs
- *
- * @return BMS_APP_OK or error code
- */
-BMS_AppError_t BMS_App_ProcessBalancing(void);
-
-/**
- * @brief Stop all balancing (call when exiting BALANCE state)
+ * Delegates to BMS_Proc_RequestStopBalancing(), which stages a discharge
+ * clear + CFGB write for the acquisition task to drain.
  */
 void BMS_App_StopBalancing(void);
 
@@ -203,10 +204,18 @@ void BMS_App_StopBalancing(void);
  *============================================================================*/
 
 /**
- * @brief Set operating mode (changes UV/OV thresholds)
+ * @brief Set operating mode.
+ *
+ * Stages UV/OV thresholds into the driver config mirror and flags a
+ * CFGA pending-write for the acquisition task to transmit. Returns
+ * immediately; the hardware update is visible on the next acquisition
+ * scheduler pass (typically < 10 ms).
+ *
  * @param mode New operating mode
+ * @return BMS_APP_OK (the operation is asynchronous; errors surface
+ *         through the PEC/comm error-counter path).
  */
-void BMS_App_SetMode(BMS_OpMode_t mode);
+BMS_AppError_t BMS_App_SetMode(BMS_OpMode_t mode);
 
 /**
  * @brief Get current operating mode
@@ -244,6 +253,24 @@ bool BMS_App_IsTempValid(void);
 /* Error handling */
 BMS_AppError_t BMS_App_GetLastError(void);
 void BMS_App_ClearError(void);
+
+/**
+ * @brief Get bitmask of currently latched error sources
+ * @return Bitmask of BMS_ErrorSource_t values
+ */
+uint32_t BMS_App_GetActiveErrorMask(void);
+
+/**
+ * @brief Get bank index of most recent temperature fault
+ * @return Bank index (0..BMS_NUM_BANKS-1)
+ */
+uint8_t BMS_App_GetTempErrorBank(void);
+
+/**
+ * @brief Get sensor index of most recent temperature fault
+ * @return Sensor index (0..BMS_TEMP_TOTAL_SENSORS-1)
+ */
+uint8_t BMS_App_GetTempErrorSensor(void);
 
 /**
  * @brief Get read-only pointer to pack data
