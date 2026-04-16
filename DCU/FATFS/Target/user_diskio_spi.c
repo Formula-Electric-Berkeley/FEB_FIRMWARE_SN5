@@ -25,7 +25,7 @@ extern SPI_HandleTypeDef SD_SPI_HANDLE;
 #define FCLK_SLOW()                                                                                                    \
   do                                                                                                                   \
   {                                                                                                                    \
-    MODIFY_REG(SD_SPI_HANDLE.Instance->CR1, SPI_BAUDRATEPRESCALER_256, SPI_BAUDRATEPRESCALER_128);                   \
+    MODIFY_REG(SD_SPI_HANDLE.Instance->CR1, SPI_BAUDRATEPRESCALER_256, SPI_BAUDRATEPRESCALER_256);                   \
   } while (0)
 
 #define FCLK_FAST()                                                                                                    \
@@ -91,9 +91,9 @@ static void rcvr_spi_multi(BYTE *buff, UINT count)
 }
 
 #if _USE_WRITE == 1
-static void xmit_spi_multi(const BYTE *buff, UINT count)
+static int xmit_spi_multi(const BYTE *buff, UINT count)
 {
-  (void)HAL_SPI_Transmit(&SD_SPI_HANDLE, (uint8_t *)buff, count, HAL_MAX_DELAY);
+  return HAL_SPI_Transmit(&SD_SPI_HANDLE, (uint8_t *)buff, count, SPI_TIMEOUT_MS) == HAL_OK;
 }
 #endif
 
@@ -164,7 +164,10 @@ static int xmit_datablock(const BYTE *buff, BYTE token)
   (void)xchg_spi(token);
   if (token != 0xFDU)
   {
-    xmit_spi_multi(buff, 512U);
+    if (!xmit_spi_multi(buff, 512U))
+    {
+      return 0;
+    }
     (void)xchg_spi(0xFFU);
     (void)xchg_spi(0xFFU);
 

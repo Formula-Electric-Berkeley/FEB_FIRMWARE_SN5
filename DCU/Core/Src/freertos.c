@@ -26,8 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "FEB_Main.h"
-#include "feb_log.h"
-#include "feb_uart.h"
+#include "feb_rtos_utils.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -97,9 +96,11 @@ void MX_FREERTOS_Init(void) {
   /* Create the mutex(es) */
   /* creation of logMutex */
   logMutexHandle = osMutexNew(&logMutex_attributes);
+  REQUIRE_RTOS_HANDLE(logMutexHandle);
 
   /* creation of uartTxMutex */
   uartTxMutexHandle = osMutexNew(&uartTxMutex_attributes);
+  REQUIRE_RTOS_HANDLE(uartTxMutexHandle);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -108,6 +109,7 @@ void MX_FREERTOS_Init(void) {
   /* Create the semaphores(s) */
   /* creation of uartTxSem */
   uartTxSemHandle = osSemaphoreNew(1, 0, &uartTxSem_attributes);
+  REQUIRE_RTOS_HANDLE(uartTxSemHandle);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -115,10 +117,12 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of radioEvents */
   radioEventsHandle = osEventFlagsNew(&radioEvents_attributes);
+  REQUIRE_RTOS_HANDLE(radioEventsHandle);
 
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  REQUIRE_RTOS_HANDLE(defaultTaskHandle);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
