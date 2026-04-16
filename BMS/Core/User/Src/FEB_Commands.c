@@ -547,66 +547,63 @@ static void subcmd_csv(int argc, char *argv[])
   if (argc < 2)
   {
     FEB_Console_Printf("Usage: BMS|csv|<mode>\r\n");
-    FEB_Console_Printf("  cells  - Cell voltages (bank,cell,v_C,v_S)\r\n");
-    FEB_Console_Printf("  temps  - Temperature sensors (bank,sensor,temp_deg_C)\r\n");
-    FEB_Console_Printf("  all    - Combined (bank,type,reading1,reading2)\r\n");
+    FEB_Console_Printf("  volts  - Cell voltages (V,bank,cell,v_C,v_S)\r\n");
+    FEB_Console_Printf("  temps  - Temperature sensors (T,bank,sensor,temp_deg_C)\r\n");
+    FEB_Console_Printf("  all    - Combined (type,bank,index,reading1,reading2)\r\n");
     return;
   }
 
   const char *mode = argv[1];
 
-  if (FEB_strcasecmp(mode, "cells") == 0)
+  if (FEB_strcasecmp(mode, "volts") == 0)
   {
-    FEB_Console_Printf("bank,cell,v_C,v_S\r\n");
     for (int bank = 0; bank < FEB_NBANKS; bank++)
     {
       for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
       {
         float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
         float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
-        FEB_Console_Printf("%d,%d,%.3f,%.3f\r\n", bank, cell + 1, v_c, v_s);
+        FEB_Console_Printf("V,%d,%d,%.3f,%.3f\r\n", bank, cell + 1, v_c, v_s);
       }
     }
   }
   else if (FEB_strcasecmp(mode, "temps") == 0)
   {
-    FEB_Console_Printf("bank,sensor,temp_deg_C\r\n");
     for (int bank = 0; bank < FEB_NBANKS; bank++)
     {
       for (int sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
       {
         float temp = FEB_ADBMS_GET_Cell_Temperature(bank, sensor);
-        FEB_Console_Printf("%d,%d,%.1f\r\n", bank, sensor, temp);
+        FEB_Console_Printf("T,%d,%d,%.1f\r\n", bank, sensor, temp);
       }
     }
   }
   else if (FEB_strcasecmp(mode, "all") == 0)
   {
-    FEB_Console_Printf("bank,type,reading1,reading2\r\n");
-    /* Voltage readings (type=0) */
+    /* Voltage readings */
     for (int bank = 0; bank < FEB_NBANKS; bank++)
     {
       for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
       {
         float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
         float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
-        FEB_Console_Printf("%d,0,%.3f,%.3f\r\n", bank, v_c, v_s);
+        FEB_Console_Printf("V,%d,%d,%.3f,%.3f\r\n", bank, cell + 1, v_c, v_s);
       }
     }
-    /* Temperature readings (type=1) */
+    /* Temperature readings */
     for (int bank = 0; bank < FEB_NBANKS; bank++)
     {
       for (int sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
       {
         float temp = FEB_ADBMS_GET_Cell_Temperature(bank, sensor);
-        FEB_Console_Printf("%d,1,%.1f,\r\n", bank, temp);
+        FEB_Console_Printf("T,%d,%d,%.1f,\r\n", bank, sensor, temp);
       }
     }
   }
   else
   {
     FEB_Console_Printf("Unknown mode: %s\r\n", mode);
-    FEB_Console_Printf("Usage: BMS|csv|[cells|temps|all]\r\n");
+    FEB_Console_Printf("Usage: BMS|csv|[volts|temps|all]\r\n");
   }
 }
 
@@ -767,7 +764,7 @@ static void print_bms_help(void)
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("Data Export:\r\n");
   FEB_Console_Printf("  BMS|csv                 - Show CSV export options\r\n");
-  FEB_Console_Printf("  BMS|csv|cells           - Cell voltages (CSV)\r\n");
+  FEB_Console_Printf("  BMS|csv|volts           - Cell voltages (CSV)\r\n");
   FEB_Console_Printf("  BMS|csv|temps           - Temperature sensors (CSV)\r\n");
   FEB_Console_Printf("  BMS|csv|all             - Combined voltages + temps (CSV)\r\n");
   FEB_Console_Printf("\r\n");
