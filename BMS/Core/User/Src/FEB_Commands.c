@@ -94,7 +94,7 @@ static void subcmd_cells(int argc, char *argv[])
   FEB_Console_Printf("\r\n=== Cell Voltages (C/S) ===\r\n");
   for (int bank = 0; bank < FEB_NBANKS; bank++)
   {
-    FEB_Console_Printf("Bank %d:\r\n", bank);
+    FEB_Console_Printf("Bank %d:\r\n", bank + 1);
     for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
     {
       float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
@@ -115,7 +115,7 @@ static void subcmd_temps(int argc, char *argv[])
   FEB_Console_Printf("\r\n=== Temperature Readings ===\r\n");
   for (int bank = 0; bank < FEB_NBANKS; bank++)
   {
-    FEB_Console_Printf("Bank %d: ", bank);
+    FEB_Console_Printf("Bank %d: ", bank + 1);
     for (int sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
     {
       FEB_Console_Printf("%.1fC ", FEB_ADBMS_GET_Cell_Temperature(bank, sensor));
@@ -432,29 +432,31 @@ static void subcmd_cell(int argc, char *argv[])
   if (argc < 3)
   {
     FEB_Console_Printf("Usage: BMS|cell|<bank>|<cell>\r\n");
-    FEB_Console_Printf("Banks: 0-%d, Cells: 0-%d\r\n", FEB_NBANKS - 1, FEB_NUM_CELLS_PER_BANK - 1);
+    FEB_Console_Printf("Banks: 1-%d, Cells: 1-%d\r\n", FEB_NBANKS, FEB_NUM_CELLS_PER_BANK);
     return;
   }
 
   int bank = atoi(argv[1]);
   int cell = atoi(argv[2]);
 
-  if (bank < 0 || bank >= FEB_NBANKS)
+  if (bank < 1 || bank > FEB_NBANKS)
   {
-    FEB_Console_Printf("Error: Bank must be 0-%d\r\n", FEB_NBANKS - 1);
+    FEB_Console_Printf("Error: Bank must be 1-%d\r\n", FEB_NBANKS);
     return;
   }
 
-  if (cell < 0 || cell >= FEB_NUM_CELLS_PER_BANK)
+  if (cell < 1 || cell > FEB_NUM_CELLS_PER_BANK)
   {
-    FEB_Console_Printf("Error: Cell must be 0-%d\r\n", FEB_NUM_CELLS_PER_BANK - 1);
+    FEB_Console_Printf("Error: Cell must be 1-%d\r\n", FEB_NUM_CELLS_PER_BANK);
     return;
   }
 
-  float voltage_c = FEB_ADBMS_GET_Cell_Voltage((uint8_t)bank, (uint16_t)cell);
-  float voltage_s = FEB_ADBMS_GET_Cell_Voltage_S((uint8_t)bank, (uint16_t)cell);
-  float temp = FEB_ADBMS_GET_Cell_Temperature((uint8_t)bank, (uint16_t)cell);
-  uint8_t violations = FEB_ADBMS_GET_Cell_Violations((uint8_t)bank, (uint16_t)cell);
+  int bank_idx = bank - 1;
+  int cell_idx = cell - 1;
+  float voltage_c = FEB_ADBMS_GET_Cell_Voltage((uint8_t)bank_idx, (uint16_t)cell_idx);
+  float voltage_s = FEB_ADBMS_GET_Cell_Voltage_S((uint8_t)bank_idx, (uint16_t)cell_idx);
+  float temp = FEB_ADBMS_GET_Cell_Temperature((uint8_t)bank_idx, (uint16_t)cell_idx);
+  uint8_t violations = FEB_ADBMS_GET_Cell_Violations((uint8_t)bank_idx, (uint16_t)cell_idx);
   float delta = voltage_c - voltage_s;
 
   FEB_Console_Printf("\r\n=== Cell [Bank %d, Cell %d] ===\r\n", bank, cell);
@@ -542,7 +544,7 @@ static void subcmd_errors(int argc, char *argv[])
  * Subcommand: csv - Output data in CSV format
  * ============================================================================ */
 
-static void subcmd_csv(int argc, char *argv[])
+void subcmd_csv(int argc, char *argv[])
 {
   if (argc < 2)
   {
@@ -563,7 +565,7 @@ static void subcmd_csv(int argc, char *argv[])
       {
         float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
         float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
-        FEB_Console_Printf("V,%d,%d,%.3f,%.3f\r\n", bank, cell + 1, v_c, v_s);
+        FEB_Console_Printf("V,%d,%d,%.3f,%.3f\r\n", bank + 1, cell + 1, v_c, v_s);
       }
     }
   }
@@ -574,7 +576,7 @@ static void subcmd_csv(int argc, char *argv[])
       for (int sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
       {
         float temp = FEB_ADBMS_GET_Cell_Temperature(bank, sensor);
-        FEB_Console_Printf("T,%d,%d,%.1f\r\n", bank, sensor, temp);
+        FEB_Console_Printf("T,%d,%d,%.1f\r\n", bank + 1, sensor + 1, temp);
       }
     }
   }
@@ -587,7 +589,7 @@ static void subcmd_csv(int argc, char *argv[])
       {
         float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
         float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
-        FEB_Console_Printf("V,%d,%d,%.3f,%.3f\r\n", bank, cell + 1, v_c, v_s);
+        FEB_Console_Printf("V,%d,%d,%.3f,%.3f\r\n", bank + 1, cell + 1, v_c, v_s);
       }
     }
     /* Temperature readings */
@@ -596,7 +598,7 @@ static void subcmd_csv(int argc, char *argv[])
       for (int sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
       {
         float temp = FEB_ADBMS_GET_Cell_Temperature(bank, sensor);
-        FEB_Console_Printf("T,%d,%d,%.1f,\r\n", bank, sensor, temp);
+        FEB_Console_Printf("T,%d,%d,%.1f\r\n", bank + 1, sensor + 1, temp);
       }
     }
   }

@@ -5,6 +5,7 @@
 #include "FEB_HW.h"
 #include "FEB_Const.h"
 #include "FEB_Config.h"
+#include "FEB_Commands.h"
 // #include "FEB_CAN_IVT.h"
 #include "FEB_CMDCODES.h"
 #include "FEB_Thermistor.h"
@@ -639,48 +640,15 @@ float FEB_ADBMS_GET_Cell_Temperature(uint8_t bank, uint16_t cell)
   return temp;
 }
 
-// ********************************** Print Accumulator **************************
+// ********************************** Printing **********************************
 
 void FEB_ADBMS_Print_Accumulator(void)
 {
   osMutexAcquire(ADBMSMutexHandle, osWaitForever);
 
-  // printf("\r\n========== ACCUMULATOR STATUS ==========\r\n");
-  // printf("Pack Total Voltage: %.3fV\r\n", FEB_ACC.total_voltage_V);
-  // printf("Pack Min Voltage: %.3fV\r\n", FEB_ACC.pack_min_voltage_V);
-  // printf("Pack Max Voltage: %.3fV\r\n", FEB_ACC.pack_max_voltage_V);
-  // printf("Pack Min Temp: %.1fC\r\n", FEB_ACC.pack_min_temp);
-  // printf("Pack Max Temp: %.1fC\r\n", FEB_ACC.pack_max_temp);
-  // printf("Pack Avg Temp: %.1fC\r\n", FEB_ACC.average_pack_temp);
-  // printf("Error Type: 0x%02X\r\n", FEB_ACC.error_type);
-
-  // for (uint8_t bank = 0; bank < FEB_NBANKS; bank++)
-  // {
-  //   printf("\r\n--- Bank %d ---\r\n", bank);
-  //   printf("  Total Voltage: %.3fV\r\n", FEB_ACC.banks[bank].total_voltage_V);
-  //   printf("  Min Voltage: %.3fV, Max Voltage: %.3fV\r\n", FEB_ACC.banks[bank].min_voltage_V,
-  //          FEB_ACC.banks[bank].max_voltage_V);
-  //   printf("  Avg Temp: %.1fC, Min Temp: %.1fC, Max Temp: %.1fC\r\n", FEB_ACC.banks[bank].avg_temp_C,
-  //          FEB_ACC.banks[bank].min_temp_C, FEB_ACC.banks[bank].max_temp_C);
-  //   printf("  Volt Reads: %d, Temp Reads: %d, Bad Volt Reads: %d\r\n", FEB_ACC.banks[bank].voltRead,
-  //          FEB_ACC.banks[bank].tempRead, FEB_ACC.banks[bank].badReadV);
-
-  //   printf("  Cell Voltages: ");
-  //   for (uint16_t cell = 0; cell < FEB_NUM_CELL_PER_BANK; cell++)
-  //   {
-  //     printf("%.3f ", FEB_ACC.banks[bank].cells[cell].voltage_V);
-  //   }
-  //   printf("\r\n");
-
-  //   printf("  Cell Temps: ");
-  //   for (uint16_t cell = 0; cell < FEB_NUM_TEMP_SENSORS; cell++)
-  //   {
-  //     printf("%.1f ", FEB_ACC.banks[bank].temp_sensor_readings_V[cell]);
-  //   }
-  //   printf("\r\n");
-  // }
-
-  // printf("==========================================\r\n");
+  /* Call subcmd_csv with "all" mode */
+  char *csv_argv[] = {"csv", "all"};
+  subcmd_csv(2, csv_argv);
 
   osMutexRelease(ADBMSMutexHandle);
 }
