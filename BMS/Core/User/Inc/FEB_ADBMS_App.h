@@ -214,7 +214,11 @@ void BMS_App_SetMode(BMS_OpMode_t mode);
 BMS_OpMode_t BMS_App_GetMode(void);
 
 /*============================================================================
- * Thread-Safe Getters (acquire mutex internally)
+ * Getters - Lock-Free Snapshots
+ *
+ * These provide direct read access without mutex. Safe for single 32-bit
+ * values on Cortex-M4 due to atomic load/store. For consistent multi-field
+ * reads, caller should acquire ADBMSMutexHandle externally.
  *============================================================================*/
 
 /* Voltage getters */

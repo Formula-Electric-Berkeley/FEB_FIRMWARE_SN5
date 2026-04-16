@@ -425,6 +425,12 @@ void ADBMS_Platform_DelayUs(uint32_t us);
  */
 void ADBMS_Platform_DelayMs(uint32_t ms);
 
+/**
+ * @brief Get current tick count in milliseconds
+ * @return Current system tick in milliseconds
+ */
+uint32_t ADBMS_Platform_GetTickMs(void);
+
 /*============================================================================
  * Initialization & Control
  *============================================================================*/

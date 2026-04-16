@@ -149,6 +149,10 @@ uint16_t ADBMS_CalcPEC10(const uint8_t *data, uint8_t len)
  * Internal: Wake-Up Sequence
  *============================================================================*/
 
+/* Track last activity to avoid unnecessary wakeups */
+static uint32_t s_last_activity_ms = 0;
+#define ADBMS_SLEEP_THRESHOLD_MS 4 /* Wake if idle > 4ms (t_IDLE is ~5.4ms) */
+
 static void _adbms_wakeup(void)
 {
   /* Toggle CS to wake from sleep */
@@ -156,6 +160,23 @@ static void _adbms_wakeup(void)
   ADBMS_Platform_DelayUs(400); /* t_WAKE = 400us min */
   ADBMS_Platform_CS_High();
   ADBMS_Platform_DelayMs(1); /* Wait for reference to stabilize */
+  s_last_activity_ms = ADBMS_Platform_GetTickMs();
+}
+
+/**
+ * @brief Conditionally wake the IC if it may have entered sleep
+ *
+ * Only performs wakeup if idle time exceeds the sleep threshold.
+ * This avoids the 1.4ms overhead on every transaction.
+ */
+static void _ensure_awake(void)
+{
+  uint32_t now = ADBMS_Platform_GetTickMs();
+  if ((now - s_last_activity_ms) >= ADBMS_SLEEP_THRESHOLD_MS)
+  {
+    _adbms_wakeup();
+  }
+  s_last_activity_ms = now;
 }
 
 /*============================================================================
@@ -180,7 +201,7 @@ static ADBMS_Error_t _transmit_action(uint16_t cmd_code)
   uint8_t frame[4];
   _build_cmd_frame(cmd_code, frame);
 
-  _adbms_wakeup();
+  _ensure_awake();
 
   ADBMS_Platform_CS_Low();
   ADBMS_Platform_SPI_Write(frame, 4);
@@ -205,7 +226,7 @@ static ADBMS_Error_t _transmit_read(uint16_t cmd_code, uint8_t bytes_per_ic, uin
   uint16_t rx_size = (bytes_per_ic + ADBMS_PEC10_SIZE) * g_adbms.num_ics;
   uint8_t rx_buffer[ADBMS_MAX_ICS * (36 + 2)]; /* Max bulk read size */
 
-  _adbms_wakeup();
+  _ensure_awake();
 
   ADBMS_Platform_CS_Low();
   ADBMS_Platform_SPI_WriteRead(cmd_frame, 4, rx_buffer, rx_size);
@@ -288,7 +309,7 @@ static ADBMS_Error_t _transmit_write(uint16_t cmd_code, uint8_t bytes_per_ic, co
 
   uint16_t tx_len = 4 + g_adbms.num_ics * (bytes_per_ic + ADBMS_PEC10_SIZE);
 
-  _adbms_wakeup();
+  _ensure_awake();
 
   ADBMS_Platform_CS_Low();
   ADBMS_Platform_SPI_Write(tx_buffer, tx_len);
@@ -503,26 +524,26 @@ static ADBMS_Error_t _poll_adc_internal(uint16_t poll_cmd, uint32_t timeout_ms)
   uint8_t cmd_frame[4];
   _build_cmd_frame(poll_cmd, cmd_frame);
 
-  uint32_t start = 0;
-  uint32_t elapsed = 0;
+  /* Ensure IC is awake before polling loop (only once, not every iteration) */
+  _ensure_awake();
 
-  while (elapsed < timeout_ms)
+  uint32_t start = ADBMS_Platform_GetTickMs();
+
+  while ((ADBMS_Platform_GetTickMs() - start) < timeout_ms)
   {
     uint8_t rx;
 
-    _adbms_wakeup();
     ADBMS_Platform_CS_Low();
     ADBMS_Platform_SPI_WriteRead(cmd_frame, 4, &rx, 1);
     ADBMS_Platform_CS_High();
 
     if (rx == 0xFF)
     {
+      s_last_activity_ms = ADBMS_Platform_GetTickMs();
       return ADBMS_OK; /* Conversion complete */
     }
 
     ADBMS_Platform_DelayMs(1);
-    elapsed++;
-    (void)start;
   }
 
   return ADBMS_ERR_TIMEOUT;
@@ -873,8 +894,8 @@ int32_t ADBMS_GetMaxCellVoltage_mV(uint8_t ic_index, uint8_t *max_cell_index)
 
 ADBMS_Error_t ADBMS_SetUVThreshold(uint8_t ic_index, uint16_t threshold_mV)
 {
-  /* VUV = (threshold / 16 * 150uV) - 1 = (threshold_mV * 1000 / 2400) - 1 */
-  uint16_t code = (threshold_mV * 10 / 24);
+  /* VUV = (V - 1.5V) / 2.4mV - 1, per datasheet Table 107 */
+  uint16_t code = ADBMS_MVToThresholdCode(threshold_mV);
   if (code > 0)
     code--;
 
@@ -905,8 +926,8 @@ ADBMS_Error_t ADBMS_SetUVThreshold(uint8_t ic_index, uint16_t threshold_mV)
 
 ADBMS_Error_t ADBMS_SetOVThreshold(uint8_t ic_index, uint16_t threshold_mV)
 {
-  /* VOV = (threshold / 16 * 150uV) = (threshold_mV * 1000 / 2400) */
-  uint16_t code = (threshold_mV * 10 / 24);
+  /* VOV = (V - 1.5V) / 2.4mV, per datasheet Table 107 */
+  uint16_t code = ADBMS_MVToThresholdCode(threshold_mV);
 
   if (ic_index == 0xFF)
   {
@@ -1889,30 +1910,33 @@ ADBMS_Error_t ADBMS_StartAux2ADC(uint8_t ch)
 
 ADBMS_Error_t ADBMS_PollAux2ADC(uint32_t timeout_ms)
 {
-  /* Use similar polling approach as ADBMS_PollAuxADC */
-  uint32_t elapsed = 0;
+  /* Build command frame once before loop */
+  uint8_t cmd_buf[4];
+  cmd_buf[0] = (PLAUX2 >> 8) & 0xFF;
+  cmd_buf[1] = PLAUX2 & 0xFF;
+  uint16_t pec = ADBMS_CalcPEC15(cmd_buf, 2);
+  cmd_buf[2] = (pec >> 8) & 0xFF;
+  cmd_buf[3] = pec & 0xFF;
+
+  /* Ensure IC is awake before polling loop (only once) */
+  _ensure_awake();
+
+  uint32_t start = ADBMS_Platform_GetTickMs();
   uint8_t rx_byte;
 
-  while (elapsed < timeout_ms)
+  while ((ADBMS_Platform_GetTickMs() - start) < timeout_ms)
   {
     ADBMS_Platform_CS_Low();
-    uint8_t cmd_buf[4];
-    cmd_buf[0] = (PLAUX2 >> 8) & 0xFF;
-    cmd_buf[1] = PLAUX2 & 0xFF;
-    uint16_t pec = ADBMS_CalcPEC15(cmd_buf, 2);
-    cmd_buf[2] = (pec >> 8) & 0xFF;
-    cmd_buf[3] = pec & 0xFF;
-
     ADBMS_Platform_SPI_WriteRead(cmd_buf, 4, &rx_byte, 1);
     ADBMS_Platform_CS_High();
 
-    if (rx_byte != 0xFF)
+    if (rx_byte == 0xFF)
     {
-      return ADBMS_OK;
+      s_last_activity_ms = ADBMS_Platform_GetTickMs();
+      return ADBMS_OK; /* Conversion complete */
     }
 
     ADBMS_Platform_DelayMs(1);
-    elapsed++;
   }
 
   return ADBMS_ERR_TIMEOUT;

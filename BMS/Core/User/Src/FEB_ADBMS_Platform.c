@@ -94,6 +94,14 @@ void ADBMS_Platform_DelayMs(uint32_t ms)
   osDelay(pdMS_TO_TICKS(ms));
 }
 
+/**
+ * @brief Get current tick count in milliseconds
+ */
+uint32_t ADBMS_Platform_GetTickMs(void)
+{
+  return HAL_GetTick();
+}
+
 /*============================================================================
  * Platform Initialization
  *============================================================================*/

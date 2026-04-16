@@ -39,7 +39,7 @@ static uint8_t s_legacy_error_type = 0;
 
 static void _get_thresholds_for_mode(uint16_t *uv_mv, uint16_t *ov_mv);
 static void _process_cell_voltages(void);
-static void _validate_temperatures(void);
+static void _validate_temperatures(uint8_t min_bank, uint8_t min_sensor, uint8_t max_bank, uint8_t max_sensor);
 static float _voltage_to_temperature(int32_t voltage_mv);
 static void _set_mux_channel(uint8_t ic_index, uint8_t channel);
 static uint16_t _get_current_gpo(uint8_t ic_index);
@@ -176,6 +176,9 @@ BMS_AppError_t BMS_App_ProcessVoltage(void)
   {
     return BMS_APP_ERR_INIT;
   }
+
+  /* Clear previous error - only return error if this cycle has a fault */
+  g_bms_pack.last_error = BMS_APP_OK;
 
   ADBMS_Error_t err;
 
@@ -363,11 +366,20 @@ BMS_AppError_t BMS_App_ProcessTemperature(void)
     return BMS_APP_ERR_INIT;
   }
 
+  /* Clear previous error - only return error if this cycle has a fault */
+  g_bms_pack.last_error = BMS_APP_OK;
+
   ADBMS_Error_t err;
   float pack_min_temp = FLT_MAX;
   float pack_max_temp = -FLT_MAX;
   float temp_sum = 0.0f;
   uint16_t temp_count = 0;
+
+  /* Track location of min/max temperatures for fault reporting */
+  uint8_t min_temp_bank = 0;
+  uint8_t min_temp_sensor = 0;
+  uint8_t max_temp_bank = 0;
+  uint8_t max_temp_sensor = 0;
 
   /* Scan all 7 MUX channels (sensors on IN1-IN7) */
   for (uint8_t mux_ch = 0; mux_ch < BMS_TEMP_SENSORS_PER_MUX; mux_ch++)
@@ -425,9 +437,11 @@ BMS_AppError_t BMS_App_ProcessTemperature(void)
         /* Convert voltage to temperature */
         float temp_C = _voltage_to_temperature(gpio_mv);
 
-        /* Calculate indices */
+        /* Calculate indices - include IC offset within bank for multi-IC support */
         uint8_t bank = ic / BMS_ICS_PER_BANK;
-        uint8_t sensor_idx = mux * BMS_TEMP_SENSORS_PER_MUX + mux_ch;
+        uint8_t ic_in_bank = ic % BMS_ICS_PER_BANK;
+        uint8_t sensors_per_ic = BMS_TEMP_NUM_MUXES * BMS_TEMP_SENSORS_PER_MUX;
+        uint8_t sensor_idx = (ic_in_bank * sensors_per_ic) + (mux * BMS_TEMP_SENSORS_PER_MUX) + mux_ch;
 
         /* Validate and store */
         if (temp_C > -40.0f && temp_C < 85.0f)
@@ -435,11 +449,19 @@ BMS_AppError_t BMS_App_ProcessTemperature(void)
           g_bms_pack.banks[bank].temp_sensors_C[sensor_idx] = temp_C;
           g_bms_pack.banks[bank].temp_violations[sensor_idx] = 0;
 
-          /* Track aggregates */
+          /* Track aggregates and location of extremes */
           if (temp_C < pack_min_temp)
+          {
             pack_min_temp = temp_C;
+            min_temp_bank = bank;
+            min_temp_sensor = sensor_idx;
+          }
           if (temp_C > pack_max_temp)
+          {
             pack_max_temp = temp_C;
+            max_temp_bank = bank;
+            max_temp_sensor = sensor_idx;
+          }
           temp_sum += temp_C;
           temp_count++;
         }
@@ -447,6 +469,11 @@ BMS_AppError_t BMS_App_ProcessTemperature(void)
         {
           /* Invalid reading - possible open/short */
           g_bms_pack.banks[bank].temp_violations[sensor_idx]++;
+          if (g_bms_pack.banks[bank].temp_violations[sensor_idx] >= BMS_TEMP_ERROR_THRESHOLD)
+          {
+            g_bms_pack.last_error = BMS_APP_ERR_SENSOR;
+            LOG_W(TAG_APP, "Temp sensor fault: Bank %d IC %d Sensor %d", bank, ic_in_bank, sensor_idx);
+          }
         }
       }
     }
@@ -482,8 +509,13 @@ BMS_AppError_t BMS_App_ProcessTemperature(void)
     }
   }
 
+  /* Store location of temperature extremes for fault reporting */
+  /* Temporarily store in error fields (will be used by _validate_temperatures) */
+  g_bms_pack.error_bank = max_temp_bank;
+  g_bms_pack.error_cell = max_temp_sensor;
+
   /* Validate temperatures */
-  _validate_temperatures();
+  _validate_temperatures(min_temp_bank, min_temp_sensor, max_temp_bank, max_temp_sensor);
 
   g_bms_pack.temp_read_count++;
   g_bms_pack.temp_valid = true;
@@ -491,22 +523,30 @@ BMS_AppError_t BMS_App_ProcessTemperature(void)
   return g_bms_pack.last_error;
 }
 
-static void _validate_temperatures(void)
+static void _validate_temperatures(uint8_t min_bank, uint8_t min_sensor, uint8_t max_bank, uint8_t max_sensor)
 {
   /* Convert thresholds from deci-Celsius to Celsius */
-  float max_temp_C = (float)BMS_CELL_MAX_TEMP_DC / 10.0f;
-  float min_temp_C = (float)BMS_CELL_MIN_TEMP_DC / 10.0f;
+  float max_temp_threshold = (float)BMS_CELL_MAX_TEMP_DC / 10.0f;
+  float min_temp_threshold = (float)BMS_CELL_MIN_TEMP_DC / 10.0f;
 
-  if (g_bms_pack.pack_max_temp_C > max_temp_C)
+  if (g_bms_pack.pack_max_temp_C > max_temp_threshold)
   {
     g_bms_pack.last_error = BMS_APP_ERR_TEMP_HIGH;
-    LOG_E(TAG_APP, "Over-temperature: %.1fC > %.1fC", g_bms_pack.pack_max_temp_C, max_temp_C);
+    g_bms_pack.error_bank = max_bank;
+    g_bms_pack.error_ic = 0; /* Sensor index stored in error_cell */
+    g_bms_pack.error_cell = max_sensor;
+    LOG_E(TAG_APP, "Over-temperature: %.1fC > %.1fC (Bank %d Sensor %d)", g_bms_pack.pack_max_temp_C,
+          max_temp_threshold, max_bank, max_sensor);
   }
 
-  if (g_bms_pack.pack_min_temp_C < min_temp_C)
+  if (g_bms_pack.pack_min_temp_C < min_temp_threshold)
   {
     g_bms_pack.last_error = BMS_APP_ERR_TEMP_LOW;
-    LOG_E(TAG_APP, "Under-temperature: %.1fC < %.1fC", g_bms_pack.pack_min_temp_C, min_temp_C);
+    g_bms_pack.error_bank = min_bank;
+    g_bms_pack.error_ic = 0; /* Sensor index stored in error_cell */
+    g_bms_pack.error_cell = min_sensor;
+    LOG_E(TAG_APP, "Under-temperature: %.1fC < %.1fC (Bank %d Sensor %d)", g_bms_pack.pack_min_temp_C,
+          min_temp_threshold, min_bank, min_sensor);
   }
 }
 
