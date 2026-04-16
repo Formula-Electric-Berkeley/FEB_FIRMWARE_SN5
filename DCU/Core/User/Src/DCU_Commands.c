@@ -12,7 +12,10 @@
 #include "feb_console.h"
 #include "feb_can_lib.h"
 #include "feb_string_utils.h"
+#include "feb_log.h"
 #include <string.h>
+
+#define TAG_DCU "[DCU]"
 
 /* ============================================================================
  * Help Command
@@ -124,7 +127,12 @@ static const FEB_Console_Cmd_t dcu_cmd = {
  * Registration
  * ============================================================================ */
 
-void DCU_RegisterCommands(void)
+bool DCU_RegisterCommands(void)
 {
-  FEB_Console_Register(&dcu_cmd);
+  if (!FEB_Console_Register(&dcu_cmd))
+  {
+    LOG_E(TAG_DCU, "Failed to register dcu command");
+    return false;
+  }
+  return true;
 }

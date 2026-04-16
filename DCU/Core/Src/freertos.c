@@ -144,15 +144,18 @@ void MX_FREERTOS_Init(void) {
   radioTaskHandle = osThreadNew(RadioTask, NULL, &radioTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
+  REQUIRE_RTOS_HANDLE(spiMutexHandle);
+  REQUIRE_RTOS_HANDLE(rxTimeoutTimerHandle);
+  REQUIRE_RTOS_HANDLE(rxDataQueueHandle);
+  REQUIRE_RTOS_HANDLE(defaultTaskHandle);
   REQUIRE_RTOS_HANDLE(radioTaskHandle);
-  REQUIRE_RTOS_HANDLE(radioEventsHandle);
   /* USER CODE END RTOS_THREADS */
 
   /* creation of radioEvents */
   radioEventsHandle = osEventFlagsNew(&radioEvents_attributes);
 
   /* USER CODE BEGIN RTOS_EVENTS */
-  /* add events, ... */
+  REQUIRE_RTOS_HANDLE(radioEventsHandle);
   /* USER CODE END RTOS_EVENTS */
 
 }

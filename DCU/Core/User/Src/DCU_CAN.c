@@ -16,6 +16,9 @@ static bool g_can_initialized = false;
 
 bool DCU_CAN_Init(void)
 {
+  /* Reset flag in case of re-initialization */
+  g_can_initialized = false;
+
   /* Initialize FEB CAN library */
   FEB_CAN_Config_t cfg = {
       .hcan1 = &hcan1,
