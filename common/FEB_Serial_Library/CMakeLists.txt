@@ -50,6 +50,7 @@ add_subdirectory(FEB_Commands)
 add_library(feb_io INTERFACE)
 target_link_libraries(feb_io INTERFACE
     feb_string_utils
+    feb_time
     feb_uart
     feb_log
     feb_console

@@ -8,9 +8,11 @@
 
 #include "feb_console.h"
 #include "feb_string_utils.h"
+#include "feb_time.h"
 #include "feb_uart.h"
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -86,6 +88,9 @@ void FEB_Console_Init(bool register_default_commands)
   }
 #endif
 
+  /* Microsecond clock used for CSV row timestamps. Safe to call repeatedly. */
+  FEB_Time_Init();
+
   /* Register built-in commands if requested */
   if (register_default_commands)
   {
@@ -104,11 +109,39 @@ int FEB_Console_GetUartInstance(void)
   return console_uart_instance;
 }
 
+/* "csv|" prefix detection. Case-insensitive on the literal three chars;
+ * the pipe must be exact. Returns true and advances the inputs past the
+ * prefix when matched. */
+static bool strip_csv_prefix(const char **line, size_t *len)
+{
+  if (*len < 4)
+  {
+    return false;
+  }
+  const char *p = *line;
+  if (((p[0] | 0x20) == 'c') && ((p[1] | 0x20) == 's') && ((p[2] | 0x20) == 'v') && (p[3] == '|'))
+  {
+    *line += 4;
+    *len -= 4;
+    return true;
+  }
+  return false;
+}
+
 void FEB_Console_ProcessLine(const char *line, size_t len)
 {
   if (line == NULL || len == 0)
   {
     return;
+  }
+
+  /* Detect and strip the "csv|" prefix before anything else. When present,
+   * ack the receipt immediately so the host knows we got the command -
+   * regardless of whether the command is known or CSV-capable. */
+  const bool csv_mode = strip_csv_prefix(&line, &len);
+  if (csv_mode)
+  {
+    FEB_Console_CsvPrintf("csv_ack", "%.*s\r\n", (int)len, line);
   }
 
   /* Stack-allocated buffer for reentrancy */
@@ -128,7 +161,11 @@ void FEB_Console_ProcessLine(const char *line, size_t len)
 
   if (argc == 0)
   {
-    return; /* Empty line */
+    if (csv_mode)
+    {
+      FEB_Console_CsvPrintf("csv_err", "empty\r\n");
+    }
+    return;
   }
 
   /* Find and execute command (thread-safe lookup) */
@@ -136,14 +173,32 @@ void FEB_Console_ProcessLine(const char *line, size_t len)
   const FEB_Console_Cmd_t *cmd = find_command(argv[0]);
   CONSOLE_MUTEX_UNLOCK();
 
-  if (cmd != NULL)
+  if (csv_mode)
   {
-    cmd->handler(argc, argv);
+    if (cmd == NULL)
+    {
+      FEB_Console_CsvPrintf("csv_err", "unknown,%s\r\n", argv[0]);
+    }
+    else if (cmd->csv_handler == NULL)
+    {
+      FEB_Console_CsvPrintf("csv_err", "unsupported,%s\r\n", cmd->name);
+    }
+    else
+    {
+      cmd->csv_handler(argc, argv);
+    }
   }
   else
   {
-    FEB_Console_Printf("Unknown command: %s\r\n", argv[0]);
-    FEB_Console_Printf("Type 'help' for available commands\r\n");
+    if (cmd != NULL)
+    {
+      cmd->handler(argc, argv);
+    }
+    else
+    {
+      FEB_Console_Printf("Unknown command: %s\r\n", argv[0]);
+      FEB_Console_Printf("Type 'help' for available commands\r\n");
+    }
   }
 }
 
@@ -208,6 +263,57 @@ int FEB_Console_Printf(const char *fmt, ...)
   }
 
   return len;
+}
+
+int FEB_Console_CsvPrintf(const char *ident, const char *fmt, ...)
+{
+  /* Stack-allocated buffer, same pattern as FEB_Console_Printf. */
+  char buf[FEB_CONSOLE_PRINTF_BUFFER_SIZE];
+
+  if (ident == NULL)
+  {
+    ident = "";
+  }
+
+  /* Timestamp captured as close to emission as possible. Each call to
+   * CsvPrintf yields a fresh stamp, so successive rows are individually
+   * timestamped rather than sharing one batch time. Row layout:
+   *   <ident>,<us>,<body>\r\n
+   * The identifier comes before the timestamp so parsers can switch on
+   * the first field without first consuming a numeric column. */
+  uint64_t us = FEB_Time_Us();
+
+  int pre = snprintf(buf, sizeof(buf), "%s,%llu,", ident, (unsigned long long)us);
+  if (pre < 0)
+  {
+    return pre;
+  }
+  if ((size_t)pre >= sizeof(buf))
+  {
+    pre = (int)sizeof(buf) - 1;
+  }
+
+  va_list args;
+  va_start(args, fmt);
+  int body = vsnprintf(buf + pre, sizeof(buf) - (size_t)pre, fmt, args);
+  va_end(args);
+  if (body < 0)
+  {
+    return body;
+  }
+
+  size_t total = (size_t)pre + (size_t)body;
+  if (total >= sizeof(buf))
+  {
+    total = sizeof(buf) - 1;
+  }
+
+  int result = FEB_UART_Write((FEB_UART_Instance_t)console_uart_instance, (const uint8_t *)buf, total);
+  if (result < 0)
+  {
+    return result;
+  }
+  return (int)total;
 }
 
 int FEB_Console_Flush(uint32_t timeout_ms)
