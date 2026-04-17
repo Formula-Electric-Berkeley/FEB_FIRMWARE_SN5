@@ -53,6 +53,17 @@ static ProcConfig_t s_cfg = {
 };
 
 /*============================================================================
+ * Pending requests from non-processing tasks (CLI / state machine)
+ *
+ * Drained inside BMS_Proc_RunFrame under the _pack_begin_write/_pack_end_write
+ * bracket so callers see consistent pack snapshots.
+ *============================================================================*/
+
+static volatile bool s_req_clear_error = false;
+static volatile bool s_req_mode_pending = false;
+static volatile BMS_OpMode_t s_req_mode = BMS_MODE_NORMAL;
+
+/*============================================================================
  * Error helpers (operate directly on g_bms_pack; only called from proc task)
  *============================================================================*/
 
@@ -101,6 +112,57 @@ static void _clear_error(BMS_ErrorSource_t src)
   if (g_bms_pack.active_error_mask == 0)
   {
     g_bms_pack.last_error = BMS_APP_OK;
+  }
+}
+
+static void _stage_mode_thresholds(BMS_OpMode_t mode)
+{
+  uint16_t uv_mv, ov_mv;
+  switch (mode)
+  {
+  case BMS_MODE_CHARGING:
+    uv_mv = BMS_CELL_UV_CHARGING_MV;
+    ov_mv = BMS_CELL_OV_CHARGING_MV;
+    break;
+  case BMS_MODE_BALANCING:
+    uv_mv = BMS_CELL_UV_BALANCING_MV;
+    ov_mv = BMS_CELL_OV_BALANCING_MV;
+    break;
+  case BMS_MODE_NORMAL:
+  default:
+    uv_mv = BMS_CELL_UV_NORMAL_MV;
+    ov_mv = BMS_CELL_OV_NORMAL_MV;
+    break;
+  }
+
+  for (uint8_t ic = 0; ic < BMS_TOTAL_ICS; ic++)
+  {
+    ADBMS_SetUVThreshold(ic, uv_mv);
+    ADBMS_SetOVThreshold(ic, ov_mv);
+  }
+  ADBMS_RequestWrite(ADBMS_REG_CFGB);
+  LOG_I(TAG_PROC, "Mode %d staged: UV=%dmV OV=%dmV", mode, uv_mv, ov_mv);
+}
+
+static void _drain_pending_requests(void)
+{
+  if (s_req_clear_error)
+  {
+    g_bms_pack.active_error_mask = 0;
+    g_bms_pack.voltage_error = BMS_APP_OK;
+    g_bms_pack.temp_error = BMS_APP_OK;
+    g_bms_pack.comm_error = BMS_APP_OK;
+    g_bms_pack.last_error = BMS_APP_OK;
+    g_bms_pack.consecutive_pec_errors = 0;
+    s_req_clear_error = false;
+  }
+
+  if (s_req_mode_pending)
+  {
+    BMS_OpMode_t mode = s_req_mode;
+    g_bms_pack.mode = mode;
+    s_req_mode_pending = false;
+    _stage_mode_thresholds(mode);
   }
 }
 
@@ -538,8 +600,10 @@ void BMS_Proc_RunFrame(void)
   if (!g_bms_pack.initialized)
     return;
 
-  /* Check freshness: we only process what's fresh. */
-  uint32_t now = osKernelGetTickCount();
+  /* Check freshness: we only process what's fresh.
+   * All timestamps here are in milliseconds, sourced from the same
+   * ADBMS_Platform_GetTickMs() counter that stamps the register cache. */
+  uint32_t now_ms = ADBMS_Platform_GetTickMs();
   uint32_t cv_tick = ADBMS_GetRegisterLastTickMs(ADBMS_REG_CVALL);
   uint32_t aux_tick = ADBMS_GetRegisterLastTickMs(ADBMS_REG_AUXA);
   uint32_t statd_tick = ADBMS_GetRegisterLastTickMs(ADBMS_REG_STATD);
@@ -548,10 +612,12 @@ void BMS_Proc_RunFrame(void)
   const uint32_t fresh_v_ms = BMS_VOLTAGE_INTERVAL_MS * 3u;
   const uint32_t fresh_t_ms = BMS_TEMP_INTERVAL_MS * 3u;
 
-  bool v_fresh = (cv_tick != 0) && ((now - cv_tick) <= pdMS_TO_TICKS(fresh_v_ms));
-  bool t_fresh = (aux_tick != 0) && ((now - aux_tick) <= pdMS_TO_TICKS(fresh_t_ms));
+  bool v_fresh = (cv_tick != 0) && ((now_ms - cv_tick) <= fresh_v_ms);
+  bool t_fresh = (aux_tick != 0) && ((now_ms - aux_tick) <= fresh_t_ms);
 
   _pack_begin_write();
+
+  _drain_pending_requests();
 
   if (v_fresh)
   {
@@ -602,6 +668,18 @@ void BMS_Proc_RequestStopBalancing(void)
     }
   }
   ADBMS_RequestWrite(ADBMS_REG_CFGB);
+}
+
+void BMS_Proc_RequestSetMode(BMS_OpMode_t mode)
+{
+  s_req_mode = mode;
+  __asm volatile("dmb" ::: "memory");
+  s_req_mode_pending = true;
+}
+
+void BMS_Proc_RequestClearError(void)
+{
+  s_req_clear_error = true;
 }
 
 void BMS_Proc_SetBalancingEnabled(bool enabled)

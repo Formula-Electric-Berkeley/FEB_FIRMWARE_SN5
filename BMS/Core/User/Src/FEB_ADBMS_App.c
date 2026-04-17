@@ -24,6 +24,8 @@
 
 #define TAG_APP "[BMS_APP]"
 
+#define BMS_SERIAL_ID_LEN (sizeof(((BMS_ICData_t *)0)->serial_id))
+
 /*============================================================================
  * Global State
  *============================================================================*/
@@ -37,41 +39,11 @@ static uint8_t s_legacy_error_type = 0;
  * Private helpers
  *============================================================================*/
 
-static void _stage_mode_thresholds(BMS_OpMode_t mode)
-{
-  uint16_t uv_mv, ov_mv;
-  switch (mode)
-  {
-  case BMS_MODE_CHARGING:
-    uv_mv = BMS_CELL_UV_CHARGING_MV;
-    ov_mv = BMS_CELL_OV_CHARGING_MV;
-    break;
-  case BMS_MODE_BALANCING:
-    uv_mv = BMS_CELL_UV_BALANCING_MV;
-    ov_mv = BMS_CELL_OV_BALANCING_MV;
-    break;
-  case BMS_MODE_NORMAL:
-  default:
-    uv_mv = BMS_CELL_UV_NORMAL_MV;
-    ov_mv = BMS_CELL_OV_NORMAL_MV;
-    break;
-  }
-
-  for (uint8_t ic = 0; ic < BMS_TOTAL_ICS; ic++)
-  {
-    ADBMS_SetUVThreshold(ic, uv_mv);
-    ADBMS_SetOVThreshold(ic, ov_mv);
-  }
-  /* UV/OV live in CFGB so request that group. */
-  ADBMS_RequestWrite(ADBMS_REG_CFGB);
-  LOG_I(TAG_APP, "Mode %d staged: UV=%dmV OV=%dmV", mode, uv_mv, ov_mv);
-}
-
 static bool _is_valid_serial_id(const uint8_t *sid)
 {
   bool all_zero = true;
   bool all_ff = true;
-  for (int i = 0; i < 6; i++)
+  for (size_t i = 0; i < BMS_SERIAL_ID_LEN; i++)
   {
     if (sid[i] != 0x00)
       all_zero = false;
@@ -130,7 +102,12 @@ BMS_AppError_t BMS_App_Init(void)
   }
   osDelay(pdMS_TO_TICKS(10));
 
-  ADBMS_WakeUp();
+  err = ADBMS_WakeUp();
+  if (err != ADBMS_OK)
+  {
+    LOG_E(TAG_APP, "ADBMS_WakeUp failed: %d", err);
+    return BMS_APP_ERR_INIT;
+  }
   osDelay(pdMS_TO_TICKS(2));
 
   for (uint8_t ic = 0; ic < BMS_TOTAL_ICS; ic++)
@@ -159,12 +136,12 @@ BMS_AppError_t BMS_App_Init(void)
 
   for (uint8_t ic = 0; ic < BMS_TOTAL_ICS; ic++)
   {
-    uint8_t sid[6];
+    uint8_t sid[BMS_SERIAL_ID_LEN];
     ADBMS_GetSerialID(ic, sid);
 
     uint8_t bank = ic / BMS_ICS_PER_BANK;
     uint8_t ic_in_bank = ic % BMS_ICS_PER_BANK;
-    memcpy(g_bms_pack.banks[bank].ics[ic_in_bank].serial_id, sid, 6);
+    memcpy(g_bms_pack.banks[bank].ics[ic_in_bank].serial_id, sid, BMS_SERIAL_ID_LEN);
 
     if (!_is_valid_serial_id(sid))
     {
@@ -206,8 +183,7 @@ bool BMS_App_IsBalancingNeeded(void)
 
 BMS_AppError_t BMS_App_SetMode(BMS_OpMode_t mode)
 {
-  g_bms_pack.mode = mode;
-  _stage_mode_thresholds(mode);
+  BMS_Proc_RequestSetMode(mode);
   return BMS_APP_OK;
 }
 
@@ -294,12 +270,7 @@ BMS_AppError_t BMS_App_GetLastError(void)
 
 void BMS_App_ClearError(void)
 {
-  g_bms_pack.active_error_mask = 0;
-  g_bms_pack.voltage_error = BMS_APP_OK;
-  g_bms_pack.temp_error = BMS_APP_OK;
-  g_bms_pack.comm_error = BMS_APP_OK;
-  g_bms_pack.last_error = BMS_APP_OK;
-  g_bms_pack.consecutive_pec_errors = 0;
+  BMS_Proc_RequestClearError();
 }
 
 uint32_t BMS_App_GetActiveErrorMask(void)

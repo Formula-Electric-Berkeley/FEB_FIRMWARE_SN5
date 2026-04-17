@@ -2,7 +2,7 @@
  * @file FEB_Task_BMSProcessing.c
  * @brief BMS processing task.
  *
- * Runs at 10 Hz. Consumes raw register data from g_adbms (seqlock-based
+ * Runs at 20 Hz. Consumes raw register data from g_adbms (seqlock-based
  * lock-free reads), updates g_bms_pack, runs fault detection, and
  * handles mode transitions driven by the state machine. Staging of
  * balancing writes / config writes is deferred to the acquisition task

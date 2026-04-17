@@ -71,6 +71,22 @@ extern "C"
   void BMS_Proc_RequestStopBalancing(void);
 
   /**
+   * @brief Request a mode change from a non-processing task.
+   *
+   * The request is applied by the processing task inside its next frame,
+   * under the same seqlock bracket as the rest of g_bms_pack. Also stages
+   * the UV/OV threshold update in ADBMS memory (CFGB).
+   */
+  void BMS_Proc_RequestSetMode(BMS_OpMode_t mode);
+
+  /**
+   * @brief Request an error-state clear from a non-processing task.
+   *
+   * Applied in the next processing frame under the seqlock bracket.
+   */
+  void BMS_Proc_RequestClearError(void);
+
+  /**
    * @brief Enable or disable balancing output entirely.
    *
    * @param enabled When false, BMS_Proc_RunFrame() never stages discharge writes.

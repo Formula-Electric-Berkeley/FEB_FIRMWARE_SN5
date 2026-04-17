@@ -41,6 +41,8 @@ extern osThreadId_t TPSTaskHandle;
 extern osThreadId_t BMSTaskRxHandle;
 extern osThreadId_t BMSTaskTxHandle;
 
+static const char *_mode_name(BMS_OpMode_t m);
+
 /* ============================================================================
  * BMS Status Command
  * ============================================================================ */
@@ -54,9 +56,7 @@ static void cmd_bms_status(int argc, char *argv[])
 
   FEB_Console_Printf("=== BMS Status ===\r\n");
   FEB_Console_Printf("Initialized: %s\r\n", pack->initialized ? "YES" : "NO");
-  FEB_Console_Printf("Mode: %s\r\n", pack->mode == BMS_MODE_NORMAL     ? "NORMAL"
-                                     : pack->mode == BMS_MODE_CHARGING ? "CHARGING"
-                                                                       : "BALANCING");
+  FEB_Console_Printf("Mode: %s\r\n", _mode_name(pack->mode));
 
   if (!pack->initialized)
   {

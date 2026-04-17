@@ -1148,23 +1148,32 @@ ADBMS_Error_t ADBMS_WritePWM(void);
  *============================================================================*/
 
 /**
- * @brief Read all C and S voltage results using RDCSALL command
+ * @brief Read all C and S voltage results
  * @return ADBMS_OK on success
- * @note Populates both cv and sv memory regions
+ * @note Populates both cv and sv memory regions.
+ * @warning This performs TWO separate transactions (CVALL + SVALL). It does
+ *          NOT use the combined RDCSALL opcode, so the C and S readings are
+ *          not an atomic snapshot.
  */
 ADBMS_Error_t ADBMS_ReadAllCellAndSVoltages(void);
 
 /**
- * @brief Read all averaged C and S voltage results using RDACSALL command
+ * @brief Read all averaged C and S voltage results
  * @return ADBMS_OK on success
- * @note Populates both acv and sv memory regions
+ * @note Populates both acv and sv memory regions.
+ * @warning This performs TWO separate transactions (ACALL + SVALL). It does
+ *          NOT use the combined RDACSALL opcode, so the readings are not an
+ *          atomic snapshot.
  */
 ADBMS_Error_t ADBMS_ReadAllAvgCellAndSVoltages(void);
 
 /**
- * @brief Read all auxiliary and status registers using RDASALL command
+ * @brief Read all auxiliary and status registers
  * @return ADBMS_OK on success
- * @note Populates aux and stat memory regions
+ * @note Populates aux and stat memory regions.
+ * @warning This performs TWO separate transactions (AUXA..D + STATA..E). It
+ *          does NOT use the combined RDASALL opcode, so the aux and status
+ *          readings are not an atomic snapshot.
  */
 ADBMS_Error_t ADBMS_ReadAllAuxAndStatus(void);
 
