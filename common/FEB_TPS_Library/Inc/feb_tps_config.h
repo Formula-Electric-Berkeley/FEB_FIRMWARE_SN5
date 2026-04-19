@@ -86,9 +86,12 @@ extern "C" {
 
 /**
  * @brief Default I2C timeout in milliseconds
+ *
+ * Using a finite timeout (500ms) allows I2C operations to fail gracefully
+ * and enables FEB_TPS_BusRecovery to recover from stuck bus states.
  */
 #ifndef FEB_TPS_DEFAULT_I2C_TIMEOUT_MS
-#define FEB_TPS_DEFAULT_I2C_TIMEOUT_MS 100
+#define FEB_TPS_DEFAULT_I2C_TIMEOUT_MS 500
 #endif
 
 /**

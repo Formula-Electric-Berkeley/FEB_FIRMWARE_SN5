@@ -12,6 +12,7 @@
 #include "FEB_HW.h"
 #include "FEB_SM.h"
 #include "FEB_Const.h"
+#include "FEB_Commands.h"
 #include "cmsis_os.h"
 #include "feb_log.h"
 #include <stdbool.h>
@@ -76,6 +77,7 @@ void StartADBMSTask(void *argument)
   uint32_t voltage_tick = osKernelGetTickCount();
   uint32_t temp_tick = osKernelGetTickCount();
   uint32_t print_tick = osKernelGetTickCount();
+  uint32_t balance_tick = osKernelGetTickCount();
 
   for (;;)
   {
@@ -99,21 +101,26 @@ void StartADBMSTask(void *argument)
       temp_tick = now;
     }
 
-    /* Print accumulator struct every 1000ms (1 Hz) */
+    /* Print CSV data every 1000ms (1 Hz) */
     if (now - print_tick >= pdMS_TO_TICKS(1000))
     {
-      FEB_ADBMS_Print_Accumulator();
+      // char *csv_argv[] = {"csv", "all"};
+      // subcmd_csv(2, csv_argv);
       print_tick = now;
     }
 
-    /* Cell balancing (only in BALANCE state) */
-    // FEB_SM_State_t current_state = FEB_SM_Get_Current_State();
-    // if (current_state == FEB_SM_ST_BALANCING)
-    // {
-    //   osMutexAcquire(ADBMSMutexHandle, osWaitForever);
-    //   FEB_Cell_Balance_Process();
-    //   osMutexRelease(ADBMSMutexHandle);
-    // }
+    /* Cell balancing (only in BALANCE or BATTERY_FREE state) */
+    BMS_State_t current_state = FEB_SM_Get_Current_State();
+    if (current_state == BMS_STATE_BALANCE || current_state == BMS_STATE_BATTERY_FREE)
+    {
+      if (now - balance_tick >= pdMS_TO_TICKS(FEB_CELL_BALANCE_INTERVAL_MS))
+      {
+        osMutexAcquire(ADBMSMutexHandle, osWaitForever);
+        FEB_Cell_Balance_Process();
+        osMutexRelease(ADBMSMutexHandle);
+        balance_tick = now;
+      }
+    }
 
     /* Task runs at 10ms period (100 Hz) */
     osDelay(pdMS_TO_TICKS(10));

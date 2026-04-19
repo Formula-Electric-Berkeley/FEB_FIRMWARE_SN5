@@ -13,6 +13,7 @@
 #include "feb_log.h"
 #include "feb_string_utils.h"
 #include "FEB_ADBMS6830B.h"
+#include "ADBMS6830B_Registers.h"
 #include "FEB_CAN_IVT.h"
 #include "FEB_CAN_PingPong.h"
 #include "FEB_CAN_State.h"
@@ -38,18 +39,44 @@ extern osThreadId_t BMSTaskRxHandle;
 extern osThreadId_t BMSTaskTxHandle;
 
 /* ============================================================================
- * Subcommand: status - Show BMS status summary
+ * Subcommand: status - Show BMS status summary (C-code/S-code)
  * ============================================================================ */
 static void subcmd_status(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
 
+  /* Compute min/max for both C and S codes */
+  float min_c = 999.0f, max_c = 0.0f;
+  float min_s = 999.0f, max_s = 0.0f;
+  for (int bank = 0; bank < FEB_NBANKS; bank++)
+  {
+    for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
+    {
+      float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
+      float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
+      if (v_c > 0)
+      {
+        if (v_c < min_c)
+          min_c = v_c;
+        if (v_c > max_c)
+          max_c = v_c;
+      }
+      if (v_s > 0)
+      {
+        if (v_s < min_s)
+          min_s = v_s;
+        if (v_s > max_s)
+          max_s = v_s;
+      }
+    }
+  }
+
   FEB_Console_Printf("\r\n=== BMS Status ===\r\n");
   FEB_Console_Printf("State: %s\r\n", FEB_CAN_State_GetStateName(FEB_SM_Get_Current_State()));
   FEB_Console_Printf("Pack Voltage: %.2fV\r\n", FEB_ADBMS_GET_ACC_Total_Voltage());
-  FEB_Console_Printf("Min Cell: %.3fV  Max Cell: %.3fV\r\n", FEB_ADBMS_GET_ACC_MIN_Voltage(),
-                     FEB_ADBMS_GET_ACC_MAX_Voltage());
+  FEB_Console_Printf("Min Cell (C/S): %.3fV / %.3fV\r\n", min_c, min_s);
+  FEB_Console_Printf("Max Cell (C/S): %.3fV / %.3fV\r\n", max_c, max_s);
   FEB_Console_Printf("Min Temp: %.1fC  Max Temp: %.1fC  Avg: %.1fC\r\n", FEB_ADBMS_GET_ACC_MIN_Temp(),
                      FEB_ADBMS_GET_ACC_MAX_Temp(), FEB_ADBMS_GET_ACC_AVG_Temp());
   FEB_Console_Printf("Balancing: %s\r\n", FEB_Cell_Balancing_Status() ? "ON" : "OFF");
@@ -57,22 +84,23 @@ static void subcmd_status(int argc, char *argv[])
 }
 
 /* ============================================================================
- * Subcommand: cells - Show individual cell voltages
+ * Subcommand: cells - Show individual cell voltages (C-code/S-code)
  * ============================================================================ */
 static void subcmd_cells(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
 
-  FEB_Console_Printf("\r\n=== Cell Voltages ===\r\n");
+  FEB_Console_Printf("\r\n=== Cell Voltages (C/S) ===\r\n");
   for (int bank = 0; bank < FEB_NBANKS; bank++)
   {
-    FEB_Console_Printf("Bank %d: ", bank);
+    FEB_Console_Printf("Bank %d:\r\n", bank + 1);
     for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
     {
-      FEB_Console_Printf("%.3f ", FEB_ADBMS_GET_Cell_Voltage(bank, cell));
+      float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
+      float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
+      FEB_Console_Printf("  C%02d: %.3f/%.3f\r\n", cell + 1, v_c, v_s);
     }
-    FEB_Console_Printf("\r\n");
   }
 }
 
@@ -87,7 +115,7 @@ static void subcmd_temps(int argc, char *argv[])
   FEB_Console_Printf("\r\n=== Temperature Readings ===\r\n");
   for (int bank = 0; bank < FEB_NBANKS; bank++)
   {
-    FEB_Console_Printf("Bank %d: ", bank);
+    FEB_Console_Printf("Bank %d: ", bank + 1);
     for (int sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
     {
       FEB_Console_Printf("%.1fC ", FEB_ADBMS_GET_Cell_Temperature(bank, sensor));
@@ -397,38 +425,46 @@ static void subcmd_mem(int argc, char *argv[])
 }
 
 /* ============================================================================
- * Subcommand: cell - Show single cell details
+ * Subcommand: cell - Show single cell details (C-code/S-code comparison)
  * ============================================================================ */
 static void subcmd_cell(int argc, char *argv[])
 {
   if (argc < 3)
   {
     FEB_Console_Printf("Usage: BMS|cell|<bank>|<cell>\r\n");
-    FEB_Console_Printf("Banks: 0-%d, Cells: 0-%d\r\n", FEB_NBANKS - 1, FEB_NUM_CELLS_PER_BANK - 1);
+    FEB_Console_Printf("Banks: 1-%d, Cells: 1-%d\r\n", FEB_NBANKS, FEB_NUM_CELLS_PER_BANK);
     return;
   }
 
   int bank = atoi(argv[1]);
   int cell = atoi(argv[2]);
 
-  if (bank < 0 || bank >= FEB_NBANKS)
+  if (bank < 1 || bank > FEB_NBANKS)
   {
-    FEB_Console_Printf("Error: Bank must be 0-%d\r\n", FEB_NBANKS - 1);
+    FEB_Console_Printf("Error: Bank must be 1-%d\r\n", FEB_NBANKS);
     return;
   }
 
-  if (cell < 0 || cell >= FEB_NUM_CELLS_PER_BANK)
+  if (cell < 1 || cell > FEB_NUM_CELLS_PER_BANK)
   {
-    FEB_Console_Printf("Error: Cell must be 0-%d\r\n", FEB_NUM_CELLS_PER_BANK - 1);
+    FEB_Console_Printf("Error: Cell must be 1-%d\r\n", FEB_NUM_CELLS_PER_BANK);
     return;
   }
 
-  float voltage = FEB_ADBMS_GET_Cell_Voltage((uint8_t)bank, (uint16_t)cell);
-  float temp = FEB_ADBMS_GET_Cell_Temperature((uint8_t)bank, (uint16_t)cell);
+  int bank_idx = bank - 1;
+  int cell_idx = cell - 1;
+  float voltage_c = FEB_ADBMS_GET_Cell_Voltage((uint8_t)bank_idx, (uint16_t)cell_idx);
+  float voltage_s = FEB_ADBMS_GET_Cell_Voltage_S((uint8_t)bank_idx, (uint16_t)cell_idx);
+  float temp = FEB_ADBMS_GET_Cell_Temperature((uint8_t)bank_idx, (uint16_t)cell_idx);
+  uint8_t violations = FEB_ADBMS_GET_Cell_Violations((uint8_t)bank_idx, (uint16_t)cell_idx);
+  float delta = voltage_c - voltage_s;
 
   FEB_Console_Printf("\r\n=== Cell [Bank %d, Cell %d] ===\r\n", bank, cell);
-  FEB_Console_Printf("Voltage:       %.3f V\r\n", voltage);
+  FEB_Console_Printf("Voltage (C):   %.3f V  (Primary)\r\n", voltage_c);
+  FEB_Console_Printf("Voltage (S):   %.3f V  (Secondary)\r\n", voltage_s);
+  FEB_Console_Printf("Delta:         %.4f V\r\n", delta);
   FEB_Console_Printf("Temperature:   %.1f C\r\n", temp);
+  FEB_Console_Printf("Violations:    %d\r\n", violations);
 }
 
 /* ============================================================================
@@ -502,6 +538,75 @@ static void subcmd_errors(int argc, char *argv[])
   FEB_Console_Printf("Current State:  %s\r\n", FEB_CAN_State_GetStateName(state));
   FEB_Console_Printf("Faulted:        %s\r\n", faulted ? "YES" : "NO");
   FEB_Console_Printf("HV Active:      %s\r\n", FEB_SM_Is_HV_Active() ? "YES" : "NO");
+}
+
+/* ============================================================================
+ * Subcommand: csv - Output data in CSV format
+ * ============================================================================ */
+
+void subcmd_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_Printf("Usage: BMS|csv|<mode>\r\n");
+    FEB_Console_Printf("  volts  - Cell voltages (V,bank,cell,v_C,v_S)\r\n");
+    FEB_Console_Printf("  temps  - Temperature sensors (T,bank,sensor,temp_deg_C)\r\n");
+    FEB_Console_Printf("  all    - Combined (type,bank,index,reading1,reading2)\r\n");
+    return;
+  }
+
+  const char *mode = argv[1];
+
+  if (FEB_strcasecmp(mode, "volts") == 0)
+  {
+    for (int bank = 0; bank < FEB_NBANKS; bank++)
+    {
+      for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
+      {
+        float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
+        float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
+        FEB_Console_Printf("V,%d,%d,%.3f,%.3f\r\n", bank + 1, cell + 1, v_c, v_s);
+      }
+    }
+  }
+  else if (FEB_strcasecmp(mode, "temps") == 0)
+  {
+    for (int bank = 0; bank < FEB_NBANKS; bank++)
+    {
+      for (int sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
+      {
+        float temp = FEB_ADBMS_GET_Cell_Temperature(bank, sensor);
+        FEB_Console_Printf("T,%d,%d,%.1f\r\n", bank + 1, sensor + 1, temp);
+      }
+    }
+  }
+  else if (FEB_strcasecmp(mode, "all") == 0)
+  {
+    /* Voltage readings */
+    for (int bank = 0; bank < FEB_NBANKS; bank++)
+    {
+      for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
+      {
+        float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
+        float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
+        FEB_Console_Printf("V,%d,%d,%.3f,%.3f\r\n", bank + 1, cell + 1, v_c, v_s);
+      }
+    }
+    /* Temperature readings */
+    for (int bank = 0; bank < FEB_NBANKS; bank++)
+    {
+      for (int sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
+      {
+        float temp = FEB_ADBMS_GET_Cell_Temperature(bank, sensor);
+        FEB_Console_Printf("T,%d,%d,%.1f\r\n", bank + 1, sensor + 1, temp);
+      }
+    }
+  }
+  else
+  {
+    FEB_Console_Printf("Unknown mode: %s\r\n", mode);
+    FEB_Console_Printf("Usage: BMS|csv|[volts|temps|all]\r\n");
+  }
 }
 
 /* ============================================================================
@@ -659,6 +764,20 @@ static void print_bms_help(void)
   FEB_Console_Printf("  BMS|errors              - Show error summary\r\n");
   FEB_Console_Printf("  BMS|config              - Show configuration\r\n");
   FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("Data Export:\r\n");
+  FEB_Console_Printf("  BMS|csv                 - Show CSV export options\r\n");
+  FEB_Console_Printf("  BMS|csv|volts           - Cell voltages (CSV)\r\n");
+  FEB_Console_Printf("  BMS|csv|temps           - Temperature sensors (CSV)\r\n");
+  FEB_Console_Printf("  BMS|csv|all             - Combined voltages + temps (CSV)\r\n");
+  FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("Register Access:\r\n");
+  FEB_Console_Printf("  BMS|reg|list            - List all ADBMS commands\r\n");
+  FEB_Console_Printf("  BMS|reg|read|<name>     - Read register (e.g. RDCFGA)\r\n");
+  FEB_Console_Printf("  BMS|reg|write|<name>|<hex> - Write register\r\n");
+  FEB_Console_Printf("  BMS|reg|cmd|<name>      - Send command (e.g. ADCV)\r\n");
+  FEB_Console_Printf("  BMS|reg|dump            - Dump all registers\r\n");
+  FEB_Console_Printf("  BMS|reg|status          - Status summary\r\n");
+  FEB_Console_Printf("\r\n");
   FEB_Console_Printf("CAN Ping/Pong:\r\n");
   FEB_Console_Printf("  BMS|ping|<ch>           - Start ping mode (1-4)\r\n");
   FEB_Console_Printf("  BMS|pong|<ch>           - Start pong mode (1-4)\r\n");
@@ -756,6 +875,14 @@ static void cmd_bms(int argc, char *argv[])
   else if (FEB_strcasecmp(subcmd, "config") == 0)
   {
     subcmd_config(argc - 1, argv + 1);
+  }
+  else if (FEB_strcasecmp(subcmd, "csv") == 0)
+  {
+    subcmd_csv(argc - 1, argv + 1);
+  }
+  else if (FEB_strcasecmp(subcmd, "reg") == 0)
+  {
+    ADBMS_RegSubcmd(argc - 1, argv + 1);
   }
   else
   {

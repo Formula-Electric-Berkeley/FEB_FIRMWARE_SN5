@@ -1140,6 +1140,64 @@ const char *FEB_TPS_StatusToString(FEB_TPS_Status_t status) {
 }
 
 /**
+ * Attempt to recover the I2C bus by resetting the peripheral.
+ *
+ * This function disables and re-enables the I2C peripheral to clear any
+ * stuck bus conditions that may occur when I2C transactions are interrupted
+ * (e.g., by timer interrupts with blocking operations).
+ *
+ * @returns FEB_TPS_OK if recovery was attempted successfully,
+ *          FEB_TPS_ERR_NOT_INIT if the library is not initialized or no devices are registered.
+ */
+FEB_TPS_Status_t FEB_TPS_BusRecovery(void) {
+    if (!feb_tps_ctx.initialized) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
+
+    /* Find the first registered device to get its I2C handle */
+    I2C_HandleTypeDef *hi2c = NULL;
+    for (uint8_t i = 0; i < FEB_TPS_MAX_DEVICES; i++) {
+        if (feb_tps_ctx.devices[i].in_use && feb_tps_ctx.devices[i].hi2c != NULL) {
+            hi2c = feb_tps_ctx.devices[i].hi2c;
+            break;
+        }
+    }
+
+    if (hi2c == NULL) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
+
+    FEB_TPS_MUTEX_LOCK(feb_tps_ctx.i2c_mutex);
+
+    /* Perform a full HAL reset to properly reinitialize the I2C peripheral
+     * and its internal state machine. This is more robust than manually
+     * manipulating hi2c->State and hi2c->Mode. */
+    HAL_StatusTypeDef hal_status;
+    FEB_TPS_Status_t status = FEB_TPS_OK;
+
+    hal_status = HAL_I2C_DeInit(hi2c);
+    if (hal_status != HAL_OK) {
+        TPS_LOG_E("I2C DeInit failed: %d", hal_status);
+        status = FEB_TPS_ERR_I2C;
+        goto cleanup;
+    }
+
+    hal_status = HAL_I2C_Init(hi2c);
+    if (hal_status != HAL_OK) {
+        TPS_LOG_E("I2C Init failed: %d", hal_status);
+        status = FEB_TPS_ERR_I2C;
+        goto cleanup;
+    }
+
+    TPS_LOG_I("I2C bus recovery succeeded");
+
+cleanup:
+    FEB_TPS_MUTEX_UNLOCK(feb_tps_ctx.i2c_mutex);
+
+    return status;
+}
+
+/**
  * Get the human-readable name for a TPS device handle.
  *
  * @param handle Device handle returned by FEB_TPS_DeviceRegister; may be NULL.

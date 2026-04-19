@@ -21,11 +21,11 @@
 // Alias for compatibility
 #define FEB_NUM_CELL_PER_BANK FEB_NUM_CELLS_PER_BANK
 
-// Total number of temperature sensors per bank (10 per IC × 2 ICs)
-#define FEB_NUM_TEMP_SENSORS 41
-
 // Number of temperature sensors per IC (for MUX reading)
-#define FEB_NUM_TEMP_SENSE_PER_IC 10
+#define FEB_NUM_TEMP_SENSE_PER_IC 41
+
+// Total number of temperature sensors per bank (10 per IC × 2 ICs)
+#define FEB_NUM_TEMP_SENSORS (FEB_NUM_TEMP_SENSE_PER_IC * FEB_NUM_ICPBANK)
 
 // ********************************** ADBMS6830B ADC Conversion Constants ********
 // From ADBMS6830B datasheet - Cell voltage measurement
@@ -33,6 +33,12 @@
 #define ADBMS_ADC_LSB_UV 150      // ADC resolution: 150 µV/LSB
 #define ADBMS_ADC_LSB_V 0.000150f // ADC resolution in volts
 #define ADBMS_ADC_OFFSET_V 1.5f   // ADC bipolar offset voltage
+
+// ********************************** ADBMS6830B Open Wire Detection **************
+// Open Wire (OW) detection configuration for cell voltage measurements
+// OW detection applies a test current to detect disconnected sense wires
+// Options: 0x00=OFF, 0x01=EVEN_CH, 0x02=ODD_CH, 0x03=ALL_CH
+#define ADBMS_OW_DETECTION_MODE 0x00 // OW detection disabled
 
 // ********************************** Thermistor Beta Parameter Constants *********
 // NTC Thermistor conversion using Beta parameter equation
@@ -68,9 +74,11 @@
 // ********************************** Voltage and Temperature Limits *************
 
 // Cell voltage limits (in millivolts)
-#define FEB_CELL_MAX_VOLTAGE_MV 4200     // Maximum safe cell voltage (Li-ion typical)
-#define FEB_CELL_MIN_VOLTAGE_MV 2500     // Minimum safe cell voltage (Li-ion typical)
-#define FEB_CELL_BALANCE_THRESHOLD_MV 10 // Start balancing if cell is >10mV above minimum
+#define FEB_CELL_MAX_VOLTAGE_MV 4200      // Maximum safe cell voltage (Li-ion typical)
+#define FEB_CELL_MIN_VOLTAGE_MV 2500      // Minimum safe cell voltage (Li-ion typical)
+#define FEB_CELL_BALANCE_THRESHOLD_MV 10  // Start balancing if cell is >10mV above minimum
+#define FEB_CELL_BALANCE_INTERVAL_MS 1000 // Balancing cycle interval (1 second)
+#define FEB_CELL_BALANCE_ALL_AT_ONCE 1    // 1=balance all qualifying cells, 0=alternate odd/even
 
 // Cell temperature limits (in deci-Celsius, 1 dC = 0.1°C)
 #define FEB_CELL_MAX_TEMP_DC 600             // 60.0°C maximum cell temperature

@@ -46,18 +46,14 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-#ifdef __GNUC__
-#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
-#else
-#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
-#endif
+
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -69,6 +65,9 @@ void Error_Handler(void);
 #define Thermocouple1_GPIO_Port GPIOC
 #define LP_Wiper1_Pin GPIO_PIN_3
 #define LP_Wiper1_GPIO_Port GPIOC
+#define WSS_COS_L_Pin GPIO_PIN_0
+#define WSS_COS_L_GPIO_Port GPIOA
+#define WSS_COS_L_EXTI_IRQn EXTI0_IRQn
 #define SG1_Pin GPIO_PIN_7
 #define SG1_GPIO_Port GPIOA
 #define SG2_Pin GPIO_PIN_4
@@ -81,10 +80,19 @@ void Error_Handler(void);
 #define LP_Wiper2_GPIO_Port GPIOB
 #define IMU_INT2_Pin GPIO_PIN_2
 #define IMU_INT2_GPIO_Port GPIOB
+#define WSS_SIN_L_Pin GPIO_PIN_10
+#define WSS_SIN_L_GPIO_Port GPIOB
+#define WSS_SIN_L_EXTI_IRQn EXTI15_10_IRQn
 #define DRDY_Pin GPIO_PIN_14
 #define DRDY_GPIO_Port GPIOB
 #define INTM_Pin GPIO_PIN_15
 #define INTM_GPIO_Port GPIOB
+#define WSS_SIN_R_Pin GPIO_PIN_6
+#define WSS_SIN_R_GPIO_Port GPIOC
+#define WSS_SIN_R_EXTI_IRQn EXTI9_5_IRQn
+#define WSS_COS_R_Pin GPIO_PIN_7
+#define WSS_COS_R_GPIO_Port GPIOC
+#define WSS_COS_R_EXTI_IRQn EXTI9_5_IRQn
 #define IMU_INT1_Pin GPIO_PIN_9
 #define IMU_INT1_GPIO_Port GPIOA
 #define PGO_Pin GPIO_PIN_12

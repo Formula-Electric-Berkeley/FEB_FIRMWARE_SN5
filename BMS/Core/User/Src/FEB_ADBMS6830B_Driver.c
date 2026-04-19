@@ -8,6 +8,7 @@
 #include "cmsis_os.h"
 #include <string.h>
 #include <stdio.h>
+#include "feb_log.h"
 
 // ********************************** Functions **********************************
 
@@ -373,6 +374,7 @@ uint8_t ADBMS6830B_rdsv(uint8_t total_ic, // The number of ICs in the system
   {
     wakeup_sleep(FEB_NUM_IC);
     transmitCMDR(codes[REGGRP], cell_data, TxSize * total_ic);
+
     uint8_t bytesInGroup = (REGGRP == 5) ? 2 : 6;
     for (int icn = 0; icn < total_ic; icn++)
     {
