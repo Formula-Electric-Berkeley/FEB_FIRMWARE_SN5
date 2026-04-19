@@ -8,6 +8,7 @@
 #include "FEB_RTD.h"
 #include "feb_can_lib.h"
 #include "feb_can.h"
+#include "feb_console.h"
 #include <stdbool.h>
 #include <string.h>
 
@@ -78,5 +79,17 @@ void FEB_CAN_State_Tick(void)
                (states.switch_accumulator_fans << 5) + (states.switch_logging << 6);
   tx_data[1] = (states.buzzer_enabled << 0) + (rtd << 1);
 
-  FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_DASH_STATE_FRAME_ID, FEB_CAN_ID_STD, tx_data, FEB_CAN_DASH_STATE_LENGTH);
+  struct feb_can_dash_state_t pack_states = {.buzzer = states.buzzer_enabled,
+                                             .button1 = states.button_rtd,
+                                             .switch1 = states.switch_accumulator_fans,
+                                             .switch2 = states.switch_coolant_pump_radiator_fan,
+                                             .switch3 = states.switch_logging};
+
+  if (feb_can_dash_state_pack(tx_data, &pack_states, 2) == 2)
+  {
+    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_DASH_STATE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                    FEB_CAN_DASH_STATE_LENGTH);
+  }
+
+  FEB_Console_Printf("Sending Dash IO State Over CAN: %X %X", tx_data[0], tx_data[1]);
 }
