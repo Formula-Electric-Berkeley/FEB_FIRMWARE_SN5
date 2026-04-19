@@ -70,6 +70,7 @@ void StartADBMSTask(void *argument)
       osDelay(pdMS_TO_TICKS(1000));
   }
 
+<<<<<<< HEAD
   /* Prime the register mirror with one synchronous pass of each
    * essential job, so the processing task has data on its first frame. */
   LOG_I(TAG_ADBMS, "Priming register mirror...");
@@ -78,6 +79,46 @@ void StartADBMSTask(void *argument)
   (void)BMS_Acq_RunJobNow(BMS_ACQ_JOB_STATUS);
   LOG_I(TAG_ADBMS, "Prime complete - entering scheduler loop");
 
+  == == == =
+               /* Perform initial full read with error checking */
+      if (osMutexAcquire(ADBMSMutexHandle, osWaitForever) == osOK)
+  {
+    LOG_I(TAG_ADBMS, "Performing initial voltage read...");
+    BMS_AppError_t v_err = BMS_App_ProcessVoltage();
+    if (v_err != BMS_APP_OK)
+    {
+      LOG_E(TAG_ADBMS, "Initial voltage read failed: %d", v_err);
+      osMutexRelease(ADBMSMutexHandle);
+      FEB_SM_Fault(BMS_STATE_FAULT_BMS);
+      for (;;)
+      {
+        osDelay(pdMS_TO_TICKS(1000));
+      }
+    }
+
+    LOG_I(TAG_ADBMS, "Performing initial temperature scan...");
+    BMS_AppError_t t_err = BMS_App_ProcessTemperature();
+    if (t_err != BMS_APP_OK)
+    {
+      LOG_W(TAG_ADBMS, "Initial temperature read returned: %d (continuing)", t_err);
+      /* Temperature errors are warnings - sensors may not be connected */
+    }
+
+    LOG_I(TAG_ADBMS, "Initial read complete:");
+    LOG_I(TAG_ADBMS, "  Pack Voltage: %.2f V", g_bms_pack.pack_voltage_V);
+    LOG_I(TAG_ADBMS, "  Cell Range: %.3f - %.3f V", g_bms_pack.pack_min_cell_V, g_bms_pack.pack_max_cell_V);
+    LOG_I(TAG_ADBMS, "  Temp Range: %.1f - %.1f C", g_bms_pack.pack_min_temp_C, g_bms_pack.pack_max_temp_C);
+
+    osMutexRelease(ADBMSMutexHandle);
+  }
+
+  /* Initialize timing */
+  s_last_voltage_tick = osKernelGetTickCount();
+  s_last_temp_tick = s_last_voltage_tick;
+  s_last_balance_tick = s_last_voltage_tick;
+
+  /* Main monitoring loop */
+>>>>>>> d851afd (debugging)
   for (;;)
   {
     BMS_Acq_ServiceScheduler();
@@ -87,9 +128,48 @@ void StartADBMSTask(void *argument)
      * logical faults (UV/OV/temp); this one catches total bus failure. */
     if (BMS_Acq_GetConsecutivePECErrors() >= BMS_PEC_ERROR_THRESHOLD)
     {
+<<<<<<< HEAD
       LOG_E(TAG_ADBMS, "Consecutive PEC failures >= %d - declaring comm fault", BMS_PEC_ERROR_THRESHOLD);
       FEB_SM_Fault(BMS_STATE_FAULT_BMS);
       BMS_Acq_ResetConsecutivePECErrors();
+      == == == = LOG_I(TAG_ADBMS, "State changed: %d -> %d", s_prev_state, current_state);
+
+      /* Handle exit from BALANCE state - must stop discharge reliably */
+      if (s_prev_state == BMS_STATE_BALANCE && current_state != BMS_STATE_BALANCE)
+      {
+        uint8_t retry = 0;
+        bool stopped = false;
+        while (retry < 10 && !stopped)
+        {
+          if (osMutexAcquire(ADBMSMutexHandle, pdMS_TO_TICKS(50)) == osOK)
+          {
+            BMS_App_StopBalancing();
+            BMS_App_SetMode(BMS_MODE_NORMAL);
+            osMutexRelease(ADBMSMutexHandle);
+            stopped = true;
+          }
+          else
+          {
+            retry++;
+            osDelay(pdMS_TO_TICKS(10));
+          }
+        }
+        if (!stopped)
+        {
+          LOG_E(TAG_ADBMS, "CRITICAL: Failed to stop balancing after %d retries", retry);
+          FEB_SM_Fault(BMS_STATE_FAULT_BMS);
+        }
+      }
+
+      /* Handle entry to BALANCE state */
+      if (current_state == BMS_STATE_BALANCE)
+      {
+        BMS_App_SetMode(BMS_MODE_BALANCING);
+        LOG_I(TAG_ADBMS, "Entering balancing mode");
+      }
+
+      s_prev_state = current_state;
+>>>>>>> d851afd (debugging)
     }
 
     osDelay(pdMS_TO_TICKS(ADBMS_TASK_TICK_MS));

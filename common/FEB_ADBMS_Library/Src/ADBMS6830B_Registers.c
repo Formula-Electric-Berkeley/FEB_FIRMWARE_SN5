@@ -242,17 +242,26 @@ static ADBMS_Error_t _transmit_read(uint16_t cmd_code, uint8_t bytes_per_ic, uin
   ADBMS_PlatformStatus_t spi_status = ADBMS_Platform_SPI_WriteRead(cmd_frame, 4, s_rx_buf, rx_size);
   ADBMS_Platform_CS_High();
 
+<<<<<<< HEAD
   if (spi_status != ADBMS_PLATFORM_OK)
   {
     return ADBMS_ERR_SPI;
   }
 
   /* Parse received data for each IC */
+=======
+  /* Parse received data for each IC
+   * Data arrives in reverse order: last IC in chain first, IC0 last.
+   * This matches the write order in _transmit_write(). */
+>>>>>>> d851afd (debugging)
   ADBMS_Error_t result = ADBMS_OK;
   uint8_t *ptr = s_rx_buf;
 
-  for (uint8_t ic = 0; ic < g_adbms.num_ics; ic++)
+  for (uint8_t i = 0; i < g_adbms.num_ics; i++)
   {
+    /* Map buffer position to IC index: first in buffer = last IC */
+    uint8_t ic = g_adbms.num_ics - 1 - i;
+
     g_adbms.ics[ic].status.tx_count++;
 
     /* Data is bytes_per_ic long */
@@ -1228,9 +1237,13 @@ ADBMS_Error_t ADBMS_SetGPO(uint8_t ic_index, uint16_t gpio_mask)
 
   CFGARA_t cfg;
   CFGARA_DECODE(g_adbms.ics[ic_index].memory.cfga.raw, &cfg);
+<<<<<<< HEAD
   /* ADBMS6830 has 10 GPIOs (GPIO1-10); mask to 10 bits so callers cannot set
    * the reserved bit 10 of the CFGA GPO field. */
   cfg.GPO = gpio_mask & 0x3FF;
+=======
+  cfg.GPO = gpio_mask & 0x3FF; /* 10 bits for GPIO1-10 */
+>>>>>>> d851afd (debugging)
   CFGARA_ENCODE(&cfg, g_adbms.ics[ic_index].memory.cfga.raw);
 
   return ADBMS_OK;
@@ -2165,7 +2178,10 @@ ADBMS_Error_t ADBMS_PollAux2ADC(uint32_t timeout_ms)
 
     if (rx_byte == 0xFF)
     {
+<<<<<<< HEAD
       s_last_activity_ms = ADBMS_Platform_GetTickMs();
+=======
+>>>>>>> d851afd (debugging)
       return ADBMS_OK; /* Conversion complete */
     }
 
@@ -2332,14 +2348,21 @@ CMFLAG_GETTER_IMPL(ADBMS_GetLPCM_BTMCMPFlag, CMF_BTMCMP)
 
 uint16_t ADBMS_ThresholdCodeToMV(uint16_t code)
 {
+<<<<<<< HEAD
   /* V = code * 16 * 150uV + 1.5V = code * 2.4mV + 1500mV
    * VUV/VOV register fields are 12 bits; mask input to match register width. */
   code &= 0x0FFF;
   return (uint16_t)(((uint32_t)code * 24) / 10 + 1500);
+=======
+  /* V = code * 16 * 150uV = code * 2.4mV
+   * Matches ADBMS_SetUVThreshold/ADBMS_SetOVThreshold formulas */
+  return (uint16_t)(((uint32_t)code * 24) / 10);
+>>>>>>> d851afd (debugging)
 }
 
 uint16_t ADBMS_MVToThresholdCode(uint16_t voltage_mV)
 {
+<<<<<<< HEAD
   /* code = (V - 1.5V) / 2.4mV
    * VUV/VOV register fields are 12 bits; saturate out-of-range inputs to 0x0FFF
    * instead of letting them wrap when stuffed into the register. */
@@ -2349,4 +2372,9 @@ uint16_t ADBMS_MVToThresholdCode(uint16_t voltage_mV)
   if (code > 0x0FFF)
     code = 0x0FFF;
   return (uint16_t)code;
+=======
+  /* code = V / 2.4mV = (voltage_mV * 10) / 24
+   * Inverse of ADBMS_ThresholdCodeToMV */
+  return (uint16_t)(((uint32_t)voltage_mV * 10) / 24);
+>>>>>>> d851afd (debugging)
 }

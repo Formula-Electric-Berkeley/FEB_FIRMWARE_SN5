@@ -12,6 +12,9 @@
 #include "spi.h"
 #include "cmsis_os.h"
 #include "stm32f4xx_hal.h"
+#include "feb_log.h"
+
+#define TAG_PLAT "[ADBMS_PLAT]"
 
 /*============================================================================
  * Configuration
@@ -24,6 +27,9 @@
 #define ADBMS_SPI_HANDLE (&hspi1)
 #define ADBMS_CS_PORT SPI1_CS_GPIO_Port
 #define ADBMS_CS_PIN SPI1_CS_Pin
+
+/* SPI error tracking */
+static uint32_t s_spi_error_count = 0;
 
 /*============================================================================
  * Platform Function Implementations
@@ -51,7 +57,15 @@ static ADBMS_PlatformStatus_t _hal_to_platform_status(HAL_StatusTypeDef hal_stat
 ADBMS_PlatformStatus_t ADBMS_Platform_SPI_Write(const uint8_t *data, uint16_t len)
 {
   HAL_StatusTypeDef status = HAL_SPI_Transmit(ADBMS_SPI_HANDLE, (uint8_t *)data, len, ADBMS_SPI_TIMEOUT_MS);
+<<<<<<< HEAD
   return _hal_to_platform_status(status);
+=======
+  if (status != HAL_OK)
+  {
+    s_spi_error_count++;
+    LOG_W(TAG_PLAT, "SPI TX error: %d (total: %lu)", status, s_spi_error_count);
+  }
+>>>>>>> d851afd (debugging)
 }
 
 /**
@@ -60,7 +74,15 @@ ADBMS_PlatformStatus_t ADBMS_Platform_SPI_Write(const uint8_t *data, uint16_t le
 ADBMS_PlatformStatus_t ADBMS_Platform_SPI_Read(uint8_t *data, uint16_t len)
 {
   HAL_StatusTypeDef status = HAL_SPI_Receive(ADBMS_SPI_HANDLE, data, len, ADBMS_SPI_TIMEOUT_MS);
+<<<<<<< HEAD
   return _hal_to_platform_status(status);
+=======
+  if (status != HAL_OK)
+  {
+    s_spi_error_count++;
+    LOG_W(TAG_PLAT, "SPI RX error: %d (total: %lu)", status, s_spi_error_count);
+  }
+>>>>>>> d851afd (debugging)
 }
 
 /**
@@ -69,6 +91,7 @@ ADBMS_PlatformStatus_t ADBMS_Platform_SPI_Read(uint8_t *data, uint16_t len)
 ADBMS_PlatformStatus_t ADBMS_Platform_SPI_WriteRead(const uint8_t *tx_data, uint16_t tx_len, uint8_t *rx_data,
                                                     uint16_t rx_len)
 {
+<<<<<<< HEAD
   HAL_StatusTypeDef status = HAL_SPI_Transmit(ADBMS_SPI_HANDLE, (uint8_t *)tx_data, tx_len, ADBMS_SPI_TIMEOUT_MS);
   if (status != HAL_OK)
   {
@@ -76,6 +99,23 @@ ADBMS_PlatformStatus_t ADBMS_Platform_SPI_WriteRead(const uint8_t *tx_data, uint
   }
   status = HAL_SPI_Receive(ADBMS_SPI_HANDLE, rx_data, rx_len, ADBMS_SPI_TIMEOUT_MS);
   return _hal_to_platform_status(status);
+=======
+  HAL_StatusTypeDef status;
+
+  status = HAL_SPI_Transmit(ADBMS_SPI_HANDLE, (uint8_t *)tx_data, tx_len, ADBMS_SPI_TIMEOUT_MS);
+  if (status != HAL_OK)
+  {
+    s_spi_error_count++;
+    LOG_W(TAG_PLAT, "SPI WriteRead TX error: %d", status);
+  }
+
+  status = HAL_SPI_Receive(ADBMS_SPI_HANDLE, rx_data, rx_len, ADBMS_SPI_TIMEOUT_MS);
+  if (status != HAL_OK)
+  {
+    s_spi_error_count++;
+    LOG_W(TAG_PLAT, "SPI WriteRead RX error: %d", status);
+  }
+>>>>>>> d851afd (debugging)
 }
 
 /**
