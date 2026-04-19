@@ -17,57 +17,75 @@ project(${PROJ_NAME} C CXX ASM)
 
 # Override root-level M4 flags — DART is Cortex-M0, no FPU
 set(DART_CPU_FLAGS "-mcpu=cortex-m0 -mthumb")
-string(REPLACE "-mcpu=cortex-m4" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-string(REPLACE "-mfpu=fpv4-sp-d16" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-string(REPLACE "-mfloat-abi=hard" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-string(REPLACE "-mcpu=cortex-m4" "" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
-string(REPLACE "-mfpu=fpv4-sp-d16" "" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
-string(REPLACE "-mfloat-abi=hard" "" CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}")
-string(REPLACE "-mcpu=cortex-m4" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-string(REPLACE "-mfpu=fpv4-sp-d16" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-string(REPLACE "-mfloat-abi=hard" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${DART_CPU_FLAGS}")
-set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${DART_CPU_FLAGS}")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${DART_CPU_FLAGS}")
+foreach(var CMAKE_C_FLAGS CMAKE_ASM_FLAGS CMAKE_EXE_LINKER_FLAGS)
+    string(REPLACE "-mcpu=cortex-m4"    "" ${var} "${${var}}")
+    string(REPLACE "-mfpu=fpv4-sp-d16"  "" ${var} "${${var}}")
+    string(REPLACE "-mfloat-abi=hard"   "" ${var} "${${var}}")
+    set(${var} "${${var}} ${DART_CPU_FLAGS}")
+endforeach()
+
+# STM32F042K6 has only 32 KB flash. -O0 Debug overflows once feb_io is linked,
+# so force size-optimized debug on this board (-g3 still emitted).
+set(CMAKE_C_FLAGS_DEBUG   "-Os -g3")
+set(CMAKE_CXX_FLAGS_DEBUG "-Os -g3")
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-# ══════════════════════════════════════════════════════════════════════
-#  EXECUTABLE TARGET (must be created before subdirectories)
-# ══════════════════════════════════════════════════════════════════════
-
-add_executable(${PROJECT_NAME})
-
-# ── User application sources (FEB files) ─────────────────────────────
-target_sources(${PROJECT_NAME} PRIVATE
-    Core/User/Src/FEB_CAN.c
-    Core/User/Src/FEB_CAN_BMS.c
-    Core/User/Src/FEB_Fan.c
-    Core/User/Src/FEB_main.c
+# ── Compile definitions ──────────────────────────────────────────────
+add_compile_definitions(
+    USE_HAL_DRIVER
+    STM32F042x6
+    $<$<CONFIG:Debug>:DEBUG>
 )
 
-# ── Include directories ───────────────────────────────────────────────
-target_include_directories(${PROJECT_NAME} PRIVATE
-    Core/User/Inc
-)
+# ══════════════════════════════════════════════════════════════════════
+#  SOURCE COLLECTION (globbed — CubeMX regens are a no-op for CMake)
+# ══════════════════════════════════════════════════════════════════════
 
-# Common CAN library includes
+file(GLOB_RECURSE CORE_SOURCES "Core/*.c")          # Core/Src + Core/User/Src
+file(GLOB         STARTUP_ASM  "startup_*.s")
+file(GLOB         HAL_SOURCES  "Drivers/STM32F0xx_HAL_Driver/Src/*.c")
+list(FILTER HAL_SOURCES EXCLUDE REGEX "_template\\.c$")
+
 set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4")
-target_include_directories(${PROJECT_NAME} PRIVATE
-    "${CAN_LIB_DIR}/.."       # resolves #include "FEB_CAN_Library_SN4/gen/feb_can.h"
-    "${CAN_LIB_DIR}/gen"      # resolves #include "feb_can.h" directly
-)
 
-# CAN library generated source
-target_sources(${PROJECT_NAME} PRIVATE
+set(ALL_SOURCES
+    ${CORE_SOURCES}
+    ${STARTUP_ASM}
+    ${HAL_SOURCES}
     "${CAN_LIB_DIR}/gen/feb_can.c"
 )
 
-# ── Bring in CubeMX-generated HAL + application sources ──────────────
-add_subdirectory(cmake/stm32cubemx)
+# ══════════════════════════════════════════════════════════════════════
+#  EXECUTABLE TARGET
+# ══════════════════════════════════════════════════════════════════════
 
-# ── Link libraries ────────────────────────────────────────────────────
-target_link_libraries(${PROJECT_NAME} PRIVATE m)
+add_executable(${PROJECT_NAME} ${ALL_SOURCES})
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+    Core/Inc
+    Core/User/Inc
+    Drivers/STM32F0xx_HAL_Driver/Inc
+    Drivers/STM32F0xx_HAL_Driver/Inc/Legacy
+    Drivers/CMSIS/Device/ST/STM32F0xx/Include
+    Drivers/CMSIS/Include
+    "${CAN_LIB_DIR}/.."
+    "${CAN_LIB_DIR}/gen"
+)
+
+# feb_io serial stack — bare-metal mode to fit 32 KB flash.
+# Link only feb_uart + feb_log; DART-local command parser handles console.
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    FEB_UART_FORCE_BARE_METAL=1
+    FEB_UART_MAX_INSTANCES=1
+    FEB_UART_DEFAULT_TX_BUFFER_SIZE=256
+    FEB_UART_DEFAULT_RX_BUFFER_SIZE=128
+    FEB_UART_DEFAULT_LINE_BUFFER_SIZE=64
+    FEB_UART_STAGING_BUFFER_SIZE=256
+    FEB_UART_COMPILE_LOG_LEVEL=3    # INFO
+)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io)
 
 # ── Linker script ─────────────────────────────────────────────────────
 file(GLOB LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/STM32F0*_FLASH.ld")
@@ -80,7 +98,6 @@ target_link_options(${PROJECT_NAME} PRIVATE
     -Wl,-Map=$<TARGET_FILE_DIR:${PROJECT_NAME}>/${PROJECT_NAME}.map
 )
 
-# Remove wrong libob.a dependency
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
 # ── Post-build: .bin, .hex, size ──────────────────────────────────────

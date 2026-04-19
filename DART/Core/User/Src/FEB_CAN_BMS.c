@@ -1,6 +1,5 @@
 #include "FEB_CAN_BMS.h"
 
-extern CAN_HandleTypeDef hcan1;
 extern CAN_TxHeaderTypeDef FEB_CAN_Tx_Header;
 extern uint8_t FEB_CAN_Tx_Data[8];
 extern uint32_t FEB_CAN_Tx_Mailbox;
@@ -32,7 +31,7 @@ uint8_t FEB_CAN_BMS_Filter(CAN_HandleTypeDef *hcan, uint8_t FIFO_assignment, uin
 
 void FEB_CAN_BMS_Process_Message(CAN_RxHeaderTypeDef *rx_header, uint8_t FEB_CAN_Rx_Data[])
 {
-  switch (rx_header->ExtId)
+  switch (rx_header->StdId)
   {
   case FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID:
     FEB_Fan_CAN_Msg_Process(FEB_CAN_Rx_Data);

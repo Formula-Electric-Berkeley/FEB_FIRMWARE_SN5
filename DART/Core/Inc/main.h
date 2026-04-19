@@ -70,6 +70,16 @@ void Error_Handler(void);
 #define TACH2_GPIO_Port GPIOA
 #define TACH3_Pin GPIO_PIN_7
 #define TACH3_GPIO_Port GPIOA
+#define PWM1_Pin GPIO_PIN_8
+#define PWM1_GPIO_Port GPIOA
+#define PWM2_Pin GPIO_PIN_9
+#define PWM2_GPIO_Port GPIOA
+#define PWM3_Pin GPIO_PIN_10
+#define PWM3_GPIO_Port GPIOA
+#define PWM5_Pin GPIO_PIN_4
+#define PWM5_GPIO_Port GPIOB
+#define PWM4_Pin GPIO_PIN_5
+#define PWM4_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
