@@ -24,7 +24,8 @@
 // Number of temperature sensors per IC (for MUX reading)
 #define FEB_NUM_TEMP_SENSE_PER_IC 10
 
-// Total number of temperature sensors per bank
+// Total number of temperature sensors per bank (theoretical max based on IC count)
+// Note: For actual configured total, use BMS_TEMP_TOTAL_SENSORS from BMS_HW_Config.h
 #define FEB_NUM_TEMP_SENSORS (FEB_NUM_TEMP_SENSE_PER_IC * FEB_NUM_ICPBANK)
 
 // ********************************** Temperature Validation Range ****************
@@ -51,20 +52,5 @@
 // Error thresholds (consecutive violations before triggering fault)
 #define FEB_VOLTAGE_ERROR_THRESH 3 // Trigger fault after 3 consecutive voltage violations
 #define FEB_TEMP_ERROR_THRESH 5    // Trigger fault after 5 consecutive temp violations
-
-// ********************************** isoSPI Communication Mode ******************
-
-// // isoSPI Mode Selection - Choose ONE of the following:
-// #define ISOSPI_MODE_REDUNDANT 0 // Dual SPI with automatic PEC-error failover
-// #define ISOSPI_MODE_SPI1_ONLY 1 // Use only SPI1 (primary channel)
-// #define ISOSPI_MODE_SPI2_ONLY 2 // Use only SPI2 (backup channel)
-
-// // *** SELECT MODE HERE ***
-// #define ISOSPI_MODE ISOSPI_MODE_SPI1_ONLY
-
-// // Redundant Mode Configuration (only used when ISOSPI_MODE == ISOSPI_MODE_REDUNDANT)
-// #define ISOSPI_FAILOVER_PEC_THRESHOLD 5 // Number of PEC errors before failover
-// #define ISOSPI_FAILOVER_LOCKOUT_MS 1000 // Milliseconds to wait before allowing failover again
-// #define ISOSPI_PRIMARY_CHANNEL 1        // Primary channel: 1=SPI1, 2=SPI2
 
 #endif /* INC_FEB_CONST_H_ */
