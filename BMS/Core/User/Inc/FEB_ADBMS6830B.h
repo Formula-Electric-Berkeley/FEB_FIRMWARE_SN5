@@ -107,10 +107,6 @@ float FEB_ADBMS_GET_ACC_MIN_Temp(void);
 float FEB_ADBMS_GET_ACC_MAX_Temp(void);
 float FEB_ADBMS_GET_Cell_Temperature(uint8_t bank, uint16_t cell);
 
-// ********************************** Print Accumulator **************************
-
-void FEB_ADBMS_Print_Accumulator(void);
-
 // ********************************** Balancing **********************************
 
 void FEB_Stop_Balance(void);

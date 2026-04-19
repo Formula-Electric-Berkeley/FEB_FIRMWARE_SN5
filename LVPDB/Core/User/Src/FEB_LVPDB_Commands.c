@@ -557,6 +557,221 @@ static void cmd_canstatus(void)
 }
 
 /* ============================================================================
+ * CSV Subcommand Helpers
+ * ============================================================================ */
+
+static void csv_status(void)
+{
+  for (int i = 0; i < NUM_TPS2482; i++)
+  {
+    GPIO_PinState pg = HAL_GPIO_ReadPin(tps2482_pg_ports[i], tps2482_pg_pins[i]);
+    int en;
+    if (i == 0)
+    {
+      en = 1; /* LV always on */
+    }
+    else
+    {
+      en = HAL_GPIO_ReadPin(tps2482_en_ports[i - 1], tps2482_en_pins[i - 1]) == GPIO_PIN_SET ? 1 : 0;
+    }
+    FEB_Console_CsvPrintf("lvpdbStat", "%d,%s,%d,%d,%u,%d\r\n", i, chip_names[i], en, pg == GPIO_PIN_SET ? 1 : 0,
+                          tps2482_bus_voltage[i], tps2482_current[i]);
+  }
+}
+
+static void csv_enable(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvPrintf("csv_err", "enable_usage,chip\r\n");
+    return;
+  }
+  int idx = get_chip_index(argv[1]);
+  if (idx < 0)
+  {
+    FEB_Console_CsvPrintf("csv_err", "enable_chip,%s\r\n", argv[1]);
+    return;
+  }
+  if (idx == 0)
+  {
+    FEB_Console_CsvPrintf("csv_err", "enable_lv_locked\r\n");
+    return;
+  }
+  int en_idx = idx - 1;
+  HAL_GPIO_WritePin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx], GPIO_PIN_SET);
+  int verified = HAL_GPIO_ReadPin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx]) == GPIO_PIN_SET ? 1 : 0;
+  FEB_Console_CsvPrintf("lvpdbEnAck", "%s,%d\r\n", chip_names[idx], verified);
+}
+
+static void csv_disable(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvPrintf("csv_err", "disable_usage,chip\r\n");
+    return;
+  }
+  int idx = get_chip_index(argv[1]);
+  if (idx < 0)
+  {
+    FEB_Console_CsvPrintf("csv_err", "disable_chip,%s\r\n", argv[1]);
+    return;
+  }
+  if (idx == 0)
+  {
+    FEB_Console_CsvPrintf("csv_err", "disable_lv_locked\r\n");
+    return;
+  }
+  int en_idx = idx - 1;
+  HAL_GPIO_WritePin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx], GPIO_PIN_RESET);
+  int verified = HAL_GPIO_ReadPin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx]) == GPIO_PIN_RESET ? 1 : 0;
+  FEB_Console_CsvPrintf("lvpdbDisAck", "%s,%d\r\n", chip_names[idx], verified);
+}
+
+static void csv_read(int argc, char *argv[])
+{
+  if (argc < 3)
+  {
+    FEB_Console_CsvPrintf("csv_err", "read_usage,chip,reg\r\n");
+    return;
+  }
+  int idx = get_chip_index(argv[1]);
+  if (idx < 0)
+  {
+    FEB_Console_CsvPrintf("csv_err", "read_chip,%s\r\n", argv[1]);
+    return;
+  }
+  const RegInfo_t *reg = get_register_info(argv[2]);
+  if (reg == NULL)
+  {
+    FEB_Console_CsvPrintf("csv_err", "read_reg,%s\r\n", argv[2]);
+    return;
+  }
+  uint16_t value;
+  HAL_StatusTypeDef status = tps_read_reg(tps2482_i2c_addresses[idx], reg->addr, &value);
+  if (status != HAL_OK)
+  {
+    FEB_Console_CsvPrintf("csv_err", "read_i2c,%d\r\n", status);
+    return;
+  }
+  FEB_Console_CsvPrintf("lvpdbRd", "%s,%s,0x%04X,%u\r\n", chip_names[idx], reg->name, value, value);
+}
+
+static void csv_write(int argc, char *argv[])
+{
+  if (argc < 4)
+  {
+    FEB_Console_CsvPrintf("csv_err", "write_usage,chip,reg,value\r\n");
+    return;
+  }
+  int idx = get_chip_index(argv[1]);
+  if (idx < 0)
+  {
+    FEB_Console_CsvPrintf("csv_err", "write_chip,%s\r\n", argv[1]);
+    return;
+  }
+  const RegInfo_t *reg = get_register_info(argv[2]);
+  if (reg == NULL)
+  {
+    FEB_Console_CsvPrintf("csv_err", "write_reg,%s\r\n", argv[2]);
+    return;
+  }
+  if (!reg->writable)
+  {
+    FEB_Console_CsvPrintf("csv_err", "write_readonly,%s\r\n", reg->name);
+    return;
+  }
+  char *endptr;
+  unsigned long parsed = strtoul(argv[3], &endptr, 0);
+  if (*endptr != '\0' || parsed > 65535)
+  {
+    FEB_Console_CsvPrintf("csv_err", "write_value,%s\r\n", argv[3]);
+    return;
+  }
+  uint16_t value = (uint16_t)parsed;
+  HAL_StatusTypeDef status = tps_write_reg(tps2482_i2c_addresses[idx], reg->addr, value);
+  if (status != HAL_OK)
+  {
+    FEB_Console_CsvPrintf("csv_err", "write_i2c,%d\r\n", status);
+    return;
+  }
+  uint16_t readback = 0;
+  HAL_StatusTypeDef rb_status = tps_read_reg(tps2482_i2c_addresses[idx], reg->addr, &readback);
+  int verified = (rb_status == HAL_OK && readback == value) ? 1 : 0;
+  FEB_Console_CsvPrintf("lvpdbWrAck", "%s,%s,0x%04X,0x%04X,%d\r\n", chip_names[idx], reg->name, value, readback,
+                        verified);
+}
+
+static void csv_ping(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvPrintf("csv_err", "ping_usage,channel=1..4\r\n");
+    return;
+  }
+  int ch;
+  if (!parse_channel(argv[1], &ch))
+  {
+    FEB_Console_CsvPrintf("csv_err", "ping_channel,%s\r\n", argv[1]);
+    return;
+  }
+  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PING);
+  FEB_Console_CsvPrintf("lvpdbPingAck", "%d,0x%02X\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+}
+
+static void csv_pong(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvPrintf("csv_err", "pong_usage,channel=1..4\r\n");
+    return;
+  }
+  int ch;
+  if (!parse_channel(argv[1], &ch))
+  {
+    FEB_Console_CsvPrintf("csv_err", "pong_channel,%s\r\n", argv[1]);
+    return;
+  }
+  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PONG);
+  FEB_Console_CsvPrintf("lvpdbPongAck", "%d,0x%02X\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+}
+
+static void csv_stop(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvPrintf("csv_err", "stop_usage,channel=1..4|all\r\n");
+    return;
+  }
+  if (FEB_strcasecmp(argv[1], "all") == 0)
+  {
+    FEB_CAN_PingPong_Reset();
+    FEB_Console_CsvPrintf("lvpdbStopAck", "all\r\n");
+    return;
+  }
+  int ch;
+  if (!parse_channel(argv[1], &ch))
+  {
+    FEB_Console_CsvPrintf("csv_err", "stop_channel,%s\r\n", argv[1]);
+    return;
+  }
+  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_OFF);
+  FEB_Console_CsvPrintf("lvpdbStopAck", "%d\r\n", ch);
+}
+
+static void csv_canstatus(void)
+{
+  for (int ch = 1; ch <= 4; ch++)
+  {
+    FEB_PingPong_Mode_t mode = FEB_CAN_PingPong_GetMode((uint8_t)ch);
+    uint32_t tx_count = FEB_CAN_PingPong_GetTxCount((uint8_t)ch);
+    uint32_t rx_count = FEB_CAN_PingPong_GetRxCount((uint8_t)ch);
+    int32_t last_rx = FEB_CAN_PingPong_GetLastCounter((uint8_t)ch);
+    FEB_Console_CsvPrintf("lvpdbCanstat", "%d,0x%02X,%s,%u,%u,%d\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1],
+                          mode_names[mode], (unsigned int)tx_count, (unsigned int)rx_count, (int)last_rx);
+  }
+}
+
+/* ============================================================================
  * Main Command Handler
  * ============================================================================ */
 
@@ -614,6 +829,56 @@ static void cmd_lvpdb(int argc, char *argv[])
   }
 }
 
+static void cmd_lvpdb_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvPrintf("csv_err", "lvpdb_usage,status|enable|disable|read|write|ping|pong|stop|canstatus\r\n");
+    return;
+  }
+  const char *subcmd = argv[1];
+  if (FEB_strcasecmp(subcmd, "status") == 0)
+  {
+    csv_status();
+  }
+  else if (FEB_strcasecmp(subcmd, "enable") == 0)
+  {
+    csv_enable(argc - 1, argv + 1);
+  }
+  else if (FEB_strcasecmp(subcmd, "disable") == 0)
+  {
+    csv_disable(argc - 1, argv + 1);
+  }
+  else if (FEB_strcasecmp(subcmd, "read") == 0)
+  {
+    csv_read(argc - 1, argv + 1);
+  }
+  else if (FEB_strcasecmp(subcmd, "write") == 0)
+  {
+    csv_write(argc - 1, argv + 1);
+  }
+  else if (FEB_strcasecmp(subcmd, "ping") == 0)
+  {
+    csv_ping(argc - 1, argv + 1);
+  }
+  else if (FEB_strcasecmp(subcmd, "pong") == 0)
+  {
+    csv_pong(argc - 1, argv + 1);
+  }
+  else if (FEB_strcasecmp(subcmd, "stop") == 0)
+  {
+    csv_stop(argc - 1, argv + 1);
+  }
+  else if (FEB_strcasecmp(subcmd, "canstatus") == 0)
+  {
+    csv_canstatus();
+  }
+  else
+  {
+    FEB_Console_CsvPrintf("csv_err", "lvpdb_mode,%s\r\n", subcmd);
+  }
+}
+
 /* ============================================================================
  * Command Descriptor
  * ============================================================================ */
@@ -622,6 +887,7 @@ const FEB_Console_Cmd_t lvpdb_cmd = {
     .name = "LVPDB",
     .help = "LVPDB board commands (LVPDB|status, LVPDB|enable, etc.)",
     .handler = cmd_lvpdb,
+    .csv_handler = cmd_lvpdb_csv,
 };
 
 /* ============================================================================

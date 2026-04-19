@@ -4,7 +4,7 @@
   "boards": {
     "BMS": {
       "ioc_checksum": "08670b75875f2feedea3280eecc4821f36b742ccf7680976ae6f87bc3937ebfc",
-      "generated_at": "2026-04-08T20:26:54Z",
+      "generated_at": "2026-04-19T21:12:56Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "363755b7a21dd5a790f0bafbfd68f00abe141fd8691720b3604bc84b7dbaa81b",
         "Core/Inc/adc.h": "0ac97025a4065f07b7b65a906bd0c45ea800215434ed43c287c1685507f3f612",
@@ -69,13 +69,13 @@
         "Middlewares/Third_Party/FreeRTOS/Source/stream_buffer.c": "4376714fecad0f72dc4c8b45236591a7e0ffe24dd018382f56e8b0dfc2230b28",
         "Middlewares/Third_Party/FreeRTOS/Source/tasks.c": "8cb1eabe18f130b2b8980e880847f773fb12a4071c763d26c51624223b32a3a4",
         "Middlewares/Third_Party/FreeRTOS/Source/timers.c": "0d16405e621a2c4b003b5f0324b9713cd4865364133df6f742f482a6b2dbc773",
-        "STM32F446XX_FLASH.ld": "3d917123f4a549994af8ffe24ae02c6f97b88d9a4a39330d90ca50f073e83177",
+        "STM32F446XX_FLASH.ld": "9a42824b5e655161925c8d30f666d98597cbf62afcfd53558af6e0952fc91553",
         "startup_stm32f446xx.s": "448435eb5d2ffe063490bcac42b9c861461ce05528141d87e62f8425c00131f8"
       }
     },
     "DASH": {
       "ioc_checksum": "e95ffc17bdded4d5b6be3894345d7149e5c93fd84b09279cd8888540662ce95e",
-      "generated_at": "2026-04-08T20:26:56Z",
+      "generated_at": "2026-04-19T21:12:58Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "692168cbc9c915133ce3f329cec850c5372c1759ec0412ced61fc14741de14be",
         "Core/Inc/can.h": "d9c82c8382c196a76d472a6b82a292a0384a086536ca280ce701ebbba9f5c682",
@@ -171,13 +171,13 @@
         "Middlewares/Third_Party/FreeRTOS/Source/stream_buffer.c": "4376714fecad0f72dc4c8b45236591a7e0ffe24dd018382f56e8b0dfc2230b28",
         "Middlewares/Third_Party/FreeRTOS/Source/tasks.c": "8cb1eabe18f130b2b8980e880847f773fb12a4071c763d26c51624223b32a3a4",
         "Middlewares/Third_Party/FreeRTOS/Source/timers.c": "0d16405e621a2c4b003b5f0324b9713cd4865364133df6f742f482a6b2dbc773",
-        "STM32F469XX_FLASH.ld": "87e7078cffc4f146b5a0ec9d94d6389466119d2c45dea11e48967d23f847d60c",
+        "STM32F469XX_FLASH.ld": "25585db0faebdf2213131297852f52b8136977ffe5359216ec89572e7796df12",
         "startup_stm32f469xx.s": "39d8aaf15b94edfd5c3542f9b369a9688d24e8512f8738543e766be587181bc9"
       }
     },
     "DART": {
       "ioc_checksum": "ec3c85c2c8b4e4d94362ddb58b54f6882bbe337678213a16363428dc83171245",
-      "generated_at": "2026-04-08T20:26:57Z",
+      "generated_at": "2026-04-19T21:12:58Z",
       "files": {
         "Core/Inc/gpio.h": "e2d62f964a0b7f238384ed6a20a181d09df9647240a268dc547acf5b35099f74",
         "Core/Inc/main.h": "e07a43ebc634ce451e2f80884378d112e048e06235fb49fdc2d9a2b5057d28c5",
@@ -191,13 +191,13 @@
         "Core/Src/syscalls.c": "03c06c72eafb44b499814cf9234aba57dd830f345d9b8779b5d7090e78517600",
         "Core/Src/sysmem.c": "ad20f7b1fa1e7c73330727747222cf2ffa3245ebf035230ee9a157545e79df95",
         "Core/Src/usart.c": "f278cb5046ca6c2101b713ceddb7ac9fd5e07e4fc69f11039d48d143b13b9c0a",
-        "STM32F446XX_FLASH.ld": "018d8e121d7a3b94fd36e1e40c9598daa20aa999f45d24230b1b0d9461b60059",
+        "STM32F446XX_FLASH.ld": "104cb1a1baa900a864bd01c5aebded70dda1429afc827de8ec3373ce9d64bfb3",
         "startup_stm32f446xx.s": "448435eb5d2ffe063490bcac42b9c861461ce05528141d87e62f8425c00131f8"
       }
     },
     "DCU": {
       "ioc_checksum": "75f4a1174af99a72596dd7f739c38e22b0459b215bc0ddb3e22a6cfd49a8e736",
-      "generated_at": "2026-04-08T20:26:57Z",
+      "generated_at": "2026-04-19T21:12:58Z",
       "files": {
         "Core/Inc/gpio.h": "e2d62f964a0b7f238384ed6a20a181d09df9647240a268dc547acf5b35099f74",
         "Core/Inc/main.h": "e07a43ebc634ce451e2f80884378d112e048e06235fb49fdc2d9a2b5057d28c5",
@@ -211,13 +211,13 @@
         "Core/Src/syscalls.c": "03c06c72eafb44b499814cf9234aba57dd830f345d9b8779b5d7090e78517600",
         "Core/Src/sysmem.c": "ad20f7b1fa1e7c73330727747222cf2ffa3245ebf035230ee9a157545e79df95",
         "Core/Src/usart.c": "f278cb5046ca6c2101b713ceddb7ac9fd5e07e4fc69f11039d48d143b13b9c0a",
-        "STM32F446XX_FLASH.ld": "018d8e121d7a3b94fd36e1e40c9598daa20aa999f45d24230b1b0d9461b60059",
+        "STM32F446XX_FLASH.ld": "104cb1a1baa900a864bd01c5aebded70dda1429afc827de8ec3373ce9d64bfb3",
         "startup_stm32f446xx.s": "448435eb5d2ffe063490bcac42b9c861461ce05528141d87e62f8425c00131f8"
       }
     },
     "LVPDB": {
       "ioc_checksum": "35fab767f9e0e1027a136ca482edf00568850e7bd941f793ae156215fec1ca33",
-      "generated_at": "2026-04-08T20:26:58Z",
+      "generated_at": "2026-04-19T21:12:59Z",
       "files": {
         "Core/Inc/can.h": "17611aeff90b90e352bc2ace2749644663492ecb10c71539567ef9b1441fd5d9",
         "Core/Inc/dma.h": "7cf6f7450a29d26303cbba5a3ca8c6cb24a02635d6a5ba4d05141fdfc75c4c49",
@@ -239,13 +239,13 @@
         "Core/Src/sysmem.c": "428173de9a7a943d36b6f58a4abe8be087419b97a65d7980561c63ae81f1fce8",
         "Core/Src/tim.c": "30ac82e6fd65809964b537b4dcc1fc783cbf71861297753aa6c1c88f21c52bc9",
         "Core/Src/usart.c": "cc4037399c8a53e987a07639989ccd477909e624c183f3342b934e8b6ac075f1",
-        "STM32F446XX_FLASH.ld": "3d917123f4a549994af8ffe24ae02c6f97b88d9a4a39330d90ca50f073e83177",
+        "STM32F446XX_FLASH.ld": "9a42824b5e655161925c8d30f666d98597cbf62afcfd53558af6e0952fc91553",
         "startup_stm32f446xx.s": "448435eb5d2ffe063490bcac42b9c861461ce05528141d87e62f8425c00131f8"
       }
     },
     "PCU": {
-      "ioc_checksum": "dd91de27d45363f02d89b5341de246826cc4d72a9f77d219c6bf4ac072c24126",
-      "generated_at": "2026-04-08T20:26:58Z",
+      "ioc_checksum": "dce88e9916056d652c3fdf3d09dd8a7ad066bc7c7b6af576218e9be7277811b8",
+      "generated_at": "2026-04-19T21:12:59Z",
       "files": {
         "Core/Inc/adc.h": "e36acfe1b822eff1de7e9f93073b8da32c94dd5b09484b716e190c6aa63eb3d0",
         "Core/Inc/can.h": "98925d7f4010f054e17d240116244377377c15248a5413a09ff811cdc23084e5",
@@ -269,13 +269,13 @@
         "Core/Src/sysmem.c": "ad20f7b1fa1e7c73330727747222cf2ffa3245ebf035230ee9a157545e79df95",
         "Core/Src/tim.c": "c0331bea09c40fce5ed2f723f5c62f4bba2f426cfe7ccc422e515ec07fadf5d0",
         "Core/Src/usart.c": "0717ca11b649d503f373c25dca3c451e4bd9b4d0f9f201a5a06fde2fc5970e04",
-        "STM32F446XX_FLASH.ld": "3d917123f4a549994af8ffe24ae02c6f97b88d9a4a39330d90ca50f073e83177",
+        "STM32F446XX_FLASH.ld": "9a42824b5e655161925c8d30f666d98597cbf62afcfd53558af6e0952fc91553",
         "startup_stm32f446xx.s": "448435eb5d2ffe063490bcac42b9c861461ce05528141d87e62f8425c00131f8"
       }
     },
     "Sensor_Nodes": {
       "ioc_checksum": "8c69b14e19d1dd61e329967ee4aad14fac48a8c30fc502bc9055c4a5eb52e5ab",
-      "generated_at": "2026-04-08T20:26:59Z",
+      "generated_at": "2026-04-19T21:13:00Z",
       "files": {
         "Core/Inc/adc.h": "0ac97025a4065f07b7b65a906bd0c45ea800215434ed43c287c1685507f3f612",
         "Core/Inc/can.h": "98925d7f4010f054e17d240116244377377c15248a5413a09ff811cdc23084e5",
@@ -297,13 +297,13 @@
         "Core/Src/syscalls.c": "03c06c72eafb44b499814cf9234aba57dd830f345d9b8779b5d7090e78517600",
         "Core/Src/sysmem.c": "ad20f7b1fa1e7c73330727747222cf2ffa3245ebf035230ee9a157545e79df95",
         "Core/Src/usart.c": "bdc44ebff0694aaaa1401cd98c9d689f1bf65edd5614163d2dfb96dbeb6e07b0",
-        "STM32F446XX_FLASH.ld": "018d8e121d7a3b94fd36e1e40c9598daa20aa999f45d24230b1b0d9461b60059",
+        "STM32F446XX_FLASH.ld": "104cb1a1baa900a864bd01c5aebded70dda1429afc827de8ec3373ce9d64bfb3",
         "startup_stm32f446xx.s": "448435eb5d2ffe063490bcac42b9c861461ce05528141d87e62f8425c00131f8"
       }
     },
     "UART_TEST": {
       "ioc_checksum": "06c9618835096e44e3f73cd158bbc2e3fcf76e65dc9a29db68fe607180843efd",
-      "generated_at": "2026-04-08T20:27:00Z",
+      "generated_at": "2026-04-19T21:13:01Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "773dad076864ff18d5d85603d348d4931d29dde9925486e58f95a97ac98b8404",
         "Core/Inc/app_freertos.h": "6229601c2ebf192d40ceef377f3c1785571eaf6407f10bc87be5b06357dd3515",
@@ -365,7 +365,7 @@
         "Middlewares/Third_Party/FreeRTOS/Source/stream_buffer.c": "121def826654fe8741ac93d2bbda1203851f42ed4c602061d8c1c01a64624b14",
         "Middlewares/Third_Party/FreeRTOS/Source/tasks.c": "cfe709de0389c51886c02a762e1d99a9ec14707fa8da43beef122950b14d4157",
         "Middlewares/Third_Party/FreeRTOS/Source/timers.c": "5a9060e28436b0c58b60f678e1eeb552b4142930cef4641dce262839334ae3f3",
-        "STM32U575xx_FLASH.ld": "3c38e2ed6eb2edcb12e27a7b5df3981adcf5cf1b1e54ae543ab8b2bc83c8c7f5",
+        "STM32U575xx_FLASH.ld": "547aa511e73172ac8cb0c7d8ff4d0b63d80d68cea785a779dd2e5c429ef64eb9",
         "STM32U575xx_RAM.ld": "957a07f53ec3628cbcf00663120b0e9988f5fd12ac7bfb73728ebe83c0862d5e",
         "startup_stm32u575xx.s": "70e9034f2243394d0c7b815ca59c6ce3363a120e25efbcdf13bcda59d356b197"
       }

@@ -182,17 +182,6 @@ static void subcmd_balance(int argc, char *argv[])
 }
 
 /* ============================================================================
- * Subcommand: dump - Print full accumulator status
- * ============================================================================ */
-static void subcmd_dump(int argc, char *argv[])
-{
-  (void)argc;
-  (void)argv;
-
-  FEB_ADBMS_Print_Accumulator();
-}
-
-/* ============================================================================
  * Subcommand: state - Show/set BMS state (with safety restrictions)
  * ============================================================================ */
 
@@ -541,75 +530,6 @@ static void subcmd_errors(int argc, char *argv[])
 }
 
 /* ============================================================================
- * Subcommand: csv - Output data in CSV format
- * ============================================================================ */
-
-void subcmd_csv(int argc, char *argv[])
-{
-  if (argc < 2)
-  {
-    FEB_Console_Printf("Usage: BMS|csv|<mode>\r\n");
-    FEB_Console_Printf("  volts  - Cell voltages (V,bank,cell,v_C,v_S)\r\n");
-    FEB_Console_Printf("  temps  - Temperature sensors (T,bank,sensor,temp_deg_C)\r\n");
-    FEB_Console_Printf("  all    - Combined (type,bank,index,reading1,reading2)\r\n");
-    return;
-  }
-
-  const char *mode = argv[1];
-
-  if (FEB_strcasecmp(mode, "volts") == 0)
-  {
-    for (int bank = 0; bank < FEB_NBANKS; bank++)
-    {
-      for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
-      {
-        float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
-        float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
-        FEB_Console_Printf("V,%d,%d,%.3f,%.3f\r\n", bank + 1, cell + 1, v_c, v_s);
-      }
-    }
-  }
-  else if (FEB_strcasecmp(mode, "temps") == 0)
-  {
-    for (int bank = 0; bank < FEB_NBANKS; bank++)
-    {
-      for (int sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
-      {
-        float temp = FEB_ADBMS_GET_Cell_Temperature(bank, sensor);
-        FEB_Console_Printf("T,%d,%d,%.1f\r\n", bank + 1, sensor + 1, temp);
-      }
-    }
-  }
-  else if (FEB_strcasecmp(mode, "all") == 0)
-  {
-    /* Voltage readings */
-    for (int bank = 0; bank < FEB_NBANKS; bank++)
-    {
-      for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
-      {
-        float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
-        float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
-        FEB_Console_Printf("V,%d,%d,%.3f,%.3f\r\n", bank + 1, cell + 1, v_c, v_s);
-      }
-    }
-    /* Temperature readings */
-    for (int bank = 0; bank < FEB_NBANKS; bank++)
-    {
-      for (int sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
-      {
-        float temp = FEB_ADBMS_GET_Cell_Temperature(bank, sensor);
-        FEB_Console_Printf("T,%d,%d,%.1f\r\n", bank + 1, sensor + 1, temp);
-      }
-    }
-  }
-  else
-  {
-    FEB_Console_Printf("Unknown mode: %s\r\n", mode);
-    FEB_Console_Printf("Usage: BMS|csv|[volts|temps|all]\r\n");
-  }
-}
-
-/* ============================================================================
  * Subcommand: config - Show configuration constants
  * ============================================================================ */
 static void subcmd_config(int argc, char *argv[])
@@ -752,7 +672,6 @@ static void print_bms_help(void)
   FEB_Console_Printf("  BMS|temps               - Show temperature readings\r\n");
   FEB_Console_Printf("  BMS|state [<name>]      - Show/set BMS state\r\n");
   FEB_Console_Printf("  BMS|balance|on/off      - Control cell balancing\r\n");
-  FEB_Console_Printf("  BMS|dump                - Full accumulator status\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("Diagnostics:\r\n");
   FEB_Console_Printf("  BMS|gpio                - Show hardware I/O status\r\n");
@@ -765,10 +684,9 @@ static void print_bms_help(void)
   FEB_Console_Printf("  BMS|config              - Show configuration\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("Data Export:\r\n");
-  FEB_Console_Printf("  BMS|csv                 - Show CSV export options\r\n");
-  FEB_Console_Printf("  BMS|csv|volts           - Cell voltages (CSV)\r\n");
-  FEB_Console_Printf("  BMS|csv|temps           - Temperature sensors (CSV)\r\n");
-  FEB_Console_Printf("  BMS|csv|all             - Combined voltages + temps (CSV)\r\n");
+  FEB_Console_Printf("  csv|BMS|volts           - Timestamped cell voltages (CSV)\r\n");
+  FEB_Console_Printf("  csv|BMS|temps           - Timestamped temperature sensors (CSV)\r\n");
+  FEB_Console_Printf("  csv|BMS|all             - Combined voltages + temps (CSV)\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("Register Access:\r\n");
   FEB_Console_Printf("  BMS|reg|list            - List all ADBMS commands\r\n");
@@ -823,10 +741,6 @@ static void cmd_bms(int argc, char *argv[])
   {
     subcmd_balance(argc - 1, argv + 1);
   }
-  else if (FEB_strcasecmp(subcmd, "dump") == 0)
-  {
-    subcmd_dump(argc - 1, argv + 1);
-  }
   else if (FEB_strcasecmp(subcmd, "ping") == 0)
   {
     subcmd_ping(argc - 1, argv + 1);
@@ -875,10 +789,6 @@ static void cmd_bms(int argc, char *argv[])
   else if (FEB_strcasecmp(subcmd, "config") == 0)
   {
     subcmd_config(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "csv") == 0)
-  {
-    subcmd_csv(argc - 1, argv + 1);
   }
   else if (FEB_strcasecmp(subcmd, "reg") == 0)
   {

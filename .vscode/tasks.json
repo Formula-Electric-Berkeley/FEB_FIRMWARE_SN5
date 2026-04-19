@@ -138,6 +138,42 @@
                 "cwd": "${workspaceFolder}"
             },
             "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "Firmware: Bump Board Version",
+            "detail": "Bump <BOARD>/VERSION, commit, tag <BOARD>-v<X.Y.Z>, push",
+            "command": "${workspaceFolder}/scripts/bump-version.sh",
+            "args": ["${input:bumpBoard}", "${input:bumpType}"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "Firmware: Bump Repo Version",
+            "detail": "Bump top-level VERSION, commit, tag v<X.Y.Z>, push",
+            "command": "${workspaceFolder}/scripts/bump-version.sh",
+            "args": ["repo", "${input:bumpType}"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "Firmware: Bump All (Common Changed)",
+            "detail": "Bump every board + repo + common, tag each, push. Use when common/ changed.",
+            "command": "${workspaceFolder}/scripts/bump-version.sh",
+            "args": ["all", "${input:bumpType}", "--yes"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "Firmware: Bump Auto-Detect",
+            "detail": "Inspect staged/unstaged diff, bump affected boards (or all if common/ changed), push",
+            "command": "${workspaceFolder}/scripts/bump-version.sh",
+            "args": [],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": []
         }
     ],
     "inputs": [
@@ -147,6 +183,20 @@
             "description": "Select board to flash",
             "options": ["BMS", "DASH", "DART", "DCU", "LVPDB", "PCU", "Sensor_Nodes", "UART", "UART_TEST"],
             "default": "LVPDB"
+        },
+        {
+            "id": "bumpBoard",
+            "type": "pickString",
+            "description": "Which board's firmware version to bump",
+            "options": ["BMS", "DASH", "DART", "DCU", "LVPDB", "PCU", "Sensor_Nodes", "UART", "UART_TEST"],
+            "default": "BMS"
+        },
+        {
+            "id": "bumpType",
+            "type": "pickString",
+            "description": "Semantic version bump",
+            "options": ["patch", "minor", "major"],
+            "default": "patch"
         }
     ]
 }

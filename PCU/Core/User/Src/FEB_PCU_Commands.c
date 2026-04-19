@@ -251,6 +251,141 @@ static void cmd_bms(void)
 }
 
 /* ============================================================================
+ * CSV Helpers
+ * ============================================================================ */
+
+static const char *bms_state_name(FEB_SM_ST_t s)
+{
+  switch (s)
+  {
+  case FEB_SM_ST_BOOT:
+    return "BOOT";
+  case FEB_SM_ST_LV_POWER:
+    return "LV_POWER";
+  case FEB_SM_ST_BUS_HEALTH_CHECK:
+    return "HEALTH_CHECK";
+  case FEB_SM_ST_PRECHARGE:
+    return "PRECHARGE";
+  case FEB_SM_ST_ENERGIZED:
+    return "ENERGIZED";
+  case FEB_SM_ST_DRIVE:
+    return "DRIVE";
+  case FEB_SM_ST_BATTERY_FREE:
+    return "BATTERY_FREE";
+  case FEB_SM_ST_CHARGER_PRECHARGE:
+    return "CHARGER_PRECHARGE";
+  case FEB_SM_ST_CHARGING:
+    return "CHARGING";
+  case FEB_SM_ST_BALANCE:
+    return "BALANCE";
+  case FEB_SM_ST_FAULT_BMS:
+    return "FAULT_BMS";
+  case FEB_SM_ST_FAULT_BSPD:
+    return "FAULT_BSPD";
+  case FEB_SM_ST_FAULT_IMD:
+    return "FAULT_IMD";
+  case FEB_SM_ST_FAULT_CHARGING:
+    return "FAULT_CHARGING";
+  default:
+    return "UNKNOWN";
+  }
+}
+
+static void csv_status(void)
+{
+  APPS_DataTypeDef apps_data;
+  Brake_DataTypeDef brake_data;
+  FEB_CAN_TPS_Data_t tps_data;
+  FEB_ADC_GetAPPSData(&apps_data);
+  FEB_ADC_GetBrakeData(&brake_data);
+  FEB_CAN_TPS_GetData(&tps_data);
+  FEB_SM_ST_t bms_state = FEB_CAN_BMS_getState();
+  FEB_Console_CsvPrintf("pcuStat", "%.1f,%d,%.1f,%d,%s,%u,%d\r\n", apps_data.acceleration, apps_data.plausible ? 1 : 0,
+                        brake_data.brake_position, brake_data.brake_pressed ? 1 : 0, bms_state_name(bms_state),
+                        tps_data.bus_voltage_mv, tps_data.current_ma);
+}
+
+static void csv_apps(void)
+{
+  APPS_DataTypeDef apps_data;
+  FEB_ADC_GetAPPSData(&apps_data);
+  FEB_Console_CsvPrintf("pcuApps", "%d,%.3f,%.1f,%d,%.3f,%.1f,%.1f,%d\r\n", FEB_ADC_GetAccelPedal1Raw(),
+                        FEB_ADC_GetAccelPedal1Voltage(), apps_data.position1, FEB_ADC_GetAccelPedal2Raw(),
+                        FEB_ADC_GetAccelPedal2Voltage(), apps_data.position2, apps_data.acceleration,
+                        apps_data.plausible ? 1 : 0);
+}
+
+static void csv_brake(void)
+{
+  Brake_DataTypeDef brake_data;
+  FEB_ADC_GetBrakeData(&brake_data);
+  FEB_Console_CsvPrintf("pcuBrake", "%d,%.3f,%.1f,%d,%.3f,%.1f,%.1f,%d\r\n", FEB_ADC_GetBrakePressure1Raw(),
+                        FEB_ADC_GetBrakePressure1Voltage(), brake_data.pressure1_percent,
+                        FEB_ADC_GetBrakePressure2Raw(), FEB_ADC_GetBrakePressure2Voltage(),
+                        brake_data.pressure2_percent, brake_data.brake_position, brake_data.brake_pressed ? 1 : 0);
+}
+
+static void csv_rms(void)
+{
+  FEB_Console_CsvPrintf("pcuRms", "%.1f,%d,%d,%.1f,%.1f\r\n", FEB_CAN_RMS_getDCBusVoltage(),
+                        FEB_CAN_RMS_getMotorSpeed(), FEB_CAN_RMS_getMotorAngle(), FEB_CAN_RMS_getTorqueCommand(),
+                        FEB_CAN_RMS_getTorqueFeedback());
+}
+
+static void csv_tps(void)
+{
+  FEB_CAN_TPS_Data_t tps_data;
+  FEB_CAN_TPS_GetData(&tps_data);
+  FEB_Console_CsvPrintf("pcuTps", "%u,%d,%ld\r\n", tps_data.bus_voltage_mv, tps_data.current_ma,
+                        (long)tps_data.shunt_voltage_uv);
+}
+
+static void csv_bms(void)
+{
+  FEB_SM_ST_t bms_state = FEB_CAN_BMS_getState();
+  FEB_Console_CsvPrintf("pcuBms", "%s,%d,%.1f,%.1f\r\n", bms_state_name(bms_state), (int)bms_state,
+                        FEB_CAN_BMS_getAccumulatorVoltage(), FEB_CAN_BMS_getMaxTemperature());
+}
+
+static void cmd_pcu_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvPrintf("csv_err", "pcu_usage,status|apps|brake|rms|tps|bms\r\n");
+    return;
+  }
+  const char *subcmd = argv[1];
+  if (FEB_strcasecmp(subcmd, "status") == 0)
+  {
+    csv_status();
+  }
+  else if (FEB_strcasecmp(subcmd, "apps") == 0)
+  {
+    csv_apps();
+  }
+  else if (FEB_strcasecmp(subcmd, "brake") == 0)
+  {
+    csv_brake();
+  }
+  else if (FEB_strcasecmp(subcmd, "rms") == 0)
+  {
+    csv_rms();
+  }
+  else if (FEB_strcasecmp(subcmd, "tps") == 0)
+  {
+    csv_tps();
+  }
+  else if (FEB_strcasecmp(subcmd, "bms") == 0)
+  {
+    csv_bms();
+  }
+  else
+  {
+    FEB_Console_CsvPrintf("csv_err", "pcu_mode,%s\r\n", subcmd);
+  }
+}
+
+/* ============================================================================
  * Main Command Handler
  * ============================================================================ */
 
@@ -304,6 +439,7 @@ const FEB_Console_Cmd_t pcu_cmd = {
     .name = "PCU",
     .help = "PCU board commands (PCU|status, PCU|apps, PCU|brake, etc.)",
     .handler = cmd_pcu,
+    .csv_handler = cmd_pcu_csv,
 };
 
 /* ============================================================================

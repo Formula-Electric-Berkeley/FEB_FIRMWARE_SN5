@@ -45,10 +45,28 @@ static void cmd_ping(int argc, char *argv[])
   FEB_Console_Printf("Channel %d (0x%02X): PING mode started\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
 }
 
+static void cmd_ping_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvPrintf("csv_err", "ping_usage,channel=1..4\r\n");
+    return;
+  }
+  int ch = atoi(argv[1]);
+  if (ch < 1 || ch > 4)
+  {
+    FEB_Console_CsvPrintf("csv_err", "ping_channel,%s\r\n", argv[1]);
+    return;
+  }
+  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PING);
+  FEB_Console_CsvPrintf("dashPingAck", "%d,0x%02X\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+}
+
 static const FEB_Console_Cmd_t dash_cmd_ping = {
     .name = "ping",
     .help = "Start CAN ping mode: ping|<1-4>",
     .handler = cmd_ping,
+    .csv_handler = cmd_ping_csv,
 };
 
 static void cmd_pong(int argc, char *argv[])
@@ -71,10 +89,28 @@ static void cmd_pong(int argc, char *argv[])
   FEB_Console_Printf("Channel %d (0x%02X): PONG mode started\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
 }
 
+static void cmd_pong_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvPrintf("csv_err", "pong_usage,channel=1..4\r\n");
+    return;
+  }
+  int ch = atoi(argv[1]);
+  if (ch < 1 || ch > 4)
+  {
+    FEB_Console_CsvPrintf("csv_err", "pong_channel,%s\r\n", argv[1]);
+    return;
+  }
+  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PONG);
+  FEB_Console_CsvPrintf("dashPongAck", "%d,0x%02X\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+}
+
 static const FEB_Console_Cmd_t dash_cmd_pong = {
     .name = "pong",
     .help = "Start CAN pong mode: pong|<1-4>",
     .handler = cmd_pong,
+    .csv_handler = cmd_pong_csv,
 };
 
 static void cmd_canstop(int argc, char *argv[])
@@ -103,10 +139,34 @@ static void cmd_canstop(int argc, char *argv[])
   FEB_Console_Printf("Channel %d stopped\r\n", ch);
 }
 
+static void cmd_canstop_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvPrintf("csv_err", "canstop_usage,channel=1..4|all\r\n");
+    return;
+  }
+  if (FEB_strcasecmp(argv[1], "all") == 0)
+  {
+    FEB_CAN_PingPong_Reset();
+    FEB_Console_CsvPrintf("dashStopAck", "all\r\n");
+    return;
+  }
+  int ch = atoi(argv[1]);
+  if (ch < 1 || ch > 4)
+  {
+    FEB_Console_CsvPrintf("csv_err", "canstop_channel,%s\r\n", argv[1]);
+    return;
+  }
+  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_OFF);
+  FEB_Console_CsvPrintf("dashStopAck", "%d\r\n", ch);
+}
+
 static const FEB_Console_Cmd_t dash_cmd_canstop = {
     .name = "canstop",
     .help = "Stop CAN ping/pong: canstop|<1-4|all>",
     .handler = cmd_canstop,
+    .csv_handler = cmd_canstop_csv,
 };
 
 static void cmd_canstatus(int argc, char *argv[])
@@ -140,10 +200,31 @@ static void cmd_canstatus(int argc, char *argv[])
   FEB_Console_Printf("  RX Queue Overflow: %lu\r\n", (unsigned long)FEB_CAN_GetRxQueueOverflowCount());
 }
 
+static void cmd_canstatus_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  for (int ch = 1; ch <= 4; ch++)
+  {
+    FEB_PingPong_Mode_t mode = FEB_CAN_PingPong_GetMode((uint8_t)ch);
+    uint32_t tx_count = FEB_CAN_PingPong_GetTxCount((uint8_t)ch);
+    uint32_t tx_fail = FEB_CAN_PingPong_GetTxFailCount((uint8_t)ch);
+    uint32_t rx_count = FEB_CAN_PingPong_GetRxCount((uint8_t)ch);
+    int32_t last_rx = FEB_CAN_PingPong_GetLastCounter((uint8_t)ch);
+    FEB_Console_CsvPrintf("dashCanstat", "%d,0x%02X,%s,%u,%u,%u,%d\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1],
+                          mode_names[mode], (unsigned int)tx_count, (unsigned int)tx_fail, (unsigned int)rx_count,
+                          (int)last_rx);
+  }
+  FEB_Console_CsvPrintf("dashCanErr", "%lu,%lu,%lu,%lu\r\n", (unsigned long)FEB_CAN_GetHalErrorCount(),
+                        (unsigned long)FEB_CAN_GetTxTimeoutCount(), (unsigned long)FEB_CAN_GetTxQueueOverflowCount(),
+                        (unsigned long)FEB_CAN_GetRxQueueOverflowCount());
+}
+
 static const FEB_Console_Cmd_t dash_cmd_canstatus = {
     .name = "canstatus",
     .help = "Show CAN ping/pong status",
     .handler = cmd_canstatus,
+    .csv_handler = cmd_canstatus_csv,
 };
 
 /* ============================================================================
@@ -163,10 +244,19 @@ static void cmd_lvpdb(int argc, char *argv[])
   FEB_Console_Printf("  12V Bus: %u (raw)\r\n", (unsigned int)v12);
 }
 
+static void cmd_lvpdb_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  FEB_Console_CsvPrintf("dashLvpdb", "%u,%u\r\n", (unsigned int)FEB_CAN_LVPDB_GetLast24VVoltage(),
+                        (unsigned int)FEB_CAN_LVPDB_GetLast12VVoltage());
+}
+
 static const FEB_Console_Cmd_t dash_cmd_lvpdb = {
     .name = "lvpdb",
     .help = "Show LVPDB bus voltages",
     .handler = cmd_lvpdb,
+    .csv_handler = cmd_lvpdb_csv,
 };
 
 /* ============================================================================
@@ -188,10 +278,20 @@ static void cmd_bms(int argc, char *argv[])
   FEB_Console_Printf("  Pack Voltage:  %u (raw)\r\n", (unsigned int)voltage);
 }
 
+static void cmd_bms_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  FEB_Console_CsvPrintf("dashBms", "%d,%d,%u\r\n", (int)FEB_CAN_BMS_GetLastState(),
+                        (int)FEB_CAN_BMS_GetLastCellMaxTemperature(),
+                        (unsigned int)FEB_CAN_BMS_GetLastAccumulatorTotalVoltage());
+}
+
 static const FEB_Console_Cmd_t dash_cmd_bms = {
     .name = "bms",
     .help = "Show BMS state, max cell temperature, and pack voltage",
     .handler = cmd_bms,
+    .csv_handler = cmd_bms_csv,
 };
 
 /* ============================================================================
@@ -214,10 +314,20 @@ static void cmd_pcu(int argc, char *argv[])
   FEB_Console_Printf("  Brake Position: %u (raw)\r\n", (unsigned int)brake);
 }
 
+static void cmd_pcu_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  FEB_Console_CsvPrintf("dashPcu", "%d,%d,%d,%u\r\n", (int)FEB_CAN_PCU_GetLastTorque(),
+                        (int)FEB_CAN_PCU_GetLastDirection(), (int)FEB_CAN_PCU_GetLastRMSEnabled(),
+                        (unsigned int)FEB_CAN_PCU_GetLastBreakPosition());
+}
+
 static const FEB_Console_Cmd_t dash_cmd_pcu = {
     .name = "pcu",
     .help = "Show PCU torque, direction, RMS enable, and brake position",
     .handler = cmd_pcu,
+    .csv_handler = cmd_pcu_csv,
 };
 
 /* ============================================================================

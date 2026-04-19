@@ -148,6 +148,85 @@ static void cmd_imu(int argc, char *argv[])
   }
 }
 
+static void csv_imu_status(void)
+{
+  uint8_t whoamI = 0;
+  int32_t ret = lsm6dsox_device_id_get(&lsm6dsox_ctx, &whoamI);
+  int init_ok = (ret == 0 && whoamI == LSM6DSOX_ID) ? 1 : 0;
+  FEB_Console_CsvPrintf("imuStat", "0x%02X,0x%02X,%d\r\n", whoamI, LSM6DSOX_ID, init_ok);
+}
+
+static void csv_imu_accel(void)
+{
+  int16_t raw[3] = {0};
+  if (lsm6dsox_acceleration_raw_get(&lsm6dsox_ctx, raw) != 0)
+  {
+    FEB_Console_CsvPrintf("csv_err", "imu_accel_read\r\n");
+    return;
+  }
+  FEB_Console_CsvPrintf("imuAccel", "%.2f,%.2f,%.2f\r\n", lsm6dsox_from_fs2_to_mg(raw[0]),
+                        lsm6dsox_from_fs2_to_mg(raw[1]), lsm6dsox_from_fs2_to_mg(raw[2]));
+}
+
+static void csv_imu_gyro(void)
+{
+  int16_t raw[3] = {0};
+  if (lsm6dsox_angular_rate_raw_get(&lsm6dsox_ctx, raw) != 0)
+  {
+    FEB_Console_CsvPrintf("csv_err", "imu_gyro_read\r\n");
+    return;
+  }
+  FEB_Console_CsvPrintf("imuGyro", "%.2f,%.2f,%.2f\r\n", lsm6dsox_from_fs2000_to_mdps(raw[0]),
+                        lsm6dsox_from_fs2000_to_mdps(raw[1]), lsm6dsox_from_fs2000_to_mdps(raw[2]));
+}
+
+static void csv_imu_temp(void)
+{
+  int16_t raw_temp;
+  if (lsm6dsox_temperature_raw_get(&lsm6dsox_ctx, &raw_temp) != 0)
+  {
+    FEB_Console_CsvPrintf("csv_err", "imu_temp_read\r\n");
+    return;
+  }
+  FEB_Console_CsvPrintf("imuTemp", "%.2f\r\n", lsm6dsox_from_lsb_to_celsius(raw_temp));
+}
+
+static void cmd_imu_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvPrintf("csv_err", "imu_usage,status|accel|gyro|temp|all\r\n");
+    return;
+  }
+  const char *subcmd = argv[1];
+  if (FEB_strcasecmp(subcmd, "status") == 0)
+  {
+    csv_imu_status();
+  }
+  else if (FEB_strcasecmp(subcmd, "accel") == 0)
+  {
+    csv_imu_accel();
+  }
+  else if (FEB_strcasecmp(subcmd, "gyro") == 0)
+  {
+    csv_imu_gyro();
+  }
+  else if (FEB_strcasecmp(subcmd, "temp") == 0)
+  {
+    csv_imu_temp();
+  }
+  else if (FEB_strcasecmp(subcmd, "all") == 0)
+  {
+    csv_imu_accel();
+    csv_imu_gyro();
+    csv_imu_temp();
+  }
+  else
+  {
+    FEB_Console_CsvPrintf("csv_err", "imu_mode,%s\r\n", subcmd);
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /*                          Magnetometer Commands                             */
 /* -------------------------------------------------------------------------- */
@@ -247,6 +326,68 @@ static void cmd_mag(int argc, char *argv[])
   {
     FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
     print_mag_help();
+  }
+}
+
+static void csv_mag_status(void)
+{
+  uint8_t whoamI = 0;
+  int32_t ret = lis3mdl_device_id_get(&lis3mdl_ctx, &whoamI);
+  int init_ok = (ret == 0 && whoamI == LIS3MDL_ID) ? 1 : 0;
+  FEB_Console_CsvPrintf("magStat", "0x%02X,0x%02X,%d\r\n", whoamI, LIS3MDL_ID, init_ok);
+}
+
+static void csv_mag_field(void)
+{
+  int16_t raw[3] = {0};
+  if (lis3mdl_magnetic_raw_get(&lis3mdl_ctx, raw) != 0)
+  {
+    FEB_Console_CsvPrintf("csv_err", "mag_field_read\r\n");
+    return;
+  }
+  FEB_Console_CsvPrintf("magField", "%.2f,%.2f,%.2f\r\n", 1000.0f * lis3mdl_from_fs16_to_gauss(raw[0]),
+                        1000.0f * lis3mdl_from_fs16_to_gauss(raw[1]), 1000.0f * lis3mdl_from_fs16_to_gauss(raw[2]));
+}
+
+static void csv_mag_temp(void)
+{
+  int16_t raw_temp;
+  if (lis3mdl_temperature_raw_get(&lis3mdl_ctx, &raw_temp) != 0)
+  {
+    FEB_Console_CsvPrintf("csv_err", "mag_temp_read\r\n");
+    return;
+  }
+  FEB_Console_CsvPrintf("magTemp", "%.2f\r\n", lis3mdl_from_lsb_to_celsius(raw_temp));
+}
+
+static void cmd_mag_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvPrintf("csv_err", "mag_usage,status|field|temp|all\r\n");
+    return;
+  }
+  const char *subcmd = argv[1];
+  if (FEB_strcasecmp(subcmd, "status") == 0)
+  {
+    csv_mag_status();
+  }
+  else if (FEB_strcasecmp(subcmd, "field") == 0)
+  {
+    csv_mag_field();
+  }
+  else if (FEB_strcasecmp(subcmd, "temp") == 0)
+  {
+    csv_mag_temp();
+  }
+  else if (FEB_strcasecmp(subcmd, "all") == 0)
+  {
+    csv_mag_field();
+    csv_mag_temp();
+  }
+  else
+  {
+    FEB_Console_CsvPrintf("csv_err", "mag_mode,%s\r\n", subcmd);
   }
 }
 
@@ -504,6 +645,133 @@ static void cmd_gps(int argc, char *argv[])
   }
 }
 
+static void csv_gps_status(void)
+{
+  FEB_GPS_Data_t d;
+  FEB_GPS_GetLatestData(&d);
+  FEB_Console_CsvPrintf("gpsStat", "%d,%d,%d,%u,%u,%u,%u,%u\r\n", FEB_GPS_IsEnabled() ? 1 : 0, d.valid ? 1 : 0,
+                        d.has_fix ? 1 : 0, (unsigned int)d.fix, (unsigned int)d.fix_mode, (unsigned int)d.sats_in_use,
+                        (unsigned int)d.sats_in_view, (unsigned int)(HAL_GetTick() - d.last_update_ms));
+}
+
+static void csv_gps_pos(void)
+{
+  FEB_GPS_Data_t d;
+  FEB_GPS_GetLatestData(&d);
+  FEB_Console_CsvPrintf("gpsPos", "%d,%.6f,%.6f,%.1f\r\n", d.has_fix ? 1 : 0, d.latitude, d.longitude, d.altitude);
+}
+
+static void csv_gps_time(void)
+{
+  FEB_GPS_Data_t d;
+  FEB_GPS_GetLatestData(&d);
+  FEB_Console_CsvPrintf("gpsTime", "%02u,%02u,%02u,20%02u,%02u,%02u\r\n", d.hours, d.minutes, d.seconds, d.year,
+                        d.month, d.day);
+}
+
+static void csv_gps_speed(void)
+{
+  FEB_GPS_Data_t d;
+  FEB_GPS_GetLatestData(&d);
+  FEB_Console_CsvPrintf("gpsSpeed", "%d,%.2f,%.1f\r\n", d.has_fix ? 1 : 0, d.speed_kmh, d.course);
+}
+
+static void csv_gps_sats(void)
+{
+  FEB_GPS_Data_t d;
+  FEB_GPS_GetLatestData(&d);
+  FEB_Console_CsvPrintf("gpsSats", "%u,%u,%.2f,%.2f,%.2f\r\n", (unsigned int)d.sats_in_use,
+                        (unsigned int)d.sats_in_view, d.hdop, d.vdop, d.pdop);
+}
+
+static void csv_gps_rate(int argc, char *argv[])
+{
+  if (argc < 3)
+  {
+    FEB_Console_CsvPrintf("csv_err", "gps_rate_usage,hz=1|5|10\r\n");
+    return;
+  }
+  int hz = atoi(argv[2]);
+  if (hz != 1 && hz != 5 && hz != 10)
+  {
+    FEB_Console_CsvPrintf("csv_err", "gps_rate_value,%s\r\n", argv[2]);
+    return;
+  }
+  int ok = FEB_GPS_SetUpdateRate((uint8_t)hz) >= 0 ? 1 : 0;
+  FEB_Console_CsvPrintf("gpsRateAck", "%d,%d\r\n", hz, ok);
+}
+
+static void csv_gps_pmtk(int argc, char *argv[])
+{
+  if (argc < 3)
+  {
+    FEB_Console_CsvPrintf("csv_err", "gps_pmtk_usage,cmd\r\n");
+    return;
+  }
+  int ok = FEB_GPS_SendPMTKCommand(argv[2]) >= 0 ? 1 : 0;
+  FEB_Console_CsvPrintf("gpsPmtkAck", "%s,%d\r\n", argv[2], ok);
+}
+
+static void cmd_gps_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvPrintf("csv_err", "gps_usage,status|pos|time|speed|sats|all|enable|disable|rate|pmtk\r\n");
+    return;
+  }
+  const char *subcmd = argv[1];
+  if (FEB_strcasecmp(subcmd, "status") == 0)
+  {
+    csv_gps_status();
+  }
+  else if (FEB_strcasecmp(subcmd, "pos") == 0)
+  {
+    csv_gps_pos();
+  }
+  else if (FEB_strcasecmp(subcmd, "time") == 0)
+  {
+    csv_gps_time();
+  }
+  else if (FEB_strcasecmp(subcmd, "speed") == 0)
+  {
+    csv_gps_speed();
+  }
+  else if (FEB_strcasecmp(subcmd, "sats") == 0)
+  {
+    csv_gps_sats();
+  }
+  else if (FEB_strcasecmp(subcmd, "all") == 0)
+  {
+    csv_gps_status();
+    csv_gps_pos();
+    csv_gps_time();
+    csv_gps_speed();
+    csv_gps_sats();
+  }
+  else if (FEB_strcasecmp(subcmd, "enable") == 0)
+  {
+    FEB_GPS_SetEnabled(true);
+    FEB_Console_CsvPrintf("gpsEnAck", "1\r\n");
+  }
+  else if (FEB_strcasecmp(subcmd, "disable") == 0)
+  {
+    FEB_GPS_SetEnabled(false);
+    FEB_Console_CsvPrintf("gpsDisAck", "1\r\n");
+  }
+  else if (FEB_strcasecmp(subcmd, "rate") == 0)
+  {
+    csv_gps_rate(argc, argv);
+  }
+  else if (FEB_strcasecmp(subcmd, "pmtk") == 0)
+  {
+    csv_gps_pmtk(argc, argv);
+  }
+  else
+  {
+    FEB_Console_CsvPrintf("csv_err", "gps_mode,%s\r\n", subcmd);
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /*                         Command Descriptors                                */
 /* -------------------------------------------------------------------------- */
@@ -512,18 +780,21 @@ static const FEB_Console_Cmd_t imu_cmd = {
     .name = "IMU",
     .help = "IMU sensor commands (IMU|status, IMU|accel, IMU|gyro, IMU|temp, IMU|all)",
     .handler = cmd_imu,
+    .csv_handler = cmd_imu_csv,
 };
 
 static const FEB_Console_Cmd_t mag_cmd = {
     .name = "MAG",
     .help = "Magnetometer commands (MAG|status, MAG|field, MAG|temp, MAG|all)",
     .handler = cmd_mag,
+    .csv_handler = cmd_mag_csv,
 };
 
 static const FEB_Console_Cmd_t gps_cmd = {
     .name = "GPS",
     .help = "GPS commands (GPS|status, GPS|pos, GPS|time, GPS|all, ...)",
     .handler = cmd_gps,
+    .csv_handler = cmd_gps_csv,
 };
 
 void SN_RegisterCommands(void)

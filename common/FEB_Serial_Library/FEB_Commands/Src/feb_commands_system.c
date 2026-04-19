@@ -22,6 +22,9 @@
 #include "feb_console.h"
 #include "feb_log.h"
 #include "feb_string_utils.h"
+#include "feb_version.h"
+
+#include <string.h>
 
 /* HAL for HAL_GetTick and NVIC_SystemReset */
 #include "main.h"
@@ -73,7 +76,7 @@ const FEB_Console_Cmd_t feb_cmd_hello = {
 
 const FEB_Console_Cmd_t feb_cmd_version = {
     .name = "version",
-    .help = "Show firmware version and build info",
+    .help = "Show firmware version, commit, build time, and flash time (use csv|version for CSV)",
     .handler = cmd_version,
     .csv_handler = cmd_version_csv,
 };
@@ -172,15 +175,51 @@ static void cmd_hello(int argc, char *argv[])
   FEB_Console_Printf("Hello from FEB!\r\n");
 }
 
+/* Copy a volatile char array into a local buffer for safe string use.
+ * strncpy from a volatile is UB; this loop is portable and cheap. */
+static void copy_volatile_string(char *dst, const volatile char *src, size_t n)
+{
+  size_t i;
+  for (i = 0; i + 1 < n && src[i] != '\0'; i++)
+  {
+    dst[i] = src[i];
+  }
+  dst[i] = '\0';
+}
+
 static void cmd_version(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
 
-  FEB_Console_Printf("FEB Firmware\r\n");
-  FEB_Console_Printf("Build: %s %s\r\n", __DATE__, __TIME__);
+  char flash_utc[sizeof(feb_flash_info.flash_utc)];
+  char flasher_user[sizeof(feb_flash_info.flasher_user)];
+  char flasher_host[sizeof(feb_flash_info.flasher_host)];
+  copy_volatile_string(flash_utc, feb_flash_info.flash_utc, sizeof(flash_utc));
+  copy_volatile_string(flasher_user, feb_flash_info.flasher_user, sizeof(flasher_user));
+  copy_volatile_string(flasher_host, feb_flash_info.flasher_host, sizeof(flasher_host));
+
+  const bool unflashed = FEB_Version_IsUnflashed();
+
+  FEB_Console_Printf("=== FEB Firmware ===\r\n");
+  FEB_Console_Printf("  Board   : %s\r\n", feb_build_info.board_name);
+  FEB_Console_Printf("  Version : %s (board) | %s (repo) | %s (common)\r\n", feb_build_info.version_string,
+                     feb_build_info.repo_version_string, feb_build_info.common_version_string);
+  FEB_Console_Printf("  Commit  : %s (%s)%s\r\n", feb_build_info.commit_short, feb_build_info.branch,
+                     feb_build_info.dirty ? " [DIRTY]" : "");
+  FEB_Console_Printf("  SHA     : %s\r\n", feb_build_info.commit_full);
+  FEB_Console_Printf("  Built   : %s by %s@%s\r\n", feb_build_info.build_utc, feb_build_info.build_user,
+                     feb_build_info.build_host);
+  if (unflashed)
+  {
+    FEB_Console_Printf("  Flashed : (unflashed - programmed without flash-patcher)\r\n");
+  }
+  else
+  {
+    FEB_Console_Printf("  Flashed : %s by %s@%s\r\n", flash_utc, flasher_user, flasher_host);
+  }
 #ifdef __GNUC__
-  FEB_Console_Printf("Compiler: GCC %d.%d.%d\r\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+  FEB_Console_Printf("  Compiler: GCC %d.%d.%d\r\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 #endif
 }
 
@@ -338,12 +377,26 @@ static void cmd_version_csv(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-#ifdef __GNUC__
-  FEB_Console_CsvPrintf("version", "%s,%s,gcc,%d.%d.%d\r\n", __DATE__, __TIME__, __GNUC__, __GNUC_MINOR__,
-                        __GNUC_PATCHLEVEL__);
-#else
-  FEB_Console_CsvPrintf("version", "%s,%s,unknown\r\n", __DATE__, __TIME__);
-#endif
+
+  char flash_utc[sizeof(feb_flash_info.flash_utc)];
+  char flasher_user[sizeof(feb_flash_info.flasher_user)];
+  char flasher_host[sizeof(feb_flash_info.flasher_host)];
+  copy_volatile_string(flash_utc, feb_flash_info.flash_utc, sizeof(flash_utc));
+  copy_volatile_string(flasher_user, feb_flash_info.flasher_user, sizeof(flasher_user));
+  copy_volatile_string(flasher_host, feb_flash_info.flasher_host, sizeof(flasher_host));
+
+  /* Single CSV row. Field order is stable and documented here - host-side
+   * tooling matches on position. Add new fields only at the END.
+   *
+   * Columns after <ident>,<us_timestamp>:
+   *   board,board_ver,repo_ver,common_ver,commit,branch,dirty,
+   *   build_utc,build_user,build_host,flash_utc,flasher_user,flasher_host
+   */
+  FEB_Console_CsvPrintf("version", "%s,%s,%s,%s,%s,%s,%d,%s,%s,%s,%s,%s,%s\r\n", feb_build_info.board_name,
+                        feb_build_info.version_string, feb_build_info.repo_version_string,
+                        feb_build_info.common_version_string, feb_build_info.commit_short, feb_build_info.branch,
+                        feb_build_info.dirty ? 1 : 0, feb_build_info.build_utc, feb_build_info.build_user,
+                        feb_build_info.build_host, flash_utc, flasher_user, flasher_host);
 }
 
 static void cmd_uptime_csv(int argc, char *argv[])

@@ -640,19 +640,6 @@ float FEB_ADBMS_GET_Cell_Temperature(uint8_t bank, uint16_t cell)
   return temp;
 }
 
-// ********************************** Printing **********************************
-
-void FEB_ADBMS_Print_Accumulator(void)
-{
-  osMutexAcquire(ADBMSMutexHandle, osWaitForever);
-
-  /* Call subcmd_csv with "all" mode */
-  char *csv_argv[] = {"csv", "all"};
-  subcmd_csv(2, csv_argv);
-
-  osMutexRelease(ADBMSMutexHandle);
-}
-
 // ********************************** Balancing **********************************
 
 void FEB_Cell_Balance_Start()
