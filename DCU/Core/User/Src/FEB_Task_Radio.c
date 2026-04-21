@@ -24,7 +24,9 @@
 
 /* Messages */
 static const char PING_MSG[] = "PING";
+#if (RADIO_ROLE == RADIO_ROLE_PONG)
 static const char PONG_MSG[] = "PONG";
+#endif
 
 void StartRadioTask(void *argument)
 {
@@ -83,9 +85,9 @@ void StartRadioTask(void *argument)
         /* Wait for PONG */
         status = FEB_RFM95_Receive(rx_buffer, &rx_len, RX_TIMEOUT_MS);
 
-        if (status == FEB_RFM95_OK && rx_len >= 4 && memcmp(rx_buffer, PONG_MSG, 4) == 0)
+        if (status == FEB_RFM95_OK)
         {
-          LOG_I(TAG, "RX PONG, RSSI=%d, SNR=%d", FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
+          LOG_I(TAG, "RX %u bytes, RSSI=%d, SNR=%d", rx_len, FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
         }
         else if (status == FEB_RFM95_ERR_RX_TIMEOUT)
         {
@@ -100,18 +102,21 @@ void StartRadioTask(void *argument)
     /* PONG role: wait for PING, send PONG */
     status = FEB_RFM95_Receive(rx_buffer, &rx_len, RX_TIMEOUT_MS);
 
-    if (status == FEB_RFM95_OK && rx_len >= 4 && memcmp(rx_buffer, PING_MSG, 4) == 0)
+    if (status == FEB_RFM95_OK)
     {
-      LOG_I(TAG, "RX PING, RSSI=%d, SNR=%d", FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
+      LOG_I(TAG, "RX %u bytes, RSSI=%d, SNR=%d", rx_len, FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
 
-      /* Send PONG response */
-      status = FEB_RFM95_Transmit((const uint8_t *)PONG_MSG, strlen(PONG_MSG), 1000);
-
-      if (status == FEB_RFM95_OK)
+      if (rx_len >= 4 && memcmp(rx_buffer, PING_MSG, 4) == 0)
       {
-        FEB_RFM95_Stats_t stats;
-        FEB_RFM95_GetStats(&stats);
-        LOG_D(TAG, "TX PONG #%lu", stats.tx_count);
+        /* Send PONG response */
+        status = FEB_RFM95_Transmit((const uint8_t *)PONG_MSG, strlen(PONG_MSG), 1000);
+
+        if (status == FEB_RFM95_OK)
+        {
+          FEB_RFM95_Stats_t stats;
+          FEB_RFM95_GetStats(&stats);
+          LOG_D(TAG, "TX PONG #%lu", stats.tx_count);
+        }
       }
     }
 #endif
