@@ -16,6 +16,7 @@
 #include "FEB_Commands.h"
 #include "cmsis_os2.h"
 #include "feb_can_lib.h"
+#include "feb_can.h"
 
 /* External HAL handles from CubeMX-generated code */
 extern UART_HandleTypeDef huart3;
@@ -107,20 +108,20 @@ void StartUartRxTask(void *argument)
 
 void StartUartTxTask(void *argument)
 {
-  // (void)argument;
+  (void)argument;
 
-  // /* Hardcoded */
-  // FEB_CAN_TX_Params_t tx_params = {
-  //     .instance = FEB_CAN_INSTANCE_1,
-  //     .can_id = FEB_CAN_FEB_PING_PONG_COUNTER1_FRAME_ID, // FEB_CAN_FEB_PING_PONG_COUNTER1_FRAME_ID (0xe0u)
-  //     .id_type = FEB_CAN_ID_STD,
-  // };
+  /* Hardcoded */
+  FEB_CAN_TX_Params_t tx_params = {
+      .instance = FEB_CAN_INSTANCE_1,
+      .can_id = FEB_CAN_FEB_PING_PONG_COUNTER1_FRAME_ID, // FEB_CAN_FEB_PING_PONG_COUNTER1_FRAME_ID (0xe0u)
+      .id_type = FEB_CAN_ID_STD,
+  };
 
-  // uint8_t tx_data[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+  uint8_t tx_data[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
 
-  // for (;;)
-  // {
-  //   FEB_CAN_TX_Send(tx_params.instance, tx_params.can_id, tx_params.id_type, tx_data, 8);
-  //   osDelay(100);
-  // }
+  for (;;)
+  {
+    FEB_CAN_TX_Send(tx_params.instance, tx_params.can_id, tx_params.id_type, tx_data, 8);
+    osDelay(100);
+  }
 }
