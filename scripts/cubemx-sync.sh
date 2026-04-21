@@ -21,7 +21,7 @@ REPO_ROOT="$SCRIPT_DIR/.."
 MANIFEST_FILE="$REPO_ROOT/.cubemx-manifest.json"
 
 # Available boards (same as cubemx.sh)
-BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART_TEST")
+BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART" "UART_TEST")
 
 # IOC metadata patterns to EXCLUDE from hash (GUI-only, don't affect code generation)
 EXCLUDE_PATTERNS=(

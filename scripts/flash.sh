@@ -13,7 +13,7 @@
 set -e
 
 # Available boards
-BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART_TEST")
+BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART" "UART_TEST")
 
 # Colors for output
 RED='\033[0;31m'
@@ -461,7 +461,7 @@ interactive_select() {
         q|Q|quit|exit)
             return 1
             ;;
-        [1-8])
+        [1-9])
             local index=$((selection - 1))
             if [ $index -ge 0 ] && [ $index -lt ${#BOARDS[@]} ]; then
                 flash_board "${BOARDS[$index]}"
@@ -516,7 +516,7 @@ show_help() {
     echo "Usage: ./scripts/flash.sh [options]"
     echo ""
     echo "Options:"
-    echo "  -b, --board <BOARD>    Flash specified board (BMS, DASH, DART, DCU, LVPDB, PCU, Sensor_Nodes)"
+    echo "  -b, --board <BOARD>    Flash specified board (BMS, DASH, DART, DCU, LVPDB, PCU, Sensor_Nodes, UART, UART_TEST)"
     echo "  -f, --file <PATH>      Flash a specific .elf/.bin/.hex file"
     echo "  -l, --loop             Loop mode: keep prompting for boards to flash"
     echo "      --list-probes      List connected SWD probes"

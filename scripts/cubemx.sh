@@ -18,7 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR/.."
 
 # Available boards
-BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART_TEST")
+BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART" "UART_TEST")
 
 # Colors for output
 RED='\033[0;31m'
@@ -586,7 +586,7 @@ interactive_mode() {
             q|Q|quit|exit)
                 return 0
                 ;;
-            [1-8])
+            [1-9])
                 local index=$((selection - 1))
                 if [ $index -ge 0 ] && [ $index -lt ${#BOARDS[@]} ]; then
                     local board="${BOARDS[$index]}"
