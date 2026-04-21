@@ -7,7 +7,6 @@
  */
 
 #include "FEB_Main.h"
-#include "FEB_CAN_PCU.h"
 #include "FEB_CAN_PingPong.h"
 #include "main.h"
 #include "feb_uart.h"
@@ -16,9 +15,6 @@
 #include "FEB_CAN_State.h"
 #include "FEB_Commands.h"
 #include "cmsis_os2.h"
-#include "FEB_CAN_BMS.h"
-#include "FEB_CAN_LVPDB.h"
-#include "feb_can.h"
 #include "feb_can_lib.h"
 
 /* External HAL handles from CubeMX-generated code */
@@ -75,17 +71,14 @@ void FEB_Init(void)
   FEB_Log_Init(&log_cfg);
 
   /* Initialize console (registers built-in commands: echo, help, version, uptime, reboot, log) */
-  FEB_Console_Init(true);
-  DASH_RegisterCommands();
+  // FEB_Console_Init(true);
+  // DASH_RegisterCommands();
 
   /* Connect UART RX to console processor */
   FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
 
   /* Initialize CAN state publisher */
   FEB_CAN_State_Init();
-  FEB_CAN_BMS_Init();
-  FEB_CAN_PCU_Init();
-  FEB_CAN_LVPDB_Init();
 
   /* Startup banner */
   FEB_Console_Printf("\r\n");

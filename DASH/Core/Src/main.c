@@ -37,7 +37,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "FEB_Main.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
 #include <stdio.h>
@@ -131,7 +130,6 @@ int main(void)
    * The mutex is NULL here (created in MX_FREERTOS_Init below).
    * feb_log.c has NULL guards so early logs are unprotected but safe
    * since we're still single-threaded at this point. */
-  FEB_Init();
   /* USER CODE END 2 */
 
   /* Init scheduler */

@@ -158,7 +158,7 @@ void FEB_IO_Set_Buzzer(bool new_state)
 {
   state.buzzer_enabled = new_state;
 
-  printf(state.buzzer_enabled ? "buzzing" : "silent");
+  printf(state.buzzer_enabled ? "buzzing\r\n" : "silent\r\n");
   uint8_t send_val[2];
   send_val[0] = state.buzzer_enabled ? 0b11100000 : 0b11100001;
   send_val[1] = 0b11111111;

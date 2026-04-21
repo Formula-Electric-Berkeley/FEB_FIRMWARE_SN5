@@ -20,12 +20,16 @@
 
 #include "feb_can_lib.h"
 #include "cmsis_os2.h"
+#include "feb_console.h"
 #include "main.h"
 #include "feb_log.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
 #include "feb_can.h"
 #include "feb_can_lib.h"
+#include "FEB_CAN_BMS.h"
+#include "FEB_CAN_LVPDB.h"
+#include "FEB_CAN_PCU.h"
 
 /* ========================== External HAL handles ========================== */
 extern CAN_HandleTypeDef hcan1;
@@ -39,8 +43,6 @@ extern osMutexId_t canTxMutexHandle;
 extern osMutexId_t canRxMutexHandle;
 extern osSemaphoreId_t canTxMailboxSemHandle;
 
-/* ========================== Module tag for logging ========================== */
-#define TAG_CAN "[CAN]"
 
 /* ========================== Local Prototypes ========================== */
 static void DASH_CAN_Init(void);
@@ -57,7 +59,7 @@ static void DASH_CAN_RxCallback(FEB_CAN_Instance_t instance, uint32_t can_id, FE
   (void)data;
   (void)user_data;
 
-  LOG_D(TAG_CAN, "RX: ID=0x%lX len=%d", can_id, length);
+  FEB_Console_Printf("[CAN] RX: ID=0x%lX len=%d", can_id, length);
 }
 
 /* ========================== CAN Initialization ========================== */
@@ -68,11 +70,13 @@ static void DASH_CAN_Init(void)
       .hcan1 = &hcan1,
       .hcan2 = NULL,
       .get_tick_ms = HAL_GetTick,
+#if FEB_CAN_USE_FREERTOS
       .tx_queue = canTxQueueHandle,
       .rx_queue = canRxQueueHandle,
       .tx_mutex = canTxMutexHandle,
       .rx_mutex = canRxMutexHandle,
       .tx_mailbox_sem = canTxMailboxSemHandle,
+#endif
   };
 
   if (FEB_CAN_Init(&cfg) != FEB_CAN_OK)
@@ -96,9 +100,6 @@ static void DASH_CAN_Init(void)
   };
 
   FEB_CAN_RX_Register(&rx_params);
-
-  /* Ensure filters reflect registry */
-  FEB_CAN_Filter_UpdateFromRegistry(FEB_CAN_INSTANCE_1);
 }
 
 /* ============================================================================
@@ -112,9 +113,20 @@ void StartDASHTaskRx(void *argument)
 {
   (void)argument;
 
+  FEB_Console_Printf("gurt0.5");
+
   /* CAN init MUST occur after scheduler start */
   DASH_CAN_Init();
+
   FEB_CAN_PingPong_Init();
+  
+  FEB_Console_Printf("gurt: yo");
+  FEB_CAN_BMS_Init();
+  FEB_CAN_PCU_Init();
+  FEB_CAN_LVPDB_Init();
+
+/* Ensure filters reflect registry */
+  FEB_CAN_Filter_UpdateFromRegistry(FEB_CAN_INSTANCE_1);
 
   /* Signal that CAN is ready for state publishing */
   FEB_CAN_State_SetReady();
@@ -132,7 +144,7 @@ void StartDASHTaskRx(void *argument)
  */
 void StartDASHTaskTx(void *argument)
 {
-  // (void)argument;
+  (void)argument;
 
   // /* Hardcoded */
   // FEB_CAN_TX_Params_t tx_params = {
@@ -143,9 +155,10 @@ void StartDASHTaskTx(void *argument)
 
   // uint8_t tx_data[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
 
-  // for (;;)
-  // {
-  //   FEB_CAN_TX_Send(tx_params.instance, tx_params.can_id, tx_params.id_type, tx_data, 8);
-  //   osDelay(100);
-  // }
+  for (;;)
+  {
+    // FEB_CAN_TX_Send(tx_params.instance, tx_params.can_id, tx_params.id_type, tx_data, 8);
+    FEB_CAN_TX_Process();
+    osDelay(100);
+  }
 }
