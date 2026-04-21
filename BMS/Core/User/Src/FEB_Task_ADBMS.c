@@ -76,7 +76,6 @@ void StartADBMSTask(void *argument)
   /* === Main Task Loop === */
   uint32_t voltage_tick = osKernelGetTickCount();
   uint32_t temp_tick = osKernelGetTickCount();
-  uint32_t print_tick = osKernelGetTickCount();
   uint32_t balance_tick = osKernelGetTickCount();
 
   for (;;)
@@ -99,14 +98,6 @@ void StartADBMSTask(void *argument)
       FEB_ADBMS_Temperature_Process();
       osMutexRelease(ADBMSMutexHandle);
       temp_tick = now;
-    }
-
-    /* Print CSV data every 1000ms (1 Hz) */
-    if (now - print_tick >= pdMS_TO_TICKS(1000))
-    {
-      // char *csv_argv[] = {"csv", "all"};
-      // subcmd_csv(2, csv_argv);
-      print_tick = now;
     }
 
     /* Cell balancing (only in BALANCE or BATTERY_FREE state) */

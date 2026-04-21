@@ -23,6 +23,24 @@
  *   log|debug            - Set log level to debug
  *   HELP                 - Commands are case-insensitive
  *
+ * CSV mode (machine-readable output for Chromium/WebSocket clients):
+ *   Any command can be invoked in CSV mode by prefixing "csv|".
+ *   The library:
+ *     - Emits an ACK row immediately upon receipt:
+ *         <us_timestamp>,csv_ack,<rest_of_line>
+ *     - Calls the command's .csv_handler if registered.
+ *     - Emits an error row if the command is unknown or has no csv_handler:
+ *         <us_timestamp>,csv_err,unknown,<name>
+ *         <us_timestamp>,csv_err,unsupported,<name>
+ *   Every row emitted via FEB_Console_CsvPrintf() is prefixed with a
+ *   64-bit microsecond timestamp (from feb_time.h) captured at the
+ *   moment of the send call.
+ *
+ *   Examples:
+ *     csv|help             - CSV command/description/has_csv rows
+ *     csv|version          - CSV-formatted build info
+ *     csv|BMS|volts        - BMS voltages as timestamped CSV rows
+ *
  * Usage:
  *   1. Call FEB_Console_Init() after FEB_UART_Init()
  *   2. Register commands:
@@ -93,12 +111,22 @@ extern "C"
 
   /**
    * @brief Command registration structure
+   *
+   * Existing commands using only `name`/`help`/`handler` remain source-
+   * compatible; the new `csv_handler` field is optional and defaults to
+   * NULL when omitted.
+   *
+   * The same `help` string is used for both text-mode `help` output and
+   * CSV-mode `csv|help` rows. In CSV output the description is wrapped
+   * in double quotes so commas are safe; do not put unescaped double
+   * quotes inside the help string.
    */
   typedef struct
   {
-    const char *name;              /**< Command name (case-insensitive match) */
-    const char *help;              /**< Short help text for 'help' command */
-    FEB_Console_Handler_t handler; /**< Handler function */
+    const char *name;                  /**< Command name (case-insensitive match) */
+    const char *help;                  /**< Short help/description (used in both text and CSV help) */
+    FEB_Console_Handler_t handler;     /**< Text-mode handler */
+    FEB_Console_Handler_t csv_handler; /**< Optional: CSV-mode handler; NULL = not CSV-capable */
   } FEB_Console_Cmd_t;
 
   /* ============================================================================
@@ -172,6 +200,37 @@ extern "C"
    * @note ISR-safe via underlying FEB_UART_Write
    */
   int FEB_Console_Printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
+  /**
+   * @brief Printf-style output to console, CSV mode (timestamped per line)
+   *
+   * Emits exactly one CSV row with a machine-readable identifier first,
+   * followed by a 64-bit microsecond timestamp (FEB_Time_Us() captured
+   * at the call site), then the formatted body.
+   *
+   * Format:
+   *   <ident>,<us>,<formatted body>
+   *
+   * One call = one row = one fresh timestamp - successive rows are
+   * individually stamped rather than sharing one batch time. Include the
+   * trailing "\r\n" in `fmt`.
+   *
+   * Example:
+   *   FEB_Console_CsvPrintf("bmsV", "%d,%d,%.3f,%.3f\r\n",
+   *                         bank+1, cell+1, v_c, v_s);
+   *   -> bmsV,123456789,1,1,3.789,3.790
+   *
+   * @param ident Row identifier (must not contain commas or newlines;
+   *              short alphanumeric tag recommended, e.g. "bmsV", "csv_ack")
+   * @param fmt   Printf format string for the remaining body fields
+   * @return Number of bytes written, or negative on error
+   *
+   * @note Thread-safe (stack buffer, mutex-free like FEB_Console_Printf).
+   * @note Timestamp is captured at the call site, not at UART TX completion.
+   *       Gap between stamp and actual byte departure is bounded by DMA
+   *       queue depth (typically sub-100 us).
+   */
+  int FEB_Console_CsvPrintf(const char *ident, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 
   /**
    * @brief Flush console output

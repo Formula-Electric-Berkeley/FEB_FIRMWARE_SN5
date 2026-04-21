@@ -601,7 +601,7 @@ Options:
   --list-boards          Show all boards with .ioc status
   -h, --help             Show this help message
 
-Boards: ${BOARDS[*]}
+Boards: ${BOARDS[*]} (or 'all')
 
 Examples:
   ./scripts/cubemx.sh                    # Interactive menu
@@ -610,6 +610,7 @@ Examples:
   ./scripts/cubemx.sh -m -g -b BMS       # Migrate and generate for BMS
   ./scripts/cubemx.sh -a -m              # Migrate all boards
   ./scripts/cubemx.sh -a -g              # Generate code for all boards
+  ./scripts/cubemx.sh -g -b all          # Generate code for all boards
   ./scripts/cubemx.sh --update-packs     # Update firmware packs
   ./scripts/cubemx.sh -i -b LVPDB        # Inspect LVPDB configuration
   ./scripts/cubemx.sh --show-pins -b PCU # Show PCU pin assignments
@@ -714,16 +715,16 @@ main() {
     fi
 
     # Validate board if specified
-    if [ -n "$board" ]; then
+    if [ -n "$board" ] && [ "$board" != "all" ]; then
         if ! is_valid_board "$board"; then
             log_error "Invalid board: $board"
-            echo "Valid boards: ${BOARDS[*]}"
+            echo "Valid boards: ${BOARDS[*]} all"
             exit 1
         fi
     fi
 
     # Handle batch operations
-    if [ "$process_all" = true ]; then
+    if [ "$process_all" = true ] || [ "$board" = "all" ]; then
         if ! check_cubemx; then
             show_cubemx_install_instructions
             exit 1

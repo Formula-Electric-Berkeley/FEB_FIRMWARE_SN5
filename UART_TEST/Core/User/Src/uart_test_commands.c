@@ -14,7 +14,9 @@
  * ============================================================================ */
 
 static void cmd_hello(int argc, char *argv[]);
+static void cmd_hello_csv(int argc, char *argv[]);
 static void cmd_blink(int argc, char *argv[]);
+static void cmd_blink_csv(int argc, char *argv[]);
 
 /* ============================================================================
  * Command Descriptors
@@ -24,12 +26,14 @@ const FEB_Console_Cmd_t uart_test_cmd_hello = {
     .name = "hello",
     .help = "Say hello from UART_TEST",
     .handler = cmd_hello,
+    .csv_handler = cmd_hello_csv,
 };
 
 const FEB_Console_Cmd_t uart_test_cmd_blink = {
     .name = "blink",
     .help = "Blink LED (placeholder)",
     .handler = cmd_blink,
+    .csv_handler = cmd_blink_csv,
 };
 
 /* ============================================================================
@@ -59,4 +63,18 @@ static void cmd_blink(int argc, char *argv[])
   (void)argc;
   (void)argv;
   FEB_Console_Printf("LED blink not implemented (no LED configured)\r\n");
+}
+
+static void cmd_hello_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  FEB_Console_CsvPrintf("uartTestHello", "STM32U575 Console Demo\r\n");
+}
+
+static void cmd_blink_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  FEB_Console_CsvPrintf("uartTestBlinkAck", "not_implemented\r\n");
 }

@@ -51,7 +51,9 @@ static void blink_timer_callback(void *argument);
 static void blink_stop(void);
 static bool blink_start(uint8_t count, uint32_t period_ms, bool continuous);
 static void cmd_blink(int argc, char *argv[]);
+static void cmd_blink_csv(int argc, char *argv[]);
 static void cmd_flashbench(int argc, char *argv[]);
+static void cmd_flashbench_csv(int argc, char *argv[]);
 
 /* ============================================================================
  * Command Descriptors
@@ -61,12 +63,14 @@ const FEB_Console_Cmd_t uart_cmd_blink = {
     .name = "blink",
     .help = "Blink LD2: blink [count] [period_ms] | blink|stop | blink|help",
     .handler = cmd_blink,
+    .csv_handler = cmd_blink_csv,
 };
 
 const FEB_Console_Cmd_t uart_cmd_flashbench = {
     .name = "flashbench",
     .help = "Flash benchmark (ERASES sector 7!): flashbench [iterations] [pattern_hex]",
     .handler = cmd_flashbench,
+    .csv_handler = cmd_flashbench_csv,
 };
 
 /* ============================================================================
@@ -437,4 +441,116 @@ static void cmd_flashbench(int argc, char *argv[])
   {
     FEB_Console_Printf("Error: Failed to queue benchmark request\r\n");
   }
+}
+
+static void cmd_blink_csv(int argc, char *argv[])
+{
+  uint8_t count = BLINK_DEFAULT_COUNT;
+  uint32_t period_ms = BLINK_DEFAULT_PERIOD_MS;
+  bool continuous = false;
+  const char *mode = "start";
+
+  if (argc >= 2)
+  {
+    if (FEB_strcasecmp(argv[1], "stop") == 0)
+    {
+      bool was_running = (blink_timer_id != NULL && osTimerIsRunning(blink_timer_id));
+      if (was_running && osTimerStop(blink_timer_id) == osOK)
+      {
+        HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+        blink_led_on = false;
+        blink_continuous = false;
+        blink_count = 0;
+      }
+      FEB_Console_CsvPrintf("uartBlinkAck", "stop,%d\r\n", was_running ? 1 : 0);
+      return;
+    }
+    if (FEB_strcasecmp(argv[1], "help") == 0)
+    {
+      FEB_Console_CsvPrintf("uartBlinkAck", "help,%d,%d\r\n", BLINK_DEFAULT_COUNT, BLINK_DEFAULT_PERIOD_MS);
+      return;
+    }
+    if (FEB_strcasecmp(argv[1], "forever") == 0)
+    {
+      continuous = true;
+      count = 0;
+      mode = "forever";
+    }
+    else
+    {
+      char *endptr;
+      errno = 0;
+      unsigned long parsed = strtoul(argv[1], &endptr, 10);
+      if (endptr == argv[1] || *endptr != '\0' || errno == ERANGE || parsed > BLINK_MAX_COUNT)
+      {
+        FEB_Console_CsvPrintf("csv_err", "blink_count,%s\r\n", argv[1]);
+        return;
+      }
+      count = (uint8_t)parsed;
+      if (count == 0)
+      {
+        continuous = true;
+        mode = "forever";
+      }
+    }
+    if (argc >= 3)
+    {
+      char *endptr;
+      errno = 0;
+      unsigned long parsed = strtoul(argv[2], &endptr, 10);
+      if (endptr == argv[2] || *endptr != '\0' || errno == ERANGE)
+      {
+        FEB_Console_CsvPrintf("csv_err", "blink_period,%s\r\n", argv[2]);
+        return;
+      }
+      period_ms = (uint32_t)parsed;
+    }
+  }
+
+  if (period_ms < BLINK_MIN_PERIOD_MS || period_ms > BLINK_MAX_PERIOD_MS)
+  {
+    FEB_Console_CsvPrintf("csv_err", "blink_period_range,%lu\r\n", (unsigned long)period_ms);
+    return;
+  }
+
+  if (blink_timer_id != NULL && osTimerIsRunning(blink_timer_id))
+  {
+    if (continuous || blink_continuous)
+    {
+      osTimerStop(blink_timer_id);
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+    }
+    else
+    {
+      FEB_Console_CsvPrintf("csv_err", "blink_busy\r\n");
+      return;
+    }
+  }
+
+  bool ok = blink_start(count, period_ms, continuous);
+  FEB_Console_CsvPrintf("uartBlinkAck", "%s,%u,%lu,%d\r\n", mode, count, (unsigned long)period_ms, ok ? 1 : 0);
+}
+
+static void cmd_flashbench_csv(int argc, char *argv[])
+{
+  uint32_t iterations = 1;
+  uint8_t pattern = 0xAA;
+
+  if (argc >= 2)
+  {
+    iterations = (uint32_t)strtoul(argv[1], NULL, 10);
+    if (iterations == 0 || iterations > 100)
+    {
+      FEB_Console_CsvPrintf("csv_err", "flashbench_iter,%s\r\n", argv[1]);
+      return;
+    }
+  }
+  if (argc >= 3)
+  {
+    pattern = (uint8_t)strtoul(argv[2], NULL, 16);
+  }
+
+  FlashBench_Request_t req = {.iterations = iterations, .write_pattern = pattern, .callback = flashbench_callback};
+  int queued = FlashBench_QueueRequest(&req) ? 1 : 0;
+  FEB_Console_CsvPrintf("uartFlashAck", "%lu,0x%02X,%d\r\n", (unsigned long)iterations, pattern, queued);
 }

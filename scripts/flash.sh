@@ -196,25 +196,148 @@ is_valid_board() {
     return 1
 }
 
+# Patch an ELF with flash-time metadata using scripts/flash-patcher.py.
+# On success, prints the patched ELF path to stdout and the metadata to
+# stderr. On failure (patcher missing, section absent, magic mismatch on
+# an older build) echoes the original path so the caller still flashes
+# something. board_name is optional - used to name the patched output.
+patch_elf_for_flash() {
+    local src_elf="$1"
+    local board_name="$2"
+
+    if [[ "$src_elf" != *.elf ]]; then
+        echo "$src_elf"
+        return 0
+    fi
+
+    local script_dir
+    script_dir="$(get_script_dir)"
+    local patcher="$script_dir/flash-patcher.py"
+
+    if [ ! -x "$patcher" ]; then
+        log_warn "flash-patcher.py not found at $patcher - flashing without metadata stamp"
+        echo "$src_elf"
+        return 0
+    fi
+
+    if ! command -v python3 &> /dev/null; then
+        log_warn "python3 not found - flashing without metadata stamp"
+        echo "$src_elf"
+        return 0
+    fi
+
+    local patched_elf
+    if [ -n "$board_name" ]; then
+        patched_elf="${src_elf%.elf}.patched.elf"
+    else
+        patched_elf="${src_elf%.elf}.patched.elf"
+    fi
+
+    # Capture metadata for logging via --print mode. --print emits key=value
+    # lines on stdout; human-readable progress goes to stderr via the logger.
+    local metadata
+    if ! metadata=$(python3 "$patcher" --elf "$src_elf" --out "$patched_elf" --print 2>/dev/null); then
+        log_warn "flash-patcher failed - flashing original ELF unpatched"
+        echo "$src_elf"
+        return 0
+    fi
+
+    # Echo metadata back through stderr for human visibility. Keys are
+    # flash_utc / flasher_user / flasher_host / elf (from --print).
+    log_info "Stamped flash metadata:"
+    while IFS='=' read -r k v; do
+        case "$k" in
+            flash_utc|flasher_user|flasher_host)
+                printf "  %-14s %s\n" "$k" "$v" >&2
+                ;;
+        esac
+    done <<< "$metadata"
+
+    # Stash the metadata for record_flash to pick up without re-running.
+    FEB_LAST_FLASH_METADATA="$metadata"
+    echo "$patched_elf"
+}
+
+# Append a row to build/flash_history.csv after a successful flash.
+# Silent on missing build dir (standalone mode).
+record_flash() {
+    local board_name="$1"
+    local elf_file="$2"
+    local exit_code="$3"
+
+    # Only log successful flashes - failures are noise.
+    if [ "$exit_code" -ne 0 ]; then
+        return 0
+    fi
+
+    local script_dir
+    script_dir="$(get_script_dir)"
+    local build_dir
+    build_dir="$(get_build_dir)"
+
+    # Skip logging if we have no writable build directory (standalone).
+    if [ ! -d "$build_dir" ]; then
+        return 0
+    fi
+
+    local history="$build_dir/../flash_history.csv"
+    local flash_utc="" flasher_user="" flasher_host=""
+    if [ -n "${FEB_LAST_FLASH_METADATA:-}" ]; then
+        while IFS='=' read -r k v; do
+            case "$k" in
+                flash_utc)    flash_utc="$v" ;;
+                flasher_user) flasher_user="$v" ;;
+                flasher_host) flasher_host="$v" ;;
+            esac
+        done <<< "$FEB_LAST_FLASH_METADATA"
+    fi
+    if [ -z "$flash_utc" ]; then
+        flash_utc=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
+    fi
+    if [ -z "$flasher_user" ]; then
+        flasher_user="${USER:-unknown}"
+    fi
+    if [ -z "$flasher_host" ]; then
+        flasher_host=$(hostname -s 2>/dev/null || echo "unknown")
+    fi
+
+    # Write header on first append.
+    if [ ! -f "$history" ]; then
+        echo "flash_utc,board,elf,flasher_user,flasher_host" > "$history"
+    fi
+    echo "${flash_utc},${board_name:-unknown},${elf_file},${flasher_user},${flasher_host}" >> "$history"
+    log_info "Recorded flash in $(basename "$history")"
+}
+
 # Flash a target file
 flash_target() {
     local target_file="$1"
+    local board_name="${2:-}"
 
     if [ ! -f "$target_file" ]; then
         log_error "File not found: $target_file"
         return 1
     fi
 
-    log_info "Flashing: $target_file"
+    # Reset metadata cache; patch_elf_for_flash populates it.
+    FEB_LAST_FLASH_METADATA=""
+
+    # Stamp flash-time provenance into the ELF (falls back to original
+    # on any failure so legacy/missing-section ELFs still flash).
+    local flash_file
+    flash_file=$(patch_elf_for_flash "$target_file" "$board_name")
+
+    log_info "Flashing: $flash_file"
     echo ""
 
-    STM32_Programmer_CLI --connect port=swd --download "$target_file" -hardRst -rst --start
+    STM32_Programmer_CLI --connect port=swd --download "$flash_file" -hardRst -rst --start
 
     local exit_code=$?
     echo ""
 
     if [ $exit_code -eq 0 ]; then
         log_info "Flash completed successfully!"
+        record_flash "$board_name" "$target_file" $exit_code
     else
         log_error "Flash failed with exit code: $exit_code"
     fi
@@ -259,7 +382,7 @@ flash_board() {
         fi
     fi
 
-    flash_target "$elf_path"
+    flash_target "$elf_path" "$board"
 }
 
 # Get file modification time (cross-platform)
