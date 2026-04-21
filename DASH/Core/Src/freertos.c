@@ -301,7 +301,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
-  /* add events, ... */
+  /* Initialize FEB libraries after FreeRTOS objects are created */
+  FEB_Init();
   /* USER CODE END RTOS_EVENTS */
 
 }

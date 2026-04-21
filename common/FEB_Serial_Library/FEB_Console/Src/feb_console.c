@@ -272,6 +272,35 @@ int FEB_Console_Printf(const char *fmt, ...)
   return len;
 }
 
+/* newlib-nano (--specs=nano.specs) omits long-long support from printf, so
+ * %llu is silently dropped and the literal trailing characters ("lu") would
+ * appear in the timestamp column. Format the uint64 manually. */
+static size_t u64_to_decimal(uint64_t v, char *out, size_t cap)
+{
+  if (cap == 0)
+  {
+    return 0;
+  }
+  char tmp[21]; /* max uint64 = 20 digits + NUL */
+  size_t i = 0;
+  if (v == 0)
+  {
+    tmp[i++] = '0';
+  }
+  while (v > 0)
+  {
+    tmp[i++] = (char)('0' + (v % 10));
+    v /= 10;
+  }
+  size_t n = (i < cap - 1) ? i : (cap - 1);
+  for (size_t j = 0; j < n; j++)
+  {
+    out[j] = tmp[i - 1 - j];
+  }
+  out[n] = '\0';
+  return n;
+}
+
 int FEB_Console_CsvPrintf(const char *ident, const char *fmt, ...)
 {
   /* Stack-allocated buffer, same pattern as FEB_Console_Printf. */
@@ -289,8 +318,10 @@ int FEB_Console_CsvPrintf(const char *ident, const char *fmt, ...)
    * The identifier comes before the timestamp so parsers can switch on
    * the first field without first consuming a numeric column. */
   uint64_t us = FEB_Time_Us();
+  char us_str[24];
+  u64_to_decimal(us, us_str, sizeof(us_str));
 
-  int pre = snprintf(buf, sizeof(buf), "%s,%llu,", ident, (unsigned long long)us);
+  int pre = snprintf(buf, sizeof(buf), "%s,%s,", ident, us_str);
   if (pre < 0)
   {
     return pre;

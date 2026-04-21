@@ -41,6 +41,7 @@
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
 #include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -126,12 +127,7 @@ int main(void)
   MX_USART6_UART_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
-  printf("[BOOT] UART ready @115200 (USART3)\r\n");
-  /* Note: FEB_Init calls FEB_Log_Init which uses logMutexHandle.
-   * The mutex is NULL here (created in MX_FREERTOS_Init below).
-   * feb_log.c has NULL guards so early logs are unprotected but safe
-   * since we're still single-threaded at this point. */
-  FEB_Init();
+
   /* USER CODE END 2 */
 
   /* Init scheduler */

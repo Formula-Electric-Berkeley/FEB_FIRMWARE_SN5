@@ -622,8 +622,8 @@ void ADBMS6830B_rdpwmgb(uint8_t total_ic, // The number of ICs being written to
 }
 /*
 The function is used to read the parsed GPIO codes of the ADBMS6830B.
-This function will send the requested read commands parse the data
-and store the gpio voltages in a_codes variable.
+Reads AUX register groups A and B, populating a_codes[0..5] with GPIO1-6.
+(Each RDAUX* read returns 6 data bytes = 3 uint16_t codes + 2 PEC bytes.)
 */
 uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
                          cell_asic *ic     // Array of the parsed cell codes
@@ -636,12 +636,21 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
   {
     return 1;
   }
-  transmitCMDR(RDAUXA, cell_data, NUM_RX_BYT * total_ic);
 
+  // RDAUXA: GPIO1-3 -> a_codes[0..2]
+  transmitCMDR(RDAUXA, cell_data, NUM_RX_BYT * total_ic);
   for (int i = 0; i < total_ic; i++)
   {
-    memcpy(&(ic[i].aux.a_codes), cell_data + i * NUM_RX_BYT, NUM_RX_BYT);
+    memcpy(&ic[i].aux.a_codes[0], cell_data + i * NUM_RX_BYT, 6);
   }
+
+  // RDAUXB: GPIO4-6 -> a_codes[3..5]
+  transmitCMDR(RDAUXB, cell_data, NUM_RX_BYT * total_ic);
+  for (int i = 0; i < total_ic; i++)
+  {
+    memcpy(&ic[i].aux.a_codes[3], cell_data + i * NUM_RX_BYT, 6);
+  }
+
   vPortFree(cell_data);
   return pec_error;
 }

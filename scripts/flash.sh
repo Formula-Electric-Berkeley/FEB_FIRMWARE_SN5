@@ -24,20 +24,25 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
+# All log helpers write to stderr. Several callers (notably
+# patch_elf_for_flash) run inside $(...) command substitution, and stdout
+# is reserved there for structured return values (file paths, metadata).
+# Routing diagnostics to stderr keeps them visible in the terminal without
+# contaminating captured output.
 log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
+    echo -e "${GREEN}[INFO]${NC} $1" >&2
 }
 
 log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+    echo -e "${YELLOW}[WARN]${NC} $1" >&2
 }
 
 log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
 log_header() {
-    echo -e "\n${BLUE}=== $1 ===${NC}\n"
+    echo -e "\n${BLUE}=== $1 ===${NC}\n" >&2
 }
 
 # Check if STM32_Programmer_CLI is available
