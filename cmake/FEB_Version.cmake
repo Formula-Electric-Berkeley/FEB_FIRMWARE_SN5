@@ -23,6 +23,8 @@ set(FEB_VERSION_CMAKE_DIR  "${CMAKE_CURRENT_LIST_DIR}" CACHE INTERNAL "FEB versi
 set(FEB_VERSION_REPO_ROOT  "${CMAKE_SOURCE_DIR}"       CACHE INTERNAL "FEB repo root")
 set(FEB_VERSION_TEMPLATE_C "${FEB_VERSION_CMAKE_DIR}/templates/feb_build_info.c.in"
     CACHE INTERNAL "FEB build_info C template")
+set(FEB_VERSION_WRITER     "${FEB_VERSION_CMAKE_DIR}/FEB_WriteBuildInfo.cmake"
+    CACHE INTERNAL "FEB build_info writer script")
 
 # ---------------------------------------------------------------------------
 # Helper: read a single-line VERSION file into <out_var>. Falls back to
@@ -208,8 +210,8 @@ function(feb_apply_version target board_dir)
     file(MAKE_DIRECTORY "${_gen_dir}")
     set(_gen_c "${_gen_dir}/feb_build_info.c")
 
-    # Make the inputs visible to configure_file() under the exact names
-    # used in feb_build_info.c.in.
+    # Seed the file at configure time so first-time builds always have
+    # something to compile even if the custom command hasn't run yet.
     set(FEB_BOARD_NAME      "${_board_name}")
     set(FEB_BOARD_VERSION   "${BOARD_VERSION}")
     set(FEB_BOARD_MAJOR     "${V_MAJOR}")
@@ -226,6 +228,49 @@ function(feb_apply_version target board_dir)
     set(FEB_BUILD_HOST      "${BUILD_HOST}")
 
     configure_file("${FEB_VERSION_TEMPLATE_C}" "${_gen_c}" @ONLY)
+
+    # Build-time regeneration: rebake the .c whenever any VERSION file
+    # or git HEAD/index moves. Each input is gated by EXISTS so clean
+    # exports / git-less builds still work. Build-user / build-host /
+    # build-utc keep their configure-time values (changing hostname
+    # between builds doesn't warrant a rebuild).
+    set(_deps
+        "${board_dir}/VERSION"
+        "${FEB_VERSION_REPO_ROOT}/VERSION"
+        "${FEB_VERSION_REPO_ROOT}/common/VERSION"
+    )
+    foreach(_git_path
+            "${FEB_VERSION_REPO_ROOT}/.git/HEAD"
+            "${FEB_VERSION_REPO_ROOT}/.git/index")
+        if(EXISTS "${_git_path}")
+            list(APPEND _deps "${_git_path}")
+        endif()
+    endforeach()
+
+    add_custom_command(
+        OUTPUT "${_gen_c}"
+        COMMAND ${CMAKE_COMMAND}
+            -DFEB_VERSION_IN=${FEB_VERSION_TEMPLATE_C}
+            -DFEB_VERSION_OUT=${_gen_c}
+            -DFEB_BOARD_NAME=${_board_name}
+            -DFEB_BOARD_VERSION=${BOARD_VERSION}
+            -DFEB_BOARD_MAJOR=${V_MAJOR}
+            -DFEB_BOARD_MINOR=${V_MINOR}
+            -DFEB_BOARD_PATCH=${V_PATCH}
+            -DFEB_REPO_VERSION=${REPO_VERSION}
+            -DFEB_COMMON_VERSION=${COMMON_VERSION}
+            -DFEB_COMMIT_SHORT=${GIT_COMMIT_SHORT}
+            -DFEB_COMMIT_FULL=${GIT_COMMIT_FULL}
+            -DFEB_BRANCH=${GIT_BRANCH}
+            -DFEB_DIRTY=${GIT_DIRTY}
+            -DFEB_BUILD_UTC=${BUILD_UTC}
+            -DFEB_BUILD_USER=${BUILD_USER}
+            -DFEB_BUILD_HOST=${BUILD_HOST}
+            -P ${FEB_VERSION_WRITER}
+        DEPENDS ${_deps} "${FEB_VERSION_TEMPLATE_C}" "${FEB_VERSION_WRITER}"
+        COMMENT "FEB_Version[${_board_name}]: regenerating feb_build_info.c"
+        VERBATIM
+    )
 
     # Compile the generated source into the target. `PRIVATE` so the
     # symbol only lives in this executable.

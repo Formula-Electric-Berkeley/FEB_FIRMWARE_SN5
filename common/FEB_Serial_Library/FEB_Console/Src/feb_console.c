@@ -137,11 +137,18 @@ void FEB_Console_ProcessLine(const char *line, size_t len)
 
   /* Detect and strip the "csv|" prefix before anything else. When present,
    * ack the receipt immediately so the host knows we got the command -
-   * regardless of whether the command is known or CSV-capable. */
+   * regardless of whether the command is known or CSV-capable. Echo only
+   * the leading command token (up to the first '|') so user-supplied
+   * args containing commas cannot break CSV column alignment. */
   const bool csv_mode = strip_csv_prefix(&line, &len);
   if (csv_mode)
   {
-    FEB_Console_CsvPrintf("csv_ack", "%.*s\r\n", (int)len, line);
+    size_t name_len = 0;
+    while (name_len < len && line[name_len] != '|')
+    {
+      name_len++;
+    }
+    FEB_Console_CsvPrintf("csv_ack", "%.*s\r\n", (int)name_len, line);
   }
 
   /* Stack-allocated buffer for reentrancy */

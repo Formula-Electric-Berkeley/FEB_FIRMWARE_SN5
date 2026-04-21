@@ -21,6 +21,14 @@ static volatile uint32_t last_cyc = 0;
 
 void FEB_Time_Init(void)
 {
+  /* Idempotent: a second call must not reset the 64-bit accumulator, or
+   * previously captured timestamps would go backwards. Skip enable work
+   * and state reset once CYCCNT is already running. */
+  if ((DWT->CTRL & DWT_CTRL_CYCCNTENA_Msk) != 0U)
+  {
+    return;
+  }
+
   /* Enable the trace unit so DWT can run. */
   CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
 

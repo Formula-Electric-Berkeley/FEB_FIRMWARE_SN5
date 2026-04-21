@@ -191,9 +191,15 @@ def patch_elf(src_elf: Path, dst_elf: Path,
     dst_elf.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(src_elf, dst_elf)
 
-    with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as tmp:
+    # Windows can't open the same path twice, so we must write via the
+    # open NamedTemporaryFile handle rather than reopening by path. fsync
+    # before handing the path to objcopy so the bytes are visible to a
+    # child process.
+    with tempfile.NamedTemporaryFile(mode="wb", suffix=".bin", delete=False) as tmp:
+        tmp.write(new_section)
+        tmp.flush()
+        os.fsync(tmp.fileno())
         tmp_path = Path(tmp.name)
-        tmp_path.write_bytes(new_section)
     try:
         objcopy = _find_tool("objcopy")
         subprocess.run(

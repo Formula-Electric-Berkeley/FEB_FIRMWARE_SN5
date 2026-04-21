@@ -143,8 +143,8 @@
             "type": "shell",
             "label": "Firmware: Bump Board Version",
             "detail": "Bump <BOARD>/VERSION, commit, tag <BOARD>-v<X.Y.Z>, push",
-            "command": "${workspaceFolder}/scripts/bump-version.sh",
-            "args": ["${input:bumpBoard}", "${input:bumpType}"],
+            "command": "bash",
+            "args": ["${workspaceFolder}/scripts/bump-version.sh", "${input:bumpBoard}", "${input:bumpType}"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": []
         },
@@ -152,8 +152,8 @@
             "type": "shell",
             "label": "Firmware: Bump Repo Version",
             "detail": "Bump top-level VERSION, commit, tag v<X.Y.Z>, push",
-            "command": "${workspaceFolder}/scripts/bump-version.sh",
-            "args": ["repo", "${input:bumpType}"],
+            "command": "bash",
+            "args": ["${workspaceFolder}/scripts/bump-version.sh", "repo", "${input:bumpType}"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": []
         },
@@ -161,8 +161,8 @@
             "type": "shell",
             "label": "Firmware: Bump All (Common Changed)",
             "detail": "Bump every board + repo + common, tag each, push. Use when common/ changed.",
-            "command": "${workspaceFolder}/scripts/bump-version.sh",
-            "args": ["all", "${input:bumpType}", "--yes"],
+            "command": "bash",
+            "args": ["${workspaceFolder}/scripts/bump-version.sh", "all", "${input:bumpType}", "--yes"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": []
         },
@@ -170,8 +170,8 @@
             "type": "shell",
             "label": "Firmware: Bump Auto-Detect",
             "detail": "Inspect staged/unstaged diff, bump affected boards (or all if common/ changed), push",
-            "command": "${workspaceFolder}/scripts/bump-version.sh",
-            "args": [],
+            "command": "bash",
+            "args": ["${workspaceFolder}/scripts/bump-version.sh"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": []
         }

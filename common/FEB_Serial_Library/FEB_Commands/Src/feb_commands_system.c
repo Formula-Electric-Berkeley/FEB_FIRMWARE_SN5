@@ -324,10 +324,15 @@ static const char *log_level_name(FEB_Log_Level_t level)
 
 static void cmd_echo_csv(int argc, char *argv[])
 {
-  /* Join argv[1..] with single spaces into a single body field.
-   * A stack buffer is sized to match FEB_CONSOLE_LINE_BUFFER_SIZE. */
+  /* Join argv[1..] with single spaces, escape per RFC 4180: wrap the
+   * whole field in double quotes and double any embedded '"' so commas
+   * and newlines in user input cannot break CSV column alignment. */
   char joined[FEB_CONSOLE_LINE_BUFFER_SIZE];
   size_t pos = 0;
+  if (pos + 1 < sizeof(joined))
+  {
+    joined[pos++] = '"';
+  }
   for (int i = 1; i < argc && pos + 1 < sizeof(joined); i++)
   {
     if (i > 1 && pos + 1 < sizeof(joined))
@@ -337,8 +342,16 @@ static void cmd_echo_csv(int argc, char *argv[])
     const char *a = argv[i];
     while (*a && pos + 1 < sizeof(joined))
     {
+      if (*a == '"' && pos + 2 < sizeof(joined))
+      {
+        joined[pos++] = '"';
+      }
       joined[pos++] = *a++;
     }
+  }
+  if (pos + 1 < sizeof(joined))
+  {
+    joined[pos++] = '"';
   }
   joined[pos] = '\0';
   FEB_Console_CsvPrintf("echo", "%s\r\n", joined);

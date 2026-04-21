@@ -346,9 +346,12 @@ flash_target() {
     log_info "Flashing: $flash_file"
     echo ""
 
-    STM32_Programmer_CLI --connect port=swd --download "$flash_file" -hardRst -rst --start
-
-    local exit_code=$?
+    # set -e at the top of this script would abort before we can record
+    # the failure; '|| exit_code=$?' keeps the script alive so the logging
+    # and record_flash calls below run on both success and failure.
+    local exit_code=0
+    STM32_Programmer_CLI --connect port=swd --download "$flash_file" -hardRst -rst --start \
+        || exit_code=$?
     echo ""
 
     if [ $exit_code -eq 0 ]; then

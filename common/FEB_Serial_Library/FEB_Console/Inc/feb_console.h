@@ -25,16 +25,18 @@
  *
  * CSV mode (machine-readable output for Chromium/WebSocket clients):
  *   Any command can be invoked in CSV mode by prefixing "csv|".
+ *   Every row emitted via FEB_Console_CsvPrintf() has the shape:
+ *       <ident>,<us_timestamp>,<body>
+ *   The identifier is first so parsers can switch on it without first
+ *   consuming a numeric column. The 64-bit microsecond timestamp
+ *   (from feb_time.h) is supplied as the second field by the library.
  *   The library:
  *     - Emits an ACK row immediately upon receipt:
- *         <us_timestamp>,csv_ack,<rest_of_line>
+ *         csv_ack,<us>,<command_token>
  *     - Calls the command's .csv_handler if registered.
  *     - Emits an error row if the command is unknown or has no csv_handler:
- *         <us_timestamp>,csv_err,unknown,<name>
- *         <us_timestamp>,csv_err,unsupported,<name>
- *   Every row emitted via FEB_Console_CsvPrintf() is prefixed with a
- *   64-bit microsecond timestamp (from feb_time.h) captured at the
- *   moment of the send call.
+ *         csv_err,<us>,unknown,<name>
+ *         csv_err,<us>,unsupported,<name>
  *
  *   Examples:
  *     csv|help             - CSV command/description/has_csv rows

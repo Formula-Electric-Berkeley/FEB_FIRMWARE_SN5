@@ -49,7 +49,7 @@ static const osTimerAttr_t blink_timer_attr = {
 
 static void blink_timer_callback(void *argument);
 static void blink_stop(void);
-static bool blink_start(uint8_t count, uint32_t period_ms, bool continuous);
+static bool blink_start(uint8_t count, uint32_t period_ms, bool continuous, bool quiet);
 static void cmd_blink(int argc, char *argv[]);
 static void cmd_blink_csv(int argc, char *argv[]);
 static void cmd_flashbench(int argc, char *argv[]);
@@ -187,15 +187,22 @@ static void blink_stop(void)
 }
 
 /**
- * @brief Start blinking with specified parameters
+ * @brief Start blinking with specified parameters.
+ *
+ * @param quiet  When true, suppress all human-readable status prints so the
+ *               function can be invoked from CSV-mode handlers without
+ *               corrupting the machine-readable stream.
  */
-static bool blink_start(uint8_t count, uint32_t period_ms, bool continuous)
+static bool blink_start(uint8_t count, uint32_t period_ms, bool continuous, bool quiet)
 {
   /* Validate period */
   if (period_ms < BLINK_MIN_PERIOD_MS || period_ms > BLINK_MAX_PERIOD_MS)
   {
-    FEB_Console_Printf("Error: Period must be %d-%d ms\r\n",
-                       BLINK_MIN_PERIOD_MS, BLINK_MAX_PERIOD_MS);
+    if (!quiet)
+    {
+      FEB_Console_Printf("Error: Period must be %d-%d ms\r\n",
+                         BLINK_MIN_PERIOD_MS, BLINK_MAX_PERIOD_MS);
+    }
     return false;
   }
 
@@ -206,7 +213,10 @@ static bool blink_start(uint8_t count, uint32_t period_ms, bool continuous)
                                  NULL, &blink_timer_attr);
     if (blink_timer_id == NULL)
     {
-      FEB_Console_Printf("Error: Failed to create blink timer\r\n");
+      if (!quiet)
+      {
+        FEB_Console_Printf("Error: Failed to create blink timer\r\n");
+      }
       return false;
     }
   }
@@ -221,23 +231,35 @@ static bool blink_start(uint8_t count, uint32_t period_ms, bool continuous)
   /* Turn on LED immediately */
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 
+  if (!quiet)
+  {
+    if (continuous)
+    {
+      FEB_Console_Printf("Blinking continuously at %lu ms (use 'blink|stop' to stop)\r\n",
+                         (unsigned long)period_ms);
+    }
+    else
+    {
+      FEB_Console_Printf("Blinking LD2 (PA5) %d times at %lu ms...\r\n",
+                         count, (unsigned long)period_ms);
+    }
+  }
   if (continuous)
   {
-    FEB_Console_Printf("Blinking continuously at %lu ms (use 'blink|stop' to stop)\r\n",
-                       (unsigned long)period_ms);
     LOG_T(TAG_GPIO, "Continuous blink started at %lu ms", (unsigned long)period_ms);
   }
   else
   {
-    FEB_Console_Printf("Blinking LD2 (PA5) %d times at %lu ms...\r\n",
-                       count, (unsigned long)period_ms);
     LOG_T(TAG_GPIO, "Blink cycle 1/%d: LED ON", count);
   }
 
   /* Start timer */
   if (osTimerStart(blink_timer_id, pdMS_TO_TICKS(period_ms)) != osOK)
   {
-    FEB_Console_Printf("Error: Failed to start blink timer\r\n");
+    if (!quiet)
+    {
+      FEB_Console_Printf("Error: Failed to start blink timer\r\n");
+    }
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
     blink_led_on = false;
     blink_continuous = false;
@@ -389,7 +411,7 @@ static void cmd_blink(int argc, char *argv[])
   }
 
   /* Start blinking */
-  blink_start(count, period_ms, continuous);
+  blink_start(count, period_ms, continuous, false);
 }
 
 static void print_stats(const char *name, const FlashBench_Stats_t *s)
@@ -408,6 +430,26 @@ static void flashbench_callback(const FlashBench_StatsResult_t *stats)
   print_stats("Write", &stats->write);
   print_stats("Read", &stats->read);
   FEB_Console_Printf("\r\nBenchmark complete.\r\n");
+}
+
+/* CSV sibling of flashbench_callback. Emits a single row so the host can
+ * correlate the async result with the earlier uartFlashAck. Body layout:
+ *   cpu_mhz,iterations,pattern,
+ *   erase_min,erase_avg,erase_max,
+ *   write_min,write_avg,write_max,
+ *   read_min,read_avg,read_max
+ * All durations are microseconds. */
+static void flashbench_csv_callback(const FlashBench_StatsResult_t *stats)
+{
+  FEB_Console_CsvPrintf(
+      "uartFlashRes",
+      "%lu,%lu,0x%02lX,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu,%lu\r\n",
+      (unsigned long)stats->cpu_freq_mhz, (unsigned long)stats->iterations, (unsigned long)stats->write_pattern,
+      (unsigned long)stats->erase.min.time_us, (unsigned long)stats->erase.avg.time_us,
+      (unsigned long)stats->erase.max.time_us, (unsigned long)stats->write.min.time_us,
+      (unsigned long)stats->write.avg.time_us, (unsigned long)stats->write.max.time_us,
+      (unsigned long)stats->read.min.time_us, (unsigned long)stats->read.avg.time_us,
+      (unsigned long)stats->read.max.time_us);
 }
 
 static void cmd_flashbench(int argc, char *argv[])
@@ -527,7 +569,7 @@ static void cmd_blink_csv(int argc, char *argv[])
     }
   }
 
-  bool ok = blink_start(count, period_ms, continuous);
+  bool ok = blink_start(count, period_ms, continuous, true);
   FEB_Console_CsvPrintf("uartBlinkAck", "%s,%u,%lu,%d\r\n", mode, count, (unsigned long)period_ms, ok ? 1 : 0);
 }
 
@@ -550,7 +592,7 @@ static void cmd_flashbench_csv(int argc, char *argv[])
     pattern = (uint8_t)strtoul(argv[2], NULL, 16);
   }
 
-  FlashBench_Request_t req = {.iterations = iterations, .write_pattern = pattern, .callback = flashbench_callback};
+  FlashBench_Request_t req = {.iterations = iterations, .write_pattern = pattern, .callback = flashbench_csv_callback};
   int queued = FlashBench_QueueRequest(&req) ? 1 : 0;
   FEB_Console_CsvPrintf("uartFlashAck", "%lu,0x%02X,%d\r\n", (unsigned long)iterations, pattern, queued);
 }

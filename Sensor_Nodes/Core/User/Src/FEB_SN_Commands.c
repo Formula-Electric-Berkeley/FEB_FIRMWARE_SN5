@@ -709,7 +709,30 @@ static void csv_gps_pmtk(int argc, char *argv[])
     return;
   }
   int ok = FEB_GPS_SendPMTKCommand(argv[2]) >= 0 ? 1 : 0;
-  FEB_Console_CsvPrintf("gpsPmtkAck", "%s,%d\r\n", argv[2], ok);
+
+  /* PMTK sentences are comma-delimited by protocol, so raw echoing into
+   * a CSV field breaks column alignment. RFC 4180 escape: wrap in
+   * double quotes and double any embedded '"'. */
+  char escaped[FEB_CONSOLE_LINE_BUFFER_SIZE];
+  size_t pos = 0;
+  if (pos + 1 < sizeof(escaped))
+  {
+    escaped[pos++] = '"';
+  }
+  for (const char *a = argv[2]; *a && pos + 1 < sizeof(escaped); a++)
+  {
+    if (*a == '"' && pos + 2 < sizeof(escaped))
+    {
+      escaped[pos++] = '"';
+    }
+    escaped[pos++] = *a;
+  }
+  if (pos + 1 < sizeof(escaped))
+  {
+    escaped[pos++] = '"';
+  }
+  escaped[pos] = '\0';
+  FEB_Console_CsvPrintf("gpsPmtkAck", "%s,%d\r\n", escaped, ok);
 }
 
 static void cmd_gps_csv(int argc, char *argv[])
