@@ -292,7 +292,11 @@ posix_to_native_path() {
     case "$(uname -s)" in
         MINGW*|MSYS*|CYGWIN*)
             if command -v cygpath >/dev/null 2>&1; then
-                cygpath -w "$p"
+                # -m emits mixed paths (C:/ST/...) instead of -w's backslashed
+                # form. STM32CubeMX accepts both, and forward slashes survive
+                # heredoc interpolation without being consumed as escapes.
+                # Keeps the cygpath branch consistent with the sed fallback below.
+                cygpath -m "$p"
             else
                 echo "$p" | sed -E 's|^/([a-zA-Z])/|\1:/|'
             fi

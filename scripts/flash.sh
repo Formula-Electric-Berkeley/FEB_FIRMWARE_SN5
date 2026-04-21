@@ -72,16 +72,16 @@ check_prerequisites() {
 
     local path
     for glob in "${common_globs[@]}"; do
-        # shellcheck disable=SC2206  # intentional glob expansion
-        local expanded=( $glob )
-        for path in "${expanded[@]}"; do
+        # compgen -G expands the glob without IFS word-splitting, so paths
+        # containing spaces (e.g. "/c/Program Files/...") match correctly.
+        while IFS= read -r path; do
             if [ -x "$path" ]; then
                 log_warn "Found STM32_Programmer_CLI at: $path"
                 log_warn "Add it to your PATH for convenience."
                 export PATH="$(dirname "$path"):$PATH"
                 return 0
             fi
-        done
+        done < <(compgen -G "$glob" || true)
     done
 
     return 1
@@ -221,10 +221,9 @@ is_valid_board() {
 # On success, prints the patched ELF path to stdout and the metadata to
 # stderr. On failure (patcher missing, section absent, magic mismatch on
 # an older build) echoes the original path so the caller still flashes
-# something. board_name is optional - used to name the patched output.
+# something.
 patch_elf_for_flash() {
     local src_elf="$1"
-    local board_name="$2"
 
     if [[ "$src_elf" != *.elf ]]; then
         echo "$src_elf"
@@ -235,7 +234,9 @@ patch_elf_for_flash() {
     script_dir="$(get_script_dir)"
     local patcher="$script_dir/flash-patcher.py"
 
-    if [ ! -x "$patcher" ]; then
+    # -f (not -x) because the patcher is always invoked via `python3 "$patcher"` —
+    # the execute bit is irrelevant; only readability matters.
+    if [ ! -f "$patcher" ]; then
         log_warn "flash-patcher.py not found at $patcher - flashing without metadata stamp"
         echo "$src_elf"
         return 0
@@ -247,12 +248,7 @@ patch_elf_for_flash() {
         return 0
     fi
 
-    local patched_elf
-    if [ -n "$board_name" ]; then
-        patched_elf="${src_elf%.elf}.patched.elf"
-    else
-        patched_elf="${src_elf%.elf}.patched.elf"
-    fi
+    local patched_elf="${src_elf%.elf}.patched.elf"
 
     # Capture metadata for logging via --print mode. --print emits key=value
     # lines on stdout; human-readable progress goes to stderr via the logger.
@@ -346,7 +342,7 @@ flash_target() {
     # Stamp flash-time provenance into the ELF (falls back to original
     # on any failure so legacy/missing-section ELFs still flash).
     local flash_file
-    flash_file=$(patch_elf_for_flash "$target_file" "$board_name")
+    flash_file=$(patch_elf_for_flash "$target_file")
 
     log_info "Flashing: $flash_file"
     echo ""

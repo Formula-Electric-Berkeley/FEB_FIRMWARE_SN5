@@ -38,6 +38,10 @@ static volatile uint8_t blink_target_count = 0;
 static volatile bool blink_led_on = false;
 static volatile bool blink_continuous = false;
 static volatile uint32_t blink_period_ms = BLINK_DEFAULT_PERIOD_MS;
+// Set by blink_start() when invoked from a CSV handler. Lets the timer
+// callback suppress its "Done."/failure prints so they don't appear
+// asynchronously inside the machine-readable CSV stream.
+static volatile bool blink_quiet = false;
 
 static const osTimerAttr_t blink_timer_attr = {
     .name = "blinkTimer"
@@ -124,12 +128,18 @@ static void blink_timer_callback(void *argument)
         if (status == osOK)
         {
           blink_count = 0;
-          FEB_Console_Printf("Done.\r\n");
+          if (!blink_quiet)
+          {
+            FEB_Console_Printf("Done.\r\n");
+          }
         }
         else
         {
           /* Keep blink_count at 1 so we retry next callback */
-          FEB_Console_Printf("Failed to stop timer: %d\r\n", status);
+          if (!blink_quiet)
+          {
+            FEB_Console_Printf("Failed to stop timer: %d\r\n", status);
+          }
         }
       }
       else
@@ -227,6 +237,7 @@ static bool blink_start(uint8_t count, uint32_t period_ms, bool continuous, bool
   blink_continuous = continuous;
   blink_period_ms = period_ms;
   blink_led_on = true;
+  blink_quiet = quiet;
 
   /* Turn on LED immediately */
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
@@ -497,14 +508,22 @@ static void cmd_blink_csv(int argc, char *argv[])
     if (FEB_strcasecmp(argv[1], "stop") == 0)
     {
       bool was_running = (blink_timer_id != NULL && osTimerIsRunning(blink_timer_id));
-      if (was_running && osTimerStop(blink_timer_id) == osOK)
+      // Report actual stop success (not just "was running") so the host can
+      // distinguish "nothing to stop" and "stop attempted but failed" from a
+      // successful stop.
+      bool stop_ok = false;
+      if (was_running)
       {
-        HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-        blink_led_on = false;
-        blink_continuous = false;
-        blink_count = 0;
+        stop_ok = (osTimerStop(blink_timer_id) == osOK);
+        if (stop_ok)
+        {
+          HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+          blink_led_on = false;
+          blink_continuous = false;
+          blink_count = 0;
+        }
       }
-      FEB_Console_CsvPrintf("uartBlinkAck", "stop,%d\r\n", was_running ? 1 : 0);
+      FEB_Console_CsvPrintf("uartBlinkAck", "stop,%d\r\n", stop_ok ? 1 : 0);
       return;
     }
     if (FEB_strcasecmp(argv[1], "help") == 0)
@@ -559,7 +578,14 @@ static void cmd_blink_csv(int argc, char *argv[])
   {
     if (continuous || blink_continuous)
     {
-      osTimerStop(blink_timer_id);
+      // Check the stop result before mutating any shared state or starting a
+      // replacement timer — otherwise we could end up running two timers or
+      // with the LED stuck on while the caller thinks the restart succeeded.
+      if (osTimerStop(blink_timer_id) != osOK)
+      {
+        FEB_Console_CsvPrintf("csv_err", "blink_stop_failed\r\n");
+        return;
+      }
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
     }
     else
@@ -580,16 +606,29 @@ static void cmd_flashbench_csv(int argc, char *argv[])
 
   if (argc >= 2)
   {
-    iterations = (uint32_t)strtoul(argv[1], NULL, 10);
-    if (iterations == 0 || iterations > 100)
+    // strict parse: full consumption + errno check. Passing NULL to strtoul
+    // would accept garbage like "12abc" as 12 and hide an invalid-queue call.
+    char *endptr;
+    errno = 0;
+    unsigned long parsed = strtoul(argv[1], &endptr, 10);
+    if (endptr == argv[1] || *endptr != '\0' || errno != 0 || parsed < 1 || parsed > 100)
     {
       FEB_Console_CsvPrintf("csv_err", "flashbench_iter,%s\r\n", argv[1]);
       return;
     }
+    iterations = (uint32_t)parsed;
   }
   if (argc >= 3)
   {
-    pattern = (uint8_t)strtoul(argv[2], NULL, 16);
+    char *endptr;
+    errno = 0;
+    unsigned long parsed = strtoul(argv[2], &endptr, 16);
+    if (endptr == argv[2] || *endptr != '\0' || errno != 0 || parsed > 0xFF)
+    {
+      FEB_Console_CsvPrintf("csv_err", "flashbench_pattern,%s\r\n", argv[2]);
+      return;
+    }
+    pattern = (uint8_t)parsed;
   }
 
   FlashBench_Request_t req = {.iterations = iterations, .write_pattern = pattern, .callback = flashbench_csv_callback};

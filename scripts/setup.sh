@@ -121,13 +121,13 @@ PROFILE_EOF
 find_cubeclt_install() {
     local candidates=("$@")
     local -a matches=()
-    local c
+    local c e
     for c in "${candidates[@]}"; do
-        # shellcheck disable=SC2206  # intentional glob expansion
-        local expanded=( $c )
-        for e in "${expanded[@]}"; do
+        # compgen -G expands the glob without IFS word-splitting, so paths
+        # containing spaces (e.g. "/c/Program Files/...") match correctly.
+        while IFS= read -r e; do
             [ -d "$e" ] && matches+=("${e%/}")
-        done
+        done < <(compgen -G "$c" || true)
     done
     [ "${#matches[@]}" -eq 0 ] && return 1
     printf '%s\n' "${matches[@]}" | sort -V | tail -1

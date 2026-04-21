@@ -13,6 +13,7 @@
 #include "FEB_ADBMS6830B_Driver.h"
 
 #include <float.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include "stm32f4xx_hal.h"
@@ -362,6 +363,13 @@ static void compute_pack_temp_stats(void)
   }
   else
   {
+    // All sensor readings were invalid. Publish NaN so consumers can detect
+    // the condition (NaN propagates through comparisons as false), and raise
+    // the same diagnostic that validate_temps() uses for chronically-low reads.
+    FEB_ACC.pack_min_temp = NAN;
+    FEB_ACC.pack_max_temp = NAN;
+    FEB_ACC.average_pack_temp = NAN;
+    FEB_ADBMS_Update_Error_Type(ERROR_TYPE_LOW_TEMP_READS);
     DEBUG_TEMP_PRINT("Pack stats: no valid readings");
   }
 }
@@ -737,6 +745,19 @@ void FEB_Cell_Balance_Process()
 
 bool FEB_Cell_Balancing_Status(void)
 {
+  // The per-cell loop used to index temp_sensor_readings by cell index, which
+  // only covered FEB_NUM_CELLS_PER_BANK (14) of the FEB_NUM_TEMP_SENSORS (42)
+  // sensors. Use the pack-wide max computed by compute_pack_temp_stats() so
+  // every MUX output is considered. NaN (all-invalid readings) fails the
+  // comparison and stops balancing — the safe default when we have no thermal
+  // telemetry.
+  const float max_temp_dC = FEB_ADBMS_GET_ACC_MAX_Temp() * 10.0f;
+  if (!(max_temp_dC < FEB_CONFIG_CELL_SOFT_MAX_TEMP_dC))
+  {
+    LOG_W(TAG_BALANCE, "Temp limit: pack max=%.1fC, stopping", max_temp_dC / 10.0f);
+    return false;
+  }
+
   float min_v = FLT_MAX;
   float max_v = FLT_MIN;
 
@@ -745,13 +766,6 @@ bool FEB_Cell_Balancing_Status(void)
     for (size_t j = 0; j < FEB_NUM_CELLS_PER_BANK; ++j)
     {
       const float voltage = FEB_ADBMS_GET_Cell_Voltage(i, j) * 1000.0f;
-      const float temp = FEB_ADBMS_GET_Cell_Temperature(i, j) * 10.0f;
-
-      if (temp >= FEB_CONFIG_CELL_SOFT_MAX_TEMP_dC)
-      {
-        LOG_W(TAG_BALANCE, "Temp limit: Bank%zu Cell%zu = %.1fC, stopping", i, j, temp / 10.0f);
-        return false;
-      }
 
       if (voltage < 0)
       {

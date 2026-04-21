@@ -44,8 +44,10 @@ jobs:
           # exits 0 without committing when the PR didn't touch any board or
           # common/ path — in that case there's nothing new on HEAD to push.
           if [ "$(git rev-list --count origin/main..HEAD)" -gt 0 ]; then
-            git push origin main
-            git push origin --tags
+            # --atomic makes the branch update and tag push a single transaction:
+            # if the server rejects either, neither is applied, so we never end
+            # up with a bump commit on main without its matching tag.
+            git push --atomic origin main --tags
           else
             echo "No version bump commit produced; nothing to push."
           fi

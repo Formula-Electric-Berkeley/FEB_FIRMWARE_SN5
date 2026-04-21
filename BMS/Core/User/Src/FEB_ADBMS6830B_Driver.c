@@ -637,18 +637,41 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
     return 1;
   }
 
+  // Match rdcv/rdsv/rdsid: ensure the daisy chain is awake before the first
+  // command or the leading frames can be dropped on a sleeping chain.
+  wakeup_sleep(total_ic);
+
   // RDAUXA: GPIO1-3 -> a_codes[0..2]
   transmitCMDR(RDAUXA, cell_data, NUM_RX_BYT * total_ic);
   for (int i = 0; i < total_ic; i++)
   {
-    memcpy(&ic[i].aux.a_codes[0], cell_data + i * NUM_RX_BYT, 6);
+    uint8_t *ic_data = cell_data + i * NUM_RX_BYT;
+    memcpy(&ic[i].aux.a_codes[0], ic_data, 6);
+
+    // PEC is big-endian: ic_data[6] is MSB, ic_data[7] is LSB (same layout
+    // as rdcfga/rdcfgb/rdsid). Record per-IC match so downstream consumers
+    // like check_and_report_pec_errors() can drive redundancy failover.
+    uint16_t calc_pec = Pec10_calc(false, 6, ic_data);
+    uint16_t rx_pec = ((uint16_t)ic_data[6] << 8) | ic_data[7];
+    bool mismatch = (calc_pec != rx_pec);
+    ic[i].aux.pec_match[0] = mismatch ? 1 : 0;
+    if (mismatch)
+      pec_error++;
   }
 
   // RDAUXB: GPIO4-6 -> a_codes[3..5]
   transmitCMDR(RDAUXB, cell_data, NUM_RX_BYT * total_ic);
   for (int i = 0; i < total_ic; i++)
   {
-    memcpy(&ic[i].aux.a_codes[3], cell_data + i * NUM_RX_BYT, 6);
+    uint8_t *ic_data = cell_data + i * NUM_RX_BYT;
+    memcpy(&ic[i].aux.a_codes[3], ic_data, 6);
+
+    uint16_t calc_pec = Pec10_calc(false, 6, ic_data);
+    uint16_t rx_pec = ((uint16_t)ic_data[6] << 8) | ic_data[7];
+    bool mismatch = (calc_pec != rx_pec);
+    ic[i].aux.pec_match[1] = mismatch ? 1 : 0;
+    if (mismatch)
+      pec_error++;
   }
 
   vPortFree(cell_data);

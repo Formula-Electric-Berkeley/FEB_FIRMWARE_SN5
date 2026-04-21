@@ -22,7 +22,7 @@ FEB_Serial_Library/
 | `feb_uart` | DMA UART driver (line + binary modes). Standalone. |
 | `feb_log` | Logging with injectable output. Depends on `feb_uart`. |
 | `feb_console` | Pipe-delimited command parser. Depends on `feb_uart`, `feb_time`. |
-| `feb_commands` | Default `help`, `echo`, `version`, `uptime`, `reboot`, `log`. Depends on `feb_console`, `feb_log`. |
+| `feb_commands` | Default `help`, `echo`, `version`, `uptime`, `reboot`, `log`. Depends on `feb_console`, `feb_log`, `feb_version` (used by `version`). |
 | `feb_string_utils` | `FEB_strcasecmp()` and friends. Standalone. |
 | `feb_version` | Build provenance types; paired with `cmake/FEB_Version.cmake` which generates `feb_build_info.c` per board. |
 | `feb_io` | Umbrella: links `feb_string_utils`, [`feb_time`](../FEB_Time_Library/README.md), `feb_uart`, `feb_log`, `feb_console`, `feb_version`, `feb_commands`. |
