@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2024 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2024 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -27,7 +27,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -39,7 +38,6 @@
 /* USER CODE BEGIN PD */
 
 // code for calculating frequency
-
 
 /* USER CODE END PD */
 
@@ -74,7 +72,6 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -106,6 +103,12 @@ int main(void)
   MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
 
+  // HAL_GPIO_WritePin(PWM1_GPIO_Port, PWM1_Pin, GPIO_PIN_SET);
+  // HAL_GPIO_WritePin(PWM2_GPIO_Port, PWM2_Pin, GPIO_PIN_SET);
+  // HAL_GPIO_WritePin(PWM3_GPIO_Port, PWM3_Pin, GPIO_PIN_SET);
+  // HAL_GPIO_WritePin(PWM4_GPIO_Port, PWM4_Pin, GPIO_PIN_SET);
+  // HAL_GPIO_WritePin(PWM5_GPIO_Port, PWM5_Pin, GPIO_PIN_SET);
+
   FEB_Init();
 
   /* USER CODE END 2 */
@@ -114,7 +117,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  FEB_Main_Loop();
+    FEB_Main_Loop();
 
     /* USER CODE END WHILE */
 
@@ -159,8 +162,9 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
-	FEB_Fan_TACH_Callback(htim);
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+  FEB_Fan_TACH_Callback(htim);
 }
 /* USER CODE END 4 */
 
@@ -176,7 +180,6 @@ void Error_Handler(void)
 
   while (1)
   {
-
   }
   /* USER CODE END Error_Handler_Debug */
 }

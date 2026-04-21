@@ -1,6 +1,8 @@
 // ********************************** Includes & External **********************************
 #include "FEB_Fan.h"
 #include "FEB_CAN_Library_SN4/gen/feb_can.h"
+#include "main.h"
+#include "stm32f0xx_hal_gpio.h"
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
@@ -36,11 +38,14 @@ static inline uint32_t percent_to_counts(uint8_t percent)
   return (uint32_t)PWM_COUNTER * percent / 100u;
 }
 
-static TIM_HandleTypeDef *timer[NUM_FANS] = {&htim14, &htim16, &htim17, &htim2, &htim2};
-static uint32_t tim_active_channels[NUM_FANS] = {HAL_TIM_ACTIVE_CHANNEL_1, HAL_TIM_ACTIVE_CHANNEL_1,
-                                                 HAL_TIM_ACTIVE_CHANNEL_1, HAL_TIM_ACTIVE_CHANNEL_1,
-                                                 HAL_TIM_ACTIVE_CHANNEL_2};
-static uint32_t tim_channels[NUM_FANS] = {TIM_CHANNEL_1, TIM_CHANNEL_1, TIM_CHANNEL_1, TIM_CHANNEL_1, TIM_CHANNEL_2};
+static TIM_HandleTypeDef *pwm_timer[NUM_FANS] = {&htim1, &htim1, &htim1, &htim3, &htim3};
+static uint32_t pwm_channels[NUM_FANS] = {TIM_CHANNEL_1, TIM_CHANNEL_2, TIM_CHANNEL_3, TIM_CHANNEL_2, TIM_CHANNEL_1};
+
+static TIM_HandleTypeDef *tach_timer[NUM_FANS] = {&htim14, &htim16, &htim17, &htim2, &htim2};
+static uint32_t tach_channels[NUM_FANS] = {TIM_CHANNEL_1, TIM_CHANNEL_1, TIM_CHANNEL_1, TIM_CHANNEL_1, TIM_CHANNEL_2};
+static uint32_t tach_active_channels[NUM_FANS] = {HAL_TIM_ACTIVE_CHANNEL_1, HAL_TIM_ACTIVE_CHANNEL_1,
+                                                  HAL_TIM_ACTIVE_CHANNEL_1, HAL_TIM_ACTIVE_CHANNEL_1,
+                                                  HAL_TIM_ACTIVE_CHANNEL_2};
 
 // ********************************** Static Function Prototypes **********************************
 
@@ -185,7 +190,7 @@ void FEB_Fan_PWM_Init(void)
 {
   for (size_t i = 0; i < NUM_FANS; ++i)
   {
-    HAL_TIM_PWM_Start(timer[i], tim_channels[i]);
+    HAL_TIM_PWM_Start(pwm_timer[i], pwm_channels[i]);
   }
 }
 
@@ -197,7 +202,7 @@ void FEB_Fan_All_Speed_Set(uint32_t speed)
   }
   for (size_t i = 0; i < NUM_FANS; ++i)
   {
-    __HAL_TIM_SET_COMPARE(timer[i], tim_channels[i], speed);
+    __HAL_TIM_SET_COMPARE(pwm_timer[i], pwm_channels[i], speed);
   }
 }
 
@@ -211,7 +216,7 @@ void FEB_Fan_Speed_Set(uint8_t fan_idx, uint32_t speed)
   {
     speed = PWM_COUNTER;
   }
-  __HAL_TIM_SET_COMPARE(timer[fan_idx], tim_channels[fan_idx], speed);
+  __HAL_TIM_SET_COMPARE(pwm_timer[fan_idx], pwm_channels[fan_idx], speed);
 }
 
 // ********************************** TACH **********************************
@@ -220,7 +225,7 @@ void FEB_Fan_TACH_Init(void)
 {
   for (size_t i = 0; i < NUM_FANS; ++i)
   {
-    HAL_TIM_IC_Start_IT(timer[i], tim_channels[i]);
+    HAL_TIM_IC_Start_IT(tach_timer[i], tach_channels[i]);
   }
 }
 
@@ -230,16 +235,16 @@ void FEB_Fan_TACH_Callback(TIM_HandleTypeDef *htim)
   for (size_t i = 0; i < NUM_FANS; ++i)
   {
 
-    if (timer[i] == htim)
+    if (tach_timer[i] == htim)
     {
 
-      if (htim->Channel == tim_active_channels[i])
+      if (htim->Channel == tach_active_channels[i])
       {
 
         if (first_capture[i] == false)
         {
 
-          IC_first_rising_edge[i] = HAL_TIM_ReadCapturedValue(htim, tim_channels[i]);
+          IC_first_rising_edge[i] = HAL_TIM_ReadCapturedValue(htim, tach_channels[i]);
           first_capture[i] = true;
         }
 
@@ -247,7 +252,7 @@ void FEB_Fan_TACH_Callback(TIM_HandleTypeDef *htim)
         {
           uint32_t diff = 0;
 
-          IC_second_rising_edge[i] = HAL_TIM_ReadCapturedValue(htim, tim_channels[i]);
+          IC_second_rising_edge[i] = HAL_TIM_ReadCapturedValue(htim, tach_channels[i]);
 
           if (IC_second_rising_edge[i] > IC_first_rising_edge[i])
           {
