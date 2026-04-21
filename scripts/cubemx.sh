@@ -283,6 +283,26 @@ show_peripherals() {
     fi
 }
 
+# On Windows Git Bash (MSYS/MINGW), STM32CubeMX.exe is a native Windows binary
+# that wants native paths (C:\ST\...) in its script-load arguments and on the
+# command line, not POSIX paths (/c/ST/...). Convert via cygpath when present,
+# sed fallback otherwise. On macOS/Linux, prints the argument unchanged.
+posix_to_native_path() {
+    local p="$1"
+    case "$(uname -s)" in
+        MINGW*|MSYS*|CYGWIN*)
+            if command -v cygpath >/dev/null 2>&1; then
+                cygpath -w "$p"
+            else
+                echo "$p" | sed -E 's|^/([a-zA-Z])/|\1:/|'
+            fi
+            ;;
+        *)
+            echo "$p"
+            ;;
+    esac
+}
+
 # Generate code from .ioc file
 generate_code() {
     local board="$1"
@@ -302,14 +322,19 @@ generate_code() {
     local script_file
     script_file=$(mktemp)
 
+    local ioc_for_cubemx
+    local script_for_cubemx
+    ioc_for_cubemx=$(posix_to_native_path "$ioc_file")
+    script_for_cubemx=$(posix_to_native_path "$script_file")
+
     cat > "$script_file" << EOF
-config load "$ioc_file"
+config load "$ioc_for_cubemx"
 project generate
 exit
 EOF
 
     # Run STM32CubeMX in script mode
-    if "$CUBEMX_PATH" -q "$script_file"; then
+    if "$CUBEMX_PATH" -q "$script_for_cubemx"; then
         log_info "Code generation completed for $board"
         rm -f "$script_file"
         return 0
@@ -368,15 +393,20 @@ migrate_ioc() {
     local script_file
     script_file=$(mktemp)
 
+    local ioc_for_cubemx
+    local script_for_cubemx
+    ioc_for_cubemx=$(posix_to_native_path "$ioc_file")
+    script_for_cubemx=$(posix_to_native_path "$script_file")
+
     # Loading and saving with newer CubeMX auto-migrates the .ioc file
     cat > "$script_file" << EOF
-config load "$ioc_file"
-config saveext "$ioc_file"
+config load "$ioc_for_cubemx"
+config saveext "$ioc_for_cubemx"
 exit
 EOF
 
     # Run STM32CubeMX in script mode
-    if "$CUBEMX_PATH" -q "$script_file"; then
+    if "$CUBEMX_PATH" -q "$script_for_cubemx"; then
         local new_version
         new_version=$(ioc_get_value "$ioc_file" "MxCube.Version")
         log_info "Migration completed for $board (now version: ${new_version:-unknown})"

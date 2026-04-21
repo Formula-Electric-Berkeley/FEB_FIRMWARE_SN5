@@ -46,21 +46,37 @@ check_prerequisites() {
         return 0
     fi
 
-    # Check common installation paths
-    local common_paths=(
+    # Check common installation paths. Globs match version-suffixed installs
+    # (e.g., STM32CubeCLT_1.19.0). Most entries list both macOS/Linux style
+    # (no .exe) and Windows Git Bash style (.exe) so the same script handles all.
+    local common_globs=(
+        # macOS (STM32CubeProgrammer app bundle)
         "/Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/MacOs/bin/STM32_Programmer_CLI"
-        "/opt/st/stm32cubeclt/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
-        "$HOME/STM32CubeCLT/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
+        # macOS (STM32CubeCLT install)
+        "/opt/ST/STM32CubeCLT"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
+        "/Applications/STMicroelectronics/STM32CubeCLT"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
+        # Linux
+        "/opt/st/stm32cubeclt"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
         "/usr/local/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
+        # User-home install (any platform)
+        "$HOME/STM32CubeCLT"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
+        # Windows Git Bash
+        "/c/ST/STM32CubeCLT"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe"
+        "/c/Program Files/STMicroelectronics/STM32CubeCLT"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe"
     )
 
-    for path in "${common_paths[@]}"; do
-        if [ -x "$path" ]; then
-            log_warn "Found STM32_Programmer_CLI at: $path"
-            log_warn "Add it to your PATH for convenience."
-            export PATH="$(dirname "$path"):$PATH"
-            return 0
-        fi
+    local path
+    for glob in "${common_globs[@]}"; do
+        # shellcheck disable=SC2206  # intentional glob expansion
+        local expanded=( $glob )
+        for path in "${expanded[@]}"; do
+            if [ -x "$path" ]; then
+                log_warn "Found STM32_Programmer_CLI at: $path"
+                log_warn "Add it to your PATH for convenience."
+                export PATH="$(dirname "$path"):$PATH"
+                return 0
+            fi
+        done
     done
 
     return 1

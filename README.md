@@ -4,29 +4,47 @@ Firmware for the FEB SN5 Formula E vehicle. Each subdirectory corresponds to a b
 
 ## Project Structure
 
-| Directory | Board | MCU | Notes |
-|-----------|-------|-----|-------|
-| `LVPDB/` | Low Voltage Power Distribution Board | STM32F446RE | |
-| `BMS/` | Battery Management System | STM32F446RE | |
-| `DASH/` | Dashboard | STM32F469RE | FreeRTOS, FatFS |
-| `DART/` | DART | STM32F042K6Tx | Cortex-M0 |
-| `DCU/` | Data Control Unit | STM32F446RE | |
-| `PCU/` | Powertrain Control Unit | STM32F446RE | |
-| `Sensor_Nodes/` | Sensor Nodes | STM32F446RE | |
-| `UART/` | UART Communication Board | STM32F446RE | FreeRTOS |
-| `UART_TEST/` | UART/Console Test Board | STM32U575ZI | Test platform for UART/Console libraries |
+| Directory | Board | MCU | Notes | Docs |
+|-----------|-------|-----|-------|------|
+| `BMS/` | Battery Management System | STM32F446RE | FreeRTOS, cell-monitor front-end | [BMS/README.md](BMS/README.md) |
+| `DART/` | Fan / Tachometer Controller | STM32F042K6Tx | Cortex-M0, bare-metal, `-Os` | [DART/README.md](DART/README.md) |
+| `DASH/` | Driver Dashboard | STM32F469NI | FreeRTOS, LVGL, SDRAM, FATFS | [DASH/README.md](DASH/README.md) |
+| `DCU/` | Data Control Unit | STM32F446RE | Placeholder (empty user code) | [DCU/README.md](DCU/README.md) |
+| `LVPDB/` | Low Voltage Power Distribution | STM32F446RE | Dual CAN, 7× TPS | [LVPDB/README.md](LVPDB/README.md) |
+| `PCU/` | Powertrain Control Unit | STM32F446RE | Dual CAN, triple ADC, RMS gateway | [PCU/README.md](PCU/README.md) |
+| `Sensor_Nodes/` | Sensor Aggregator | STM32F446RE | IMU + GPS + WSS; third-party lwgps | [Sensor_Nodes/README.md](Sensor_Nodes/README.md) |
+| `UART/` | Serial / Console Bridge | STM32F446RE | FreeRTOS | [UART/README.md](UART/README.md) |
+| `UART_TEST/` | STM32U5 Validation Fixture | STM32U575ZI | Cortex-M33, GPDMA, FreeRTOS | [UART_TEST/README.md](UART_TEST/README.md) |
 
 All boards are fully buildable with CMake.
+
+## Common Libraries
+
+Shared across boards, under `common/`. See [`common/README.md`](common/README.md) for the library index.
+
+| Target | Role | Docs |
+|---|---|---|
+| `feb_io` | Umbrella: UART + Log + Console + Commands + Version + Time + String_Utils | [FEB_Serial_Library](common/FEB_Serial_Library/README.md) |
+| `feb_can` | FreeRTOS-safe CAN runtime (dispatcher) | [FEB_CAN_Library](common/FEB_CAN_Library/README.md) |
+| *(submodule)* | CAN message definitions + code generator | [FEB_CAN_Library_SN4](common/FEB_CAN_Library_SN4/README.md) |
+| `feb_tps` | TPS2482 power-monitor driver | [FEB_TPS_Library](common/FEB_TPS_Library/README.md) |
+| `feb_time` | 64-bit microsecond monotonic clock | [FEB_Time_Library](common/FEB_Time_Library/README.md) |
+| `feb_rtos_utils` | `REQUIRE_RTOS_HANDLE` fail-fast macro | [FEB_RTOS_Utils](common/FEB_RTOS_Utils/README.md) |
+
+## Repository Layout
 
 ```
 cmake/                           # Shared toolchain files
   gcc-arm-none-eabi.cmake        # ARM GCC cross-compiler config
-common/
-  FEB_CAN_Library_SN4/           # CAN library (git submodule)
-    gen/                         # Generated C pack/unpack code
-    *_messages.py                # Python message definitions
-    generate_can.sh              # Generation script
-scripts/
+  FEB_Version.cmake              # Per-board build provenance generator
+common/                          # Shared libraries (see common/README.md)
+  FEB_Serial_Library/            # feb_io umbrella + sub-libraries
+  FEB_CAN_Library/               # feb_can runtime dispatcher
+  FEB_CAN_Library_SN4/           # CAN message defs (git submodule)
+  FEB_TPS_Library/               # feb_tps
+  FEB_Time_Library/              # feb_time
+  FEB_RTOS_Utils/                # feb_rtos_utils
+scripts/                         # Developer scripts (see scripts/README.md)
   setup.sh                       # First-time dev environment setup
   build.sh                       # Build firmware (interactive/batch/release)
   flash.sh                       # Flash firmware to boards
@@ -34,6 +52,7 @@ scripts/
   setup-hooks.sh                 # Install pre-commit hooks
   version.sh                     # Create version tags for releases
   cubemx.sh                      # Generate HAL code from .ioc files
+third-party/                     # Vendored external code (lwgps, etc.)
 .github/workflows/               # CI/CD pipelines
 ```
 
@@ -80,10 +99,14 @@ This script:
 
 Set `CUBE_BUNDLE_PATH` to your STM32CubeCLT install directory. This is required for VSCode IntelliSense to find the cross-compiler's system headers (`stdio.h`, etc.).
 
-Add to your shell profile (`~/.zshrc` or `~/.bashrc`):
+`./scripts/setup.sh` configures this automatically on both macOS and Windows Git Bash — it globs the install directory, detects your shell (`zsh` vs `bash`), and appends the export to the right profile file. If you prefer to set it manually, add to your shell profile:
 
 ```bash
-export CUBE_BUNDLE_PATH=/opt/ST/STM32CubeCLT_1.19.0
+# macOS (zsh is the default since Catalina — use ~/.zshrc)
+export CUBE_BUNDLE_PATH=/opt/ST/STM32CubeCLT_1.19.0   # or wherever the installer placed it
+
+# Windows Git Bash (use ~/.bashrc)
+export CUBE_BUNDLE_PATH=/c/ST/STM32CubeCLT_1.19.0
 ```
 
 Then restart your terminal (and VSCode, if open).
@@ -432,22 +455,7 @@ This automatically:
 
 ### Shared Code
 
-The `common/` directory contains shared code across all boards:
-
-```
-common/
-  FEB_CAN_Library_SN4/      # Git submodule - CAN message definitions
-    gen/                    # Generated C code (feb_can.c, feb_can.h)
-    *_messages.py           # Python message definitions per board
-    generate_can.sh         # Generation script
-  FEB_Serial_Library/       # UART, Logging, and Console
-    FEB_UART/               # DMA UART driver (feb_uart.h)
-    FEB_Log/                # Logging system (feb_log.h)
-    FEB_Console/            # CLI interface (feb_console.h)
-    FEB_Commands/           # Default commands (feb_commands.h)
-```
-
-See [FEB_Serial_Library/README.md](common/FEB_Serial_Library/README.md) for detailed usage documentation.
+The `common/` directory contains shared code across all boards. Start at [`common/README.md`](common/README.md) for the full library index. Each library has its own README; see the **Common Libraries** table above for quick links.
 
 ### Board Directory Structure
 

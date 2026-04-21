@@ -53,6 +53,86 @@ command_exists() {
     command -v "$1" &> /dev/null
 }
 
+# Prompt with a default value when stdin is not a TTY (for CI / non-interactive).
+# Usage: prompt_yes_no "Question?" "Y"  -> sets REPLY based on user input or default.
+prompt_yes_no() {
+    local question="$1"
+    local default="${2:-N}"
+    if [ ! -t 0 ]; then
+        REPLY="$default"
+        echo "$question [auto: $default]"
+        return 0
+    fi
+    read -r -p "$question " -n 1
+    echo ""
+}
+
+# Pick the shell profile file to append exports to, based on $SHELL and platform.
+#   macOS + zsh -> ~/.zshrc
+#   macOS + bash -> ~/.bash_profile (creating it to source ~/.bashrc if missing)
+#   Linux + zsh -> ~/.zshrc
+#   Linux + bash -> ~/.bashrc
+#   Windows Git Bash -> ~/.bashrc (and ensure ~/.bash_profile sources it)
+detect_profile_path() {
+    local shell_name
+    shell_name="$(basename "${SHELL:-/bin/bash}")"
+
+    case "$(uname -s)" in
+        MINGW*|MSYS*|CYGWIN*)
+            # Ensure .bash_profile sources .bashrc for login shells.
+            if [ ! -f "$HOME/.bash_profile" ]; then
+                cat > "$HOME/.bash_profile" << 'PROFILE_EOF'
+# Load .bashrc if it exists
+if [ -f "$HOME/.bashrc" ]; then
+    source "$HOME/.bashrc"
+fi
+PROFILE_EOF
+            fi
+            echo "$HOME/.bashrc"
+            ;;
+        Darwin*)
+            if [ "$shell_name" = "zsh" ]; then
+                echo "$HOME/.zshrc"
+            else
+                # macOS bash reads .bash_profile for login shells.
+                if [ ! -f "$HOME/.bash_profile" ]; then
+                    cat > "$HOME/.bash_profile" << 'PROFILE_EOF'
+# Load .bashrc if it exists
+if [ -f "$HOME/.bashrc" ]; then
+    source "$HOME/.bashrc"
+fi
+PROFILE_EOF
+                fi
+                echo "$HOME/.bash_profile"
+            fi
+            ;;
+        *)
+            if [ "$shell_name" = "zsh" ]; then
+                echo "$HOME/.zshrc"
+            else
+                echo "$HOME/.bashrc"
+            fi
+            ;;
+    esac
+}
+
+# Pick the highest-versioned STM32CubeCLT install from the candidate globs.
+# Prints the chosen directory on stdout; exit 1 if nothing found.
+find_cubeclt_install() {
+    local candidates=("$@")
+    local -a matches=()
+    local c
+    for c in "${candidates[@]}"; do
+        # shellcheck disable=SC2206  # intentional glob expansion
+        local expanded=( $c )
+        for e in "${expanded[@]}"; do
+            [ -d "$e" ] && matches+=("${e%/}")
+        done
+    done
+    [ "${#matches[@]}" -eq 0 ] && return 1
+    printf '%s\n' "${matches[@]}" | sort -V | tail -1
+}
+
 # Step 1: Check toolchain
 check_toolchain() {
     log_header "Step 1/5: Checking Toolchain"
@@ -118,14 +198,22 @@ check_toolchain() {
         log_error "Missing required tools."
         echo ""
 
-        # On Windows, try to auto-configure PATH
+        # Try to auto-configure PATH on platforms where we know where the tools land.
         case "$(uname -s)" in
             MINGW*|MSYS*|CYGWIN*)
                 if configure_windows_path; then
                     echo ""
                     log_info "Retrying tool detection..."
                     echo ""
-                    # Re-check after PATH update (recursive call)
+                    check_toolchain
+                    return $?
+                fi
+                ;;
+            Darwin*)
+                if configure_macos_path; then
+                    echo ""
+                    log_info "Retrying tool detection..."
+                    echo ""
                     check_toolchain
                     return $?
                 fi
@@ -144,15 +232,16 @@ show_install_instructions() {
         Darwin*)
             echo -e "${BOLD}macOS Installation:${NC}"
             echo ""
-            echo "  # Required tools"
-            echo "  brew install cmake ninja"
-            echo "  brew install --cask gcc-arm-embedded"
+            echo "  Option A (recommended) — STM32CubeCLT bundles everything:"
+            echo "    Download: https://www.st.com/en/development-tools/stm32cubeclt.html"
+            echo "    Default install: /opt/ST/STM32CubeCLT_<version>"
+            echo "    Re-run this script after install — it will auto-configure PATH."
             echo ""
-            echo "  # Optional tools"
-            echo "  brew install clang-format"
-            echo ""
-            echo "  # For flashing (STM32CubeCLT)"
-            echo "  Download from: https://www.st.com/en/development-tools/stm32cubeclt.html"
+            echo "  Option B — install tools individually via Homebrew:"
+            echo "    brew install cmake ninja"
+            echo "    brew install --cask gcc-arm-embedded    # ARM GCC toolchain"
+            echo "    brew install clang-format               # optional, for formatting"
+            echo "    # Flashing still needs STM32CubeProgrammer from STM32CubeCLT."
             ;;
         Linux*)
             echo -e "${BOLD}Linux Installation:${NC}"
@@ -173,36 +262,31 @@ show_install_instructions() {
             echo "  Install STM32CubeCLT (bundles all required tools):"
             echo "  https://www.st.com/en/development-tools/stm32cubeclt.html"
             echo ""
-            echo "  Default install location: C:\\ST\\STM32CubeCLT"
+            echo "  Default install locations:"
+            echo "    C:\\ST\\STM32CubeCLT_<version>"
+            echo "    C:\\Program Files\\STMicroelectronics\\STM32CubeCLT_<version>"
             echo ""
             echo "  After installing, re-run this setup script to configure PATH."
             ;;
     esac
 }
 
-# Configure PATH for Windows Git Bash
-configure_windows_path() {
-    local cubeclt_path="/c/ST/STM32CubeCLT"
-    local bashrc="$HOME/.bashrc"
-
-    # Check if STM32CubeCLT exists at default location
-    if [ ! -d "$cubeclt_path" ]; then
-        log_warn "STM32CubeCLT not found at $cubeclt_path"
-        echo "  Please install STM32CubeCLT first."
-        return 1
-    fi
+# Append STM32CubeCLT exports to the given profile file. Idempotent.
+_append_cubeclt_exports() {
+    local profile="$1"
+    local cubeclt_path="$2"
 
     # Check if already configured
-    if grep -q "STM32CubeCLT" "$bashrc" 2>/dev/null; then
-        log_info "PATH already configured in ~/.bashrc"
-        echo "  Try running: source ~/.bashrc"
+    if grep -q "STM32CubeCLT" "$profile" 2>/dev/null; then
+        log_info "PATH already configured in $profile"
+        echo "  Try running: source $profile"
         return 1
     fi
 
     echo ""
     log_info "Found STM32CubeCLT at $cubeclt_path"
     echo ""
-    echo "  The following will be added to ~/.bashrc:"
+    echo "  The following will be added to $profile:"
     echo ""
     echo "    export PATH=\"$cubeclt_path/GNU-tools-for-STM32/bin:\$PATH\""
     echo "    export PATH=\"$cubeclt_path/CMake/bin:\$PATH\""
@@ -211,27 +295,14 @@ configure_windows_path() {
     echo "    export CUBE_BUNDLE_PATH=\"$cubeclt_path\""
     echo ""
 
-    read -p "Add to ~/.bashrc? [Y/n] " -n 1 -r
-    echo ""
+    prompt_yes_no "Add to $profile? [Y/n]" "Y"
 
     if [[ $REPLY =~ ^[Nn]$ ]]; then
         log_warn "Skipping PATH configuration. You'll need to configure manually."
         return 1
     fi
 
-    # Create ~/.bash_profile if it doesn't exist (Git Bash sources this for login shells)
-    if [ ! -f "$HOME/.bash_profile" ]; then
-        log_step "Creating ~/.bash_profile to source ~/.bashrc..."
-        cat > "$HOME/.bash_profile" << 'PROFILE_EOF'
-# Load .bashrc if it exists
-if [ -f "$HOME/.bashrc" ]; then
-    source "$HOME/.bashrc"
-fi
-PROFILE_EOF
-    fi
-
-    # Append to bashrc
-    cat >> "$bashrc" << BASHRC_EOF
+    cat >> "$profile" << BASHRC_EOF
 
 # STM32CubeCLT tools (added by FEB setup script)
 export PATH="$cubeclt_path/GNU-tools-for-STM32/bin:\$PATH"
@@ -241,13 +312,62 @@ export PATH="$cubeclt_path/STM32CubeProgrammer/bin:\$PATH"
 export CUBE_BUNDLE_PATH="$cubeclt_path"
 BASHRC_EOF
 
-    log_info "PATH configuration added to ~/.bashrc"
+    log_info "PATH configuration added to $profile"
     echo ""
 
-    # Source it now so setup can continue
-    source "$bashrc"
+    # Apply to the current session so setup can continue
+    export PATH="$cubeclt_path/GNU-tools-for-STM32/bin:$PATH"
+    export PATH="$cubeclt_path/CMake/bin:$PATH"
+    export PATH="$cubeclt_path/Ninja/bin:$PATH"
+    export PATH="$cubeclt_path/STM32CubeProgrammer/bin:$PATH"
+    export CUBE_BUNDLE_PATH="$cubeclt_path"
     log_info "PATH updated for current session"
     return 0
+}
+
+# Configure PATH for Windows Git Bash. Globs for versioned installs.
+configure_windows_path() {
+    local cubeclt_path
+    cubeclt_path="$(find_cubeclt_install \
+        '/c/ST/STM32CubeCLT'*'/' \
+        '/c/ST/STM32CubeCLT/' \
+        '/c/Program Files/STMicroelectronics/STM32CubeCLT'*'/' \
+        '/c/Program Files/STMicroelectronics/STM32CubeCLT/' \
+    )" || true
+
+    if [ -z "$cubeclt_path" ]; then
+        log_warn "STM32CubeCLT not found. Searched:"
+        echo "    /c/ST/STM32CubeCLT[*]/"
+        echo "    /c/Program Files/STMicroelectronics/STM32CubeCLT[*]/"
+        echo "  Please install STM32CubeCLT first."
+        return 1
+    fi
+
+    _append_cubeclt_exports "$(detect_profile_path)" "$cubeclt_path"
+}
+
+# Configure PATH for macOS (symmetric to the Windows function).
+configure_macos_path() {
+    local cubeclt_path
+    cubeclt_path="$(find_cubeclt_install \
+        '/opt/ST/STM32CubeCLT'*'/' \
+        '/opt/ST/STM32CubeCLT/' \
+        '/Applications/STMicroelectronics/STM32CubeCLT'*'/' \
+        '/Applications/STMicroelectronics/STM32CubeCLT/' \
+        "$HOME/STM32CubeCLT"*'/' \
+        "$HOME/STM32CubeCLT/" \
+    )" || true
+
+    if [ -z "$cubeclt_path" ]; then
+        log_warn "STM32CubeCLT not found. Searched:"
+        echo "    /opt/ST/STM32CubeCLT[*]/"
+        echo "    /Applications/STMicroelectronics/STM32CubeCLT[*]/"
+        echo "    \$HOME/STM32CubeCLT[*]/"
+        echo "  Please install STM32CubeCLT first (see instructions above)."
+        return 1
+    fi
+
+    _append_cubeclt_exports "$(detect_profile_path)" "$cubeclt_path"
 }
 
 # Step 2: Initialize submodules
@@ -303,8 +423,7 @@ configure_cmake() {
 
     if [ -d "build/Debug" ] && [ -f "build/Debug/build.ninja" ]; then
         log_info "CMake already configured (build/Debug exists)"
-        read -p "Reconfigure? [y/N] " -n 1 -r
-        echo ""
+        prompt_yes_no "Reconfigure? [y/N]" "N"
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             return 0
         fi
@@ -352,7 +471,11 @@ show_summary() {
     echo "     ./scripts/version.sh patch"
     echo ""
     echo -e "${BOLD}Documentation:${NC}"
-    echo "  - README.md        General project info"
+    echo "  - README.md                    Repo overview, build, flash, CI"
+    echo "  - <BOARD>/README.md            Per-board docs (e.g., BMS/README.md)"
+    echo "  - common/README.md             Shared library index"
+    echo "  - common/<LIB>/README.md       Per-library docs (e.g., common/FEB_Time_Library/README.md)"
+    echo "  - scripts/README.md            Script catalog"
     echo ""
     echo -e "${GREEN}Happy coding!${NC}"
 }
