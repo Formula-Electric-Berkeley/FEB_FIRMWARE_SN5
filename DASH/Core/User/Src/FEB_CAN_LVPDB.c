@@ -56,7 +56,7 @@ static void rx_callback_debug(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_
 
 void FEB_CAN_LVPDB_Init(void)
 {
-  FEB_Console_Printf("init LVPDB can debug");
+
   // FEB_CAN_RX_Params_t rx_params = {
   //     .instance = FEB_CAN_INSTANCE_1,
   //     .can_id = FEB_CAN_LVPDB_LV_24V_BUS_AND_12V_BUS_VOLTAGES_FRAME_ID,
@@ -80,7 +80,7 @@ void FEB_CAN_LVPDB_Init(void)
       .user_data = NULL,
   };
 
-  FEB_CAN_RX_Register(&rx_params);
+  FEB_Console_Printf("init LVPDB can debug: %ld\r\n", FEB_CAN_RX_Register(&rx_params));
 }
 
 uint16_t FEB_CAN_LVPDB_GetLast24VVoltage(void)

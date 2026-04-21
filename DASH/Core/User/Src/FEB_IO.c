@@ -142,7 +142,7 @@ void FEB_IO_Update_GPIO(void)
   //   00010000 (1 << 5)
   // & 00010000 -> (bool) -> true
 
-  printf("[-] %X %X\n", received_data[0], received_data[1]);
+  // printf("[-] %X %X\n", received_data[0], received_data[1]);
 
   state.button_rtd = (bool)(received_data[0] & (1 << 1));
 
@@ -158,7 +158,7 @@ void FEB_IO_Set_Buzzer(bool new_state)
 {
   state.buzzer_enabled = new_state;
 
-  printf(state.buzzer_enabled ? "buzzing\r\n" : "silent\r\n");
+  // printf(state.buzzer_enabled ? "buzzing\r\n" : "silent\r\n");
   uint8_t send_val[2];
   send_val[0] = state.buzzer_enabled ? 0b11100000 : 0b11100001;
   send_val[1] = 0b11111111;

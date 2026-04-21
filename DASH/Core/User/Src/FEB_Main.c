@@ -75,7 +75,7 @@ void FEB_Init(void)
   // DASH_RegisterCommands();
 
   /* Connect UART RX to console processor */
-  FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
+  // FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
 
   /* Initialize CAN state publisher */
   FEB_CAN_State_Init();

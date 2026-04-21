@@ -33,6 +33,7 @@ void FEB_CAN_State_Tick(void)
   /* Don't transmit until CAN is initialized */
   if (!can_ready)
   {
+    FEB_Console_Printf("CAN not ready");
     return;
   }
 
@@ -75,9 +76,9 @@ void FEB_CAN_State_Tick(void)
   IO_States_t states = FEB_IO_GetLastIOStates();
   bool rtd = FEB_State_GetLastRTD();
 
-  tx_data[0] = (states.button_rtd << 0) + (states.switch_coolant_pump_radiator_fan << 4) +
-               (states.switch_accumulator_fans << 5) + (states.switch_logging << 6);
-  tx_data[1] = (states.buzzer_enabled << 0) + (rtd << 1);
+  // tx_data[0] = (states.button_rtd << 0) + (states.switch_coolant_pump_radiator_fan << 4) +
+  //              (states.switch_accumulator_fans << 5) + (states.switch_logging << 6);
+  // tx_data[1] = (states.buzzer_enabled << 0) + (rtd << 1);
 
   struct feb_can_dash_state_t pack_states = {.buzzer = states.buzzer_enabled,
                                              .button1 = states.button_rtd,

@@ -43,7 +43,6 @@ extern osMutexId_t canTxMutexHandle;
 extern osMutexId_t canRxMutexHandle;
 extern osSemaphoreId_t canTxMailboxSemHandle;
 
-
 /* ========================== Local Prototypes ========================== */
 static void DASH_CAN_Init(void);
 static void DASH_CAN_RxCallback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
@@ -119,13 +118,13 @@ void StartDASHTaskRx(void *argument)
   DASH_CAN_Init();
 
   FEB_CAN_PingPong_Init();
-  
+
   FEB_Console_Printf("gurt: yo");
   FEB_CAN_BMS_Init();
   FEB_CAN_PCU_Init();
   FEB_CAN_LVPDB_Init();
 
-/* Ensure filters reflect registry */
+  /* Ensure filters reflect registry */
   FEB_CAN_Filter_UpdateFromRegistry(FEB_CAN_INSTANCE_1);
 
   /* Signal that CAN is ready for state publishing */
