@@ -29,6 +29,17 @@ static void print_imu_help(void)
   FEB_Console_Printf("  IMU|gyro    - Read angular rate X, Y, Z [mdps]\r\n");
   FEB_Console_Printf("  IMU|temp    - Read IMU temperature [C]\r\n");
   FEB_Console_Printf("  IMU|all     - Read all IMU data\r\n");
+  FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|IMU|status  - status row (whoami + init ok)\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|IMU|accel   - accel row X,Y,Z mg\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|IMU|gyro    - gyro row X,Y,Z mdps\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|IMU|temp    - temp row C\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|IMU|all     - accel + gyro + temp rows\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|commands    - List CSV commands\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|hello       - Heartbeat\r\n");
+  FEB_Console_Printf("  *|csv|<tx_id>|hello                        - Discover all boards\r\n");
+  FEB_Console_Printf("Each request emits: ack -> [rows] -> done\r\n");
 }
 
 static void cmd_imu_status(void)
@@ -153,7 +164,7 @@ static void csv_imu_status(void)
   uint8_t whoamI = 0;
   int32_t ret = lsm6dsox_device_id_get(&lsm6dsox_ctx, &whoamI);
   int init_ok = (ret == 0 && whoamI == LSM6DSOX_ID) ? 1 : 0;
-  FEB_Console_CsvPrintf("imuStat", "0x%02X,0x%02X,%d\r\n", whoamI, LSM6DSOX_ID, init_ok);
+  FEB_Console_CsvEmit("status", "imu,0x%02X,0x%02X,%d", whoamI, LSM6DSOX_ID, init_ok);
 }
 
 static void csv_imu_accel(void)
@@ -161,11 +172,11 @@ static void csv_imu_accel(void)
   int16_t raw[3] = {0};
   if (lsm6dsox_acceleration_raw_get(&lsm6dsox_ctx, raw) != 0)
   {
-    FEB_Console_CsvPrintf("csv_err", "imu_accel_read\r\n");
+    FEB_Console_CsvError("error", "imu_accel_read");
     return;
   }
-  FEB_Console_CsvPrintf("imuAccel", "%.2f,%.2f,%.2f\r\n", lsm6dsox_from_fs2_to_mg(raw[0]),
-                        lsm6dsox_from_fs2_to_mg(raw[1]), lsm6dsox_from_fs2_to_mg(raw[2]));
+  FEB_Console_CsvEmit("accel", "%.2f,%.2f,%.2f", lsm6dsox_from_fs2_to_mg(raw[0]), lsm6dsox_from_fs2_to_mg(raw[1]),
+                      lsm6dsox_from_fs2_to_mg(raw[2]));
 }
 
 static void csv_imu_gyro(void)
@@ -173,11 +184,11 @@ static void csv_imu_gyro(void)
   int16_t raw[3] = {0};
   if (lsm6dsox_angular_rate_raw_get(&lsm6dsox_ctx, raw) != 0)
   {
-    FEB_Console_CsvPrintf("csv_err", "imu_gyro_read\r\n");
+    FEB_Console_CsvError("error", "imu_gyro_read");
     return;
   }
-  FEB_Console_CsvPrintf("imuGyro", "%.2f,%.2f,%.2f\r\n", lsm6dsox_from_fs2000_to_mdps(raw[0]),
-                        lsm6dsox_from_fs2000_to_mdps(raw[1]), lsm6dsox_from_fs2000_to_mdps(raw[2]));
+  FEB_Console_CsvEmit("gyro", "%.2f,%.2f,%.2f", lsm6dsox_from_fs2000_to_mdps(raw[0]),
+                      lsm6dsox_from_fs2000_to_mdps(raw[1]), lsm6dsox_from_fs2000_to_mdps(raw[2]));
 }
 
 static void csv_imu_temp(void)
@@ -185,17 +196,17 @@ static void csv_imu_temp(void)
   int16_t raw_temp;
   if (lsm6dsox_temperature_raw_get(&lsm6dsox_ctx, &raw_temp) != 0)
   {
-    FEB_Console_CsvPrintf("csv_err", "imu_temp_read\r\n");
+    FEB_Console_CsvError("error", "imu_temp_read");
     return;
   }
-  FEB_Console_CsvPrintf("imuTemp", "%.2f\r\n", lsm6dsox_from_lsb_to_celsius(raw_temp));
+  FEB_Console_CsvEmit("temp", "imu,%.2f", lsm6dsox_from_lsb_to_celsius(raw_temp));
 }
 
 static void cmd_imu_csv(int argc, char *argv[])
 {
   if (argc < 2)
   {
-    FEB_Console_CsvPrintf("csv_err", "imu_usage,status|accel|gyro|temp|all\r\n");
+    FEB_Console_CsvError("error", "imu_usage,status|accel|gyro|temp|all");
     return;
   }
   const char *subcmd = argv[1];
@@ -223,7 +234,7 @@ static void cmd_imu_csv(int argc, char *argv[])
   }
   else
   {
-    FEB_Console_CsvPrintf("csv_err", "imu_mode,%s\r\n", subcmd);
+    FEB_Console_CsvError("error", "imu_mode,%s", subcmd);
   }
 }
 
@@ -238,6 +249,16 @@ static void print_mag_help(void)
   FEB_Console_Printf("  MAG|field   - Read magnetic field X, Y, Z [mG]\r\n");
   FEB_Console_Printf("  MAG|temp    - Read magnetometer temperature [C]\r\n");
   FEB_Console_Printf("  MAG|all     - Read all magnetometer data\r\n");
+  FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|MAG|status  - status row (whoami + init ok)\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|MAG|field   - field row X,Y,Z mG\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|MAG|temp    - temp row C\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|MAG|all     - field + temp rows\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|commands    - List CSV commands\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|hello       - Heartbeat\r\n");
+  FEB_Console_Printf("  *|csv|<tx_id>|hello                        - Discover all boards\r\n");
+  FEB_Console_Printf("Each request emits: ack -> [rows] -> done\r\n");
 }
 
 static void cmd_mag_status(void)
@@ -334,7 +355,7 @@ static void csv_mag_status(void)
   uint8_t whoamI = 0;
   int32_t ret = lis3mdl_device_id_get(&lis3mdl_ctx, &whoamI);
   int init_ok = (ret == 0 && whoamI == LIS3MDL_ID) ? 1 : 0;
-  FEB_Console_CsvPrintf("magStat", "0x%02X,0x%02X,%d\r\n", whoamI, LIS3MDL_ID, init_ok);
+  FEB_Console_CsvEmit("status", "mag,0x%02X,0x%02X,%d", whoamI, LIS3MDL_ID, init_ok);
 }
 
 static void csv_mag_field(void)
@@ -342,11 +363,11 @@ static void csv_mag_field(void)
   int16_t raw[3] = {0};
   if (lis3mdl_magnetic_raw_get(&lis3mdl_ctx, raw) != 0)
   {
-    FEB_Console_CsvPrintf("csv_err", "mag_field_read\r\n");
+    FEB_Console_CsvError("error", "mag_field_read");
     return;
   }
-  FEB_Console_CsvPrintf("magField", "%.2f,%.2f,%.2f\r\n", 1000.0f * lis3mdl_from_fs16_to_gauss(raw[0]),
-                        1000.0f * lis3mdl_from_fs16_to_gauss(raw[1]), 1000.0f * lis3mdl_from_fs16_to_gauss(raw[2]));
+  FEB_Console_CsvEmit("field", "%.2f,%.2f,%.2f", 1000.0f * lis3mdl_from_fs16_to_gauss(raw[0]),
+                      1000.0f * lis3mdl_from_fs16_to_gauss(raw[1]), 1000.0f * lis3mdl_from_fs16_to_gauss(raw[2]));
 }
 
 static void csv_mag_temp(void)
@@ -354,17 +375,17 @@ static void csv_mag_temp(void)
   int16_t raw_temp;
   if (lis3mdl_temperature_raw_get(&lis3mdl_ctx, &raw_temp) != 0)
   {
-    FEB_Console_CsvPrintf("csv_err", "mag_temp_read\r\n");
+    FEB_Console_CsvError("error", "mag_temp_read");
     return;
   }
-  FEB_Console_CsvPrintf("magTemp", "%.2f\r\n", lis3mdl_from_lsb_to_celsius(raw_temp));
+  FEB_Console_CsvEmit("temp", "mag,%.2f", lis3mdl_from_lsb_to_celsius(raw_temp));
 }
 
 static void cmd_mag_csv(int argc, char *argv[])
 {
   if (argc < 2)
   {
-    FEB_Console_CsvPrintf("csv_err", "mag_usage,status|field|temp|all\r\n");
+    FEB_Console_CsvError("error", "mag_usage,status|field|temp|all");
     return;
   }
   const char *subcmd = argv[1];
@@ -387,7 +408,7 @@ static void cmd_mag_csv(int argc, char *argv[])
   }
   else
   {
-    FEB_Console_CsvPrintf("csv_err", "mag_mode,%s\r\n", subcmd);
+    FEB_Console_CsvError("error", "mag_mode,%s", subcmd);
   }
 }
 
@@ -408,6 +429,13 @@ static void print_gps_help(void)
   FEB_Console_Printf("  GPS|disable  - Disable GPS module\r\n");
   FEB_Console_Printf("  GPS|rate <hz>  - Set update rate (1, 5, 10)\r\n");
   FEB_Console_Printf("  GPS|pmtk <cmd> - Send raw PMTK command\r\n");
+  FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|GPS|<sub>    - pos/time/speed/sats/status rows\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|commands     - List CSV commands\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|hello        - Heartbeat\r\n");
+  FEB_Console_Printf("  *|csv|<tx_id>|hello                         - Discover all boards\r\n");
+  FEB_Console_Printf("Each request emits: ack -> [rows] -> done\r\n");
 }
 
 static void cmd_gps_status(void)
@@ -649,70 +677,68 @@ static void csv_gps_status(void)
 {
   FEB_GPS_Data_t d;
   FEB_GPS_GetLatestData(&d);
-  FEB_Console_CsvPrintf("gpsStat", "%d,%d,%d,%u,%u,%u,%u,%u\r\n", FEB_GPS_IsEnabled() ? 1 : 0, d.valid ? 1 : 0,
-                        d.has_fix ? 1 : 0, (unsigned int)d.fix, (unsigned int)d.fix_mode, (unsigned int)d.sats_in_use,
-                        (unsigned int)d.sats_in_view, (unsigned int)(HAL_GetTick() - d.last_update_ms));
+  FEB_Console_CsvEmit("status", "gps,%d,%d,%d,%u,%u,%u,%u,%u", FEB_GPS_IsEnabled() ? 1 : 0, d.valid ? 1 : 0,
+                      d.has_fix ? 1 : 0, (unsigned int)d.fix, (unsigned int)d.fix_mode, (unsigned int)d.sats_in_use,
+                      (unsigned int)d.sats_in_view, (unsigned int)(HAL_GetTick() - d.last_update_ms));
 }
 
 static void csv_gps_pos(void)
 {
   FEB_GPS_Data_t d;
   FEB_GPS_GetLatestData(&d);
-  FEB_Console_CsvPrintf("gpsPos", "%d,%.6f,%.6f,%.1f\r\n", d.has_fix ? 1 : 0, d.latitude, d.longitude, d.altitude);
+  FEB_Console_CsvEmit("pos", "%d,%.6f,%.6f,%.1f", d.has_fix ? 1 : 0, d.latitude, d.longitude, d.altitude);
 }
 
 static void csv_gps_time(void)
 {
   FEB_GPS_Data_t d;
   FEB_GPS_GetLatestData(&d);
-  FEB_Console_CsvPrintf("gpsTime", "%02u,%02u,%02u,20%02u,%02u,%02u\r\n", d.hours, d.minutes, d.seconds, d.year,
-                        d.month, d.day);
+  FEB_Console_CsvEmit("time", "%02u,%02u,%02u,20%02u,%02u,%02u", d.hours, d.minutes, d.seconds, d.year, d.month, d.day);
 }
 
 static void csv_gps_speed(void)
 {
   FEB_GPS_Data_t d;
   FEB_GPS_GetLatestData(&d);
-  FEB_Console_CsvPrintf("gpsSpeed", "%d,%.2f,%.1f\r\n", d.has_fix ? 1 : 0, d.speed_kmh, d.course);
+  FEB_Console_CsvEmit("speed", "%d,%.2f,%.1f", d.has_fix ? 1 : 0, d.speed_kmh, d.course);
 }
 
 static void csv_gps_sats(void)
 {
   FEB_GPS_Data_t d;
   FEB_GPS_GetLatestData(&d);
-  FEB_Console_CsvPrintf("gpsSats", "%u,%u,%.2f,%.2f,%.2f\r\n", (unsigned int)d.sats_in_use,
-                        (unsigned int)d.sats_in_view, d.hdop, d.vdop, d.pdop);
+  FEB_Console_CsvEmit("sats", "%u,%u,%.2f,%.2f,%.2f", (unsigned int)d.sats_in_use, (unsigned int)d.sats_in_view, d.hdop,
+                      d.vdop, d.pdop);
 }
 
 static void csv_gps_rate(int argc, char *argv[])
 {
   if (argc < 3)
   {
-    FEB_Console_CsvPrintf("csv_err", "gps_rate_usage,hz=1|5|10\r\n");
+    FEB_Console_CsvError("error", "gps_rate_usage,hz=1|5|10");
     return;
   }
   int hz = atoi(argv[2]);
   if (hz != 1 && hz != 5 && hz != 10)
   {
-    FEB_Console_CsvPrintf("csv_err", "gps_rate_value,%s\r\n", argv[2]);
+    FEB_Console_CsvError("error", "gps_rate_value,%s", argv[2]);
     return;
   }
   int ok = FEB_GPS_SetUpdateRate((uint8_t)hz) >= 0 ? 1 : 0;
-  FEB_Console_CsvPrintf("gpsRateAck", "%d,%d\r\n", hz, ok);
+  FEB_Console_CsvEmit("rate", "%d,%d", hz, ok);
 }
 
 static void csv_gps_pmtk(int argc, char *argv[])
 {
   if (argc < 3)
   {
-    FEB_Console_CsvPrintf("csv_err", "gps_pmtk_usage,cmd\r\n");
+    FEB_Console_CsvError("error", "gps_pmtk_usage,cmd");
     return;
   }
   int ok = FEB_GPS_SendPMTKCommand(argv[2]) >= 0 ? 1 : 0;
 
-  /* PMTK sentences are comma-delimited by protocol, so raw echoing into
-   * a CSV field breaks column alignment. RFC 4180 escape: wrap in
-   * double quotes and double any embedded '"'. */
+  /* PMTK sentences are comma-delimited by protocol. RFC 4180 escape:
+   * wrap in double quotes and double any embedded '"'. */
   char escaped[FEB_CONSOLE_LINE_BUFFER_SIZE];
   size_t pos = 0;
   if (pos + 1 < sizeof(escaped))
@@ -732,14 +758,14 @@ static void csv_gps_pmtk(int argc, char *argv[])
     escaped[pos++] = '"';
   }
   escaped[pos] = '\0';
-  FEB_Console_CsvPrintf("gpsPmtkAck", "%s,%d\r\n", escaped, ok);
+  FEB_Console_CsvEmit("pmtk", "%s,%d", escaped, ok);
 }
 
 static void cmd_gps_csv(int argc, char *argv[])
 {
   if (argc < 2)
   {
-    FEB_Console_CsvPrintf("csv_err", "gps_usage,status|pos|time|speed|sats|all|enable|disable|rate|pmtk\r\n");
+    FEB_Console_CsvError("error", "gps_usage,status|pos|time|speed|sats|all|enable|disable|rate|pmtk");
     return;
   }
   const char *subcmd = argv[1];
@@ -774,12 +800,12 @@ static void cmd_gps_csv(int argc, char *argv[])
   else if (FEB_strcasecmp(subcmd, "enable") == 0)
   {
     FEB_GPS_SetEnabled(true);
-    FEB_Console_CsvPrintf("gpsEnAck", "1\r\n");
+    FEB_Console_CsvEmit("enable", "1");
   }
   else if (FEB_strcasecmp(subcmd, "disable") == 0)
   {
     FEB_GPS_SetEnabled(false);
-    FEB_Console_CsvPrintf("gpsDisAck", "1\r\n");
+    FEB_Console_CsvEmit("disable", "1");
   }
   else if (FEB_strcasecmp(subcmd, "rate") == 0)
   {
@@ -791,7 +817,7 @@ static void cmd_gps_csv(int argc, char *argv[])
   }
   else
   {
-    FEB_Console_CsvPrintf("csv_err", "gps_mode,%s\r\n", subcmd);
+    FEB_Console_CsvError("error", "gps_mode,%s", subcmd);
   }
 }
 

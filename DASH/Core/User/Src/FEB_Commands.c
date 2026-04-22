@@ -49,17 +49,17 @@ static void cmd_ping_csv(int argc, char *argv[])
 {
   if (argc < 2)
   {
-    FEB_Console_CsvPrintf("csv_err", "ping_usage,channel=1..4\r\n");
+    FEB_Console_CsvError("error", "ping_usage,channel=1..4");
     return;
   }
   int ch = atoi(argv[1]);
   if (ch < 1 || ch > 4)
   {
-    FEB_Console_CsvPrintf("csv_err", "ping_channel,%s\r\n", argv[1]);
+    FEB_Console_CsvError("error", "ping_channel,%s", argv[1]);
     return;
   }
   FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PING);
-  FEB_Console_CsvPrintf("dashPingAck", "%d,0x%02X\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+  FEB_Console_CsvEmit("ping", "%d,0x%02X", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
 }
 
 static const FEB_Console_Cmd_t dash_cmd_ping = {
@@ -93,17 +93,17 @@ static void cmd_pong_csv(int argc, char *argv[])
 {
   if (argc < 2)
   {
-    FEB_Console_CsvPrintf("csv_err", "pong_usage,channel=1..4\r\n");
+    FEB_Console_CsvError("error", "pong_usage,channel=1..4");
     return;
   }
   int ch = atoi(argv[1]);
   if (ch < 1 || ch > 4)
   {
-    FEB_Console_CsvPrintf("csv_err", "pong_channel,%s\r\n", argv[1]);
+    FEB_Console_CsvError("error", "pong_channel,%s", argv[1]);
     return;
   }
   FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PONG);
-  FEB_Console_CsvPrintf("dashPongAck", "%d,0x%02X\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+  FEB_Console_CsvEmit("pong", "%d,0x%02X", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
 }
 
 static const FEB_Console_Cmd_t dash_cmd_pong = {
@@ -143,23 +143,23 @@ static void cmd_canstop_csv(int argc, char *argv[])
 {
   if (argc < 2)
   {
-    FEB_Console_CsvPrintf("csv_err", "canstop_usage,channel=1..4|all\r\n");
+    FEB_Console_CsvError("error", "canstop_usage,channel=1..4|all");
     return;
   }
   if (FEB_strcasecmp(argv[1], "all") == 0)
   {
     FEB_CAN_PingPong_Reset();
-    FEB_Console_CsvPrintf("dashStopAck", "all\r\n");
+    FEB_Console_CsvEmit("canstop", "all");
     return;
   }
   int ch = atoi(argv[1]);
   if (ch < 1 || ch > 4)
   {
-    FEB_Console_CsvPrintf("csv_err", "canstop_channel,%s\r\n", argv[1]);
+    FEB_Console_CsvError("error", "canstop_channel,%s", argv[1]);
     return;
   }
   FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_OFF);
-  FEB_Console_CsvPrintf("dashStopAck", "%d\r\n", ch);
+  FEB_Console_CsvEmit("canstop", "%d", ch);
 }
 
 static const FEB_Console_Cmd_t dash_cmd_canstop = {
@@ -211,13 +211,13 @@ static void cmd_canstatus_csv(int argc, char *argv[])
     uint32_t tx_fail = FEB_CAN_PingPong_GetTxFailCount((uint8_t)ch);
     uint32_t rx_count = FEB_CAN_PingPong_GetRxCount((uint8_t)ch);
     int32_t last_rx = FEB_CAN_PingPong_GetLastCounter((uint8_t)ch);
-    FEB_Console_CsvPrintf("dashCanstat", "%d,0x%02X,%s,%u,%u,%u,%d\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1],
-                          mode_names[mode], (unsigned int)tx_count, (unsigned int)tx_fail, (unsigned int)rx_count,
-                          (int)last_rx);
+    FEB_Console_CsvEmit("can", "%d,0x%02X,%s,%u,%u,%u,%d", ch, (unsigned int)pingpong_frame_ids[ch - 1],
+                        mode_names[mode], (unsigned int)tx_count, (unsigned int)tx_fail, (unsigned int)rx_count,
+                        (int)last_rx);
   }
-  FEB_Console_CsvPrintf("dashCanErr", "%lu,%lu,%lu,%lu\r\n", (unsigned long)FEB_CAN_GetHalErrorCount(),
-                        (unsigned long)FEB_CAN_GetTxTimeoutCount(), (unsigned long)FEB_CAN_GetTxQueueOverflowCount(),
-                        (unsigned long)FEB_CAN_GetRxQueueOverflowCount());
+  FEB_Console_CsvEmit("can_err", "%lu,%lu,%lu,%lu", (unsigned long)FEB_CAN_GetHalErrorCount(),
+                      (unsigned long)FEB_CAN_GetTxTimeoutCount(), (unsigned long)FEB_CAN_GetTxQueueOverflowCount(),
+                      (unsigned long)FEB_CAN_GetRxQueueOverflowCount());
 }
 
 static const FEB_Console_Cmd_t dash_cmd_canstatus = {
@@ -248,8 +248,8 @@ static void cmd_lvpdb_csv(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-  FEB_Console_CsvPrintf("dashLvpdb", "%u,%u\r\n", (unsigned int)FEB_CAN_LVPDB_GetLast24VVoltage(),
-                        (unsigned int)FEB_CAN_LVPDB_GetLast12VVoltage());
+  FEB_Console_CsvEmit("lvpdb", "%u,%u", (unsigned int)FEB_CAN_LVPDB_GetLast24VVoltage(),
+                      (unsigned int)FEB_CAN_LVPDB_GetLast12VVoltage());
 }
 
 static const FEB_Console_Cmd_t dash_cmd_lvpdb = {
@@ -282,9 +282,8 @@ static void cmd_bms_csv(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-  FEB_Console_CsvPrintf("dashBms", "%d,%d,%u\r\n", (int)FEB_CAN_BMS_GetLastState(),
-                        (int)FEB_CAN_BMS_GetLastCellMaxTemperature(),
-                        (unsigned int)FEB_CAN_BMS_GetLastAccumulatorTotalVoltage());
+  FEB_Console_CsvEmit("bms", "%d,%d,%u", (int)FEB_CAN_BMS_GetLastState(), (int)FEB_CAN_BMS_GetLastCellMaxTemperature(),
+                      (unsigned int)FEB_CAN_BMS_GetLastAccumulatorTotalVoltage());
 }
 
 static const FEB_Console_Cmd_t dash_cmd_bms = {
@@ -318,9 +317,8 @@ static void cmd_pcu_csv(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-  FEB_Console_CsvPrintf("dashPcu", "%d,%d,%d,%u\r\n", (int)FEB_CAN_PCU_GetLastTorque(),
-                        (int)FEB_CAN_PCU_GetLastDirection(), (int)FEB_CAN_PCU_GetLastRMSEnabled(),
-                        (unsigned int)FEB_CAN_PCU_GetLastBreakPosition());
+  FEB_Console_CsvEmit("pcu", "%d,%d,%d,%u", (int)FEB_CAN_PCU_GetLastTorque(), (int)FEB_CAN_PCU_GetLastDirection(),
+                      (int)FEB_CAN_PCU_GetLastRMSEnabled(), (unsigned int)FEB_CAN_PCU_GetLastBreakPosition());
 }
 
 static const FEB_Console_Cmd_t dash_cmd_pcu = {

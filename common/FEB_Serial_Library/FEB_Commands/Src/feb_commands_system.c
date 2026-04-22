@@ -6,13 +6,15 @@
  ******************************************************************************
  * @details
  *
- * Implements default system commands:
- *   - echo   : Print arguments
- *   - help   : Show available commands
- *   - version: Show firmware build info
- *   - uptime : Show system uptime
- *   - reboot : Perform software reset
- *   - log    : Get/set log level
+ * Implements default system commands for both text and CSV modes:
+ *   - echo     : Print arguments back
+ *   - help     : Human-readable command list
+ *   - commands : CSV-protocol command list
+ *   - hello    : Heartbeat / board discovery
+ *   - version  : Firmware build + flash provenance
+ *   - uptime   : Milliseconds since boot
+ *   - reboot   : Software reset
+ *   - log      : Get/set runtime log level
  *
  ******************************************************************************
  */
@@ -26,7 +28,6 @@
 
 #include <string.h>
 
-/* HAL for HAL_GetTick and NVIC_SystemReset */
 #include "main.h"
 
 /* ============================================================================
@@ -35,6 +36,7 @@
 
 static void cmd_echo(int argc, char *argv[]);
 static void cmd_help(int argc, char *argv[]);
+static void cmd_commands(int argc, char *argv[]);
 static void cmd_hello(int argc, char *argv[]);
 static void cmd_version(int argc, char *argv[]);
 static void cmd_uptime(int argc, char *argv[]);
@@ -42,12 +44,14 @@ static void cmd_reboot(int argc, char *argv[]);
 static void cmd_log(int argc, char *argv[]);
 
 static void cmd_echo_csv(int argc, char *argv[]);
-static void cmd_help_csv(int argc, char *argv[]);
+static void cmd_commands_csv(int argc, char *argv[]);
 static void cmd_hello_csv(int argc, char *argv[]);
 static void cmd_version_csv(int argc, char *argv[]);
 static void cmd_uptime_csv(int argc, char *argv[]);
 static void cmd_reboot_csv(int argc, char *argv[]);
 static void cmd_log_csv(int argc, char *argv[]);
+
+static void emit_command_rows(void);
 
 /* ============================================================================
  * Command Descriptors
@@ -62,28 +66,36 @@ const FEB_Console_Cmd_t feb_cmd_echo = {
 
 const FEB_Console_Cmd_t feb_cmd_help = {
     .name = "help",
-    .help = "Show commands: help or help|command",
+    .help = "Show human help: help or help|command",
     .handler = cmd_help,
-    .csv_handler = cmd_help_csv,
+    /* CSV mode: clients use `commands` instead. */
+    .csv_handler = NULL,
+};
+
+const FEB_Console_Cmd_t feb_cmd_commands = {
+    .name = "commands",
+    .help = "List registered commands (for CSV hosts)",
+    .handler = cmd_commands,
+    .csv_handler = cmd_commands_csv,
 };
 
 const FEB_Console_Cmd_t feb_cmd_hello = {
     .name = "hello",
-    .help = "Say hello from FEB",
+    .help = "Heartbeat / discovery (works with *|csv|<tx>|hello)",
     .handler = cmd_hello,
     .csv_handler = cmd_hello_csv,
 };
 
 const FEB_Console_Cmd_t feb_cmd_version = {
     .name = "version",
-    .help = "Show firmware version, commit, build time, and flash time (use csv|version for CSV)",
+    .help = "Firmware version, commit, build time, flash time",
     .handler = cmd_version,
     .csv_handler = cmd_version_csv,
 };
 
 const FEB_Console_Cmd_t feb_cmd_uptime = {
     .name = "uptime",
-    .help = "Show system uptime in milliseconds",
+    .help = "System uptime in milliseconds",
     .handler = cmd_uptime,
     .csv_handler = cmd_uptime_csv,
 };
@@ -97,7 +109,7 @@ const FEB_Console_Cmd_t feb_cmd_reboot = {
 
 const FEB_Console_Cmd_t feb_cmd_log = {
     .name = "log",
-    .help = "Set log level: log|none|error|warn|info|debug|trace",
+    .help = "Get/set log level: log|none|error|warn|info|debug|trace",
     .handler = cmd_log,
     .csv_handler = cmd_log_csv,
 };
@@ -110,6 +122,7 @@ void FEB_Commands_RegisterSystem(void)
 {
   FEB_Console_Register(&feb_cmd_echo);
   FEB_Console_Register(&feb_cmd_help);
+  FEB_Console_Register(&feb_cmd_commands);
   FEB_Console_Register(&feb_cmd_hello);
   FEB_Console_Register(&feb_cmd_version);
   FEB_Console_Register(&feb_cmd_uptime);
@@ -118,12 +131,11 @@ void FEB_Commands_RegisterSystem(void)
 }
 
 /* ============================================================================
- * Command Handlers
+ * Text-Mode Handlers
  * ============================================================================ */
 
 static void cmd_echo(int argc, char *argv[])
 {
-  /* Print all arguments after "echo", separated by spaces */
   for (int i = 1; i < argc; i++)
   {
     if (i > 1)
@@ -139,7 +151,6 @@ static void cmd_help(int argc, char *argv[])
 {
   if (argc >= 2)
   {
-    /* Help for specific command */
     const FEB_Console_Cmd_t *cmd = FEB_Console_FindCommand(argv[1]);
     if (cmd != NULL)
     {
@@ -152,8 +163,7 @@ static void cmd_help(int argc, char *argv[])
     return;
   }
 
-  /* List all commands */
-  FEB_Console_Printf("Available commands (use | as delimiter):\r\n");
+  FEB_Console_Printf("Text commands (use | as delimiter):\r\n");
   FEB_Console_Printf("  Example: echo|hello world\r\n");
   FEB_Console_Printf("  Example: log|debug\r\n\r\n");
 
@@ -166,13 +176,35 @@ static void cmd_help(int argc, char *argv[])
       FEB_Console_Printf("  %-12s %s\r\n", cmd->name, cmd->help);
     }
   }
+
+  FEB_Console_Printf("\r\nCSV protocol (machine-readable):\r\n");
+  FEB_Console_Printf("  %s|csv|<tx_id>|hello      - Heartbeat\r\n", feb_build_info.board_name);
+  FEB_Console_Printf("  %s|csv|<tx_id>|commands   - List CSV commands\r\n", feb_build_info.board_name);
+  FEB_Console_Printf("  *|csv|<tx_id>|hello              - Discover all boards\r\n");
+  FEB_Console_Printf("Each request emits: ack -> [rows] -> done\r\n");
+}
+
+static void cmd_commands(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  size_t count = FEB_Console_GetCommandCount();
+  for (size_t i = 0; i < count; i++)
+  {
+    const FEB_Console_Cmd_t *cmd = FEB_Console_GetCommand(i);
+    if (cmd != NULL)
+    {
+      FEB_Console_Printf("%s: %s\r\n", cmd->name, cmd->help != NULL ? cmd->help : "");
+    }
+  }
 }
 
 static void cmd_hello(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-  FEB_Console_Printf("Hello from FEB!\r\n");
+  FEB_Console_Printf("Hello from %s\r\n", feb_build_info.board_name);
 }
 
 /* Copy a volatile char array into a local buffer for safe string use.
@@ -243,10 +275,7 @@ static void cmd_reboot(int argc, char *argv[])
   (void)argv;
 
   FEB_Console_Printf("Rebooting...\r\n");
-
-  /* Flush console output before reset */
   FEB_Console_Flush(100);
-
   NVIC_SystemReset();
 }
 
@@ -254,7 +283,6 @@ static void cmd_log(int argc, char *argv[])
 {
   if (argc < 2)
   {
-    /* Show current level */
     const char *level_names[] = {"none", "error", "warn", "info", "debug", "trace"};
     FEB_Log_Level_t level = FEB_Log_GetLevel();
     if (level <= FEB_LOG_TRACE)
@@ -265,7 +293,6 @@ static void cmd_log(int argc, char *argv[])
     return;
   }
 
-  /* Set log level */
   FEB_Log_Level_t new_level;
   if (FEB_strcasecmp(argv[1], "error") == 0 || FEB_strcasecmp(argv[1], "e") == 0)
   {
@@ -307,9 +334,9 @@ static void cmd_log(int argc, char *argv[])
  * CSV-Mode Handlers
  * ============================================================================
  *
- * Rows emitted by FEB_Console_CsvPrintf have the shape
- *   <ident>,<us_timestamp>,<body>\r\n
- * so each handler only supplies the body fields.
+ * The dispatcher auto-emits `ack` on receipt and `done` after the handler
+ * returns, so handlers only emit body rows. All output goes through
+ * FEB_Console_CsvEmit / CsvError / CsvLog.
  */
 
 static const char *log_level_name(FEB_Log_Level_t level)
@@ -324,9 +351,8 @@ static const char *log_level_name(FEB_Log_Level_t level)
 
 static void cmd_echo_csv(int argc, char *argv[])
 {
-  /* Join argv[1..] with single spaces, escape per RFC 4180: wrap the
-   * whole field in double quotes and double any embedded '"' so commas
-   * and newlines in user input cannot break CSV column alignment. */
+  /* Join argv[1..] with single spaces, RFC-4180 quote the whole field so
+   * commas / quotes in user input cannot break CSV alignment. */
   char joined[FEB_CONSOLE_LINE_BUFFER_SIZE];
   size_t pos = 0;
   if (pos + 1 < sizeof(joined))
@@ -354,36 +380,50 @@ static void cmd_echo_csv(int argc, char *argv[])
     joined[pos++] = '"';
   }
   joined[pos] = '\0';
-  FEB_Console_CsvPrintf("echo", "%s\r\n", joined);
+  FEB_Console_CsvEmit("echo", "%s", joined);
 }
 
-static void cmd_help_csv(int argc, char *argv[])
+static void emit_command_rows(void)
 {
-  (void)argc;
-  (void)argv;
-
-  /* Header row so clients can self-describe the columns. */
-  FEB_Console_CsvPrintf("csv_help", "header,name,description,has_csv\r\n");
-
   size_t count = FEB_Console_GetCommandCount();
   for (size_t i = 0; i < count; i++)
   {
     const FEB_Console_Cmd_t *cmd = FEB_Console_GetCommand(i);
-    if (cmd == NULL)
+    if (cmd == NULL || cmd->csv_handler == NULL)
     {
       continue;
     }
-    const char *desc = (cmd->help != NULL) ? cmd->help : "";
-    int has_csv = (cmd->csv_handler != NULL) ? 1 : 0;
-    FEB_Console_CsvPrintf("csv_help", "row,%s,\"%s\",%d\r\n", cmd->name, desc, has_csv);
+
+    /* Spec format is `command,<name>,<description>` — three unquoted
+     * columns. Replace any comma / CR / LF in the help text with spaces
+     * so a simple split-by-comma host parser can't be tripped by a
+     * multi-line or comma-containing description. */
+    char desc[FEB_CONSOLE_PRINTF_BUFFER_SIZE];
+    const char *src = (cmd->help != NULL) ? cmd->help : "";
+    size_t j;
+    for (j = 0; j + 1 < sizeof(desc) && src[j] != '\0'; j++)
+    {
+      char c = src[j];
+      desc[j] = (c == ',' || c == '\r' || c == '\n') ? ' ' : c;
+    }
+    desc[j] = '\0';
+
+    FEB_Console_CsvEmit("command", "%s,%s", cmd->name, desc);
   }
+}
+
+static void cmd_commands_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  emit_command_rows();
 }
 
 static void cmd_hello_csv(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-  FEB_Console_CsvPrintf("hello", "ok\r\n");
+  /* Per spec: hello has no body rows. Dispatcher ack + done are enough. */
 }
 
 static void cmd_version_csv(int argc, char *argv[])
@@ -398,18 +438,19 @@ static void cmd_version_csv(int argc, char *argv[])
   copy_volatile_string(flasher_user, feb_flash_info.flasher_user, sizeof(flasher_user));
   copy_volatile_string(flasher_host, feb_flash_info.flasher_host, sizeof(flasher_host));
 
-  /* Single CSV row. Field order is stable and documented here - host-side
-   * tooling matches on position. Add new fields only at the END.
+  /* Single row. Field order is stable and documented - host tooling matches
+   * on position. Add new fields only at the END.
    *
-   * Columns after <ident>,<us_timestamp>:
-   *   board,board_ver,repo_ver,common_ver,commit,branch,dirty,
+   * Body columns:
+   *   board_ver,repo_ver,common_ver,commit,branch,dirty,
    *   build_utc,build_user,build_host,flash_utc,flasher_user,flasher_host
-   */
-  FEB_Console_CsvPrintf("version", "%s,%s,%s,%s,%s,%s,%d,%s,%s,%s,%s,%s,%s\r\n", feb_build_info.board_name,
-                        feb_build_info.version_string, feb_build_info.repo_version_string,
-                        feb_build_info.common_version_string, feb_build_info.commit_short, feb_build_info.branch,
-                        feb_build_info.dirty ? 1 : 0, feb_build_info.build_utc, feb_build_info.build_user,
-                        feb_build_info.build_host, flash_utc, flasher_user, flasher_host);
+   *
+   * (board name is already in the outer csv prefix.) */
+  FEB_Console_CsvEmit("version", "%s,%s,%s,%s,%s,%d,%s,%s,%s,%s,%s,%s", feb_build_info.version_string,
+                      feb_build_info.repo_version_string, feb_build_info.common_version_string,
+                      feb_build_info.commit_short, feb_build_info.branch, feb_build_info.dirty ? 1 : 0,
+                      feb_build_info.build_utc, feb_build_info.build_user, feb_build_info.build_host, flash_utc,
+                      flasher_user, flasher_host);
 }
 
 static void cmd_uptime_csv(int argc, char *argv[])
@@ -420,15 +461,17 @@ static void cmd_uptime_csv(int argc, char *argv[])
   uint32_t sec = ms / 1000;
   uint32_t min = sec / 60;
   uint32_t hr = min / 60;
-  FEB_Console_CsvPrintf("uptime", "%lu,%lu,%lu,%lu\r\n", (unsigned long)ms, (unsigned long)hr,
-                        (unsigned long)(min % 60), (unsigned long)(sec % 60));
+  FEB_Console_CsvEmit("uptime", "%lu,%lu,%lu,%lu", (unsigned long)ms, (unsigned long)hr, (unsigned long)(min % 60),
+                      (unsigned long)(sec % 60));
 }
 
 static void cmd_reboot_csv(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-  FEB_Console_CsvPrintf("reboot", "ok\r\n");
+  /* ack already emitted by dispatcher; no body row. Dispatcher will attempt
+   * to emit done after return but we reset first — host treats link loss
+   * as the effective terminator. */
   FEB_Console_Flush(100);
   NVIC_SystemReset();
 }
@@ -437,7 +480,7 @@ static void cmd_log_csv(int argc, char *argv[])
 {
   if (argc < 2)
   {
-    FEB_Console_CsvPrintf("log", "level,%s\r\n", log_level_name(FEB_Log_GetLevel()));
+    FEB_Console_CsvEmit("log", "level,%s", log_level_name(FEB_Log_GetLevel()));
     return;
   }
 
@@ -468,10 +511,10 @@ static void cmd_log_csv(int argc, char *argv[])
   }
   else
   {
-    FEB_Console_CsvPrintf("log", "err,invalid,%s\r\n", argv[1]);
+    FEB_Console_CsvError("error", "invalid_level,%s", argv[1]);
     return;
   }
 
   FEB_Log_SetLevel(new_level);
-  FEB_Console_CsvPrintf("log", "set,%s,ok\r\n", log_level_name(new_level));
+  FEB_Console_CsvEmit("log", "set,%s", log_level_name(new_level));
 }
