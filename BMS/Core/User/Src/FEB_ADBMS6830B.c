@@ -312,12 +312,27 @@ static void store_cell_temps(uint8_t channel)
       for (uint8_t mux = 0; mux < 6; mux++)
       {
         uint8_t a_idx = 5 - mux; // MUX1=a_codes[5], MUX6=a_codes[0]
+        // RDAUXA covers a_codes[0..2] (pec_match[0]), RDAUXB covers a_codes[3..5] (pec_match[1]).
+        uint8_t reg_idx = a_idx / 3;
+        uint16_t sensor_idx = icn * FEB_NUM_TEMP_SENSE_PER_IC + mux * 7 + channel;
+
+        if (IC_Config[ic_idx].aux.pec_match[reg_idx] != 0)
+        {
+          FEB_ACC.banks[bank].temp_sensor_readings_V[sensor_idx] = NAN;
+          FEB_ACC.banks[bank].therm_raw_voltages_mV[sensor_idx] = NAN;
+          FEB_ACC.banks[bank].therm_raw_codes[sensor_idx] = 0xFFFF;
+          DEBUG_TEMP_PRINT("PEC error: Bank %d IC %d MUX%d ch%d reg%d -> idx=%d (NaN)", bank, icn, mux + 1, channel,
+                           reg_idx, sensor_idx);
+          continue;
+        }
+
         uint16_t code = IC_Config[ic_idx].aux.a_codes[a_idx];
         float V_mV = convert_voltage(code) * 1000.0f;
         float T_C = FEB_Thermistor_Voltage_To_Temp_C(V_mV);
 
-        uint16_t sensor_idx = icn * FEB_NUM_TEMP_SENSE_PER_IC + mux * 7 + channel;
         FEB_ACC.banks[bank].temp_sensor_readings_V[sensor_idx] = T_C;
+        FEB_ACC.banks[bank].therm_raw_codes[sensor_idx] = code;
+        FEB_ACC.banks[bank].therm_raw_voltages_mV[sensor_idx] = V_mV;
 
         DEBUG_TEMP_PRINT("Bank %d IC %d MUX%d ch%d: code=0x%04X V=%.1fmV T=%.1fC -> idx=%d", bank, icn, mux + 1,
                          channel, code, V_mV, T_C, sensor_idx);
@@ -671,6 +686,32 @@ float FEB_ADBMS_GET_Cell_Temperature(uint8_t bank, uint16_t cell)
   float temp = FEB_ACC.banks[bank].temp_sensor_readings_V[cell];
   osMutexRelease(ADBMSMutexHandle);
   return temp;
+}
+
+uint16_t FEB_ADBMS_GET_Therm_Raw_Code(uint8_t bank, uint16_t sensor)
+{
+  if (bank >= FEB_NBANKS || sensor >= FEB_NUM_TEMP_SENSORS)
+  {
+    return 0xFFFF;
+  }
+
+  osMutexAcquire(ADBMSMutexHandle, osWaitForever);
+  uint16_t code = FEB_ACC.banks[bank].therm_raw_codes[sensor];
+  osMutexRelease(ADBMSMutexHandle);
+  return code;
+}
+
+float FEB_ADBMS_GET_Therm_Raw_mV(uint8_t bank, uint16_t sensor)
+{
+  if (bank >= FEB_NBANKS || sensor >= FEB_NUM_TEMP_SENSORS)
+  {
+    return NAN;
+  }
+
+  osMutexAcquire(ADBMSMutexHandle, osWaitForever);
+  float mV = FEB_ACC.banks[bank].therm_raw_voltages_mV[sensor];
+  osMutexRelease(ADBMSMutexHandle);
+  return mV;
 }
 
 // ********************************** Balancing **********************************

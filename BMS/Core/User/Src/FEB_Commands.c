@@ -134,6 +134,53 @@ static void subcmd_temps(int argc, char *argv[])
 }
 
 /* ============================================================================
+ * Subcommand: therm-raw - Show raw thermistor voltages and ADC codes
+ * ============================================================================ */
+static void subcmd_therm_raw(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  FEB_Console_Printf("\r\n=== Thermistor Raw Voltages (mV) ===\r\n");
+  for (int bank = 0; bank < FEB_NBANKS; bank++)
+  {
+    for (int ic = 0; ic < FEB_NUM_ICPBANK; ic++)
+    {
+      FEB_Console_Printf("Bank %d IC %d\r\n", bank + 1, ic + 1);
+      for (int mux = 0; mux < 6; mux++)
+      {
+        FEB_Console_Printf("  MUX%d ch0..6:", mux + 1);
+        for (int ch = 0; ch < 7; ch++)
+        {
+          uint16_t sensor = (uint16_t)(ic * FEB_NUM_TEMP_SENSE_PER_IC + mux * 7 + ch);
+          FEB_Console_Printf(" %7.1f", FEB_ADBMS_GET_Therm_Raw_mV((uint8_t)bank, sensor));
+        }
+        FEB_Console_Printf("\r\n");
+      }
+    }
+  }
+  FEB_Console_Printf("\r\n=== Thermistor Raw Codes (hex) ===\r\n");
+  for (int bank = 0; bank < FEB_NBANKS; bank++)
+  {
+    for (int ic = 0; ic < FEB_NUM_ICPBANK; ic++)
+    {
+      FEB_Console_Printf("Bank %d IC %d\r\n", bank + 1, ic + 1);
+      for (int mux = 0; mux < 6; mux++)
+      {
+        FEB_Console_Printf("  MUX%d ch0..6:", mux + 1);
+        for (int ch = 0; ch < 7; ch++)
+        {
+          uint16_t sensor = (uint16_t)(ic * FEB_NUM_TEMP_SENSE_PER_IC + mux * 7 + ch);
+          FEB_Console_Printf(" 0x%04X", FEB_ADBMS_GET_Therm_Raw_Code((uint8_t)bank, sensor));
+        }
+        FEB_Console_Printf("\r\n");
+      }
+    }
+  }
+  FEB_Console_Printf("Note: 0x%04X / NaN = PEC failure on that aux register\r\n", 0xFFFF);
+}
+
+/* ============================================================================
  * Subcommand: balance - Show/control cell balancing
  * ============================================================================ */
 
@@ -665,6 +712,7 @@ static void print_bms_help(void)
   FEB_Console_Printf("  BMS|status              - Show BMS status summary\r\n");
   FEB_Console_Printf("  BMS|cells               - Show all cell voltages\r\n");
   FEB_Console_Printf("  BMS|temps               - Show temperature readings\r\n");
+  FEB_Console_Printf("  BMS|therm-raw           - Show raw thermistor voltages + ADC codes\r\n");
   FEB_Console_Printf("  BMS|state [<name>]      - Show/set BMS state\r\n");
   FEB_Console_Printf("  BMS|balance|on/off      - Control cell balancing\r\n");
   FEB_Console_Printf("\r\n");
@@ -799,6 +847,30 @@ static void cmd_temps_csv(int argc, char *argv[])
     {
       float temp = FEB_ADBMS_GET_Cell_Temperature(bank, sensor);
       FEB_Console_CsvEmit("temp", "%d,%d,%.1f", bank + 1, sensor + 1, temp);
+    }
+  }
+}
+
+/* Body fields: module,ic,mux,channel,raw_code,voltage_mV
+ * raw_code == 0xFFFF and voltage_mV == NaN indicates aux-PEC failure. */
+static void cmd_therm_raw_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  for (int bank = 0; bank < FEB_NBANKS; bank++)
+  {
+    for (int ic = 0; ic < FEB_NUM_ICPBANK; ic++)
+    {
+      for (int mux = 0; mux < 6; mux++)
+      {
+        for (int ch = 0; ch < 7; ch++)
+        {
+          uint16_t sensor = (uint16_t)(ic * FEB_NUM_TEMP_SENSE_PER_IC + mux * 7 + ch);
+          uint16_t code = FEB_ADBMS_GET_Therm_Raw_Code((uint8_t)bank, sensor);
+          float mV = FEB_ADBMS_GET_Therm_Raw_mV((uint8_t)bank, sensor);
+          FEB_Console_CsvEmit("therm-raw", "%d,%d,%d,%d,0x%04X,%.1f", bank + 1, ic + 1, mux + 1, ch, code, mV);
+        }
+      }
     }
   }
 }
@@ -942,6 +1014,10 @@ static const FEB_Console_Cmd_t bms_cells_cmd = {
     .name = "cells", .help = "Per-cell voltages (C/S)", .handler = subcmd_cells, .csv_handler = cmd_cells_csv};
 static const FEB_Console_Cmd_t bms_temps_cmd = {
     .name = "temps", .help = "Per-sensor temperatures", .handler = subcmd_temps, .csv_handler = cmd_temps_csv};
+static const FEB_Console_Cmd_t bms_therm_raw_cmd = {.name = "therm-raw",
+                                                    .help = "Raw thermistor voltages and ADC codes (42 channels)",
+                                                    .handler = subcmd_therm_raw,
+                                                    .csv_handler = cmd_therm_raw_csv};
 static const FEB_Console_Cmd_t bms_state_cmd = {
     .name = "state", .help = "Show/set BMS state", .handler = subcmd_state, .csv_handler = cmd_state_csv};
 static const FEB_Console_Cmd_t bms_balance_cmd = {
@@ -983,10 +1059,10 @@ static const FEB_Console_Cmd_t bms_reg_cmd = {.name = "reg",
  * Adding a subcommand: define its FEB_Console_Cmd_t above and append a pointer
  * here. Registration auto-picks it up. */
 static const FEB_Console_Cmd_t *const BMS_SUBCMDS[] = {
-    &bms_status_cmd,  &bms_cells_cmd,     &bms_temps_cmd,      &bms_state_cmd, &bms_balance_cmd,
-    &bms_gpio_cmd,    &bms_ivt_cmd,       &bms_tasks_cmd,      &bms_mem_cmd,   &bms_cell_cmd,
-    &bms_spi_cmd,     &bms_errors_cmd,    &bms_config_cmd,     &bms_ping_cmd,  &bms_pong_cmd,
-    &bms_canstop_cmd, &bms_canstatus_cmd, &bms_cell_stats_cmd, &bms_reg_cmd,
+    &bms_status_cmd,  &bms_cells_cmd,   &bms_temps_cmd,     &bms_therm_raw_cmd,  &bms_state_cmd,
+    &bms_balance_cmd, &bms_gpio_cmd,    &bms_ivt_cmd,       &bms_tasks_cmd,      &bms_mem_cmd,
+    &bms_cell_cmd,    &bms_spi_cmd,     &bms_errors_cmd,    &bms_config_cmd,     &bms_ping_cmd,
+    &bms_pong_cmd,    &bms_canstop_cmd, &bms_canstatus_cmd, &bms_cell_stats_cmd, &bms_reg_cmd,
 };
 #define BMS_SUBCMDS_COUNT (sizeof(BMS_SUBCMDS) / sizeof(BMS_SUBCMDS[0]))
 

@@ -126,6 +126,8 @@ typedef struct
   uint8_t badReadV;                                   // Bad voltage read counter
   float temp_sensor_readings_V[FEB_NUM_TEMP_SENSORS]; // Temperature sensor readings
   uint8_t temp_violations[FEB_NUM_TEMP_SENSORS];      // Per-sensor violation counters
+  uint16_t therm_raw_codes[FEB_NUM_TEMP_SENSORS];     // Raw ADC codes (0xFFFF = PEC failure)
+  float therm_raw_voltages_mV[FEB_NUM_TEMP_SENSORS];  // Converted mV (NaN = PEC failure)
 } bank_data_t;
 
 typedef struct
