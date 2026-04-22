@@ -646,6 +646,17 @@ static void subcmd_canstatus(int argc, char *argv[])
 }
 
 /* ============================================================================
+ * Subcommand: cell-stats - Combined cell voltages and temperatures
+ * ============================================================================ */
+static void subcmd_cell_stats(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  subcmd_cells(0, NULL);
+  subcmd_temps(0, NULL);
+}
+
+/* ============================================================================
  * Help Display
  * ============================================================================ */
 static void print_bms_help(void)
@@ -682,16 +693,9 @@ static void print_bms_help(void)
   FEB_Console_Printf("  BMS|canstatus           - Show CAN ping/pong status\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
-  FEB_Console_Printf("  BMS|csv|<tx_id>|cell-stats    - Voltages + temps (per cell / per sensor)\r\n");
-  FEB_Console_Printf("  BMS|csv|<tx_id>|status        - Single status row\r\n");
-  FEB_Console_Printf("  BMS|csv|<tx_id>|cells         - Voltage rows only\r\n");
-  FEB_Console_Printf("  BMS|csv|<tx_id>|temps         - Temperature rows only\r\n");
-  FEB_Console_Printf("  BMS|csv|<tx_id>|ivt           - IVT sensor row\r\n");
-  FEB_Console_Printf("  BMS|csv|<tx_id>|errors        - Error summary row\r\n");
-  FEB_Console_Printf("  BMS|csv|<tx_id>|config        - Configuration row\r\n");
-  FEB_Console_Printf("  BMS|csv|<tx_id>|commands      - List CSV commands\r\n");
-  FEB_Console_Printf("  BMS|csv|<tx_id>|hello         - Heartbeat\r\n");
-  FEB_Console_Printf("  *|csv|<tx_id>|hello                 - Discover all boards\r\n");
+  FEB_Console_Printf("  BMS|csv|<tx_id>|<sub>   - any subcommand above also works as CSV\r\n");
+  FEB_Console_Printf("  BMS|csv|<tx_id>|cell-stats - Voltages + temps (per cell / per sensor)\r\n");
+  FEB_Console_Printf("  *|csv|<tx_id>|hello     - Discover all boards (system command)\r\n");
   FEB_Console_Printf("Each request emits: ack -> [rows] -> done\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("States: boot, lv_power, bus_health, precharge, energized,\r\n");
@@ -699,61 +703,9 @@ static void print_bms_help(void)
   FEB_Console_Printf("        fault_bms, fault_bspd, fault_imd, fault_charging\r\n");
 }
 
-/* ============================================================================
- * Main BMS Text-Mode Handler
- * ============================================================================ */
-static void cmd_bms(int argc, char *argv[])
-{
-  if (argc < 2)
-  {
-    print_bms_help();
-    return;
-  }
-
-  const char *subcmd = argv[1];
-
-  if (FEB_strcasecmp(subcmd, "status") == 0)
-    subcmd_status(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "cells") == 0)
-    subcmd_cells(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "temps") == 0)
-    subcmd_temps(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "state") == 0)
-    subcmd_state(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "balance") == 0)
-    subcmd_balance(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "ping") == 0)
-    subcmd_ping(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "pong") == 0)
-    subcmd_pong(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "canstop") == 0 || FEB_strcasecmp(subcmd, "stop") == 0)
-    subcmd_canstop(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "canstatus") == 0)
-    subcmd_canstatus(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "gpio") == 0)
-    subcmd_gpio(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "ivt") == 0)
-    subcmd_ivt(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "tasks") == 0)
-    subcmd_tasks(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "mem") == 0)
-    subcmd_mem(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "cell") == 0)
-    subcmd_cell(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "spi") == 0)
-    subcmd_spi(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "errors") == 0)
-    subcmd_errors(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "config") == 0)
-    subcmd_config(argc - 1, argv + 1);
-  else if (FEB_strcasecmp(subcmd, "reg") == 0)
-    ADBMS_RegSubcmd(argc - 1, argv + 1);
-  else
-  {
-    FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
-    print_bms_help();
-  }
-}
+/* Forward declaration: the table-driven cmd_bms is defined after BMS_SUBCMDS
+ * (which references the per-subcommand descriptors below the CSV handlers). */
+static void cmd_bms(int argc, char *argv[]);
 
 /* ============================================================================
  * CSV-Mode Handlers (one per spec command, registered at top level)
@@ -976,89 +928,110 @@ static void cmd_canstatus_csv(int argc, char *argv[])
 
 /* ============================================================================
  * Command Descriptors
+ *
+ * One unified FEB_Console_Cmd_t per subcommand: .handler is the human text
+ * impl, .csv_handler is the machine-readable CSV impl. Either may be NULL if
+ * that mode isn't supported. Each is registered top-level so the CSV parser's
+ * `BMS|csv|<tx_id>|<name>` lookup resolves directly; bare-name text invocation
+ * also works as a shorthand. The canonical text form remains `BMS|<sub>` via
+ * the cmd_bms mega-dispatcher.
  * ============================================================================ */
+static const FEB_Console_Cmd_t bms_status_cmd = {
+    .name = "status", .help = "Status summary", .handler = subcmd_status, .csv_handler = cmd_status_csv};
+static const FEB_Console_Cmd_t bms_cells_cmd = {
+    .name = "cells", .help = "Per-cell voltages (C/S)", .handler = subcmd_cells, .csv_handler = cmd_cells_csv};
+static const FEB_Console_Cmd_t bms_temps_cmd = {
+    .name = "temps", .help = "Per-sensor temperatures", .handler = subcmd_temps, .csv_handler = cmd_temps_csv};
+static const FEB_Console_Cmd_t bms_state_cmd = {
+    .name = "state", .help = "Show/set BMS state", .handler = subcmd_state, .csv_handler = cmd_state_csv};
+static const FEB_Console_Cmd_t bms_balance_cmd = {
+    .name = "balance", .help = "Control cell balancing (on/off)", .handler = subcmd_balance, .csv_handler = NULL};
+static const FEB_Console_Cmd_t bms_gpio_cmd = {
+    .name = "gpio", .help = "Hardware I/O status", .handler = subcmd_gpio, .csv_handler = cmd_gpio_csv};
+static const FEB_Console_Cmd_t bms_ivt_cmd = {
+    .name = "ivt", .help = "IVT sensor data", .handler = subcmd_ivt, .csv_handler = cmd_ivt_csv};
+static const FEB_Console_Cmd_t bms_tasks_cmd = {
+    .name = "tasks", .help = "FreeRTOS task stack stats", .handler = subcmd_tasks, .csv_handler = cmd_tasks_csv};
+static const FEB_Console_Cmd_t bms_mem_cmd = {
+    .name = "mem", .help = "Heap usage", .handler = subcmd_mem, .csv_handler = cmd_mem_csv};
+static const FEB_Console_Cmd_t bms_cell_cmd = {
+    .name = "cell", .help = "Single cell details: cell|<bank>|<cell>", .handler = subcmd_cell, .csv_handler = NULL};
+static const FEB_Console_Cmd_t bms_spi_cmd = {
+    .name = "spi", .help = "isoSPI status", .handler = subcmd_spi, .csv_handler = NULL};
+static const FEB_Console_Cmd_t bms_errors_cmd = {
+    .name = "errors", .help = "Error summary", .handler = subcmd_errors, .csv_handler = cmd_errors_csv};
+static const FEB_Console_Cmd_t bms_config_cmd = {
+    .name = "config", .help = "Configuration constants", .handler = subcmd_config, .csv_handler = cmd_config_csv};
+static const FEB_Console_Cmd_t bms_ping_cmd = {
+    .name = "ping", .help = "Start CAN ping: ping|<1-4>", .handler = subcmd_ping, .csv_handler = NULL};
+static const FEB_Console_Cmd_t bms_pong_cmd = {
+    .name = "pong", .help = "Start CAN pong: pong|<1-4>", .handler = subcmd_pong, .csv_handler = NULL};
+static const FEB_Console_Cmd_t bms_canstop_cmd = {
+    .name = "canstop", .help = "Stop CAN ch: canstop|<1-4|all>", .handler = subcmd_canstop, .csv_handler = NULL};
+static const FEB_Console_Cmd_t bms_canstatus_cmd = {
+    .name = "canstatus", .help = "CAN ping/pong status", .handler = subcmd_canstatus, .csv_handler = cmd_canstatus_csv};
+static const FEB_Console_Cmd_t bms_cell_stats_cmd = {.name = "cell-stats",
+                                                     .help = "Voltages + temps (per cell / per sensor)",
+                                                     .handler = subcmd_cell_stats,
+                                                     .csv_handler = cmd_cell_stats_csv};
+static const FEB_Console_Cmd_t bms_reg_cmd = {.name = "reg",
+                                              .help = "ADBMS register access (reg|list, reg|read|<n>, reg|dump, ...)",
+                                              .handler = ADBMS_RegSubcmd,
+                                              .csv_handler = NULL};
 
-/* Text-mode mega-dispatcher: `BMS|<subcmd>|<args>`. */
+/* Per-board subcommand table. cmd_bms iterates this for `BMS|<sub>` dispatch.
+ * Adding a subcommand: define its FEB_Console_Cmd_t above and append a pointer
+ * here. Registration auto-picks it up. */
+static const FEB_Console_Cmd_t *const BMS_SUBCMDS[] = {
+    &bms_status_cmd,  &bms_cells_cmd,     &bms_temps_cmd,      &bms_state_cmd, &bms_balance_cmd,
+    &bms_gpio_cmd,    &bms_ivt_cmd,       &bms_tasks_cmd,      &bms_mem_cmd,   &bms_cell_cmd,
+    &bms_spi_cmd,     &bms_errors_cmd,    &bms_config_cmd,     &bms_ping_cmd,  &bms_pong_cmd,
+    &bms_canstop_cmd, &bms_canstatus_cmd, &bms_cell_stats_cmd, &bms_reg_cmd,
+};
+#define BMS_SUBCMDS_COUNT (sizeof(BMS_SUBCMDS) / sizeof(BMS_SUBCMDS[0]))
+
+/* Mega-dispatcher: `BMS|<sub>|<args>` looks up `<sub>` in the table and calls
+ * its text handler. Bare `<sub>` (no BMS prefix) also works because each
+ * subcommand is registered top-level. */
+static void cmd_bms(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    print_bms_help();
+    return;
+  }
+  const char *subcmd = argv[1];
+  /* Legacy alias: "stop" maps to canstop. */
+  if (FEB_strcasecmp(subcmd, "stop") == 0)
+  {
+    subcmd_canstop(argc - 1, argv + 1);
+    return;
+  }
+  for (size_t i = 0; i < BMS_SUBCMDS_COUNT; i++)
+  {
+    if (FEB_strcasecmp(BMS_SUBCMDS[i]->name, subcmd) == 0)
+    {
+      if (BMS_SUBCMDS[i]->handler != NULL)
+      {
+        BMS_SUBCMDS[i]->handler(argc - 1, argv + 1);
+      }
+      else
+      {
+        FEB_Console_Printf("Subcommand %s is CSV-only\r\n", subcmd);
+      }
+      return;
+    }
+  }
+  FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
+  print_bms_help();
+}
+
+/* Text-mode entry point: `BMS|<subcmd>|<args>` dispatches via cmd_bms. */
 static const FEB_Console_Cmd_t bms_cmd = {
     .name = "BMS",
-    .help = "BMS commands (BMS|status, BMS|cells, BMS|state, etc. - human only)",
+    .help = "BMS commands (BMS|<sub>) - run BMS alone for full list",
     .handler = cmd_bms,
     .csv_handler = NULL,
-};
-
-/* CSV-mode commands: invoked via `BMS|csv|<tx_id>|<name>`. Each registers
- * at top level with .handler = NULL (CSV-only). */
-static const FEB_Console_Cmd_t bms_csv_cell_stats = {
-    .name = "cell-stats",
-    .help = "BMS cell voltages + temperatures (voltage/temp rows)",
-    .handler = NULL,
-    .csv_handler = cmd_cell_stats_csv,
-};
-static const FEB_Console_Cmd_t bms_csv_status = {
-    .name = "status",
-    .help = "BMS status summary row",
-    .handler = NULL,
-    .csv_handler = cmd_status_csv,
-};
-static const FEB_Console_Cmd_t bms_csv_cells = {
-    .name = "cells",
-    .help = "BMS per-cell voltage rows (C/S)",
-    .handler = NULL,
-    .csv_handler = cmd_cells_csv,
-};
-static const FEB_Console_Cmd_t bms_csv_temps = {
-    .name = "temps",
-    .help = "BMS per-sensor temperature rows",
-    .handler = NULL,
-    .csv_handler = cmd_temps_csv,
-};
-static const FEB_Console_Cmd_t bms_csv_state = {
-    .name = "state",
-    .help = "BMS current state row",
-    .handler = NULL,
-    .csv_handler = cmd_state_csv,
-};
-static const FEB_Console_Cmd_t bms_csv_ivt = {
-    .name = "ivt",
-    .help = "BMS IVT sensor row",
-    .handler = NULL,
-    .csv_handler = cmd_ivt_csv,
-};
-static const FEB_Console_Cmd_t bms_csv_errors = {
-    .name = "errors",
-    .help = "BMS error summary row",
-    .handler = NULL,
-    .csv_handler = cmd_errors_csv,
-};
-static const FEB_Console_Cmd_t bms_csv_config = {
-    .name = "config",
-    .help = "BMS configuration constants row",
-    .handler = NULL,
-    .csv_handler = cmd_config_csv,
-};
-static const FEB_Console_Cmd_t bms_csv_gpio = {
-    .name = "gpio",
-    .help = "BMS GPIO state row",
-    .handler = NULL,
-    .csv_handler = cmd_gpio_csv,
-};
-static const FEB_Console_Cmd_t bms_csv_mem = {
-    .name = "mem",
-    .help = "BMS heap usage row",
-    .handler = NULL,
-    .csv_handler = cmd_mem_csv,
-};
-static const FEB_Console_Cmd_t bms_csv_tasks = {
-    .name = "tasks",
-    .help = "BMS task stack rows",
-    .handler = NULL,
-    .csv_handler = cmd_tasks_csv,
-};
-static const FEB_Console_Cmd_t bms_csv_canstatus = {
-    .name = "canstatus",
-    .help = "BMS CAN ping/pong status rows",
-    .handler = NULL,
-    .csv_handler = cmd_canstatus_csv,
 };
 
 /* ============================================================================
@@ -1067,16 +1040,8 @@ static const FEB_Console_Cmd_t bms_csv_canstatus = {
 void BMS_RegisterCommands(void)
 {
   FEB_Console_Register(&bms_cmd);
-  FEB_Console_Register(&bms_csv_cell_stats);
-  FEB_Console_Register(&bms_csv_status);
-  FEB_Console_Register(&bms_csv_cells);
-  FEB_Console_Register(&bms_csv_temps);
-  FEB_Console_Register(&bms_csv_state);
-  FEB_Console_Register(&bms_csv_ivt);
-  FEB_Console_Register(&bms_csv_errors);
-  FEB_Console_Register(&bms_csv_config);
-  FEB_Console_Register(&bms_csv_gpio);
-  FEB_Console_Register(&bms_csv_mem);
-  FEB_Console_Register(&bms_csv_tasks);
-  FEB_Console_Register(&bms_csv_canstatus);
+  for (size_t i = 0; i < BMS_SUBCMDS_COUNT; i++)
+  {
+    FEB_Console_Register(BMS_SUBCMDS[i]);
+  }
 }

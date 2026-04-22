@@ -24,11 +24,9 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-# All log helpers write to stderr. Several callers (notably
-# patch_elf_for_flash) run inside $(...) command substitution, and stdout
-# is reserved there for structured return values (file paths, metadata).
-# Routing diagnostics to stderr keeps them visible in the terminal without
-# contaminating captured output.
+# All log helpers write to stderr. Some callers capture stdout via $(...)
+# for structured return values; routing diagnostics to stderr keeps them
+# visible in the terminal without contaminating captured output.
 log_info() {
     echo -e "${GREEN}[INFO]${NC} $1" >&2
 }
@@ -218,15 +216,15 @@ is_valid_board() {
 }
 
 # Patch an ELF with flash-time metadata using scripts/flash-patcher.py.
-# On success, prints the patched ELF path to stdout and the metadata to
-# stderr. On failure (patcher missing, section absent, magic mismatch on
-# an older build) echoes the original path so the caller still flashes
-# something.
+# Writes results to globals so the caller's parent shell sees them:
+#   FEB_FLASH_FILE          - path to flash (patched on success, original on fallback)
+#   FEB_LAST_FLASH_METADATA - key=value lines from flash-patcher --print, or empty
+# Must NOT be invoked via $(...) — that runs in a subshell and discards globals.
 patch_elf_for_flash() {
     local src_elf="$1"
+    FEB_FLASH_FILE="$src_elf"
 
     if [[ "$src_elf" != *.elf ]]; then
-        echo "$src_elf"
         return 0
     fi
 
@@ -238,13 +236,11 @@ patch_elf_for_flash() {
     # the execute bit is irrelevant; only readability matters.
     if [ ! -f "$patcher" ]; then
         log_warn "flash-patcher.py not found at $patcher - flashing without metadata stamp"
-        echo "$src_elf"
         return 0
     fi
 
     if ! command -v python3 &> /dev/null; then
         log_warn "python3 not found - flashing without metadata stamp"
-        echo "$src_elf"
         return 0
     fi
 
@@ -255,7 +251,6 @@ patch_elf_for_flash() {
     local metadata
     if ! metadata=$(python3 "$patcher" --elf "$src_elf" --out "$patched_elf" --print 2>/dev/null); then
         log_warn "flash-patcher failed - flashing original ELF unpatched"
-        echo "$src_elf"
         return 0
     fi
 
@@ -270,9 +265,8 @@ patch_elf_for_flash() {
         esac
     done <<< "$metadata"
 
-    # Stash the metadata for record_flash to pick up without re-running.
     FEB_LAST_FLASH_METADATA="$metadata"
-    echo "$patched_elf"
+    FEB_FLASH_FILE="$patched_elf"
 }
 
 # Append a row to build/flash_history.csv after a successful flash.
@@ -336,13 +330,15 @@ flash_target() {
         return 1
     fi
 
-    # Reset metadata cache; patch_elf_for_flash populates it.
+    # Reset globals; patch_elf_for_flash populates them.
     FEB_LAST_FLASH_METADATA=""
+    FEB_FLASH_FILE=""
 
     # Stamp flash-time provenance into the ELF (falls back to original
     # on any failure so legacy/missing-section ELFs still flash).
-    local flash_file
-    flash_file=$(patch_elf_for_flash "$target_file")
+    # Direct call (not $()) so the function's global assignments survive.
+    patch_elf_for_flash "$target_file"
+    local flash_file="$FEB_FLASH_FILE"
 
     log_info "Flashing: $flash_file"
     echo ""

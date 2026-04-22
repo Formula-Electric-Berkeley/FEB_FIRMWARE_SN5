@@ -468,8 +468,11 @@ swupdate install all
 exit
 EOF
 
+    local script_for_cubemx
+    script_for_cubemx=$(posix_to_native_path "$script_file")
+
     # Run STM32CubeMX in script mode
-    if "$CUBEMX_PATH" -q "$script_file"; then
+    if "$CUBEMX_PATH" -q "$script_for_cubemx"; then
         log_info "Firmware pack update completed"
         rm -f "$script_file"
         return 0

@@ -471,6 +471,13 @@ bool FEB_ADBMS_Init(void)
     }
   }
 
+  // Seed pack-wide temp stats to NaN so FEB_Cell_Balancing_Status() fails closed
+  // before the first temperature scan completes. Zero would let the gate
+  // (max < soft limit) pass with no telemetry.
+  FEB_ACC.pack_max_temp = NAN;
+  FEB_ACC.pack_min_temp = NAN;
+  FEB_ACC.average_pack_temp = NAN;
+
   // Initialize ADBMS configuration FIRST (matching SN4 sequence)
   printf("[ADBMS] Initializing ADBMS Configuration\r\n");
   FEB_cs_high();

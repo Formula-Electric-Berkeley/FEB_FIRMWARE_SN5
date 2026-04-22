@@ -33,20 +33,15 @@ static void print_pcu_help(void)
   FEB_Console_Printf("  PCU|bms      - Show BMS state information\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
-  FEB_Console_Printf("  PCU|csv|<tx_id>|status     - PCU status summary row\r\n");
-  FEB_Console_Printf("  PCU|csv|<tx_id>|apps       - APPS sensor row\r\n");
-  FEB_Console_Printf("  PCU|csv|<tx_id>|brake      - Brake sensor row\r\n");
-  FEB_Console_Printf("  PCU|csv|<tx_id>|rms        - RMS motor controller row\r\n");
-  FEB_Console_Printf("  PCU|csv|<tx_id>|tps        - TPS power monitor row\r\n");
-  FEB_Console_Printf("  PCU|csv|<tx_id>|bms        - BMS-state mirror row\r\n");
-  FEB_Console_Printf("  PCU|csv|<tx_id>|commands   - List CSV commands\r\n");
-  FEB_Console_Printf("  PCU|csv|<tx_id>|hello      - Heartbeat\r\n");
-  FEB_Console_Printf("  *|csv|<tx_id>|hello              - Discover all boards\r\n");
+  FEB_Console_Printf("  PCU|csv|<tx_id>|<sub>  - any subcommand above also works as CSV\r\n");
+  FEB_Console_Printf("  *|csv|<tx_id>|hello    - Discover all boards (system command)\r\n");
   FEB_Console_Printf("Each request emits: ack -> [rows] -> done\r\n");
 }
 
-static void cmd_status(void)
+static void cmd_status(int argc, char *argv[])
 {
+  (void)argc;
+  (void)argv;
   APPS_DataTypeDef apps_data;
   Brake_DataTypeDef brake_data;
 
@@ -123,8 +118,10 @@ static void cmd_status(void)
   FEB_Console_Printf("12V Rail: %u mV, %d mA\r\n", tps_data.bus_voltage_mv, tps_data.current_ma);
 }
 
-static void cmd_apps(void)
+static void cmd_apps(int argc, char *argv[])
 {
+  (void)argc;
+  (void)argv;
   APPS_DataTypeDef apps_data;
   FEB_ADC_GetAPPSData(&apps_data);
 
@@ -148,8 +145,10 @@ static void cmd_apps(void)
   FEB_Console_Printf("  Plausibility: %s\r\n", apps_data.plausible ? "OK" : "FAILED");
 }
 
-static void cmd_brake(void)
+static void cmd_brake(int argc, char *argv[])
 {
+  (void)argc;
+  (void)argv;
   Brake_DataTypeDef brake_data;
   FEB_ADC_GetBrakeData(&brake_data);
 
@@ -173,8 +172,10 @@ static void cmd_brake(void)
   FEB_Console_Printf("  Pressed:  %s\r\n", brake_data.brake_pressed ? "YES" : "NO");
 }
 
-static void cmd_rms(void)
+static void cmd_rms(int argc, char *argv[])
 {
+  (void)argc;
+  (void)argv;
   FEB_Console_Printf("=== RMS Motor Controller Status ===\r\n");
   FEB_Console_Printf("\r\n");
 
@@ -186,8 +187,10 @@ static void cmd_rms(void)
   FEB_Console_Printf("Feedback Torque:  %.1f Nm\r\n", FEB_CAN_RMS_getTorqueFeedback());
 }
 
-static void cmd_tps(void)
+static void cmd_tps(int argc, char *argv[])
 {
+  (void)argc;
+  (void)argv;
   FEB_CAN_TPS_Data_t tps_data;
   FEB_CAN_TPS_GetData(&tps_data);
 
@@ -200,8 +203,10 @@ static void cmd_tps(void)
   FEB_Console_Printf("  Shunt Voltage: %ld uV\r\n", tps_data.shunt_voltage_uv);
 }
 
-static void cmd_bms(void)
+static void cmd_bms(int argc, char *argv[])
 {
+  (void)argc;
+  (void)argv;
   FEB_Console_Printf("=== BMS State Information ===\r\n");
   FEB_Console_Printf("\r\n");
 
@@ -373,90 +378,70 @@ static void cmd_bms_csv(int argc, char *argv[])
 }
 
 /* ============================================================================
- * Main Command Handler
+ * Command Descriptors
+ *
+ * One unified FEB_Console_Cmd_t per subcommand: .handler is the human text
+ * impl, .csv_handler is the machine-readable CSV impl. Registered top-level
+ * so `PCU|csv|<tx_id>|<sub>` resolves directly. Canonical text form:
+ * `PCU|<sub>` via cmd_pcu mega-dispatcher.
  * ============================================================================ */
+static const FEB_Console_Cmd_t pcu_status_cmd = {
+    .name = "status", .help = "PCU status summary", .handler = cmd_status, .csv_handler = cmd_status_csv};
+static const FEB_Console_Cmd_t pcu_apps_cmd = {
+    .name = "apps", .help = "APPS sensor data", .handler = cmd_apps, .csv_handler = cmd_apps_csv};
+static const FEB_Console_Cmd_t pcu_brake_cmd = {
+    .name = "brake", .help = "Brake sensor data", .handler = cmd_brake, .csv_handler = cmd_brake_csv};
+static const FEB_Console_Cmd_t pcu_rms_cmd = {
+    .name = "rms", .help = "RMS motor controller status", .handler = cmd_rms, .csv_handler = cmd_rms_csv};
+static const FEB_Console_Cmd_t pcu_tps_cmd = {
+    .name = "tps", .help = "TPS power monitor", .handler = cmd_tps, .csv_handler = cmd_tps_csv};
+static const FEB_Console_Cmd_t pcu_bms_cmd = {
+    .name = "bms", .help = "BMS-state mirror", .handler = cmd_bms, .csv_handler = cmd_bms_csv};
+
+static const FEB_Console_Cmd_t *const PCU_SUBCMDS[] = {
+    &pcu_status_cmd, &pcu_apps_cmd, &pcu_brake_cmd, &pcu_rms_cmd, &pcu_tps_cmd, &pcu_bms_cmd,
+};
+#define PCU_SUBCMDS_COUNT (sizeof(PCU_SUBCMDS) / sizeof(PCU_SUBCMDS[0]))
 
 static void cmd_pcu(int argc, char *argv[])
 {
   if (argc < 2)
   {
-    // No subcommand = show PCU help
     print_pcu_help();
     return;
   }
-
   const char *subcmd = argv[1];
-
-  if (FEB_strcasecmp(subcmd, "status") == 0)
+  for (size_t i = 0; i < PCU_SUBCMDS_COUNT; i++)
   {
-    cmd_status();
+    if (FEB_strcasecmp(PCU_SUBCMDS[i]->name, subcmd) == 0)
+    {
+      if (PCU_SUBCMDS[i]->handler != NULL)
+      {
+        PCU_SUBCMDS[i]->handler(argc - 1, argv + 1);
+      }
+      else
+      {
+        FEB_Console_Printf("Subcommand %s is CSV-only\r\n", subcmd);
+      }
+      return;
+    }
   }
-  else if (FEB_strcasecmp(subcmd, "apps") == 0)
-  {
-    cmd_apps();
-  }
-  else if (FEB_strcasecmp(subcmd, "brake") == 0)
-  {
-    cmd_brake();
-  }
-  else if (FEB_strcasecmp(subcmd, "rms") == 0)
-  {
-    cmd_rms();
-  }
-  else if (FEB_strcasecmp(subcmd, "tps") == 0)
-  {
-    cmd_tps();
-  }
-  else if (FEB_strcasecmp(subcmd, "bms") == 0)
-  {
-    cmd_bms();
-  }
-  else
-  {
-    FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
-    print_pcu_help();
-  }
+  FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
+  print_pcu_help();
 }
-
-/* ============================================================================
- * Command Descriptors
- * ============================================================================
- *
- * Text mode: one `PCU` descriptor sub-dispatches internally.
- * CSV mode: one descriptor per spec command, registered at top level.
- */
 
 const FEB_Console_Cmd_t pcu_cmd = {
     .name = "PCU",
-    .help = "PCU board commands (PCU|status, PCU|apps, PCU|brake, etc.) - human only",
+    .help = "PCU commands (PCU|<sub>) - run PCU alone for full list",
     .handler = cmd_pcu,
     .csv_handler = NULL,
 };
 
-static const FEB_Console_Cmd_t pcu_csv_status = {
-    .name = "status", .help = "PCU status summary row", .handler = NULL, .csv_handler = cmd_status_csv};
-static const FEB_Console_Cmd_t pcu_csv_apps = {
-    .name = "apps", .help = "PCU APPS sensor row", .handler = NULL, .csv_handler = cmd_apps_csv};
-static const FEB_Console_Cmd_t pcu_csv_brake = {
-    .name = "brake", .help = "PCU brake sensor row", .handler = NULL, .csv_handler = cmd_brake_csv};
-static const FEB_Console_Cmd_t pcu_csv_rms = {
-    .name = "rms", .help = "PCU RMS motor controller row", .handler = NULL, .csv_handler = cmd_rms_csv};
-static const FEB_Console_Cmd_t pcu_csv_tps = {
-    .name = "tps", .help = "PCU TPS power monitor row", .handler = NULL, .csv_handler = cmd_tps_csv};
-static const FEB_Console_Cmd_t pcu_csv_bms = {
-    .name = "bms", .help = "PCU BMS-state mirror row", .handler = NULL, .csv_handler = cmd_bms_csv};
-
-/* ============================================================================
- * Registration Function
- * ============================================================================ */
-
 void PCU_RegisterCommands(void)
 {
   FEB_Console_Register(&pcu_cmd);
-  FEB_Console_Register(&pcu_csv_status);
-  FEB_Console_Register(&pcu_csv_apps);
-  FEB_Console_Register(&pcu_csv_brake);
-  FEB_Console_Register(&pcu_csv_rms);
-  FEB_Console_Register(&pcu_csv_tps);
-  FEB_Console_Register(&pcu_csv_bms);
+  for (size_t i = 0; i < PCU_SUBCMDS_COUNT; i++)
+  {
+    FEB_Console_Register(PCU_SUBCMDS[i]);
+  }
 }

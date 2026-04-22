@@ -846,9 +846,63 @@ static const FEB_Console_Cmd_t gps_cmd = {
     .csv_handler = cmd_gps_csv,
 };
 
+/* Per-board subcommand table. Each entry is one IMU/MAG/GPS sensor whose own
+ * struct already unifies text + CSV handlers. cmd_sn dispatches `SN|<sensor>`
+ * by delegating to the sensor's text handler; CSV mode resolves directly via
+ * top-level registration of each sensor. */
+static const FEB_Console_Cmd_t *const SN_SUBCMDS[] = {
+    &imu_cmd,
+    &mag_cmd,
+    &gps_cmd,
+};
+#define SN_SUBCMDS_COUNT (sizeof(SN_SUBCMDS) / sizeof(SN_SUBCMDS[0]))
+
+static void print_sn_help(void)
+{
+  FEB_Console_Printf("Sensor Nodes Commands (SN|<sensor>|<sub>):\r\n");
+  for (size_t i = 0; i < SN_SUBCMDS_COUNT; i++)
+  {
+    FEB_Console_Printf("  SN|%-4s - %s\r\n", SN_SUBCMDS[i]->name, SN_SUBCMDS[i]->help);
+  }
+  FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("Each sensor also accepts its prefix directly: IMU|<sub>, MAG|<sub>, GPS|<sub>.\r\n");
+}
+
+static void cmd_sn(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    print_sn_help();
+    return;
+  }
+  const char *subcmd = argv[1];
+  for (size_t i = 0; i < SN_SUBCMDS_COUNT; i++)
+  {
+    if (FEB_strcasecmp(SN_SUBCMDS[i]->name, subcmd) == 0)
+    {
+      if (SN_SUBCMDS[i]->handler != NULL)
+      {
+        SN_SUBCMDS[i]->handler(argc - 1, argv + 1);
+      }
+      return;
+    }
+  }
+  FEB_Console_Printf("Unknown sensor: %s\r\n", subcmd);
+  print_sn_help();
+}
+
+static const FEB_Console_Cmd_t sn_cmd = {
+    .name = "SN",
+    .help = "Sensor Nodes board (SN|<sensor>|<sub>) - run SN alone for full list",
+    .handler = cmd_sn,
+    .csv_handler = NULL,
+};
+
 void SN_RegisterCommands(void)
 {
-  FEB_Console_Register(&imu_cmd);
-  FEB_Console_Register(&mag_cmd);
-  FEB_Console_Register(&gps_cmd);
+  FEB_Console_Register(&sn_cmd);
+  for (size_t i = 0; i < SN_SUBCMDS_COUNT; i++)
+  {
+    FEB_Console_Register(SN_SUBCMDS[i]);
+  }
 }

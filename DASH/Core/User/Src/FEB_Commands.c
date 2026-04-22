@@ -329,20 +329,73 @@ static const FEB_Console_Cmd_t dash_cmd_pcu = {
 };
 
 /* ============================================================================
- * Registration
+ * Mega-dispatcher and Registration
+ *
+ * Each subcommand above is one unified FEB_Console_Cmd_t with both .handler
+ * and .csv_handler. The DASH_SUBCMDS table is the single source of truth;
+ * cmd_dash iterates it for `DASH|<sub>` text dispatch, and registration
+ * registers each entry top-level so `DASH|csv|<tx_id>|<sub>` resolves.
  * ============================================================================ */
+
+static const FEB_Console_Cmd_t *const DASH_SUBCMDS[] = {
+    &dash_cmd_ping,  &dash_cmd_pong, &dash_cmd_canstop, &dash_cmd_canstatus,
+    &dash_cmd_lvpdb, &dash_cmd_bms,  &dash_cmd_pcu,
+};
+#define DASH_SUBCMDS_COUNT (sizeof(DASH_SUBCMDS) / sizeof(DASH_SUBCMDS[0]))
+
+static void print_dash_help(void)
+{
+  FEB_Console_Printf("DASH Commands (DASH|<sub>):\r\n");
+  for (size_t i = 0; i < DASH_SUBCMDS_COUNT; i++)
+  {
+    FEB_Console_Printf("  DASH|%-12s - %s\r\n", DASH_SUBCMDS[i]->name, DASH_SUBCMDS[i]->help);
+  }
+  FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
+  FEB_Console_Printf("  DASH|csv|<tx_id>|<sub>  - any subcommand above also works as CSV\r\n");
+  FEB_Console_Printf("  *|csv|<tx_id>|hello     - Discover all boards (system command)\r\n");
+  FEB_Console_Printf("Each request emits: ack -> [rows] -> done\r\n");
+}
+
+static void cmd_dash(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    print_dash_help();
+    return;
+  }
+  const char *subcmd = argv[1];
+  for (size_t i = 0; i < DASH_SUBCMDS_COUNT; i++)
+  {
+    if (FEB_strcasecmp(DASH_SUBCMDS[i]->name, subcmd) == 0)
+    {
+      if (DASH_SUBCMDS[i]->handler != NULL)
+      {
+        DASH_SUBCMDS[i]->handler(argc - 1, argv + 1);
+      }
+      else
+      {
+        FEB_Console_Printf("Subcommand %s is CSV-only\r\n", subcmd);
+      }
+      return;
+    }
+  }
+  FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
+  print_dash_help();
+}
+
+static const FEB_Console_Cmd_t dash_cmd = {
+    .name = "DASH",
+    .help = "DASH commands (DASH|<sub>) - run DASH alone for full list",
+    .handler = cmd_dash,
+    .csv_handler = NULL,
+};
+
 void DASH_RegisterCommands(void)
 {
-  // CAN Ping Pong commands
-  FEB_Console_Register(&dash_cmd_ping);
-  FEB_Console_Register(&dash_cmd_pong);
-  FEB_Console_Register(&dash_cmd_canstop);
-  FEB_Console_Register(&dash_cmd_canstatus);
-
-  // LVPDB commands for DASH display
-  FEB_Console_Register(&dash_cmd_lvpdb);
-  // BMS commands for DASH display
-  FEB_Console_Register(&dash_cmd_bms);
-  // PCU commands for DASH display
-  FEB_Console_Register(&dash_cmd_pcu);
+  FEB_Console_Register(&dash_cmd);
+  for (size_t i = 0; i < DASH_SUBCMDS_COUNT; i++)
+  {
+    FEB_Console_Register(DASH_SUBCMDS[i]);
+  }
 }

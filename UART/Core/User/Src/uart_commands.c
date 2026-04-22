@@ -15,6 +15,7 @@
 #include "cmsis_os2.h"
 #include "FreeRTOS.h"
 #include <stdlib.h>
+#include <string.h>
 #include <ctype.h>
 #include <errno.h>
 
@@ -636,15 +637,20 @@ static void cmd_flashbench_csv(int argc, char *argv[])
     pattern = (uint8_t)parsed;
   }
 
-  /* Capture tx_id so the async callback can emit a correlated result row
-   * after this handler (and its transaction's auto-done) has already
-   * returned. */
-  if (!FEB_Console_CsvCurrentTxId(flashbench_csv_tx_id, sizeof(flashbench_csv_tx_id)))
+  /* Capture tx_id locally so a failed queue here doesn't clobber a still-pending
+   * callback from an earlier successful queue. Only commit to the static slot
+   * after FlashBench_QueueRequest confirms the request was accepted. */
+  char local_tx_id[FEB_CSV_TX_ID_MAX_LEN + 1];
+  if (!FEB_Console_CsvCurrentTxId(local_tx_id, sizeof(local_tx_id)))
   {
-    flashbench_csv_tx_id[0] = '\0';
+    local_tx_id[0] = '\0';
   }
 
   FlashBench_Request_t req = {.iterations = iterations, .write_pattern = pattern, .callback = flashbench_csv_callback};
   int queued = FlashBench_QueueRequest(&req) ? 1 : 0;
+  if (queued)
+  {
+    memcpy(flashbench_csv_tx_id, local_tx_id, sizeof(flashbench_csv_tx_id));
+  }
   FEB_Console_CsvEmit("flashbench", "%lu,0x%02X,%d", (unsigned long)iterations, pattern, queued);
 }

@@ -171,13 +171,8 @@ static void print_lvpdb_help(void)
   FEB_Console_Printf("CAN Channels: 1 (0xE0), 2 (0xE1), 3 (0xE2), 4 (0xE3)\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
-  FEB_Console_Printf("  LVPDB|csv|<tx_id>|status       - TPS rail status rows\r\n");
-  FEB_Console_Printf("  LVPDB|csv|<tx_id>|enable|<ch>  - Enable chip\r\n");
-  FEB_Console_Printf("  LVPDB|csv|<tx_id>|read|<ch>|<reg>   - Read register\r\n");
-  FEB_Console_Printf("  LVPDB|csv|<tx_id>|canstatus    - CAN status rows\r\n");
-  FEB_Console_Printf("  LVPDB|csv|<tx_id>|commands     - List CSV commands\r\n");
-  FEB_Console_Printf("  LVPDB|csv|<tx_id>|hello        - Heartbeat\r\n");
-  FEB_Console_Printf("  *|csv|<tx_id>|hello                  - Discover all boards\r\n");
+  FEB_Console_Printf("  LVPDB|csv|<tx_id>|<sub>  - any subcommand above also works as CSV\r\n");
+  FEB_Console_Printf("  *|csv|<tx_id>|hello      - Discover all boards (system command)\r\n");
   FEB_Console_Printf("Each request emits: ack -> [rows] -> done\r\n");
 }
 
@@ -187,8 +182,10 @@ static void print_lvpdb_help(void)
  * Reads each chip's power-good and enable states and prints a table showing
  * ID, Name, EN, PG, Vbus(mV), and I(mA). The LV chip (ID 0) is always reported as ON.
  */
-static void cmd_status(void)
+static void cmd_status(int argc, char *argv[])
 {
+  (void)argc;
+  (void)argv;
   GPIO_PinState pg_states[NUM_TPS2482];
   GPIO_PinState en_states[NUM_TPS2482 - 1];
 
@@ -548,8 +545,10 @@ static void cmd_stop(int argc, char *argv[])
   FEB_Console_Printf("Channel %d stopped\r\n", ch);
 }
 
-static void cmd_canstatus(void)
+static void cmd_canstatus(int argc, char *argv[])
 {
+  (void)argc;
+  (void)argv;
   FEB_Console_Printf("CAN Ping/Pong Status:\r\n");
   FEB_Console_Printf("%-3s %-6s %-5s %10s %10s %12s\r\n", "Ch", "FrameID", "Mode", "TX Count", "RX Count", "Last RX");
   FEB_Console_Printf("--- ------ ----- ---------- ---------- ------------\r\n");
@@ -790,115 +789,81 @@ static void cmd_csv_canstatus(int argc, char *argv[])
 }
 
 /* ============================================================================
- * Main Command Handler
+ * Command Descriptors
+ *
+ * One unified FEB_Console_Cmd_t per subcommand: .handler is the human text
+ * impl, .csv_handler is the machine-readable CSV impl. Registered top-level
+ * so `LVPDB|csv|<tx_id>|<sub>` resolves directly. Canonical text form:
+ * `LVPDB|<sub>` via cmd_lvpdb mega-dispatcher.
  * ============================================================================ */
+static const FEB_Console_Cmd_t lvpdb_status_cmd = {
+    .name = "status", .help = "TPS rail status", .handler = cmd_status, .csv_handler = cmd_csv_status};
+static const FEB_Console_Cmd_t lvpdb_enable_cmd = {
+    .name = "enable", .help = "Enable TPS chip: enable|<chip>", .handler = cmd_enable, .csv_handler = cmd_csv_enable};
+static const FEB_Console_Cmd_t lvpdb_disable_cmd = {.name = "disable",
+                                                    .help = "Disable TPS chip: disable|<chip>",
+                                                    .handler = cmd_disable,
+                                                    .csv_handler = cmd_csv_disable};
+static const FEB_Console_Cmd_t lvpdb_read_cmd = {
+    .name = "read", .help = "Read TPS register: read|<chip>|<reg>", .handler = cmd_read, .csv_handler = cmd_csv_read};
+static const FEB_Console_Cmd_t lvpdb_write_cmd = {.name = "write",
+                                                  .help = "Write TPS register: write|<chip>|<reg>|<value>",
+                                                  .handler = cmd_write,
+                                                  .csv_handler = cmd_csv_write};
+static const FEB_Console_Cmd_t lvpdb_ping_cmd = {
+    .name = "ping", .help = "Start CAN ping: ping|<1-4>", .handler = cmd_ping, .csv_handler = cmd_csv_ping};
+static const FEB_Console_Cmd_t lvpdb_pong_cmd = {
+    .name = "pong", .help = "Start CAN pong: pong|<1-4>", .handler = cmd_pong, .csv_handler = cmd_csv_pong};
+static const FEB_Console_Cmd_t lvpdb_stop_cmd = {
+    .name = "stop", .help = "Stop CAN ping/pong: stop|<1-4|all>", .handler = cmd_stop, .csv_handler = cmd_csv_stop};
+static const FEB_Console_Cmd_t lvpdb_canstatus_cmd = {
+    .name = "canstatus", .help = "CAN ping/pong status", .handler = cmd_canstatus, .csv_handler = cmd_csv_canstatus};
+
+static const FEB_Console_Cmd_t *const LVPDB_SUBCMDS[] = {
+    &lvpdb_status_cmd, &lvpdb_enable_cmd, &lvpdb_disable_cmd, &lvpdb_read_cmd,      &lvpdb_write_cmd,
+    &lvpdb_ping_cmd,   &lvpdb_pong_cmd,   &lvpdb_stop_cmd,    &lvpdb_canstatus_cmd,
+};
+#define LVPDB_SUBCMDS_COUNT (sizeof(LVPDB_SUBCMDS) / sizeof(LVPDB_SUBCMDS[0]))
 
 static void cmd_lvpdb(int argc, char *argv[])
 {
   if (argc < 2)
   {
-    // No subcommand = show LVPDB help
     print_lvpdb_help();
     return;
   }
-
   const char *subcmd = argv[1];
-
-  if (FEB_strcasecmp(subcmd, "status") == 0)
+  for (size_t i = 0; i < LVPDB_SUBCMDS_COUNT; i++)
   {
-    cmd_status();
+    if (FEB_strcasecmp(LVPDB_SUBCMDS[i]->name, subcmd) == 0)
+    {
+      if (LVPDB_SUBCMDS[i]->handler != NULL)
+      {
+        LVPDB_SUBCMDS[i]->handler(argc - 1, argv + 1);
+      }
+      else
+      {
+        FEB_Console_Printf("Subcommand %s is CSV-only\r\n", subcmd);
+      }
+      return;
+    }
   }
-  else if (FEB_strcasecmp(subcmd, "enable") == 0)
-  {
-    cmd_enable(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "disable") == 0)
-  {
-    cmd_disable(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "read") == 0)
-  {
-    cmd_read(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "write") == 0)
-  {
-    cmd_write(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "ping") == 0)
-  {
-    cmd_ping(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "pong") == 0)
-  {
-    cmd_pong(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "stop") == 0)
-  {
-    cmd_stop(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "canstatus") == 0)
-  {
-    cmd_canstatus();
-  }
-  else
-  {
-    FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
-    print_lvpdb_help();
-  }
+  FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
+  print_lvpdb_help();
 }
-
-/* ============================================================================
- * Command Descriptors
- * ============================================================================
- *
- * Text mode: one `LVPDB` descriptor sub-dispatches on the second token.
- * CSV mode: individual top-level descriptors, one per spec command, so the
- * parser can route `LVPDB|csv|<tx>|<name>` directly without going through
- * an internal dispatcher.
- */
 
 const FEB_Console_Cmd_t lvpdb_cmd = {
     .name = "LVPDB",
-    .help = "LVPDB board commands (LVPDB|status, LVPDB|enable, etc.) - human only",
+    .help = "LVPDB commands (LVPDB|<sub>) - run LVPDB alone for full list",
     .handler = cmd_lvpdb,
     .csv_handler = NULL,
 };
 
-static const FEB_Console_Cmd_t lvpdb_csv_status = {
-    .name = "status", .help = "LVPDB rail status rows", .handler = NULL, .csv_handler = cmd_csv_status};
-static const FEB_Console_Cmd_t lvpdb_csv_enable = {
-    .name = "enable", .help = "Enable TPS chip: enable|<chip>", .handler = NULL, .csv_handler = cmd_csv_enable};
-static const FEB_Console_Cmd_t lvpdb_csv_disable = {
-    .name = "disable", .help = "Disable TPS chip: disable|<chip>", .handler = NULL, .csv_handler = cmd_csv_disable};
-static const FEB_Console_Cmd_t lvpdb_csv_read = {
-    .name = "read", .help = "Read TPS register: read|<chip>|<reg>", .handler = NULL, .csv_handler = cmd_csv_read};
-static const FEB_Console_Cmd_t lvpdb_csv_write = {.name = "write",
-                                                  .help = "Write TPS register: write|<chip>|<reg>|<value>",
-                                                  .handler = NULL,
-                                                  .csv_handler = cmd_csv_write};
-static const FEB_Console_Cmd_t lvpdb_csv_ping = {
-    .name = "ping", .help = "Start CAN ping: ping|<1-4>", .handler = NULL, .csv_handler = cmd_csv_ping};
-static const FEB_Console_Cmd_t lvpdb_csv_pong = {
-    .name = "pong", .help = "Start CAN pong: pong|<1-4>", .handler = NULL, .csv_handler = cmd_csv_pong};
-static const FEB_Console_Cmd_t lvpdb_csv_stop = {
-    .name = "stop", .help = "Stop CAN ping/pong: stop|<1-4|all>", .handler = NULL, .csv_handler = cmd_csv_stop};
-static const FEB_Console_Cmd_t lvpdb_csv_canstatus = {
-    .name = "canstatus", .help = "CAN ping/pong status rows", .handler = NULL, .csv_handler = cmd_csv_canstatus};
-
-/* ============================================================================
- * Registration Function
- * ============================================================================ */
-
 void LVPDB_RegisterCommands(void)
 {
   FEB_Console_Register(&lvpdb_cmd);
-  FEB_Console_Register(&lvpdb_csv_status);
-  FEB_Console_Register(&lvpdb_csv_enable);
-  FEB_Console_Register(&lvpdb_csv_disable);
-  FEB_Console_Register(&lvpdb_csv_read);
-  FEB_Console_Register(&lvpdb_csv_write);
-  FEB_Console_Register(&lvpdb_csv_ping);
-  FEB_Console_Register(&lvpdb_csv_pong);
-  FEB_Console_Register(&lvpdb_csv_stop);
-  FEB_Console_Register(&lvpdb_csv_canstatus);
+  for (size_t i = 0; i < LVPDB_SUBCMDS_COUNT; i++)
+  {
+    FEB_Console_Register(LVPDB_SUBCMDS[i]);
+  }
 }
