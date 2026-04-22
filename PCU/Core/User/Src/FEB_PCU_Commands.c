@@ -415,14 +415,7 @@ static void cmd_pcu(int argc, char *argv[])
   {
     if (FEB_strcasecmp(PCU_SUBCMDS[i]->name, subcmd) == 0)
     {
-      if (PCU_SUBCMDS[i]->handler != NULL)
-      {
-        PCU_SUBCMDS[i]->handler(argc - 1, argv + 1);
-      }
-      else
-      {
-        FEB_Console_Printf("Subcommand %s is CSV-only\r\n", subcmd);
-      }
+      PCU_SUBCMDS[i]->handler(argc - 1, argv + 1);
       return;
     }
   }

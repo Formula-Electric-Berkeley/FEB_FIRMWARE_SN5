@@ -43,6 +43,13 @@ log_header() {
     echo -e "\n${BLUE}=== $1 ===${NC}\n" >&2
 }
 
+# RFC 4180: double any embedded quote and wrap the field in quotes so commas,
+# quotes, and CR/LF in elf paths or usernames don't corrupt the row.
+csv_escape() {
+    local field="$1"
+    printf '"%s"' "${field//\"/\"\"}"
+}
+
 # Check if STM32_Programmer_CLI is available
 check_prerequisites() {
     if command -v STM32_Programmer_CLI &> /dev/null; then
@@ -248,11 +255,23 @@ patch_elf_for_flash() {
 
     # Capture metadata for logging via --print mode. --print emits key=value
     # lines on stdout; human-readable progress goes to stderr via the logger.
+    # Redirect stderr to a temp file so failure diagnostics surface instead of
+    # being swallowed.
     local metadata
-    if ! metadata=$(python3 "$patcher" --elf "$src_elf" --out "$patched_elf" --print 2>/dev/null); then
-        log_warn "flash-patcher failed - flashing original ELF unpatched"
+    local patcher_stderr
+    patcher_stderr=$(mktemp)
+    if ! metadata=$(python3 "$patcher" --elf "$src_elf" --out "$patched_elf" --print 2>"$patcher_stderr"); then
+        local err_detail
+        err_detail=$(<"$patcher_stderr")
+        rm -f "$patcher_stderr"
+        if [ -n "$err_detail" ]; then
+            log_warn "flash-patcher failed - flashing original ELF unpatched: $err_detail"
+        else
+            log_warn "flash-patcher failed - flashing original ELF unpatched"
+        fi
         return 0
     fi
+    rm -f "$patcher_stderr"
 
     # Echo metadata back through stderr for human visibility. Keys are
     # flash_utc / flasher_user / flasher_host / elf (from --print).
@@ -316,7 +335,12 @@ record_flash() {
     if [ ! -f "$history" ]; then
         echo "flash_utc,board,elf,flasher_user,flasher_host" > "$history"
     fi
-    echo "${flash_utc},${board_name:-unknown},${elf_file},${flasher_user},${flasher_host}" >> "$history"
+    printf '%s,%s,%s,%s,%s\n' \
+        "$(csv_escape "$flash_utc")" \
+        "$(csv_escape "${board_name:-unknown}")" \
+        "$(csv_escape "$elf_file")" \
+        "$(csv_escape "$flasher_user")" \
+        "$(csv_escape "$flasher_host")" >> "$history"
     log_info "Recorded flash in $(basename "$history")"
 }
 

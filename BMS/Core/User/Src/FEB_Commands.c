@@ -1011,14 +1011,7 @@ static void cmd_bms(int argc, char *argv[])
   {
     if (FEB_strcasecmp(BMS_SUBCMDS[i]->name, subcmd) == 0)
     {
-      if (BMS_SUBCMDS[i]->handler != NULL)
-      {
-        BMS_SUBCMDS[i]->handler(argc - 1, argv + 1);
-      }
-      else
-      {
-        FEB_Console_Printf("Subcommand %s is CSV-only\r\n", subcmd);
-      }
+      BMS_SUBCMDS[i]->handler(argc - 1, argv + 1);
       return;
     }
   }

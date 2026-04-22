@@ -330,10 +330,7 @@ static void cmd_tach_csv(int argc, char *argv[])
   /* argv = ["tach", <fan>] */
   if (argc < 2)
   {
-    for (int i = 0; i < (int)NUM_FANS; ++i)
-    {
-      emit_fan_row(i);
-    }
+    FEB_Console_CsvError("error", "usage,tach|<1-5|all>");
     return;
   }
   int fan_idx = -1;
@@ -359,15 +356,17 @@ static void cmd_tach_csv(int argc, char *argv[])
 static void cmd_pwm_get_csv(int argc, char *argv[])
 {
   /* argv = ["pwm-get", <fan>] */
-  int fan_idx = -1;
-  bool all = true;
-  if (argc >= 2)
+  if (argc < 2)
   {
-    if (!parse_fan(argv[1], &fan_idx, &all))
-    {
-      FEB_Console_CsvError("error", "fan,%s", argv[1]);
-      return;
-    }
+    FEB_Console_CsvError("error", "usage,pwm-get|<1-5|all>");
+    return;
+  }
+  int fan_idx = -1;
+  bool all = false;
+  if (!parse_fan(argv[1], &fan_idx, &all))
+  {
+    FEB_Console_CsvError("error", "fan,%s", argv[1]);
+    return;
   }
   FEB_Console_CsvEmit("mode", "%s", FEB_Fan_IsManualOverride() ? "manual" : "auto");
   if (all)
