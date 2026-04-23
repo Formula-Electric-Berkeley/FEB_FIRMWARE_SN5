@@ -181,7 +181,7 @@ void MX_FREERTOS_Init(void) {
   uartRxQueueHandle = osMessageQueueNew (8, sizeof(FEB_UART_RxQueueMsg_t), &uartRxQueue_attributes);
 
   /* creation of sdRequestQueue */
-  sdRequestQueueHandle = osMessageQueueNew (4, sizeof(DCU_SD_Request_t), &sdRequestQueue_attributes);
+  sdRequestQueueHandle = osMessageQueueNew (4, 4, &sdRequestQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */

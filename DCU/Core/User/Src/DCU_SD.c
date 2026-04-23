@@ -317,7 +317,7 @@ void StartSdTask(void *argument)
 
   for (;;)
   {
-    DCU_SD_Request_t req;
+    DCU_SD_Request_t *req;
     osStatus_t s = osMessageQueueGet(sdRequestQueueHandle, &req, NULL, osWaitForever);
     if (s != osOK)
     {
@@ -326,7 +326,7 @@ void StartSdTask(void *argument)
     }
 
     FRESULT r = FR_INVALID_PARAMETER;
-    switch (req.op)
+    switch (req->op)
     {
     case DCU_SD_OP_MOUNT:
       r = sd_op_mount();
@@ -335,22 +335,22 @@ void StartSdTask(void *argument)
       r = sd_op_unmount();
       break;
     case DCU_SD_OP_GET_INFO:
-      r = sd_op_get_info(req.out_a, req.out_b, req.out_fs_type);
+      r = sd_op_get_info(req->out_a, req->out_b, req->out_fs_type);
       break;
     case DCU_SD_OP_LS:
-      r = sd_op_ls(req.path);
+      r = sd_op_ls(req->path);
       break;
     case DCU_SD_OP_READ:
-      r = sd_op_read(req.path, req.buffer, req.buffer_len, req.out_a);
+      r = sd_op_read(req->path, req->buffer, req->buffer_len, req->out_a);
       break;
     case DCU_SD_OP_WRITE:
-      r = sd_op_write(req.path, req.buffer, req.buffer_len, false);
+      r = sd_op_write(req->path, req->buffer, req->buffer_len, false);
       break;
     case DCU_SD_OP_APPEND:
-      r = sd_op_write(req.path, req.buffer, req.buffer_len, true);
+      r = sd_op_write(req->path, req->buffer, req->buffer_len, true);
       break;
     case DCU_SD_OP_DELETE:
-      r = sd_op_delete(req.path);
+      r = sd_op_delete(req->path);
       break;
     case DCU_SD_OP_SMOKE_TEST:
       r = sd_op_smoke();
@@ -362,10 +362,9 @@ void StartSdTask(void *argument)
       break;
     }
 
-    if (req.result)
-      *req.result = r;
-    if (req.caller)
-      osThreadFlagsSet(req.caller, DCU_SD_FLAG_DONE);
+    req->result = r;
+    if (req->caller)
+      osThreadFlagsSet(req->caller, DCU_SD_FLAG_DONE);
   }
 }
 
@@ -376,14 +375,13 @@ void StartSdTask(void *argument)
 
 static FRESULT submit_and_wait(DCU_SD_Request_t *req, uint32_t timeout_ms)
 {
-  FRESULT result = FR_NOT_READY;
-  req->result = &result;
+  req->result = FR_NOT_READY;
   req->caller = osThreadGetId();
 
   /* Clear any stale DONE flag bit before posting so we wait on a fresh signal. */
   (void)osThreadFlagsClear(DCU_SD_FLAG_DONE);
 
-  if (osMessageQueuePut(sdRequestQueueHandle, req, 0U, timeout_ms) != osOK)
+  if (osMessageQueuePut(sdRequestQueueHandle, &req, 0U, timeout_ms) != osOK)
   {
     return FR_TIMEOUT;
   }
@@ -393,7 +391,7 @@ static FRESULT submit_and_wait(DCU_SD_Request_t *req, uint32_t timeout_ms)
   {
     return FR_TIMEOUT;
   }
-  return result;
+  return req->result;
 }
 
 FRESULT DCU_SD_Mount(uint32_t timeout_ms)

@@ -60,7 +60,7 @@ extern "C"
     uint8_t *out_fs_type;
 
     /* Result is written here when the SD task completes the operation. */
-    FRESULT *result;
+    FRESULT result;
 
     /* The thread that posted the request — sdTask wakes it via thread flags
      * when the operation completes. No allocation per call. */
