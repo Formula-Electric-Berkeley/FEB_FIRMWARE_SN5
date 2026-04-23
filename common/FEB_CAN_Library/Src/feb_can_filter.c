@@ -8,7 +8,7 @@
 
 #include "feb_can_lib.h"
 #include "feb_can_internal.h"
-#include "stm32f4xx_hal.h"
+#include "main.h"
 #include <string.h>
 
 /* ============================================================================

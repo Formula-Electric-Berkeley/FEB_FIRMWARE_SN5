@@ -21,11 +21,11 @@
 // Alias for compatibility
 #define FEB_NUM_CELL_PER_BANK FEB_NUM_CELLS_PER_BANK
 
-// Total number of temperature sensors per bank (10 per IC × 2 ICs)
-#define FEB_NUM_TEMP_SENSORS 41
-
 // Number of temperature sensors per IC (for MUX reading)
-#define FEB_NUM_TEMP_SENSE_PER_IC 10
+#define FEB_NUM_TEMP_SENSE_PER_IC 41
+
+// Total number of temperature sensors per bank (10 per IC × 2 ICs)
+#define FEB_NUM_TEMP_SENSORS (FEB_NUM_TEMP_SENSE_PER_IC * FEB_NUM_ICPBANK)
 
 // ********************************** ADBMS6830B ADC Conversion Constants ********
 // From ADBMS6830B datasheet - Cell voltage measurement
@@ -78,6 +78,7 @@
 #define FEB_CELL_MIN_VOLTAGE_MV 2500      // Minimum safe cell voltage (Li-ion typical)
 #define FEB_CELL_BALANCE_THRESHOLD_MV 10  // Start balancing if cell is >10mV above minimum
 #define FEB_CELL_BALANCE_INTERVAL_MS 1000 // Balancing cycle interval (1 second)
+#define FEB_CELL_BALANCE_ALL_AT_ONCE 1    // 1=balance all qualifying cells, 0=alternate odd/even
 
 // Cell temperature limits (in deci-Celsius, 1 dC = 0.1°C)
 #define FEB_CELL_MAX_TEMP_DC 600             // 60.0°C maximum cell temperature

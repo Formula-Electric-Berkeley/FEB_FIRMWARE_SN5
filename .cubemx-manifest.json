@@ -4,7 +4,7 @@
   "boards": {
     "BMS": {
       "ioc_checksum": "08670b75875f2feedea3280eecc4821f36b742ccf7680976ae6f87bc3937ebfc",
-      "generated_at": "2026-04-23T06:57:25Z",
+      "generated_at": "2026-04-23T22:28:48Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "363755b7a21dd5a790f0bafbfd68f00abe141fd8691720b3604bc84b7dbaa81b",
         "Core/Inc/adc.h": "0ac97025a4065f07b7b65a906bd0c45ea800215434ed43c287c1685507f3f612",
@@ -75,7 +75,7 @@
     },
     "DASH": {
       "ioc_checksum": "e95ffc17bdded4d5b6be3894345d7149e5c93fd84b09279cd8888540662ce95e",
-      "generated_at": "2026-04-23T06:57:28Z",
+      "generated_at": "2026-04-23T22:28:50Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "692168cbc9c915133ce3f329cec850c5372c1759ec0412ced61fc14741de14be",
         "Core/Inc/can.h": "d9c82c8382c196a76d472a6b82a292a0384a086536ca280ce701ebbba9f5c682",
@@ -176,28 +176,34 @@
       }
     },
     "DART": {
-      "ioc_checksum": "ec3c85c2c8b4e4d94362ddb58b54f6882bbe337678213a16363428dc83171245",
-      "generated_at": "2026-04-23T06:57:28Z",
+      "ioc_checksum": "5e40a62867a13bf2ccbc21a8343b896b2979b658d024cb6721e46e05b32b5a45",
+      "generated_at": "2026-04-23T22:28:50Z",
       "files": {
+        "Core/Inc/can.h": "8bb6621564cd436d9b9697bc86bc4c6f6ae0492b84673344dfa5a3a2d0ee06cb",
+        "Core/Inc/dma.h": "7cf6f7450a29d26303cbba5a3ca8c6cb24a02635d6a5ba4d05141fdfc75c4c49",
         "Core/Inc/gpio.h": "e2d62f964a0b7f238384ed6a20a181d09df9647240a268dc547acf5b35099f74",
-        "Core/Inc/main.h": "e07a43ebc634ce451e2f80884378d112e048e06235fb49fdc2d9a2b5057d28c5",
-        "Core/Inc/stm32f4xx_hal_conf.h": "a7456a03b7c563da74771c7f179d5787d760b0f5508f4d739213e07f8604b0d8",
-        "Core/Inc/stm32f4xx_it.h": "a96c6c7347c880644aeab9f9fe3ca9be2d61f123389fe8c2ce7dc4321501993a",
+        "Core/Inc/main.h": "5e1deda42bc68918b30900497f270cbd4e8cad7f94fe64150cdce26abf3220b8",
+        "Core/Inc/stm32f0xx_hal_conf.h": "2f1e3d9e684dfa8ba8a92781e777c385738d32e7ada11007d76de89aadc4c1b9",
+        "Core/Inc/stm32f0xx_it.h": "53eeda19efb40e8338108430812c9e1a0ec0420faed9f1ae32e1ff4b227366f8",
+        "Core/Inc/tim.h": "c5643d5aaa1841f83c232115fba9edcb16e60aed0f042c9b0f96fd1eb22d03d8",
         "Core/Inc/usart.h": "2ddd1eaf81e3750b46df7222f4c34ae295bcdaaaa1152e4be4933d3a0ca90181",
-        "Core/Src/gpio.c": "e797753346f487c8ad1643608c3378e52c266e4d633d9ce3b1ffb7b9c92388bc",
-        "Core/Src/main.c": "0711ba496b6332972eb98e9f0ad49e691f8880418d032b46b8b9871b63e38873",
-        "Core/Src/stm32f4xx_hal_msp.c": "3217d99dc7006dc46ac384717641fe84386f05fc71db0a3340fa0eae810bc1b7",
-        "Core/Src/stm32f4xx_it.c": "6cdfba6e76754e5838ae60c659793a49f4f635f7aa5d7451c0bbd0bbc502e1c7",
-        "Core/Src/syscalls.c": "03c06c72eafb44b499814cf9234aba57dd830f345d9b8779b5d7090e78517600",
-        "Core/Src/sysmem.c": "ad20f7b1fa1e7c73330727747222cf2ffa3245ebf035230ee9a157545e79df95",
-        "Core/Src/usart.c": "f278cb5046ca6c2101b713ceddb7ac9fd5e07e4fc69f11039d48d143b13b9c0a",
-        "STM32F446XX_FLASH.ld": "018d8e121d7a3b94fd36e1e40c9598daa20aa999f45d24230b1b0d9461b60059",
-        "startup_stm32f446xx.s": "448435eb5d2ffe063490bcac42b9c861461ce05528141d87e62f8425c00131f8"
+        "Core/Src/can.c": "fe91754e41e401ef588b6e3c555856c93817d276283e0fb802b6accc61615c3f",
+        "Core/Src/dma.c": "7d6d5fdd82bde4349b5576d14554f25923e8315561470c3757fe176cecf4e76c",
+        "Core/Src/gpio.c": "a8650cd2e645196e0d3afc1b2fae7bbb371eb5284489a5395c461d2b178532f7",
+        "Core/Src/main.c": "832c3583ea7571224f66c683cabe3ee52cbe4be3990cf739e4f59492dca14b5b",
+        "Core/Src/stm32f0xx_hal_msp.c": "0ddaa325d6d31b243899be32b857caaed2b4d3b89ddf3bfc6bc83e26779a9d3e",
+        "Core/Src/stm32f0xx_it.c": "d067db284465695a7319eadf13ae8ba615e75ac86c5b0115a1e2d17755c32ece",
+        "Core/Src/syscalls.c": "ab00c3df1417d6249b5c9c13c4e7b926f1fec9cd10961861d3f3c8d34983b913",
+        "Core/Src/tim.c": "ede91a6a54f101824613300a7dfc3504b2713a2ed2fc8026a8e21430440df6d5",
+        "Core/Src/usart.c": "4bec169b1112bb7e70d5c9fbfbef21a7b31701dbccb66adaac184ead7797c337",
+        "STM32F042K6TX_FLASH.ld": "aff59a81471b7ad3bb043c723c5fa995fef8973b72d1a58ce9d05b02d4d7eaed",
+        "STM32F042XX_FLASH.ld": "77d43134da9d772793961e3be6998135a6891e9e6ae50873f1ad08112394acac",
+        "startup_stm32f042x6.s": "c667c7f025c1c010e77a6ab2f18a42232f5c84a892a2016260678e5b7290a566"
       }
     },
     "DCU": {
       "ioc_checksum": "8c31bc10dedc9b01236a792962ef8e6367d13aeb6f57e2d8caaa27d5ecdf37af",
-      "generated_at": "2026-04-23T06:57:30Z",
+      "generated_at": "2026-04-23T22:28:52Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "6b4080b1f5aedb3793f3fb347d7bc61907a53df5104d805995aa77085aaafcd4",
         "Core/Inc/can.h": "98925d7f4010f054e17d240116244377377c15248a5413a09ff811cdc23084e5",
@@ -283,7 +289,7 @@
     },
     "LVPDB": {
       "ioc_checksum": "35fab767f9e0e1027a136ca482edf00568850e7bd941f793ae156215fec1ca33",
-      "generated_at": "2026-04-23T06:57:30Z",
+      "generated_at": "2026-04-23T22:28:52Z",
       "files": {
         "Core/Inc/can.h": "17611aeff90b90e352bc2ace2749644663492ecb10c71539567ef9b1441fd5d9",
         "Core/Inc/dma.h": "7cf6f7450a29d26303cbba5a3ca8c6cb24a02635d6a5ba4d05141fdfc75c4c49",
@@ -311,7 +317,7 @@
     },
     "PCU": {
       "ioc_checksum": "dd91de27d45363f02d89b5341de246826cc4d72a9f77d219c6bf4ac072c24126",
-      "generated_at": "2026-04-23T06:57:31Z",
+      "generated_at": "2026-04-23T22:28:53Z",
       "files": {
         "Core/Inc/adc.h": "e36acfe1b822eff1de7e9f93073b8da32c94dd5b09484b716e190c6aa63eb3d0",
         "Core/Inc/can.h": "98925d7f4010f054e17d240116244377377c15248a5413a09ff811cdc23084e5",
@@ -341,7 +347,7 @@
     },
     "Sensor_Nodes": {
       "ioc_checksum": "161ff7eabd5da705b696d063f4302b68fb14f6fb0ca4cec7199556e8f7f82c4f",
-      "generated_at": "2026-04-23T06:57:31Z",
+      "generated_at": "2026-04-23T22:28:53Z",
       "files": {
         "Core/Inc/adc.h": "0ac97025a4065f07b7b65a906bd0c45ea800215434ed43c287c1685507f3f612",
         "Core/Inc/can.h": "98925d7f4010f054e17d240116244377377c15248a5413a09ff811cdc23084e5",
@@ -369,7 +375,7 @@
     },
     "UART_TEST": {
       "ioc_checksum": "06c9618835096e44e3f73cd158bbc2e3fcf76e65dc9a29db68fe607180843efd",
-      "generated_at": "2026-04-23T06:57:33Z",
+      "generated_at": "2026-04-23T22:28:55Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "773dad076864ff18d5d85603d348d4931d29dde9925486e58f95a97ac98b8404",
         "Core/Inc/app_freertos.h": "6229601c2ebf192d40ceef377f3c1785571eaf6407f10bc87be5b06357dd3515",

@@ -12,6 +12,7 @@
 #include "FEB_HW.h"
 #include "FEB_SM.h"
 #include "FEB_Const.h"
+#include "FEB_Commands.h"
 #include "cmsis_os.h"
 #include "feb_log.h"
 #include <stdbool.h>
@@ -100,10 +101,11 @@ void StartADBMSTask(void *argument)
       temp_tick = now;
     }
 
-    /* Print accumulator struct every 1000ms (1 Hz) */
+    /* Print CSV data every 1000ms (1 Hz) */
     if (now - print_tick >= pdMS_TO_TICKS(1000))
     {
-      FEB_ADBMS_Print_Accumulator();
+      // char *csv_argv[] = {"csv", "all"};
+      // subcmd_csv(2, csv_argv);
       print_tick = now;
     }
 

@@ -5,6 +5,7 @@
 #include "FEB_HW.h"
 #include "FEB_Const.h"
 #include "FEB_Config.h"
+#include "FEB_Commands.h"
 // #include "FEB_CAN_IVT.h"
 #include "FEB_CMDCODES.h"
 #include "FEB_Thermistor.h"
@@ -639,48 +640,15 @@ float FEB_ADBMS_GET_Cell_Temperature(uint8_t bank, uint16_t cell)
   return temp;
 }
 
-// ********************************** Print Accumulator **************************
+// ********************************** Printing **********************************
 
 void FEB_ADBMS_Print_Accumulator(void)
 {
   osMutexAcquire(ADBMSMutexHandle, osWaitForever);
 
-  // printf("\r\n========== ACCUMULATOR STATUS ==========\r\n");
-  // printf("Pack Total Voltage: %.3fV\r\n", FEB_ACC.total_voltage_V);
-  // printf("Pack Min Voltage: %.3fV\r\n", FEB_ACC.pack_min_voltage_V);
-  // printf("Pack Max Voltage: %.3fV\r\n", FEB_ACC.pack_max_voltage_V);
-  // printf("Pack Min Temp: %.1fC\r\n", FEB_ACC.pack_min_temp);
-  // printf("Pack Max Temp: %.1fC\r\n", FEB_ACC.pack_max_temp);
-  // printf("Pack Avg Temp: %.1fC\r\n", FEB_ACC.average_pack_temp);
-  // printf("Error Type: 0x%02X\r\n", FEB_ACC.error_type);
-
-  // for (uint8_t bank = 0; bank < FEB_NBANKS; bank++)
-  // {
-  //   printf("\r\n--- Bank %d ---\r\n", bank);
-  //   printf("  Total Voltage: %.3fV\r\n", FEB_ACC.banks[bank].total_voltage_V);
-  //   printf("  Min Voltage: %.3fV, Max Voltage: %.3fV\r\n", FEB_ACC.banks[bank].min_voltage_V,
-  //          FEB_ACC.banks[bank].max_voltage_V);
-  //   printf("  Avg Temp: %.1fC, Min Temp: %.1fC, Max Temp: %.1fC\r\n", FEB_ACC.banks[bank].avg_temp_C,
-  //          FEB_ACC.banks[bank].min_temp_C, FEB_ACC.banks[bank].max_temp_C);
-  //   printf("  Volt Reads: %d, Temp Reads: %d, Bad Volt Reads: %d\r\n", FEB_ACC.banks[bank].voltRead,
-  //          FEB_ACC.banks[bank].tempRead, FEB_ACC.banks[bank].badReadV);
-
-  //   printf("  Cell Voltages: ");
-  //   for (uint16_t cell = 0; cell < FEB_NUM_CELL_PER_BANK; cell++)
-  //   {
-  //     printf("%.3f ", FEB_ACC.banks[bank].cells[cell].voltage_V);
-  //   }
-  //   printf("\r\n");
-
-  //   printf("  Cell Temps: ");
-  //   for (uint16_t cell = 0; cell < FEB_NUM_TEMP_SENSORS; cell++)
-  //   {
-  //     printf("%.1f ", FEB_ACC.banks[bank].temp_sensor_readings_V[cell]);
-  //   }
-  //   printf("\r\n");
-  // }
-
-  // printf("==========================================\r\n");
+  /* Call subcmd_csv with "all" mode */
+  char *csv_argv[] = {"csv", "all"};
+  subcmd_csv(2, csv_argv);
 
   osMutexRelease(ADBMSMutexHandle);
 }
@@ -700,6 +668,7 @@ void FEB_Cell_Balance_Process()
 {
   determineMinV();
 
+#if !FEB_CELL_BALANCE_ALL_AT_ONCE
   if (balancing_cycle == 3)
   {
     balancing_mask = ~balancing_mask;
@@ -707,8 +676,9 @@ void FEB_Cell_Balance_Process()
     balancing_cycle = 0;
   }
   balancing_cycle++;
+#endif
   // Use the actual minimum voltage from the pack instead of static value
-  float min_cell_voltage = FEB_ACC.pack_min_voltage_V;
+  float min_cell_voltage = FEB_ACC.min_voltage_V;
   LOG_D(TAG_BALANCE, "Cycle %d: min=%.3fV max=%.3fV mask=0x%04X", balancing_cycle, min_cell_voltage,
         FEB_ACC.pack_max_voltage_V, balancing_mask);
 
@@ -724,8 +694,13 @@ void FEB_Cell_Balance_Process()
       if (diff > FEB_MIN_SLIPPAGE_V)
       {
         bits |= (0b1 << cell);
+#if FEB_CELL_BALANCE_ALL_AT_ONCE
         FEB_ACC.banks[icn / FEB_NUM_ICPBANK].cells[cell + FEB_NUM_CELLS_PER_IC * (icn % FEB_NUM_ICPBANK)].discharging =
-            0b1 & ((balancing_mask & bits) >> cell);
+            0b1; // All qualifying cells discharge
+#else
+        FEB_ACC.banks[icn / FEB_NUM_ICPBANK].cells[cell + FEB_NUM_CELLS_PER_IC * (icn % FEB_NUM_ICPBANK)].discharging =
+            0b1 & ((balancing_mask & bits) >> cell); // Only cells allowed by mask
+#endif
       }
       else
       {
@@ -733,7 +708,11 @@ void FEB_Cell_Balance_Process()
             0b0;
       }
     }
-    uint16_t applied = bits & balancing_mask;
+#if FEB_CELL_BALANCE_ALL_AT_ONCE
+    uint16_t applied = bits; // Balance all qualifying cells at once
+#else
+    uint16_t applied = bits & balancing_mask; // Alternate odd/even cells
+#endif
     if (applied != 0)
     {
       LOG_D(TAG_BALANCE, "IC%d: discharge=0x%04X (raw=0x%04X)", icn, applied, bits);
@@ -803,6 +782,11 @@ bool FEB_Cell_Balancing_Status(void)
 void FEB_Stop_Balance()
 {
   LOG_D(TAG_BALANCE, "Stopping all cell discharge");
+
+  // Reset balancing mask and cycle
+  balancing_mask = 0x0000;
+  balancing_cycle = 0;
+
   for (uint8_t ic = 0; ic < FEB_NUM_IC; ic++)
   {
     ADBMS6830B_set_cfgr(ic, IC_Config, refon, cth_bits, gpio_bits, 0, dcto_bits, uv, ov);

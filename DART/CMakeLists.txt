@@ -14,48 +14,47 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 project(${PROJ_NAME} C CXX ASM)
+
+# Override root-level M4 flags — DART is Cortex-M0, no FPU
+set(DART_CPU_FLAGS "-mcpu=cortex-m0 -mthumb")
+foreach(var CMAKE_C_FLAGS CMAKE_ASM_FLAGS CMAKE_EXE_LINKER_FLAGS)
+    string(REPLACE "-mcpu=cortex-m4"    "" ${var} "${${var}}")
+    string(REPLACE "-mfpu=fpv4-sp-d16"  "" ${var} "${${var}}")
+    string(REPLACE "-mfloat-abi=hard"   "" ${var} "${${var}}")
+    set(${var} "${${var}} ${DART_CPU_FLAGS}")
+endforeach()
+
+# STM32F042K6 has only 32 KB flash. -O0 Debug overflows once feb_io is linked,
+# so force size-optimized debug on this board (-g3 still emitted).
+set(CMAKE_C_FLAGS_DEBUG   "-Os -g3")
+set(CMAKE_CXX_FLAGS_DEBUG "-Os -g3")
+
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 # ── Compile definitions ──────────────────────────────────────────────
 add_compile_definitions(
     USE_HAL_DRIVER
-    STM32F446xx
+    STM32F042x6
     $<$<CONFIG:Debug>:DEBUG>
 )
 
 # ══════════════════════════════════════════════════════════════════════
-#  SOURCE COLLECTION
+#  SOURCE COLLECTION (globbed — CubeMX regens are a no-op for CMake)
 # ══════════════════════════════════════════════════════════════════════
 
-# Core application sources (CubeMX-generated + user code)
-file(GLOB_RECURSE CORE_SOURCES "Core/*.c")
-
-# Startup assembly
-file(GLOB STARTUP_ASM "startup_*.s")
-
-# HAL/LL driver sources (safe: HAL_MODULE_ENABLED guards; exclude templates)
-file(GLOB HAL_SOURCES "Drivers/STM32F4xx_HAL_Driver/Src/*.c")
+file(GLOB_RECURSE CORE_SOURCES "Core/*.c")          # Core/Src + Core/User/Src
+file(GLOB         STARTUP_ASM  "startup_*.s")
+file(GLOB         HAL_SOURCES  "Drivers/STM32F0xx_HAL_Driver/Src/*.c")
 list(FILTER HAL_SOURCES EXCLUDE REGEX "_template\\.c$")
 
-# Combine base sources
-set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES})
+set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4")
 
-# ══════════════════════════════════════════════════════════════════════
-#  INCLUDE DIRECTORIES
-# ══════════════════════════════════════════════════════════════════════
-
-set(BASE_INCLUDES
-    Core/Inc
-    Drivers/STM32F4xx_HAL_Driver/Inc
-    Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
-    Drivers/CMSIS/Device/ST/STM32F4xx/Include
-    Drivers/CMSIS/Include
+set(ALL_SOURCES
+    ${CORE_SOURCES}
+    ${STARTUP_ASM}
+    ${HAL_SOURCES}
+    "${CAN_LIB_DIR}/gen/feb_can.c"
 )
-
-# Auto-discover Core/User/Inc if it exists
-if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
-    list(APPEND BASE_INCLUDES Core/User/Inc)
-endif()
 
 # ══════════════════════════════════════════════════════════════════════
 #  EXECUTABLE TARGET
@@ -63,30 +62,45 @@ endif()
 
 add_executable(${PROJECT_NAME} ${ALL_SOURCES})
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
-
-target_link_libraries(${PROJECT_NAME} PRIVATE m)
-
-# Enable floating-point printf/scanf for newlib-nano
-target_link_options(${PROJECT_NAME} PRIVATE
-    "LINKER:-u,_printf_float"
-    "LINKER:-u,_scanf_float"
+target_include_directories(${PROJECT_NAME} PRIVATE
+    Core/Inc
+    Core/User/Inc
+    Drivers/STM32F0xx_HAL_Driver/Inc
+    Drivers/STM32F0xx_HAL_Driver/Inc/Legacy
+    Drivers/CMSIS/Device/ST/STM32F0xx/Include
+    Drivers/CMSIS/Include
+    "${CAN_LIB_DIR}/.."
+    "${CAN_LIB_DIR}/gen"
 )
 
-# Linker script and map file (project-specific, not in shared toolchain)
-file(GLOB LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/STM32F4*_FLASH.ld")
+# feb_io serial stack — bare-metal mode to fit 32 KB flash.
+# Link only feb_uart + feb_log; DART-local command parser handles console.
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    FEB_UART_FORCE_BARE_METAL=1
+    FEB_UART_MAX_INSTANCES=1
+    FEB_UART_DEFAULT_TX_BUFFER_SIZE=256
+    FEB_UART_DEFAULT_RX_BUFFER_SIZE=128
+    FEB_UART_DEFAULT_LINE_BUFFER_SIZE=64
+    FEB_UART_STAGING_BUFFER_SIZE=256
+    FEB_UART_COMPILE_LOG_LEVEL=3    # INFO
+)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io)
+
+# ── Linker script ─────────────────────────────────────────────────────
+file(GLOB LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/STM32F0*_FLASH.ld")
 if(LINKER_SCRIPT)
     list(GET LINKER_SCRIPT 0 LINKER_SCRIPT)
     target_link_options(${PROJECT_NAME} PRIVATE -T "${LINKER_SCRIPT}")
 endif()
+
 target_link_options(${PROJECT_NAME} PRIVATE
     -Wl,-Map=$<TARGET_FILE_DIR:${PROJECT_NAME}>/${PROJECT_NAME}.map
 )
 
-# Remove wrong libob.a dependency
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
-# ── Post-build: .bin, .hex, size ─────────────────────────────────────
+# ── Post-build: .bin, .hex, size ──────────────────────────────────────
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${PROJECT_NAME}>
             ${PROJECT_NAME}.bin
