@@ -15,6 +15,7 @@
 /* Configuration */
 #define PING_INTERVAL_MS 1000
 #define RX_TIMEOUT_MS 3000
+#define LISTEN_RX_TIMEOUT_MS 1000
 #define MAX_INIT_RETRIES 5
 
 /* Role Selection - change for second device */
@@ -27,6 +28,18 @@ static const char PING_MSG[] = "PING";
 #if (RADIO_ROLE == RADIO_ROLE_PONG)
 static const char PONG_MSG[] = "PONG";
 #endif
+
+static volatile bool s_listen_mode = false;
+
+void FEB_Task_Radio_SetListenMode(bool enable)
+{
+  s_listen_mode = enable;
+}
+
+bool FEB_Task_Radio_GetListenMode(void)
+{
+  return s_listen_mode;
+}
 
 void StartRadioTask(void *argument)
 {
@@ -68,6 +81,18 @@ void StartRadioTask(void *argument)
 
   for (;;)
   {
+    if (s_listen_mode)
+    {
+      /* Listen-only mode: continuously receive, no TX */
+      status = FEB_RFM95_Receive(rx_buffer, &rx_len, LISTEN_RX_TIMEOUT_MS);
+      if (status == FEB_RFM95_OK)
+      {
+        LOG_I(TAG, "[listen] RX %u bytes, RSSI=%d, SNR=%d", rx_len, FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
+      }
+      osDelay(pdMS_TO_TICKS(10));
+      continue;
+    }
+
 #if (RADIO_ROLE == RADIO_ROLE_PING)
     /* PING role: send PING, wait for PONG */
     uint32_t now = osKernelGetTickCount();

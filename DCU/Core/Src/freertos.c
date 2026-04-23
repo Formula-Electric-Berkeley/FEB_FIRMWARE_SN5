@@ -29,6 +29,7 @@
 #include "feb_rtos_utils.h"
 #include "feb_uart.h"
 #include "FEB_Main.h"
+#include "DCU_SD.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -65,6 +66,13 @@ const osThreadAttr_t radioTask_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityHigh,
 };
+/* Definitions for sdTask */
+osThreadId_t sdTaskHandle;
+const osThreadAttr_t sdTask_attributes = {
+  .name = "sdTask",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityBelowNormal,
+};
 /* Definitions for rxDataQueue */
 osMessageQueueId_t rxDataQueueHandle;
 const osMessageQueueAttr_t rxDataQueue_attributes = {
@@ -74,6 +82,11 @@ const osMessageQueueAttr_t rxDataQueue_attributes = {
 osMessageQueueId_t uartRxQueueHandle;
 const osMessageQueueAttr_t uartRxQueue_attributes = {
   .name = "uartRxQueue"
+};
+/* Definitions for sdRequestQueue */
+osMessageQueueId_t sdRequestQueueHandle;
+const osMessageQueueAttr_t sdRequestQueue_attributes = {
+  .name = "sdRequestQueue"
 };
 /* Definitions for rxTimeoutTimer */
 osTimerId_t rxTimeoutTimerHandle;
@@ -116,6 +129,7 @@ const osEventFlagsAttr_t radioEvents_attributes = {
 
 void StartUartRxTask(void *argument);
 void RadioTask(void *argument);
+void StartSdTask(void *argument);
 void rxTimeoutCallback(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -166,6 +180,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of uartRxQueue */
   uartRxQueueHandle = osMessageQueueNew (8, sizeof(FEB_UART_RxQueueMsg_t), &uartRxQueue_attributes);
 
+  /* creation of sdRequestQueue */
+  sdRequestQueueHandle = osMessageQueueNew (4, sizeof(DCU_SD_Request_t), &sdRequestQueue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -176,6 +193,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of radioTask */
   radioTaskHandle = osThreadNew(RadioTask, NULL, &radioTask_attributes);
+
+  /* creation of sdTask */
+  sdTaskHandle = osThreadNew(StartSdTask, NULL, &sdTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   REQUIRE_RTOS_HANDLE(spiMutexHandle);
@@ -230,6 +250,24 @@ void RadioTask(void *argument)
   /* USER CODE BEGIN RadioTask */
   StartRadioTask(argument);
   /* USER CODE END RadioTask */
+}
+
+/* USER CODE BEGIN Header_StartSdTask */
+/**
+* @brief Function implementing the sdTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartSdTask */
+__weak void StartSdTask(void *argument)
+{
+  /* USER CODE BEGIN StartSdTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartSdTask */
 }
 
 /* rxTimeoutCallback function */

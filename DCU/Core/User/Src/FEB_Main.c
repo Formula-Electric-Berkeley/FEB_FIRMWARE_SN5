@@ -96,7 +96,7 @@ void FEB_Init(void)
   FEB_Console_Printf("========================================\r\n");
   FEB_Console_Printf("         DCU Console Ready\r\n");
   FEB_Console_Printf("========================================\r\n");
-  FEB_Console_Printf("Use | as delimiter: dcu|tps\r\n");
+  FEB_Console_Printf("Use | as delimiter: dcu|tps, dcu|can, dcu|radio, dcu|sd\r\n");
   FEB_Console_Printf("Type 'help' for available commands\r\n");
   FEB_Console_Printf("\r\n");
 }
