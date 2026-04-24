@@ -93,6 +93,6 @@ void FEB_CAN_State_Tick(void)
                       FEB_CAN_DASH_STATE_LENGTH);
     }
 
-    FEB_Console_Printf("Sending Dash IO State Over CAN: %X %X", tx_data[0], tx_data[1]);
+    FEB_Console_Printf("Sending Dash IO State Over CAN: %X %X\r\n", tx_data[0], tx_data[1]);
   }
 }

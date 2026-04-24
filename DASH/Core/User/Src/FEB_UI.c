@@ -82,7 +82,7 @@ void FEB_UI_Update(void)
 void StartDisplayTask(void *argument)
 {
   FEB_UI_Init();
-  uint32_t last_blink = 0;
+  // uint32_t last_blink = 0;
 
   for (;;)
   {
