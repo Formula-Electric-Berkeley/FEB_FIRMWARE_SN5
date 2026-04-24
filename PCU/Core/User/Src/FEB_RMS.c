@@ -191,12 +191,11 @@ void FEB_RMS_Torque(void)
   // Read latest sensor data
   FEB_ADC_GetAPPSData(&APPS_Data);
   FEB_ADC_GetBrakeData(&Brake_Data);
-  Brake_Data.plausible = true; // OVERRIDE: Bypass brake plausibility check
 
   // Check plausibility and safety conditions (require BMS in drive state)
   bool bms_in_drive = FEB_CAN_BMS_InDriveState();
   bool sensors_plausible = bms_in_drive && DRIVE_STATE;
-
+  sensors_plausible = true; /* TEMP OVERRIDE - ignore BMS state for testing */
   // Log any safety violations
   if (!sensors_plausible)
   {

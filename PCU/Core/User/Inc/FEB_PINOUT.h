@@ -130,7 +130,7 @@ extern "C"
 /* These are DEFAULTS only - actual values are stored in calibration structs */
 
 /* Single APPS Sensor Mode - for testing only, not FSAE compliant */
-#define SINGLE_APPS_MODE 1 /* Set to 1 to use only APPS1 sensor */
+#define SINGLE_APPS_MODE 0 /* Set to 1 to use only APPS1 sensor */
 
 /* Accelerator Pedal Default Calibration (APPS) */
 /* Calibrated values based on actual measurements with safety margin */
