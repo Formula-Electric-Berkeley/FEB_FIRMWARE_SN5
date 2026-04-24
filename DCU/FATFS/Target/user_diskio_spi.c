@@ -16,15 +16,25 @@
 #include "user_diskio_spi.h"
 #include "main.h"
 #include "spi.h"
+#include "feb_log.h"
+#include "cmsis_os.h"
 #include <stdbool.h>
+
+#define TAG_SD_SPI "[SD_SPI]"
 
 extern SPI_HandleTypeDef SD_SPI_HANDLE;
 
 #define SPI_TIMEOUT_MS 100U
 
-/* SPI baud rate is set by the .ioc / MX_SPI1_Init() — no runtime switching. */
-#define FCLK_SLOW() ((void)0)
-#define FCLK_FAST() ((void)0)
+static void set_spi_prescaler(uint32_t prescaler)
+{
+  SD_SPI_HANDLE.Init.BaudRatePrescaler = prescaler;
+  (void)HAL_SPI_Init(&SD_SPI_HANDLE);
+}
+
+/* SD spec requires 100–400 kHz for CMD0/CMD8/ACMD41; switch to full speed once initialized. */
+#define FCLK_SLOW() set_spi_prescaler(SPI_BAUDRATEPRESCALER_256)
+#define FCLK_FAST() set_spi_prescaler(SPI_BAUDRATEPRESCALER_32)
 
 #define CS_HIGH() HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_SET)
 #define CS_LOW() HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_RESET)
@@ -55,6 +65,7 @@ static volatile DSTATUS sd_status_flags = STA_NOINIT;
 static BYTE card_type = 0U;
 static uint32_t spi_timer_start = 0U;
 static uint32_t spi_timer_delay = 0U;
+static bool s_hal_err_logged = false;
 
 static void spi_timer_on(uint32_t wait_ms)
 {
@@ -70,7 +81,13 @@ static bool spi_timer_active(void)
 static BYTE xchg_spi(BYTE data)
 {
   BYTE rx_data = 0xFFU;
-  (void)HAL_SPI_TransmitReceive(&SD_SPI_HANDLE, &data, &rx_data, 1U, SPI_TIMEOUT_MS);
+  HAL_StatusTypeDef status = HAL_SPI_TransmitReceive(&SD_SPI_HANDLE, &data, &rx_data, 1U, SPI_TIMEOUT_MS);
+  if (status != HAL_OK && !s_hal_err_logged)
+  {
+    s_hal_err_logged = true;
+    LOG_E(TAG_SD_SPI, "xchg_spi HAL err=%d state=0x%02X errcode=0x%08lX",
+          (int)status, (unsigned)SD_SPI_HANDLE.State, (unsigned long)SD_SPI_HANDLE.ErrorCode);
+  }
   return rx_data;
 }
 
@@ -174,6 +191,41 @@ static int xmit_datablock(const BYTE *buff, BYTE token)
 }
 #endif
 
+/* SN4-style power-on CMD0: raw frame + deep response poll. Some cards take
+ * significantly longer to emit the first R1 while transitioning SD->SPI mode,
+ * so the 10-try poll in send_cmd() is not sufficient for the very first CMD0. */
+static BYTE power_on_cmd0(void)
+{
+  CS_HIGH();
+  osDelay(1U);
+  for (BYTE i = 0; i < 10U; i++)
+  {
+    (void)xchg_spi(0xFFU);
+  }
+
+  CS_LOW();
+  osDelay(1U);
+
+  (void)xchg_spi((BYTE)(0x40U | CMD0));
+  (void)xchg_spi(0x00U);
+  (void)xchg_spi(0x00U);
+  (void)xchg_spi(0x00U);
+  (void)xchg_spi(0x00U);
+  (void)xchg_spi(0x95U);
+
+  BYTE response = 0xFFU;
+  uint32_t tries = 0x1FFFU;
+  do
+  {
+    response = xchg_spi(0xFFU);
+  } while ((response & 0x80U) != 0U && --tries != 0U);
+
+  CS_HIGH();
+  (void)xchg_spi(0xFFU);
+
+  return response;
+}
+
 static BYTE send_cmd(BYTE cmd, DWORD arg)
 {
   BYTE crc = 0x01U;
@@ -240,45 +292,86 @@ DSTATUS USER_SPI_initialize(BYTE pdrv)
 
   if ((sd_status_flags & STA_NODISK) != 0U)
   {
+    LOG_W(TAG_SD_SPI, "init: STA_NODISK set, flags=0x%02X", (unsigned)sd_status_flags);
     return sd_status_flags;
   }
 
-  FCLK_SLOW();
-  for (BYTE i = 0; i < 10U; i++)
-  {
-    (void)xchg_spi(0xFFU);
-  }
+  uint32_t t_start = HAL_GetTick();
+  LOG_I(TAG_SD_SPI, "init: pdrv=%u flags=0x%02X", (unsigned)pdrv, (unsigned)sd_status_flags);
 
-  if (send_cmd(CMD0, 0U) == 1U)
+  s_hal_err_logged = false;
+  FCLK_SLOW();
+
+  BYTE r0 = 0xFFU;
+  for (BYTE attempt = 0; attempt < 3U; attempt++)
+  {
+    r0 = power_on_cmd0();
+    LOG_D(TAG_SD_SPI, "CMD0 -> 0x%02X (expect 0x01) attempt=%u", (unsigned)r0, (unsigned)attempt);
+    if (r0 == 1U)
+    {
+      break;
+    }
+    osDelay(pdMS_TO_TICKS(10));
+  }
+  if (r0 == 1U)
   {
     spi_timer_on(1000U);
-    if (send_cmd(CMD8, 0x1AAU) == 1U)
+    BYTE r8 = send_cmd(CMD8, 0x1AAU);
+    LOG_D(TAG_SD_SPI, "CMD8 -> 0x%02X", (unsigned)r8);
+    if (r8 == 1U)
     {
       for (BYTE i = 0; i < 4U; i++)
       {
         ocr[i] = xchg_spi(0xFFU);
       }
+      LOG_D(TAG_SD_SPI, "CMD8 OCR: %02X %02X %02X %02X",
+            (unsigned)ocr[0], (unsigned)ocr[1], (unsigned)ocr[2], (unsigned)ocr[3]);
 
       if (ocr[2] == 0x01U && ocr[3] == 0xAAU)
       {
-        while (spi_timer_active() && send_cmd(ACMD41, 1UL << 30) != 0U)
+        uint32_t acmd41_start = HAL_GetTick();
+        uint32_t iters = 0U;
+        BYTE r41 = 0xFFU;
+        while (spi_timer_active() && (r41 = send_cmd(ACMD41, 1UL << 30)) != 0U)
         {
+          iters++;
         }
+        LOG_D(TAG_SD_SPI, "ACMD41 done: iters=%lu elapsed=%lu ms last=0x%02X timer_active=%d",
+              (unsigned long)iters,
+              (unsigned long)(HAL_GetTick() - acmd41_start),
+              (unsigned)r41,
+              (int)spi_timer_active());
 
-        if (spi_timer_active() && send_cmd(CMD58, 0U) == 0U)
+        if (spi_timer_active())
         {
-          for (BYTE i = 0; i < 4U; i++)
+          BYTE r58 = send_cmd(CMD58, 0U);
+          if (r58 == 0U)
           {
-            ocr[i] = xchg_spi(0xFFU);
+            for (BYTE i = 0; i < 4U; i++)
+            {
+              ocr[i] = xchg_spi(0xFFU);
+            }
+            ty = ((ocr[0] & 0x40U) != 0U) ? (CT_SD2 | CT_BLOCK) : CT_SD2;
+            LOG_D(TAG_SD_SPI, "CMD58 -> 0x00 OCR=%02X%02X%02X%02X ty=0x%02X",
+                  (unsigned)ocr[0], (unsigned)ocr[1], (unsigned)ocr[2], (unsigned)ocr[3],
+                  (unsigned)ty);
           }
-          ty = ((ocr[0] & 0x40U) != 0U) ? (CT_SD2 | CT_BLOCK) : CT_SD2;
+          else
+          {
+            LOG_D(TAG_SD_SPI, "CMD58 -> 0x%02X (nonzero, ty stays 0)", (unsigned)r58);
+          }
         }
+      }
+      else
+      {
+        LOG_D(TAG_SD_SPI, "CMD8 OCR mismatch (expect ..01 AA), ty stays 0");
       }
     }
     else
     {
       BYTE init_cmd = CMD1;
-      if (send_cmd(ACMD41, 0U) <= 1U)
+      BYTE r41_probe = send_cmd(ACMD41, 0U);
+      if (r41_probe <= 1U)
       {
         ty = CT_SD1;
         init_cmd = ACMD41;
@@ -287,15 +380,25 @@ DSTATUS USER_SPI_initialize(BYTE pdrv)
       {
         ty = CT_MMC;
       }
+      LOG_D(TAG_SD_SPI, "CMD8 rejected, legacy init: probe=0x%02X init_cmd=0x%02X ty=0x%02X",
+            (unsigned)r41_probe, (unsigned)init_cmd, (unsigned)ty);
 
+      uint32_t legacy_start = HAL_GetTick();
+      uint32_t iters = 0U;
       while (spi_timer_active() && send_cmd(init_cmd, 0U) != 0U)
       {
+        iters++;
       }
 
       if (!spi_timer_active() || send_cmd(CMD16, 512U) != 0U)
       {
         ty = 0U;
       }
+      LOG_D(TAG_SD_SPI, "legacy init end: iters=%lu elapsed=%lu ms ty=0x%02X timer_active=%d",
+            (unsigned long)iters,
+            (unsigned long)(HAL_GetTick() - legacy_start),
+            (unsigned)ty,
+            (int)spi_timer_active());
     }
   }
 
@@ -306,10 +409,14 @@ DSTATUS USER_SPI_initialize(BYTE pdrv)
   {
     FCLK_FAST();
     sd_status_flags &= (BYTE)~STA_NOINIT;
+    LOG_I(TAG_SD_SPI, "init OK: card_type=0x%02X elapsed=%lu ms flags=0x%02X",
+          (unsigned)ty, (unsigned long)(HAL_GetTick() - t_start), (unsigned)sd_status_flags);
   }
   else
   {
     sd_status_flags = STA_NOINIT;
+    LOG_E(TAG_SD_SPI, "init FAIL: ty=0 elapsed=%lu ms flags=0x%02X",
+          (unsigned long)(HAL_GetTick() - t_start), (unsigned)sd_status_flags);
   }
 
   return sd_status_flags;
@@ -322,6 +429,7 @@ DSTATUS USER_SPI_status(BYTE pdrv)
     return STA_NOINIT;
   }
 
+  LOG_D(TAG_SD_SPI, "status: flags=0x%02X", (unsigned)sd_status_flags);
   return sd_status_flags;
 }
 

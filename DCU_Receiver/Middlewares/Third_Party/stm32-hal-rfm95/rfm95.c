@@ -11,7 +11,12 @@
 
 #include "rfm95.h"
 #include "feb_log.h"
+#include "cmsis_os.h"
 #include <string.h>
+
+/* All delays below run after osKernelStart() (rfm95_init is invoked from
+ * StartRadioTask). Use osDelay so the task blocks instead of busy-waiting. */
+#define RFM95_DELAY_MS(ms) osDelay(pdMS_TO_TICKS(ms))
 
 #define TAG "[RFM95]"
 
@@ -145,9 +150,9 @@ void rfm95_reset(rfm95_handle_t *handle)
 {
     if (handle->nrst_port != NULL) {
         HAL_GPIO_WritePin(handle->nrst_port, handle->nrst_pin, GPIO_PIN_RESET);
-        HAL_Delay(1);
+        RFM95_DELAY_MS(1);
         HAL_GPIO_WritePin(handle->nrst_port, handle->nrst_pin, GPIO_PIN_SET);
-        HAL_Delay(10);
+        RFM95_DELAY_MS(10);
     }
 }
 
@@ -172,7 +177,7 @@ bool rfm95_init(rfm95_handle_t *handle)
     /* Enable module if EN pin is configured */
     if (handle->en_port != NULL) {
         HAL_GPIO_WritePin(handle->en_port, handle->en_pin, GPIO_PIN_SET);
-        HAL_Delay(10);
+        RFM95_DELAY_MS(10);
     }
 
     /* Hardware reset */
@@ -186,12 +191,12 @@ bool rfm95_init(rfm95_handle_t *handle)
 
     /* Enter sleep mode for configuration */
     set_mode(handle, RFM95_MODE_SLEEP);
-    HAL_Delay(10);
+    RFM95_DELAY_MS(10);
 
     /* Set LoRa mode (must be done in sleep) */
     rfm95_write_register(handle, RFM95_REG_OP_MODE,
                          RFM95_MODE_LONG_RANGE_MODE | RFM95_MODE_SLEEP);
-    HAL_Delay(10);
+    RFM95_DELAY_MS(10);
 
     /* Apply configuration */
     rfm95_set_frequency(handle, handle->config.frequency);
@@ -386,7 +391,7 @@ bool rfm95_transmit(rfm95_handle_t *handle, const uint8_t *data, size_t len,
             clear_irq_flags(handle);
         }
 
-        HAL_Delay(1);
+        RFM95_DELAY_MS(1);
     }
 
     set_mode(handle, RFM95_MODE_STDBY);
@@ -423,7 +428,7 @@ bool rfm95_receive(rfm95_handle_t *handle, uint8_t *buffer, size_t *len,
             clear_irq_flags(handle);
         }
 
-        HAL_Delay(1);
+        RFM95_DELAY_MS(1);
     }
 
     set_mode(handle, RFM95_MODE_STDBY);
@@ -656,13 +661,13 @@ void rfm95_debug_reset(rfm95_handle_t *handle)
     HAL_GPIO_WritePin(handle->nrst_port, handle->nrst_pin, GPIO_PIN_RESET);
     LOG_I(TAG, "RST pin now: %d", HAL_GPIO_ReadPin(handle->nrst_port, handle->nrst_pin));
 
-    HAL_Delay(10);
+    RFM95_DELAY_MS(10);
 
     LOG_I(TAG, "Pulling RST HIGH...");
     HAL_GPIO_WritePin(handle->nrst_port, handle->nrst_pin, GPIO_PIN_SET);
     LOG_I(TAG, "RST pin now: %d", HAL_GPIO_ReadPin(handle->nrst_port, handle->nrst_pin));
 
-    HAL_Delay(20);
+    RFM95_DELAY_MS(20);
 
     /* Try to read version */
     uint8_t version = rfm95_read_register(handle, RFM95_REG_VERSION);
@@ -684,7 +689,7 @@ void rfm95_debug_enable(rfm95_handle_t *handle)
     LOG_I(TAG, "Disabling module (EN=LOW)...");
     HAL_GPIO_WritePin(handle->en_port, handle->en_pin, GPIO_PIN_RESET);
     LOG_I(TAG, "EN pin now: %d", HAL_GPIO_ReadPin(handle->en_port, handle->en_pin));
-    HAL_Delay(10);
+    RFM95_DELAY_MS(10);
 
     /* Try to read (should fail) */
     uint8_t ver_disabled = rfm95_read_register(handle, RFM95_REG_VERSION);
@@ -694,7 +699,7 @@ void rfm95_debug_enable(rfm95_handle_t *handle)
     LOG_I(TAG, "Enabling module (EN=HIGH)...");
     HAL_GPIO_WritePin(handle->en_port, handle->en_pin, GPIO_PIN_SET);
     LOG_I(TAG, "EN pin now: %d", HAL_GPIO_ReadPin(handle->en_port, handle->en_pin));
-    HAL_Delay(50);  /* Give module time to power up */
+    RFM95_DELAY_MS(50);  /* Give module time to power up */
 
     /* Reset after power up */
     rfm95_reset(handle);

@@ -17,7 +17,7 @@
 #include <string.h>
 
 #define TAG_SD "[SD]"
-#define DCU_SD_TEST_FILE "dcu_sd_smoke.txt"
+#define DCU_SD_TEST_FILE "smoke.txt"
 #define DCU_SD_BENCH_FILE "bench.bin"
 #define DCU_SD_BENCH_BYTES (64UL * 1024UL)
 
@@ -311,9 +311,6 @@ void StartSdTask(void *argument)
 {
   (void)argument;
   LOG_I(TAG_SD, "sdTask started, queue ready");
-
-  /* Idle SD_CS high — CubeMX-generated gpio.c pulls it low at boot. */
-  HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_SET);
 
   for (;;)
   {

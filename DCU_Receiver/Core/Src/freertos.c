@@ -49,7 +49,25 @@ typedef StaticSemaphore_t osStaticMutexDef_t;
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-
+/* Second UART (UART4) console: thread + sync primitives for FEB_UART_INSTANCE_2 */
+osThreadId_t uart4RxTaskHandle;
+const osThreadAttr_t uart4RxTask_attributes = {
+  .name = "uart4RxTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+osMutexId_t uartTxMutex2Handle;
+const osMutexAttr_t uartTxMutex2_attributes = {
+  .name = "uartTxMutex2"
+};
+osSemaphoreId_t uartTxSem2Handle;
+const osSemaphoreAttr_t uartTxSem2_attributes = {
+  .name = "uartTxSem2"
+};
+osMessageQueueId_t uartRxQueue2Handle;
+const osMessageQueueAttr_t uartRxQueue2_attributes = {
+  .name = "uartRxQueue2"
+};
 /* USER CODE END Variables */
 /* Definitions for uartRxTask */
 osThreadId_t uartRxTaskHandle;
@@ -115,6 +133,7 @@ const osEventFlagsAttr_t radioEvents_attributes = {
 /* USER CODE END FunctionPrototypes */
 
 void StartUartRxTask(void *argument);
+void StartUart4RxTask(void *argument);
 void RadioTask(void *argument);
 void rxTimeoutCallback(void *argument);
 
@@ -140,7 +159,7 @@ void MX_FREERTOS_Init(void) {
   logMutexHandle = osMutexNew(&logMutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
+  uartTxMutex2Handle = osMutexNew(&uartTxMutex2_attributes);
   /* USER CODE END RTOS_MUTEX */
 
   /* Create the semaphores(s) */
@@ -148,7 +167,7 @@ void MX_FREERTOS_Init(void) {
   uartTxSemHandle = osSemaphoreNew(1, 0, &uartTxSem_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
+  uartTxSem2Handle = osSemaphoreNew(1, 0, &uartTxSem2_attributes);
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* Create the timer(s) */
@@ -167,7 +186,7 @@ void MX_FREERTOS_Init(void) {
   uartRxQueueHandle = osMessageQueueNew (8, sizeof(FEB_UART_RxQueueMsg_t), &uartRxQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+  uartRxQueue2Handle = osMessageQueueNew(8, sizeof(FEB_UART_RxQueueMsg_t), &uartRxQueue2_attributes);
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -178,6 +197,7 @@ void MX_FREERTOS_Init(void) {
   radioTaskHandle = osThreadNew(RadioTask, NULL, &radioTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
+  uart4RxTaskHandle = osThreadNew(StartUart4RxTask, NULL, &uart4RxTask_attributes);
   REQUIRE_RTOS_HANDLE(spiMutexHandle);
   REQUIRE_RTOS_HANDLE(uartTxMutexHandle);
   REQUIRE_RTOS_HANDLE(logMutexHandle);
@@ -187,6 +207,10 @@ void MX_FREERTOS_Init(void) {
   REQUIRE_RTOS_HANDLE(rxDataQueueHandle);
   REQUIRE_RTOS_HANDLE(uartRxTaskHandle);
   REQUIRE_RTOS_HANDLE(radioTaskHandle);
+  REQUIRE_RTOS_HANDLE(uartTxMutex2Handle);
+  REQUIRE_RTOS_HANDLE(uartTxSem2Handle);
+  REQUIRE_RTOS_HANDLE(uartRxQueue2Handle);
+  REQUIRE_RTOS_HANDLE(uart4RxTaskHandle);
   /* USER CODE END RTOS_THREADS */
 
   /* creation of radioEvents */

@@ -112,17 +112,39 @@ FEB_RFM95_Status_t FEB_RFM95_Transmit(const uint8_t *data, uint8_t length, uint3
   if (data == NULL || length == 0)
     return FEB_RFM95_ERR_INVALID_PARAM;
 
-  bool success = rfm95_transmit(&s_rfm95, data, length, timeout_ms);
+  rfm95_standby(&s_rfm95);
 
-  if (success)
+  /* DIO0 = TxDone */
+  rfm95_write_register(&s_rfm95, RFM95_REG_DIO_MAPPING_1, 0x40);
+
+  /* Load FIFO (SX127x auto-increments the FIFO pointer on each write) */
+  rfm95_write_register(&s_rfm95, RFM95_REG_FIFO_ADDR_PTR, 0x00);
+  for (uint8_t i = 0; i < length; i++)
   {
-    s_stats.tx_count++;
-    return FEB_RFM95_OK;
+    rfm95_write_register(&s_rfm95, RFM95_REG_FIFO, data[i]);
+  }
+  rfm95_write_register(&s_rfm95, RFM95_REG_PAYLOAD_LENGTH, length);
+
+  /* Clear IRQ flags and event state, then kick TX */
+  rfm95_write_register(&s_rfm95, RFM95_REG_IRQ_FLAGS, 0xFF);
+  s_rfm95.tx_done = false;
+  osEventFlagsClear(radioEventsHandle, EVT_TX_DONE);
+
+  rfm95_write_register(&s_rfm95, RFM95_REG_OP_MODE, RFM95_MODE_LONG_RANGE_MODE | RFM95_MODE_TX);
+
+  uint32_t flags = osEventFlagsWait(radioEventsHandle, EVT_TX_DONE, osFlagsWaitAny, pdMS_TO_TICKS(timeout_ms));
+
+  rfm95_standby(&s_rfm95);
+
+  if ((flags & osFlagsError) != 0)
+  {
+    s_stats.tx_errors++;
+    LOG_W(TAG, "TX timeout");
+    return FEB_RFM95_ERR_TX_TIMEOUT;
   }
 
-  s_stats.tx_errors++;
-  LOG_W(TAG, "TX timeout");
-  return FEB_RFM95_ERR_TX_TIMEOUT;
+  s_stats.tx_count++;
+  return FEB_RFM95_OK;
 }
 
 FEB_RFM95_Status_t FEB_RFM95_Receive(uint8_t *buffer, uint8_t *length, uint32_t timeout_ms)
@@ -132,29 +154,50 @@ FEB_RFM95_Status_t FEB_RFM95_Receive(uint8_t *buffer, uint8_t *length, uint32_t 
   if (buffer == NULL || length == NULL)
     return FEB_RFM95_ERR_INVALID_PARAM;
 
-  size_t rx_len = 0;
-  bool success = rfm95_receive(&s_rfm95, buffer, &rx_len, timeout_ms);
-
-  if (success)
-  {
-    *length = (uint8_t)rx_len;
-    s_stats.rx_count++;
-    s_stats.last_rssi = s_rfm95.last_rssi;
-    s_stats.last_snr = s_rfm95.last_snr;
-    return FEB_RFM95_OK;
-  }
-
   *length = 0;
 
-  /* Check if it was a CRC error */
-  if (s_rfm95.crc_error)
+  /* Drop any stale events before arming RX */
+  osEventFlagsClear(radioEventsHandle, EVT_RX_DONE | EVT_CRC_ERROR);
+
+  /* Non-blocking: programs DIO0=RxDone, enters RX_CONTINUOUS, clears flags */
+  rfm95_start_receive(&s_rfm95);
+
+  uint32_t flags =
+      osEventFlagsWait(radioEventsHandle, EVT_RX_DONE | EVT_CRC_ERROR, osFlagsWaitAny, pdMS_TO_TICKS(timeout_ms));
+
+  rfm95_standby(&s_rfm95);
+
+  if ((flags & osFlagsError) != 0)
+  {
+    s_stats.rx_timeouts++;
+    return FEB_RFM95_ERR_RX_TIMEOUT;
+  }
+
+  if (flags & EVT_CRC_ERROR)
   {
     s_stats.rx_errors++;
     return FEB_RFM95_ERR_RX_CRC;
   }
 
-  s_stats.rx_timeouts++;
-  return FEB_RFM95_ERR_RX_TIMEOUT;
+  /* EVT_RX_DONE: read packet metadata and payload from FIFO */
+  int16_t rssi = -157 + (int16_t)rfm95_read_register(&s_rfm95, RFM95_REG_PKT_RSSI_VALUE);
+  int8_t snr = ((int8_t)rfm95_read_register(&s_rfm95, RFM95_REG_PKT_SNR_VALUE)) / 4;
+  s_rfm95.last_rssi = rssi;
+  s_rfm95.last_snr = snr;
+
+  uint8_t rx_len = rfm95_read_register(&s_rfm95, RFM95_REG_RX_NB_BYTES);
+  uint8_t rx_addr = rfm95_read_register(&s_rfm95, RFM95_REG_FIFO_RX_CURRENT_ADDR);
+  rfm95_write_register(&s_rfm95, RFM95_REG_FIFO_ADDR_PTR, rx_addr);
+  for (uint8_t i = 0; i < rx_len; i++)
+  {
+    buffer[i] = rfm95_read_register(&s_rfm95, RFM95_REG_FIFO);
+  }
+
+  *length = rx_len;
+  s_stats.rx_count++;
+  s_stats.last_rssi = rssi;
+  s_stats.last_snr = snr;
+  return FEB_RFM95_OK;
 }
 
 void FEB_RFM95_StartReceive(void)

@@ -149,6 +149,22 @@ extern "C"
   void FEB_Console_ProcessLine(const char *line, size_t len);
 
   /**
+   * @brief Process a received command line, routing handler output to a
+   *        specific UART instance for the duration of the call.
+   *
+   * Acquires an internal dispatch mutex so that FEB_Console_Printf calls
+   * issued from the command handler (and any functions it invokes) all land
+   * on `uart_instance`. This serializes command execution across concurrent
+   * callers (e.g. multiple console UARTs), which is acceptable for a
+   * user-driven console.
+   *
+   * @param uart_instance Target UART instance (e.g. FEB_UART_INSTANCE_1)
+   * @param line          Null-terminated command line
+   * @param len           Length of line in bytes
+   */
+  void FEB_Console_ProcessLineOnInstance(int uart_instance, const char *line, size_t len);
+
+  /**
    * @brief Register a custom command
    *
    * @param cmd Pointer to command descriptor (must remain valid)

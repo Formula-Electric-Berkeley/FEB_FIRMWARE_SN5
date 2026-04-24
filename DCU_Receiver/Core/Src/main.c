@@ -19,16 +19,13 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
-#include "can.h"
 #include "dma.h"
-#include "i2c.h"
 #include "spi.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "feb_can_lib.h"
 #include "feb_uart.h"
 /* USER CODE END Includes */
 
@@ -96,11 +93,8 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_USART2_UART_Init();
-  MX_CAN1_Init();
-  MX_CAN2_Init();
-  MX_I2C1_Init();
-  MX_SPI1_Init();
   MX_SPI3_Init();
+  MX_UART4_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -180,37 +174,6 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-/* CAN Callbacks - route to FEB CAN Library */
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
-{
-  FEB_CAN_RxFifo0Callback(hcan);
-}
-
-void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
-{
-  FEB_CAN_RxFifo1Callback(hcan);
-}
-
-void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-  FEB_CAN_TxMailbox0CompleteCallback(hcan);
-}
-
-void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-  FEB_CAN_TxMailbox1CompleteCallback(hcan);
-}
-
-void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-  FEB_CAN_TxMailbox2CompleteCallback(hcan);
-}
-
-void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
-{
-  FEB_CAN_ErrorCallback(hcan);
-}
-
 /* UART Callbacks - route to FEB UART Library */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {

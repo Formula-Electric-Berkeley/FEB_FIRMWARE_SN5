@@ -20,10 +20,16 @@ extern "C"
   void FEB_Init(void);
 
   /**
-   * @brief UART RX task - overrides weak stub in freertos.c
+   * @brief UART RX task for USART2 (primary console) - overrides weak stub in freertos.c
    * @param argument Not used
    */
   void StartUartRxTask(void *argument);
+
+  /**
+   * @brief UART RX task for UART4 (secondary console, identical command set)
+   * @param argument Not used
+   */
+  void StartUart4RxTask(void *argument);
 
 #ifdef __cplusplus
 }

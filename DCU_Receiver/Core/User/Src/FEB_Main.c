@@ -7,7 +7,6 @@
  */
 
 #include "FEB_Main.h"
-#include "DCU_TPS.h"
 #include "DCU_Commands.h"
 #include "main.h"
 #include "feb_uart.h"
@@ -20,16 +19,25 @@
 extern UART_HandleTypeDef huart2;
 extern DMA_HandleTypeDef hdma_usart2_rx;
 extern DMA_HandleTypeDef hdma_usart2_tx;
+extern UART_HandleTypeDef huart4;
+extern DMA_HandleTypeDef hdma_uart4_rx;
+extern DMA_HandleTypeDef hdma_uart4_tx;
 
 /* External FreeRTOS handles from CubeMX-generated code */
 extern osMutexId_t logMutexHandle;
 extern osMutexId_t uartTxMutexHandle;
 extern osSemaphoreId_t uartTxSemHandle;
 extern osMessageQueueId_t uartRxQueueHandle;
+/* Second-console handles (defined in freertos.c USER CODE block) */
+extern osMutexId_t uartTxMutex2Handle;
+extern osSemaphoreId_t uartTxSem2Handle;
+extern osMessageQueueId_t uartRxQueue2Handle;
 
-/* UART buffers */
+/* UART buffers - per instance */
 static uint8_t uart_tx_buf[512];
 static uint8_t uart_rx_buf[256];
+static uint8_t uart_tx_buf2[512];
+static uint8_t uart_rx_buf2[256];
 
 /* ============================================================================
  * Application Entry Points
@@ -61,6 +69,29 @@ void FEB_Init(void)
     }
   }
 
+  /* Initialize UART4 as a second independent console instance */
+  FEB_UART_Config_t cfg2 = {
+      .huart = &huart4,
+      .hdma_tx = &hdma_uart4_tx,
+      .hdma_rx = &hdma_uart4_rx,
+      .tx_buffer = uart_tx_buf2,
+      .tx_buffer_size = sizeof(uart_tx_buf2),
+      .rx_buffer = uart_rx_buf2,
+      .rx_buffer_size = sizeof(uart_rx_buf2),
+      .get_tick_ms = HAL_GetTick,
+      .tx_mutex = uartTxMutex2Handle,
+      .tx_complete_sem = uartTxSem2Handle,
+      .enable_rx_queue = true,
+      .rx_queue = uartRxQueue2Handle,
+  };
+  if (FEB_UART_Init(FEB_UART_INSTANCE_2, &cfg2) != 0)
+  {
+    HAL_UART_Transmit(&huart4, (uint8_t *)"UART4 Init Failed\r\n", 19, 100);
+    while (1)
+    {
+    }
+  }
+
   /* Initialize logging system */
   FEB_Log_Config_t log_cfg = {
       .uart_instance = FEB_UART_INSTANCE_1,
@@ -80,17 +111,17 @@ void FEB_Init(void)
   /* Register DCU-specific commands */
   DCU_RegisterCommands();
 
-  /* Initialize TPS subsystem */
-  DCU_TPS_Init();
-
-  /* Startup banner */
-  FEB_Console_Printf("\r\n");
-  FEB_Console_Printf("========================================\r\n");
-  FEB_Console_Printf("      DCU_Receiver Console Ready\r\n");
-  FEB_Console_Printf("========================================\r\n");
-  FEB_Console_Printf("Use | as delimiter: dcu|tps, dcu|radio\r\n");
-  FEB_Console_Printf("Type 'help' for available commands\r\n");
-  FEB_Console_Printf("\r\n");
+  /* Startup banner on both consoles */
+  static const char banner[] =
+      "\r\n"
+      "========================================\r\n"
+      "      DCU_Receiver Console Ready\r\n"
+      "========================================\r\n"
+      "Use | as delimiter: dcu|radio, dcu|can\r\n"
+      "Type 'help' for available commands\r\n"
+      "\r\n";
+  FEB_UART_Write(FEB_UART_INSTANCE_1, (const uint8_t *)banner, sizeof(banner) - 1);
+  FEB_UART_Write(FEB_UART_INSTANCE_2, (const uint8_t *)banner, sizeof(banner) - 1);
 }
 
 /* ============================================================================
@@ -112,7 +143,24 @@ void StartUartRxTask(void *argument)
     /* Receive from queue with 10ms timeout */
     if (FEB_UART_QueueReceiveLine(FEB_UART_INSTANCE_1, line_buf, sizeof(line_buf), &line_len, 10))
     {
-      FEB_Console_ProcessLine(line_buf, line_len);
+      FEB_Console_ProcessLineOnInstance(FEB_UART_INSTANCE_1, line_buf, line_len);
+    }
+  }
+}
+
+void StartUart4RxTask(void *argument)
+{
+  (void)argument;
+
+  char line_buf[FEB_UART_QUEUE_LINE_SIZE];
+  size_t line_len;
+
+  for (;;)
+  {
+    FEB_UART_ProcessRx(FEB_UART_INSTANCE_2);
+    if (FEB_UART_QueueReceiveLine(FEB_UART_INSTANCE_2, line_buf, sizeof(line_buf), &line_len, 10))
+    {
+      FEB_Console_ProcessLineOnInstance(FEB_UART_INSTANCE_2, line_buf, line_len);
     }
   }
 }

@@ -7,9 +7,9 @@
  */
 
 #include "DCU_Commands.h"
-#include "DCU_TPS.h"
 #include "FEB_RFM95.h"
 #include "FEB_Task_Radio.h"
+#include "feb_can_latest.h"
 #include "feb_console.h"
 #include "feb_string_utils.h"
 #include "feb_log.h"
@@ -28,34 +28,10 @@
 static void print_dcu_help(void)
 {
   FEB_Console_Printf("DCU_Receiver Commands:\r\n");
-  FEB_Console_Printf("  dcu              - Show this help\r\n");
-  FEB_Console_Printf("  dcu|tps          - Show TPS power measurements\r\n");
-  FEB_Console_Printf("  dcu|radio        - Radio commands (see dcu|radio for help)\r\n");
-}
-
-/* ============================================================================
- * TPS Command
- * ============================================================================ */
-
-static void cmd_tps(void)
-{
-  DCU_TPS_Data_t data;
-  DCU_TPS_GetData(&data);
-
-  FEB_Console_Printf("TPS2482 Power Monitor:\r\n");
-  if (data.valid)
-  {
-    FEB_Console_Printf("  Bus Voltage: %u mV (%.2f V)\r\n", data.bus_voltage_mv, data.bus_voltage_mv / 1000.0f);
-    FEB_Console_Printf("  Current:     %d mA (%.3f A)\r\n", data.current_ma, data.current_ma / 1000.0f);
-    FEB_Console_Printf("  Shunt:       %ld uV\r\n", (long)data.shunt_voltage_uv);
-
-    float power_mw = (float)data.bus_voltage_mv * data.current_ma / 1000.0f;
-    FEB_Console_Printf("  Power:       %.1f mW (%.3f W)\r\n", power_mw, power_mw / 1000.0f);
-  }
-  else
-  {
-    FEB_Console_Printf("  Status: NO DATA (check I2C connection)\r\n");
-  }
+  FEB_Console_Printf("  dcu                    - Show this help\r\n");
+  FEB_Console_Printf("  dcu|radio              - Radio commands (see dcu|radio for help)\r\n");
+  FEB_Console_Printf("  dcu|can|state          - Show latest value of each received CAN message\r\n");
+  FEB_Console_Printf("  dcu|can|msg|<name>     - Show signals for one CAN message\r\n");
 }
 
 /* ============================================================================
@@ -337,6 +313,40 @@ static void cmd_radio(int argc, char *argv[])
 }
 
 /* ============================================================================
+ * CAN State Commands
+ * ============================================================================ */
+
+static void cmd_can(int argc, char *argv[])
+{
+  if (argc < 3)
+  {
+    FEB_Console_Printf("Usage: dcu|can|state  or  dcu|can|msg|<name>\r\n");
+    return;
+  }
+  const char *sub = argv[2];
+  if (FEB_strcasecmp(sub, "state") == 0)
+  {
+    FEB_CAN_State_Print(FEB_Console_Printf);
+  }
+  else if (FEB_strcasecmp(sub, "msg") == 0)
+  {
+    if (argc < 4)
+    {
+      FEB_Console_Printf("Usage: dcu|can|msg|<name>\r\n");
+      return;
+    }
+    if (FEB_CAN_State_PrintOne(argv[3], FEB_Console_Printf) != 0)
+    {
+      FEB_Console_Printf("Unknown CAN message: %s\r\n", argv[3]);
+    }
+  }
+  else
+  {
+    FEB_Console_Printf("Unknown can subcommand: %s\r\n", sub);
+  }
+}
+
+/* ============================================================================
  * Main DCU Command Handler
  * ============================================================================ */
 
@@ -350,10 +360,10 @@ static void cmd_dcu(int argc, char *argv[])
 
   const char *subcmd = argv[1];
 
-  if (FEB_strcasecmp(subcmd, "tps") == 0)
-    cmd_tps();
-  else if (FEB_strcasecmp(subcmd, "radio") == 0)
+  if (FEB_strcasecmp(subcmd, "radio") == 0)
     cmd_radio(argc, argv);
+  else if (FEB_strcasecmp(subcmd, "can") == 0)
+    cmd_can(argc, argv);
   else
   {
     FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
@@ -363,7 +373,7 @@ static void cmd_dcu(int argc, char *argv[])
 
 static const FEB_Console_Cmd_t dcu_cmd = {
     .name = "dcu",
-    .help = "DCU_Receiver board commands (dcu|tps, dcu|radio)",
+    .help = "DCU_Receiver board commands (dcu|radio, dcu|can)",
     .handler = cmd_dcu,
 };
 
@@ -373,7 +383,7 @@ static const FEB_Console_Cmd_t dcu_cmd = {
 
 bool DCU_RegisterCommands(void)
 {
-  if (!FEB_Console_Register(&dcu_cmd))
+  if (FEB_Console_Register(&dcu_cmd) != 0)
   {
     LOG_E(TAG_DCU, "Failed to register dcu command");
     return false;

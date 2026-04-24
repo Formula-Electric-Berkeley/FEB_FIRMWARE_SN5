@@ -6,8 +6,10 @@
 
 #include "FEB_Task_Radio.h"
 #include "FEB_RFM95.h"
+#include "feb_can_latest.h"
 #include "feb_log.h"
 #include "cmsis_os.h"
+#include "stm32f4xx_hal.h"
 #include <string.h>
 
 #define TAG "[Radio]"
@@ -28,6 +30,35 @@ static const char PING_MSG[] = "PING";
 #if (RADIO_ROLE == RADIO_ROLE_PONG)
 static const char PONG_MSG[] = "PONG";
 #endif
+
+/* Wire format for CAN-over-radio:
+ *   [0] = 0xFE magic
+ *   [1..2] = frame_id (little-endian uint16)
+ *   [3] = dlc (0..8)
+ *   [4..4+dlc-1] = payload
+ * Total length = 4 + dlc (<= 12). */
+#define RADIO_CAN_MAGIC 0xFE
+
+static void handle_radio_payload(const uint8_t *buf, uint8_t len)
+{
+  if (len >= 1 && buf[0] == RADIO_CAN_MAGIC && len >= 4)
+  {
+    uint16_t frame_id = (uint16_t)buf[1] | ((uint16_t)buf[2] << 8);
+    uint8_t dlc = buf[3];
+    if (dlc <= 8 && (uint16_t)len == (uint16_t)(4 + dlc))
+    {
+      int rc = FEB_CAN_State_Update(frame_id, &buf[4], dlc, HAL_GetTick());
+      if (rc != 0)
+      {
+        LOG_W(TAG, "CAN frame 0x%03X update failed (%d)", (unsigned)frame_id, rc);
+      }
+    }
+    else
+    {
+      LOG_W(TAG, "CAN frame malformed: len=%u dlc=%u", (unsigned)len, (unsigned)dlc);
+    }
+  }
+}
 
 static volatile bool s_listen_mode = false;
 
@@ -91,6 +122,7 @@ void StartRadioTask(void *argument)
       {
         LOG_I(TAG, "[listen] RX %u bytes, RSSI=%d, SNR=%d",
               rx_len, FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
+        handle_radio_payload(rx_buffer, rx_len);
       }
       osDelay(pdMS_TO_TICKS(10));
       continue;
@@ -127,7 +159,7 @@ void StartRadioTask(void *argument)
     }
 
 #else
-    /* PONG role: wait for PING, send PONG */
+    /* PONG role: wait for PING or decode CAN-over-radio */
     status = FEB_RFM95_Receive(rx_buffer, &rx_len, RX_TIMEOUT_MS);
 
     if (status == FEB_RFM95_OK)
@@ -145,6 +177,10 @@ void StartRadioTask(void *argument)
           FEB_RFM95_GetStats(&stats);
           LOG_D(TAG, "TX PONG #%lu", stats.tx_count);
         }
+      }
+      else
+      {
+        handle_radio_payload(rx_buffer, rx_len);
       }
     }
 #endif

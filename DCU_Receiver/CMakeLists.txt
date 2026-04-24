@@ -49,25 +49,13 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
     file(GLOB FREERTOS_PORT "Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/*.c")
     file(GLOB FREERTOS_HEAP "Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c")
     list(APPEND ALL_SOURCES ${FREERTOS_CORE} ${FREERTOS_CMSIS} ${FREERTOS_PORT} ${FREERTOS_HEAP})
+endif()
 
-# ── FEB CAN Library sources ──────────────────────────────────────────
+# ── Generated CAN pack/unpack (from cantools) ────────────────────────
 file(GLOB CAN_LIB_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/*.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.c"
 )
 list(APPEND ALL_SOURCES ${CAN_LIB_SOURCES})
-endif()
-
-# ── Middleware: FatFS ────────────────────────────────────────────────
-if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FatFs")
-    file(GLOB FATFS_SOURCES
-        "Middlewares/Third_Party/FatFs/src/*.c"
-        "Middlewares/Third_Party/FatFs/src/option/syscall.c"
-        "FATFS/App/*.c"
-        "FATFS/Target/*.c"
-    )
-    list(APPEND ALL_SOURCES ${FATFS_SOURCES})
-endif()
 
 # ── Middleware: stm32-hal-rfm95 (LoRa radio driver) ─────────────────
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/stm32-hal-rfm95")
@@ -100,15 +88,6 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
     )
 endif()
 
-# FatFS includes
-if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FatFs")
-    list(APPEND BASE_INCLUDES
-        Middlewares/Third_Party/FatFs/src
-        FATFS/App
-        FATFS/Target
-    )
-endif()
-
 # stm32-hal-rfm95 includes
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/stm32-hal-rfm95")
     list(APPEND BASE_INCLUDES
@@ -117,10 +96,8 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/stm32-hal-r
 endif()
 
 
-# FEB CAN Library includes
-set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library")
+# Generated CAN pack/unpack includes
 list(APPEND BASE_INCLUDES
-    "${CAN_LIB_DIR}/Inc"
     "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen"
 )
 
@@ -138,7 +115,7 @@ add_executable(${PROJECT_NAME} ${ALL_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_can feb_tps feb_rtos_utils stm32-hal-rfm95-receiver)
+target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_rtos_utils stm32-hal-rfm95-receiver)
 
 # Enable floating-point printf/scanf for newlib-nano
 target_link_options(${PROJECT_NAME} PRIVATE
