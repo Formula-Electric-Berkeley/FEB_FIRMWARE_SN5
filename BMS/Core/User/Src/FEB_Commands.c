@@ -210,7 +210,7 @@ static void subcmd_balance(int argc, char *argv[])
     return;
   }
 
-  if (argv[1][0] == 'o' && argv[1][1] == 'n')
+  if (FEB_strcasecmp(argv[1], "on") == 0)
   {
     /* Safety check: only allow balancing in safe states */
     if (!is_balancing_allowed())
@@ -223,7 +223,7 @@ static void subcmd_balance(int argc, char *argv[])
     FEB_Cell_Balance_Start();
     FEB_Console_Printf("Balancing started\r\n");
   }
-  else if (argv[1][0] == 'o' && argv[1][1] == 'f')
+  else if (FEB_strcasecmp(argv[1], "off") == 0)
   {
     FEB_Stop_Balance();
     FEB_Console_Printf("Balancing stopped\r\n");
@@ -741,7 +741,9 @@ static void print_bms_help(void)
   FEB_Console_Printf("  BMS|canstatus           - Show CAN ping/pong status\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
-  FEB_Console_Printf("  BMS|csv|<tx_id>|<sub>   - any subcommand above also works as CSV\r\n");
+  FEB_Console_Printf("  BMS|csv|<tx_id>|<sub>   - CSV-capable subs: status, cells, temps,\r\n");
+  FEB_Console_Printf("                            therm-raw, state, gpio, ivt, tasks, mem,\r\n");
+  FEB_Console_Printf("                            errors, config, canstatus, cell-stats\r\n");
   FEB_Console_Printf("  BMS|csv|<tx_id>|cell-stats - Voltages + temps (per cell / per sensor)\r\n");
   FEB_Console_Printf("  *|csv|<tx_id>|hello     - Discover all boards (system command)\r\n");
   FEB_Console_Printf("Each request emits: ack -> [rows] -> done\r\n");
@@ -1108,9 +1110,17 @@ static const FEB_Console_Cmd_t bms_cmd = {
  * ============================================================================ */
 void BMS_RegisterCommands(void)
 {
-  FEB_Console_Register(&bms_cmd);
+  int rc = FEB_Console_Register(&bms_cmd);
+  if (rc != 0)
+  {
+    LOG_E(TAG_BMS, "Failed to register '%s' (rc=%d)", bms_cmd.name, rc);
+  }
   for (size_t i = 0; i < BMS_SUBCMDS_COUNT; i++)
   {
-    FEB_Console_Register(BMS_SUBCMDS[i]);
+    rc = FEB_Console_Register(BMS_SUBCMDS[i]);
+    if (rc != 0)
+    {
+      LOG_E(TAG_BMS, "Failed to register '%s' (rc=%d)", BMS_SUBCMDS[i]->name, rc);
+    }
   }
 }

@@ -15,7 +15,10 @@
 #include "FEB_CAN.h"
 #include "FEB_Fan.h"
 #include "feb_console.h"
+#include "feb_log.h"
 #include "feb_string_utils.h"
+
+#define TAG_DART "[DART]"
 
 extern uint16_t frequency[NUM_FANS];
 
@@ -515,9 +518,17 @@ static const FEB_Console_Cmd_t dart_cmd = {
 
 void DART_RegisterCommands(void)
 {
-  FEB_Console_Register(&dart_cmd);
+  int rc = FEB_Console_Register(&dart_cmd);
+  if (rc != 0)
+  {
+    LOG_E(TAG_DART, "Failed to register '%s' (rc=%d)", dart_cmd.name, rc);
+  }
   for (size_t i = 0; i < DART_SUBCMDS_COUNT; i++)
   {
-    FEB_Console_Register(DART_SUBCMDS[i]);
+    rc = FEB_Console_Register(DART_SUBCMDS[i]);
+    if (rc != 0)
+    {
+      LOG_E(TAG_DART, "Failed to register '%s' (rc=%d)", DART_SUBCMDS[i]->name, rc);
+    }
   }
 }

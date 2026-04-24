@@ -483,6 +483,10 @@ bool FEB_ADBMS_Init(void)
     {
       FEB_ACC.banks[bank].temp_violations[sensor] = 0;
       FEB_ACC.banks[bank].temp_sensor_readings_V[sensor] = 0;
+      // Seed raw thermistor telemetry with PEC-failure sentinels so consumers
+      // can tell "not yet scanned" from a genuine 0 reading.
+      FEB_ACC.banks[bank].therm_raw_codes[sensor] = 0xFFFF;
+      FEB_ACC.banks[bank].therm_raw_voltages_mV[sensor] = NAN;
     }
   }
 
@@ -727,6 +731,16 @@ void FEB_Cell_Balance_Start()
 
 void FEB_Cell_Balance_Process()
 {
+  // Thermal safety gate. Mirrors FEB_Cell_Balancing_Status() so direct callers
+  // (e.g. FEB_Cell_Balance_Start / FEB_Task_ADBMS) cannot bypass the check.
+  // NaN fails the comparison → stops balancing when telemetry is unavailable.
+  const float gate_max_temp_dC = FEB_ADBMS_GET_ACC_MAX_Temp() * 10.0f;
+  if (!(gate_max_temp_dC < FEB_CONFIG_CELL_SOFT_MAX_TEMP_dC))
+  {
+    LOG_W(TAG_BALANCE, "Temp limit: pack max=%.1fC, skipping balance cycle", gate_max_temp_dC / 10.0f);
+    return;
+  }
+
   determineMinV();
 
 #if !FEB_CELL_BALANCE_ALL_AT_ONCE
@@ -738,8 +752,10 @@ void FEB_Cell_Balance_Process()
   }
   balancing_cycle++;
 #endif
-  // Use the actual minimum voltage from the pack instead of static value
-  float min_cell_voltage = FEB_ACC.min_voltage_V;
+  // Use the pack-wide minimum written by store_cell_voltages().
+  // FEB_ACC.min_voltage_V is never written → reading it yields 0 and every
+  // cell clears the slippage threshold.
+  float min_cell_voltage = FEB_ACC.pack_min_voltage_V;
   LOG_D(TAG_BALANCE, "Cycle %d: min=%.3fV max=%.3fV mask=0x%04X", balancing_cycle, min_cell_voltage,
         FEB_ACC.pack_max_voltage_V, balancing_mask);
 

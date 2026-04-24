@@ -377,7 +377,7 @@ flash_target() {
 
     if [ $exit_code -eq 0 ]; then
         log_info "Flash completed successfully!"
-        record_flash "$board_name" "$target_file" $exit_code
+        record_flash "$board_name" "$flash_file" $exit_code
     else
         log_error "Flash failed with exit code: $exit_code"
     fi
