@@ -45,7 +45,7 @@ void FEB_CAN_DASH_Init(void)
   ready_to_drive = false;
   last_rx_tick = 0; /* Never received */
 
-  /* Register for dash_io message (0x10) */
+  /* Register for dash state message (FEB_CAN_DASH_STATE_FRAME_ID) */
   FEB_CAN_RX_Params_t params = {
       .instance = FEB_CAN_INSTANCE_1,
       .can_id = FEB_CAN_DASH_STATE_FRAME_ID,
@@ -58,6 +58,42 @@ void FEB_CAN_DASH_Init(void)
   };
 
   FEB_CAN_RX_Register(&params);
+}
+
+/**
+ * @brief CAN RX callback for dash_io message
+ * @note Called from FEB_CAN_RX_Process() in task context (not direct ISR)
+ *       but treat as ISR-like for safety
+ */
+static void FEB_CAN_DASH_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
+                                  const uint8_t *data, uint8_t length, void *user_data)
+{
+  (void)instance;
+  (void)can_id;
+  (void)id_type;
+  (void)user_data;
+
+  if (length < FEB_CAN_DASH_STATE_LENGTH)
+  {
+    return; /* Invalid message length */
+  }
+
+  /* Unpack using generated function */
+  struct feb_can_dash_state_t msg;
+  feb_can_dash_state_unpack(&msg, data, length);
+
+  /* Update volatile data - order matters for consistency
+   * Write data first, then timestamp to indicate fresh data */
+  DASH_IO.ready_to_drive = (msg.ready_to_drive != 0);
+  DASH_IO.data_logging = (msg.button2 != 0);
+  DASH_IO.coolant_pump = (msg.switch1 != 0);
+  DASH_IO.radiator_fan = (msg.switch2 != 0);
+  DASH_IO.accumulator_fan = (msg.switch3 != 0);
+
+  /* Compiler barrier to ensure writes complete before timestamp */
+  __DMB();
+
+  DASH_IO.last_rx_tick = HAL_GetTick();
 }
 
 bool FEB_CAN_DASH_IsReadyToDrive(uint32_t timeout_ms)

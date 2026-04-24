@@ -109,7 +109,6 @@ int main(void)
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
   printf("[BOOT] UART ready @115200 (USART2)\r\n");
-  FEB_Init();
   /* USER CODE END 2 */
 
   /* Init scheduler */

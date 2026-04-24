@@ -18,6 +18,9 @@ static uint8_t uart_rx_buf[256];
  */
 static uint8_t tps_i2c_address;
 
+/* CAN initialization status - gates CAN-dependent subsystems */
+static bool can_init_success = false;
+
 /**
  * Initialize and configure primary hardware subsystems and start the system timer.
  *
@@ -52,6 +55,10 @@ void FEB_Main_Setup(void)
   };
   FEB_Log_Init(&log_cfg);
 
+  // === CHECKPOINT 1: UART/Log ready ===
+  LOG_I(TAG_MAIN, "[1/8] UART and Log initialized");
+  HAL_Delay(50);
+
   // Initialize console (registers built-in commands: help, version, uptime, reboot, log)
   FEB_Console_Init(true);
 
@@ -61,6 +68,10 @@ void FEB_Main_Setup(void)
   // Connect UART RX to console processor
   FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
 
+  // === CHECKPOINT 2: Console ready ===
+  LOG_I(TAG_MAIN, "[2/8] Console initialized");
+  HAL_Delay(50);
+
   // CAN initialization
   FEB_CAN_Config_t can_cfg = {
       .hcan1 = &hcan1,
@@ -69,36 +80,74 @@ void FEB_Main_Setup(void)
   };
   if (FEB_CAN_Init(&can_cfg) != FEB_CAN_OK)
   {
-    LOG_E(TAG_MAIN, "CAN initialization failed!");
+    LOG_E(TAG_MAIN, "CAN initialization failed! Running in degraded mode.");
+    can_init_success = false;
+    HAL_Delay(50);
   }
   else
   {
-    LOG_I(TAG_MAIN, "CAN initialized");
+    can_init_success = true;
+    // === CHECKPOINT 3: CAN ready ===
+    LOG_I(TAG_MAIN, "[3/8] CAN initialized");
+    HAL_Delay(50);
   }
 
   // ADC initialization
   FEB_ADC_Init();
   FEB_ADC_Start(ADC_MODE_DMA);
-  LOG_I(TAG_MAIN, "ADC initialized");
 
-  // RMS and BMS initialization
-  FEB_CAN_RMS_Init();
-  LOG_I(TAG_MAIN, "RMS initialized");
+  // === CHECKPOINT 4: ADC ready ===
+  LOG_I(TAG_MAIN, "[4/8] ADC initialized");
+  HAL_Delay(50);
 
-  // Clear RMS lockout (2-second blocking sequence - runs once at startup)
-  FEB_RMS_Process();
+  // RMS and BMS initialization (requires CAN)
+  if (can_init_success)
+  {
+    FEB_CAN_RMS_Init();
 
-  FEB_CAN_BMS_Init();
-  LOG_I(TAG_MAIN, "BMS initialized");
+    // === CHECKPOINT 5: RMS ready ===
+    LOG_I(TAG_MAIN, "[5/8] RMS initialized");
+    HAL_Delay(50);
+
+    // Clear RMS lockout (2-second blocking sequence - runs once at startup)
+    FEB_RMS_Process();
+
+    FEB_CAN_BMS_Init();
+
+    // === CHECKPOINT 6: BMS ready ===
+    LOG_I(TAG_MAIN, "[6/8] BMS initialized");
+    HAL_Delay(50);
+  }
+  else
+  {
+    LOG_W(TAG_MAIN, "[5/8] RMS skipped (CAN unavailable)");
+    LOG_W(TAG_MAIN, "[6/8] BMS skipped (CAN unavailable)");
+    HAL_Delay(50);
+  }
 
   // TPS2482 power monitoring initialization
   tps_i2c_address = FEB_TPS_ADDR(FEB_TPS_PIN_GND, FEB_TPS_PIN_GND); // 0x40
   FEB_CAN_TPS_Init();
-  LOG_I(TAG_MAIN, "TPS initialized (0x%02X)", tps_i2c_address);
 
-  LOG_I(TAG_MAIN, "=== Setup Complete ===");
+  // === CHECKPOINT 7: TPS ready ===
+  LOG_I(TAG_MAIN, "[7/8] TPS initialized (0x%02X)", tps_i2c_address);
+  HAL_Delay(50);
+
+  // === CHECKPOINT 8: Starting timer ===
+  LOG_I(TAG_MAIN, "[8/8] Starting 1ms timer...");
+  HAL_Delay(50);
 
   HAL_TIM_Base_Start_IT(&htim1);
+
+  if (can_init_success)
+  {
+    LOG_I(TAG_MAIN, "=== PCU Setup Complete ===");
+  }
+  else
+  {
+    LOG_W(TAG_MAIN, "=== PCU Setup Complete (DEGRADED - CAN FAILED) ===");
+  }
+  HAL_Delay(50);
 }
 
 /**
@@ -118,12 +167,18 @@ void FEB_Main_Loop(void)
   {
     last_tps_tick = now;
     FEB_CAN_TPS_Update(&hi2c1, &tps_i2c_address, 1);
-    FEB_CAN_TPS_Transmit();
+    if (can_init_success)
+    {
+      FEB_CAN_TPS_Transmit();
+    }
   }
 
-  // CAN TX processing
-  FEB_CAN_TX_Process();
-  FEB_CAN_TX_ProcessPeriodic();
+  // CAN TX processing (skip if CAN failed)
+  if (can_init_success)
+  {
+    FEB_CAN_TX_Process();
+    FEB_CAN_TX_ProcessPeriodic();
+  }
 
   // NOTE: FEB_RMS_Torque() and diagnostics run from FEB_1ms_Callback every 10-20ms
 }
@@ -139,6 +194,12 @@ void FEB_1ms_Callback(void)
 {
   static uint16_t torque_divider = 0;
   static uint16_t diagnostics_divider = 0;
+
+  // Skip CAN-dependent operations if CAN init failed
+  if (!can_init_success)
+  {
+    return;
+  }
 
   FEB_CAN_BMS_ProcessHeartbeat();
 

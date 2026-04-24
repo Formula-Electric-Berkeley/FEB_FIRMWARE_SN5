@@ -20,7 +20,7 @@ REPO_ROOT="$SCRIPT_DIR/.."
 REQUIRED_VERSION=18
 
 # Available boards
-BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART_TEST")
+BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART" "UART_TEST")
 
 # Common libraries to format
 COMMON_LIBS=("common/FEB_Serial_Library")

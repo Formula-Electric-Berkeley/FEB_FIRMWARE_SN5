@@ -72,11 +72,11 @@ void FEB_Init(void)
   FEB_Log_Init(&log_cfg);
 
   /* Initialize console (registers built-in commands: echo, help, version, uptime, reboot, log) */
-  // FEB_Console_Init(true);
-  // DASH_RegisterCommands();
+  FEB_Console_Init(true);
+  DASH_RegisterCommands();
 
   /* Connect UART RX to console processor */
-  // FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
+  FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
 
   /* Initialize CAN state publisher */
   FEB_CAN_State_Init();
@@ -111,17 +111,17 @@ void StartUartTxTask(void *argument)
   (void)argument;
 
   /* Hardcoded */
-  FEB_CAN_TX_Params_t tx_params = {
-      .instance = FEB_CAN_INSTANCE_1,
-      .can_id = FEB_CAN_FEB_PING_PONG_COUNTER1_FRAME_ID, // FEB_CAN_FEB_PING_PONG_COUNTER1_FRAME_ID (0xe0u)
-      .id_type = FEB_CAN_ID_STD,
-  };
+  // FEB_CAN_TX_Params_t tx_params = {
+  //     .instance = FEB_CAN_INSTANCE_1,
+  //     .can_id = FEB_CAN_FEB_PING_PONG_COUNTER1_FRAME_ID, // FEB_CAN_FEB_PING_PONG_COUNTER1_FRAME_ID (0xe0u)
+  //     .id_type = FEB_CAN_ID_STD,
+  // };
 
-  uint8_t tx_data[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+  // uint8_t tx_data[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
 
-  for (;;)
-  {
-    FEB_CAN_TX_Send(tx_params.instance, tx_params.can_id, tx_params.id_type, tx_data, 8);
-    osDelay(100);
-  }
+  // for (;;)
+  // {
+  //   FEB_CAN_TX_Send(tx_params.instance, tx_params.can_id, tx_params.id_type, tx_data, 8);
+  //   osDelay(100);
+  // }
 }

@@ -94,7 +94,7 @@ void StartDisplayTask(void *argument)
     //   last_blink = lv_tick_get();
     // }
 
-    osDelay(1); // slower delay so you can see it changing
+    osDelay(500); // slower delay so you can see it changing
   }
 }
 

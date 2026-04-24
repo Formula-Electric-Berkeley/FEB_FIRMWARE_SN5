@@ -39,6 +39,9 @@ add_subdirectory(FEB_Log)
 # Console library - depends on UART for output
 add_subdirectory(FEB_Console)
 
+# Version/provenance library - types + flash-info placeholder
+add_subdirectory(FEB_Version)
+
 # Default system commands - depends on Console and Log
 add_subdirectory(FEB_Commands)
 
@@ -50,8 +53,10 @@ add_subdirectory(FEB_Commands)
 add_library(feb_io INTERFACE)
 target_link_libraries(feb_io INTERFACE
     feb_string_utils
+    feb_time
     feb_uart
     feb_log
     feb_console
+    feb_version
     feb_commands
 )

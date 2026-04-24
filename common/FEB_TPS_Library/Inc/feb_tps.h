@@ -468,6 +468,16 @@ FEB_TPS_Status_t FEB_TPS_Reconfigure(FEB_TPS_Handle_t handle,
  * ============================================================================ */
 
 /**
+ * @brief Attempt I2C bus recovery for all registered devices
+ *
+ * Resets the I2C peripheral to recover from stuck bus conditions.
+ * Call this when consecutive poll failures are detected.
+ *
+ * @return FEB_TPS_OK on success, FEB_TPS_ERR_NOT_INIT if no devices registered
+ */
+FEB_TPS_Status_t FEB_TPS_BusRecovery(void);
+
+/**
  * @brief Convert status code to string
  *
  * @param status Status code

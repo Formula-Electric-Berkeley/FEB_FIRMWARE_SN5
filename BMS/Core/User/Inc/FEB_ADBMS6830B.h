@@ -97,6 +97,8 @@ float FEB_ADBMS_GET_ACC_MAX_Voltage(void);
 bool FEB_ADBMS_Precharge_Complete(void);
 float FEB_ADBMS_GET_ACC_Total_Voltage(void);
 float FEB_ADBMS_GET_Cell_Voltage(uint8_t bank, uint16_t cell);
+float FEB_ADBMS_GET_Cell_Voltage_S(uint8_t bank, uint16_t cell);
+uint8_t FEB_ADBMS_GET_Cell_Violations(uint8_t bank, uint16_t cell);
 
 // ********************************** Temperature ********************************
 
@@ -104,10 +106,8 @@ float FEB_ADBMS_GET_ACC_AVG_Temp(void);
 float FEB_ADBMS_GET_ACC_MIN_Temp(void);
 float FEB_ADBMS_GET_ACC_MAX_Temp(void);
 float FEB_ADBMS_GET_Cell_Temperature(uint8_t bank, uint16_t cell);
-
-// ********************************** Print Accumulator **************************
-
-void FEB_ADBMS_Print_Accumulator(void);
+uint16_t FEB_ADBMS_GET_Therm_Raw_Code(uint8_t bank, uint16_t sensor);
+float FEB_ADBMS_GET_Therm_Raw_mV(uint8_t bank, uint16_t sensor);
 
 // ********************************** Balancing **********************************
 

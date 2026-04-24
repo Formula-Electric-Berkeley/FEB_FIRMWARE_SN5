@@ -5,8 +5,16 @@
 #include "lsm6dsox_reg.h"
 
 extern I2C_HandleTypeDef hi2c3;
-/* Public initialization */
-void lsm6dsox_init(void);
+extern stmdev_ctx_t lsm6dsox_ctx;
+
+extern int16_t data_raw_acceleration[3];
+extern float_t acceleration_mg[3];
+
+extern int16_t data_raw_angular_rate[3];
+extern float_t angular_rate_mdps[3];
+
+/* Public initialization - returns 0 on success, negative on failure */
+int lsm6dsox_init(void);
 
 /* Read functions */
 void read_Acceleration(void);
