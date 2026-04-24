@@ -88,7 +88,7 @@ static void DASH_CAN_Init(void)
       .instance = FEB_CAN_INSTANCE_1,
       .can_id = 0x00,
       .id_type = FEB_CAN_ID_STD,
-      .filter_type = FEB_CAN_FILTER_EXACT,
+      .filter_type = FEB_CAN_FILTER_WILDCARD,
       .mask = 0,
       .fifo = FEB_CAN_FIFO_0,
       .callback = DASH_CAN_RxCallback,
@@ -139,5 +139,21 @@ void StartDASHTaskTx(void *argument)
     /* Drain TX queue into CAN mailboxes */
     FEB_CAN_TX_Process();
     osDelay(1);
+  }
+}
+
+/**
+ * @brief Ping/pong periodic task - ticks the ping/pong state machine every 100 ms
+ *        in FreeRTOS task context (not ISR), keeping LOG and mutex-protected paths safe.
+ */
+void StartPingPongTask(void *argument)
+{
+  (void)argument;
+  /* Let StartDASHTaskRx finish CAN init + FEB_CAN_PingPong_Init before first tick */
+  osDelay(100);
+  for (;;)
+  {
+    FEB_CAN_PingPong_Tick();
+    osDelay(100);
   }
 }

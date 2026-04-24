@@ -39,7 +39,6 @@
 /* USER CODE BEGIN Includes */
 #include "FEB_Main.h"
 #include "FEB_CAN_State.h"
-#include "FEB_CAN_PingPong.h"
 #include <stdio.h>
 #include <string.h>
 /* USER CODE END Includes */
@@ -252,12 +251,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
   /* USER CODE BEGIN Callback 1 */
   FEB_CAN_State_Tick();
-  static uint16_t pingpong_divider = 0;
-  if (++pingpong_divider >= 100)
-  {
-    pingpong_divider = 0;
-    FEB_CAN_PingPong_Tick();
-  }
   /* USER CODE END Callback 1 */
 }
 
