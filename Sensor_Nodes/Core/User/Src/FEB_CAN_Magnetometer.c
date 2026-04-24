@@ -47,13 +47,4 @@ void FEB_CAN_Magnetometer_Tick(void)
   {
     can_tx_error_count++;
   }
-
-  //   memset(tx_data, 0, sizeof(tx_data));
-  //   memcpy(&tx_data[0], &data_raw_magnetometer[0], sizeof(int16_t));
-  //   memcpy(&tx_data[2], &data_raw_magnetometer[1], sizeof(int16_t));
-  //   memcpy(&tx_data[4], &data_raw_magnetometer[2], sizeof(int16_t));
-
-  //   status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_MAGNETOMETER_DATA_FRAME_ID,
-  //                              FEB_CAN_ID_STD, tx_data,   FEB_CAN_MAGNETOMETER_DATA_LENGTH);
-  //   if (status != FEB_CAN_OK) { can_tx_error_count++; }
 }

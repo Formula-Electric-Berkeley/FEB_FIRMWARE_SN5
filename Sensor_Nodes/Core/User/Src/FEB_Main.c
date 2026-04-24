@@ -10,6 +10,9 @@
 #include "FEB_CAN_IMU.h"
 #include "FEB_CAN_Magnetometer.h"
 #include "FEB_CAN_WSS.h"
+#include "FEB_CAN_GPS.h"
+#include "FEB_Fusion.h"
+
 // Common libraries
 #include "feb_uart.h"
 #include "feb_log.h"
@@ -34,9 +37,20 @@ void FEB_Update()
   read_Acceleration();
   read_Angular_Rate();
   read_Magnetic_Field_Data();
-  WSS_Main();
+
+  // //FUSION
+  // static uint32_t prev_time = 0;
+  // uint32_t now = HAL_GetTick();
+  // float dt = (now - prev_time) / 1000.0f;
+  // prev_time = now;
+  // if (dt <= 0.0f || dt > 0.1f) dt = 0.01f;
+  // FEB_Fusion_Update(dt);
+
+  // WSS_Main();
   FEB_CAN_IMU_Tick();
-  FEB_CAN_Magnetometer_Tick();
+  // FEB_CAN_Magnetometer_Tick();
+  FEB_CAN_GPS_Tick();
+
   // FEB_CAN_WSS_Tick();
 }
 
@@ -91,6 +105,10 @@ void FEB_Init(void)
 
   lis3mdl_init();
   FEB_Console_Printf("Magnetometer initialized\r\n");
+
+  // Initialize FUSION library (AHRS, bias estimation)
+  FEB_Fusion_Init();
+  FEB_Console_Printf("Fusion orientation filter initialized\r\n");
 
   // Initialize GPS
   int gps_result = FEB_GPS_Init();
