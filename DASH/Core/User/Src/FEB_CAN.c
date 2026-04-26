@@ -58,7 +58,7 @@ static void DASH_CAN_RxCallback(FEB_CAN_Instance_t instance, uint32_t can_id, FE
   (void)data;
   (void)user_data;
 
-  LOG_D(TAG_CAN, "RX: ID=0x%lX len=%d", can_id, length);
+  LOG_D(TAG_CAN, "RX: ID=0x%lX len=%d", (unsigned long)can_id, length);
 }
 
 /* ========================== CAN Initialization ========================== */
@@ -89,22 +89,29 @@ static void DASH_CAN_Init(void)
 
   FEB_Console_Printf("CAN successfully init\r\n");
 
-  /* ---------------- RX Registration (wildcard to receive all) ---------------- */
-  // FEB_CAN_RX_Params_t rx_params = {
-  //     .instance = FEB_CAN_INSTANCE_1,
-  //     .can_id = 0x00,
-  //     .id_type = FEB_CAN_ID_STD,
-  //     .filter_type = FEB_CAN_FILTER_WILDCARD,
-  //     .mask = 0,
-  //     .fifo = FEB_CAN_FIFO_0,
-  //     .callback = DASH_CAN_RxCallback,
-  //     .user_data = NULL,
-  // };
-
-  // FEB_CAN_RX_Register(&rx_params);
+  /* ---------------- RX Registration (wildcard to receive all) ----------------
+   * Temporarily enabled while diagnosing loopback RX. With the wildcard handler
+   * registered, FEB_CAN_Filter_UpdateFromRegistry installs an accept-all filter
+   * (see feb_can_filter.c FEB_CAN_Filter_AcceptAll) so every received frame
+   * fires DASH_CAN_RxCallback, independent of any per-channel ping/pong filters.
+   */
+  FEB_CAN_RX_Params_t rx_params = {
+      .instance = FEB_CAN_INSTANCE_1,
+      .can_id = 0x00,
+      .id_type = FEB_CAN_ID_STD,
+      .filter_type = FEB_CAN_FILTER_WILDCARD,
+      .mask = 0,
+      .fifo = FEB_CAN_FIFO_0,
+      .callback = DASH_CAN_RxCallback,
+      .user_data = NULL,
+  };
+  FEB_CAN_RX_Register(&rx_params);
 
   /* Ensure filters reflect registry */
   FEB_CAN_Filter_UpdateFromRegistry(FEB_CAN_INSTANCE_1);
+
+  /* One-shot diagnostic: confirm filter banks landed correctly */
+  FEB_CAN_Filter_Dump(FEB_CAN_INSTANCE_1);
 }
 
 /* ============================================================================
@@ -155,6 +162,15 @@ void StartDASHTaskTx(void *argument)
   for (;;)
   {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+    /* TIM6 starts notifying us as soon as the scheduler runs, but the RX task
+       owns CAN init (must happen after scheduler start). Skip a tick rather
+       than transmit before filters are installed. This eliminates the
+       "CAN not ready" race window at boot. */
+    if (!FEB_CAN_State_IsReady())
+    {
+      continue;
+    }
 
     FEB_CAN_State_Tick();
     FEB_CAN_TX_Process();

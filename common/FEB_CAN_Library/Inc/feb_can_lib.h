@@ -469,6 +469,18 @@ extern "C"
    */
   FEB_CAN_Status_t FEB_CAN_Filter_UpdateFromRegistry(FEB_CAN_Instance_t instance);
 
+  /**
+   * @brief Dump filter registers for the given instance via LOG_D
+   *
+   * Diagnostic helper — prints FA1R/FFA1R/FS1R/FM1R for all CAN1 banks plus
+   * the FR1/FR2 of bank 0 so we can verify that the configured filter actually
+   * landed in hardware. Intended for one-shot debug calls; safe to leave in.
+   *
+   * @param instance CAN instance (only CAN1 is dumped on STM32F4 since
+   *                 filters are shared)
+   */
+  void FEB_CAN_Filter_Dump(FEB_CAN_Instance_t instance);
+
   /* ============================================================================
    * Processing API
    * ============================================================================ */

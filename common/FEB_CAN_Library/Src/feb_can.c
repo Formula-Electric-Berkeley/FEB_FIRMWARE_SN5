@@ -8,6 +8,7 @@
 
 #include "feb_can_lib.h"
 #include "feb_can_internal.h"
+#include "feb_log.h"
 #include "main.h"
 #include <string.h>
 
@@ -16,6 +17,15 @@
  * ============================================================================ */
 
 static FEB_CAN_Context_t feb_can_ctx = {0};
+
+#define FEB_CAN_RX_NOTIFICATIONS (CAN_IT_RX_FIFO0_MSG_PENDING | CAN_IT_RX_FIFO1_MSG_PENDING)
+#define FEB_CAN_TX_NOTIFICATIONS (CAN_IT_TX_MAILBOX_EMPTY)
+/* Only enable real bus-state errors. CAN_IT_LAST_ERROR_CODE fires the SCE IRQ
+ * on every transmitted/received frame (LEC is "last error code", written
+ * unconditionally by the bxCAN core), which produces an ISR storm in loopback
+ * and amplifies any per-ISR stack usage. CAN_IT_ERROR is the master gate for
+ * the previous flags and is implied by enabling any of them, so omit it too. */
+#define FEB_CAN_ERROR_NOTIFICATIONS (CAN_IT_ERROR_WARNING | CAN_IT_ERROR_PASSIVE | CAN_IT_BUSOFF)
 
 FEB_CAN_Context_t *feb_can_get_context(void)
 {
@@ -124,15 +134,20 @@ FEB_CAN_Status_t FEB_CAN_Init(const FEB_CAN_Config_t *config)
     }
   }
 
-  /* Activate RX notifications */
-  if (HAL_CAN_ActivateNotification(hcan1, CAN_IT_RX_FIFO0_MSG_PENDING | CAN_IT_RX_FIFO1_MSG_PENDING) != HAL_OK)
+  /* Activate RX/TX/error notifications */
+  if (HAL_CAN_ActivateNotification(hcan1, FEB_CAN_RX_NOTIFICATIONS) != HAL_OK)
   {
     FEB_CAN_DeInit();
     return FEB_CAN_ERROR_HAL;
   }
 
-  /* Activate TX complete notifications for non-blocking flow control */
-  if (HAL_CAN_ActivateNotification(hcan1, CAN_IT_TX_MAILBOX_EMPTY) != HAL_OK)
+  if (HAL_CAN_ActivateNotification(hcan1, FEB_CAN_TX_NOTIFICATIONS) != HAL_OK)
+  {
+    FEB_CAN_DeInit();
+    return FEB_CAN_ERROR_HAL;
+  }
+
+  if (HAL_CAN_ActivateNotification(hcan1, FEB_CAN_ERROR_NOTIFICATIONS) != HAL_OK)
   {
     FEB_CAN_DeInit();
     return FEB_CAN_ERROR_HAL;
@@ -140,13 +155,19 @@ FEB_CAN_Status_t FEB_CAN_Init(const FEB_CAN_Config_t *config)
 
   if (hcan2 != NULL)
   {
-    if (HAL_CAN_ActivateNotification(hcan2, CAN_IT_RX_FIFO0_MSG_PENDING | CAN_IT_RX_FIFO1_MSG_PENDING) != HAL_OK)
+    if (HAL_CAN_ActivateNotification(hcan2, FEB_CAN_RX_NOTIFICATIONS) != HAL_OK)
     {
       FEB_CAN_DeInit();
       return FEB_CAN_ERROR_HAL;
     }
 
-    if (HAL_CAN_ActivateNotification(hcan2, CAN_IT_TX_MAILBOX_EMPTY) != HAL_OK)
+    if (HAL_CAN_ActivateNotification(hcan2, FEB_CAN_TX_NOTIFICATIONS) != HAL_OK)
+    {
+      FEB_CAN_DeInit();
+      return FEB_CAN_ERROR_HAL;
+    }
+
+    if (HAL_CAN_ActivateNotification(hcan2, FEB_CAN_ERROR_NOTIFICATIONS) != HAL_OK)
     {
       FEB_CAN_DeInit();
       return FEB_CAN_ERROR_HAL;
@@ -166,14 +187,14 @@ void FEB_CAN_DeInit(void)
   if (hcan1 != NULL)
   {
     HAL_CAN_DeactivateNotification(hcan1,
-                                   CAN_IT_RX_FIFO0_MSG_PENDING | CAN_IT_RX_FIFO1_MSG_PENDING | CAN_IT_TX_MAILBOX_EMPTY);
+                                   FEB_CAN_RX_NOTIFICATIONS | FEB_CAN_TX_NOTIFICATIONS | FEB_CAN_ERROR_NOTIFICATIONS);
     HAL_CAN_Stop(hcan1);
   }
 
   if (hcan2 != NULL)
   {
     HAL_CAN_DeactivateNotification(hcan2,
-                                   CAN_IT_RX_FIFO0_MSG_PENDING | CAN_IT_RX_FIFO1_MSG_PENDING | CAN_IT_TX_MAILBOX_EMPTY);
+                                   FEB_CAN_RX_NOTIFICATIONS | FEB_CAN_TX_NOTIFICATIONS | FEB_CAN_ERROR_NOTIFICATIONS);
     HAL_CAN_Stop(hcan2);
   }
 
@@ -212,6 +233,13 @@ static void feb_can_rx_fifo_callback(FEB_CAN_Handle_t hcan_ptr, uint32_t fifo)
   CAN_HandleTypeDef *hcan = (CAN_HandleTypeDef *)hcan_ptr;
   CAN_RxHeaderTypeDef rx_header;
   uint8_t rx_data[8];
+
+  /* Do NOT call LOG_*() here. This is ISR context — FEB_UART_Write returns
+   * -1 from ISR (so nothing prints), but FEB_Log_Output still allocates a
+   * 128-byte isr_buffer + ~150 bytes of vsnprintf scratch on the MSP. With
+   * the Cortex-M4F lazy-FPU frame (128 B) this can overflow the 1 KiB MSP
+   * (_Min_Stack_Size = 0x400) when CAN frames cascade in loopback mode. Drain
+   * to the FreeRTOS RX queue and let FEB_CAN_RX_Process log from task ctx. */
 
   while (HAL_CAN_GetRxFifoFillLevel(hcan, fifo) > 0)
   {
@@ -271,12 +299,15 @@ static void feb_can_tx_complete_callback(FEB_CAN_Handle_t hcan)
   }
 
 #if FEB_CAN_USE_FREERTOS
-  /* Signal that a mailbox is now free */
+  /* One ISR notification ↔ one successful HAL_CAN_AddTxMessage (tx_pending_count++).
+   * Only release the counting semaphore when we had a matching pending TX.
+   * Spurious TX-mailbox-empty edges during bring-up or errata can otherwise
+   * inflate the sem above the 3 hardware mailboxes and corrupt TX flow. */
   if (feb_can_ctx.tx_pending_count > 0)
   {
     feb_can_ctx.tx_pending_count--;
+    FEB_CAN_SEM_GIVE_ISR(feb_can_ctx.tx_sem);
   }
-  FEB_CAN_SEM_GIVE_ISR(feb_can_ctx.tx_sem);
 #endif
 }
 
@@ -301,45 +332,58 @@ void FEB_CAN_TxMailbox2CompleteCallback(FEB_CAN_Handle_t hcan)
 
 void FEB_CAN_ErrorCallback(FEB_CAN_Handle_t hcan)
 {
-  (void)hcan;
-  /* Can be extended to track error statistics */
+  CAN_HandleTypeDef *h = (CAN_HandleTypeDef *)hcan;
+  if (h == NULL || h->Instance == NULL)
+  {
+    return;
+  }
+
+  /* Snapshot the ESR + HAL ErrorCode for later inspection. We deliberately
+   * do not LOG_*() here — same MSP-stack reasoning as feb_can_rx_fifo_callback.
+   * Use FEB_CAN_GetLastErrorSnapshot() / a periodic task-context log to view. */
+  feb_can_ctx.last_error_esr = h->Instance->ESR;
+  feb_can_ctx.last_error_code = h->ErrorCode;
+  feb_can_ctx.error_callback_count++;
 }
 
 /* ============================================================================
- * Default HAL Callback Wrappers
+ * HAL callback forwarders (must be strong symbols)
  *
- * Weak-overridable forwarders from STM32 HAL CAN callbacks into the FEB CAN
- * library. Boards do not need to define these in stm32f4xx_it.c; the library
- * provides them automatically. Override (provide a strong definition) only if
- * a board needs to extend the behavior on top of the library forward.
+ * STM32 HAL ships __weak empty defaults for these in stm32f4xx_hal_can.c.
+ * This translation unit also used __weak, so the linker could pick either
+ * definition — often the HAL stub — and TX-complete / RX IRQ paths would never
+ * reach the library (mailbox semaphore stuck, RX queue never fed).
+ *
+ * Strong definitions here override HAL's weak stubs. To extend behavior,
+ * wrap or replace these in the application and call the FEB_CAN_* entry points.
  * ============================================================================ */
 
-__weak void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
   FEB_CAN_RxFifo0Callback(hcan);
 }
 
-__weak void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
+void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
   FEB_CAN_RxFifo1Callback(hcan);
 }
 
-__weak void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
+void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
 {
   FEB_CAN_TxMailbox0CompleteCallback(hcan);
 }
 
-__weak void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
+void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
 {
   FEB_CAN_TxMailbox1CompleteCallback(hcan);
 }
 
-__weak void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
+void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
 {
   FEB_CAN_TxMailbox2CompleteCallback(hcan);
 }
 
-__weak void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
+void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
 {
   FEB_CAN_ErrorCallback(hcan);
 }

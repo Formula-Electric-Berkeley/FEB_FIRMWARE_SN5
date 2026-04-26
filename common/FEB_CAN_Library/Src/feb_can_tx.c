@@ -8,6 +8,7 @@
 
 #include "feb_can_lib.h"
 #include "feb_can_internal.h"
+#include "feb_log.h"
 #include "main.h"
 #include <string.h>
 
@@ -84,6 +85,9 @@ int feb_can_tx_hal_transmit(FEB_CAN_Instance_t instance, uint32_t can_id, uint8_
     }
 #endif
     ctx->hal_error_count++;
+    LOG_W("[CAN-TX]", "AddTxMessage failed id=0x%lX free_mb=%lu hal_err=%lu",
+          (unsigned long)can_id, (unsigned long)HAL_CAN_GetTxMailboxesFreeLevel(hcan),
+          (unsigned long)ctx->hal_error_count);
     return -FEB_CAN_ERROR_HAL;
   }
 

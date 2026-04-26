@@ -249,6 +249,9 @@ typedef volatile uint8_t FEB_CAN_Semaphore_t;
     volatile uint32_t tx_queue_overflow_count; /**< TX messages dropped due to queue full */
     volatile uint32_t tx_timeout_count;        /**< TX messages dropped due to mailbox timeout */
     volatile uint32_t hal_error_count;         /**< HAL errors encountered */
+    volatile uint32_t error_callback_count;    /**< Times HAL_CAN_ErrorCallback fired */
+    volatile uint32_t last_error_esr;          /**< ESR snapshot from most recent error IRQ */
+    volatile uint32_t last_error_code;         /**< HAL ErrorCode snapshot from most recent error IRQ */
 
     /* RX handles */
     FEB_CAN_RX_Handle_Internal_t rx_handles[FEB_CAN_MAX_RX_HANDLES];
