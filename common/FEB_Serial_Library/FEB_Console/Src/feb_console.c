@@ -30,7 +30,8 @@
 #if FEB_CONSOLE_USE_FREERTOS
 #include "FreeRTOS.h"
 #include "cmsis_os2.h"
-static osMutexId_t console_mutex = NULL;
+static osMutexId_t console_mutex = NULL;  /* guards command table registration + lookup */
+static osMutexId_t dispatch_mutex = NULL; /* held for the full handler lifetime */
 #define CONSOLE_MUTEX_LOCK()                                                                                           \
   do                                                                                                                   \
   {                                                                                                                    \
@@ -43,9 +44,23 @@ static osMutexId_t console_mutex = NULL;
     if (console_mutex != NULL)                                                                                         \
       osMutexRelease(console_mutex);                                                                                   \
   } while (0)
+#define DISPATCH_MUTEX_LOCK()                                                                                          \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    if (dispatch_mutex != NULL)                                                                                        \
+      osMutexAcquire(dispatch_mutex, osWaitForever);                                                                   \
+  } while (0)
+#define DISPATCH_MUTEX_UNLOCK()                                                                                        \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    if (dispatch_mutex != NULL)                                                                                        \
+      osMutexRelease(dispatch_mutex);                                                                                  \
+  } while (0)
 #else
 #define CONSOLE_MUTEX_LOCK() ((void)0)
 #define CONSOLE_MUTEX_UNLOCK() ((void)0)
+#define DISPATCH_MUTEX_LOCK() ((void)0)
+#define DISPATCH_MUTEX_UNLOCK() ((void)0)
 #endif
 
 /* ============================================================================
@@ -84,6 +99,10 @@ void FEB_Console_Init(bool register_default_commands)
        * The CONSOLE_MUTEX_LOCK/UNLOCK macros already handle NULL gracefully. */
     }
   }
+  if (dispatch_mutex == NULL)
+  {
+    dispatch_mutex = osMutexNew(NULL);
+  }
 #endif
 
   /* Register built-in commands if requested */
@@ -105,6 +124,11 @@ int FEB_Console_GetUartInstance(void)
 }
 
 void FEB_Console_ProcessLine(const char *line, size_t len)
+{
+  FEB_Console_ProcessLineOnInstance(console_uart_instance, line, len);
+}
+
+void FEB_Console_ProcessLineOnInstance(int uart_instance, const char *line, size_t len)
 {
   if (line == NULL || len == 0)
   {
@@ -131,6 +155,12 @@ void FEB_Console_ProcessLine(const char *line, size_t len)
     return; /* Empty line */
   }
 
+  /* Serialize the entire handler execution so FEB_Console_Printf always
+   * routes to the UART that issued the command. */
+  DISPATCH_MUTEX_LOCK();
+  int saved_instance = console_uart_instance;
+  console_uart_instance = uart_instance;
+
   /* Find and execute command (thread-safe lookup) */
   CONSOLE_MUTEX_LOCK();
   const FEB_Console_Cmd_t *cmd = find_command(argv[0]);
@@ -145,6 +175,9 @@ void FEB_Console_ProcessLine(const char *line, size_t len)
     FEB_Console_Printf("Unknown command: %s\r\n", argv[0]);
     FEB_Console_Printf("Type 'help' for available commands\r\n");
   }
+
+  console_uart_instance = saved_instance;
+  DISPATCH_MUTEX_UNLOCK();
 }
 
 int FEB_Console_Register(const FEB_Console_Cmd_t *cmd)

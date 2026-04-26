@@ -13,7 +13,7 @@
 set -e
 
 # Available boards
-BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART_TEST")
+BOARDS=("BMS" "DASH" "DART" "DCU" "DCU_Receiver" "LVPDB" "PCU" "Sensor_Nodes" "UART_TEST")
 
 # Colors for output
 RED='\033[0;31m'
@@ -318,7 +318,7 @@ interactive_select() {
         q|Q|quit|exit)
             return 1
             ;;
-        [1-8])
+        [1-9])
             local index=$((selection - 1))
             if [ $index -ge 0 ] && [ $index -lt ${#BOARDS[@]} ]; then
                 flash_board "${BOARDS[$index]}"

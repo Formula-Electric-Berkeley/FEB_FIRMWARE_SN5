@@ -4,13 +4,17 @@
 #include "FEB_SN_Commands.h"
 #include "FEB_WSS.h"
 #include "main.h"
+
 #include <string.h>
 #include "FEB_Main.h"
 #include "FEB_CAN_IMU.h"
+#include "FEB_CAN_Magnetometer.h"
+#include "FEB_CAN_WSS.h"
 // Common libraries
 #include "feb_uart.h"
 #include "feb_log.h"
 #include "feb_console.h"
+#include "feb_can_lib.h"
 
 #define TAG_MAIN "[MAIN]"
 
@@ -19,6 +23,8 @@ static bool gps_ready = false;
 extern UART_HandleTypeDef huart2;
 extern DMA_HandleTypeDef hdma_usart2_tx;
 extern DMA_HandleTypeDef hdma_usart2_rx;
+extern CAN_HandleTypeDef hcan1;
+extern CAN_HandleTypeDef hcan2;
 
 static uint8_t uart_tx_buf[1024];
 static uint8_t uart_rx_buf[256];
@@ -30,6 +36,8 @@ void FEB_Update()
   read_Magnetic_Field_Data();
   WSS_Main();
   FEB_CAN_IMU_Tick();
+  FEB_CAN_Magnetometer_Tick();
+  // FEB_CAN_WSS_Tick();
 }
 
 void FEB_Init(void)
@@ -105,6 +113,15 @@ void FEB_Init(void)
     }
     gps_ready = true;
   }
+
+  // Initialize CAN library
+  FEB_CAN_Config_t can_cfg = {
+      .hcan1 = &hcan1,
+      .hcan2 = &hcan2,
+      .get_tick_ms = HAL_GetTick,
+  };
+  FEB_CAN_Init(&can_cfg);
+  FEB_Console_Printf("CAN initialized\r\n");
 
   FEB_Console_Printf("Sensor Node Setup Complete\r\n");
 }

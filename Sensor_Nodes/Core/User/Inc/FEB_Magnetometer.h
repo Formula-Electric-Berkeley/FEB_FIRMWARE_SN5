@@ -20,6 +20,7 @@ extern "C"
   void read_Magnetic_Field_Data(void);
 
   /* Data access */
+  extern int16_t data_raw_magnetometer[3];
   extern float magnetic_mG[3];
 
 #ifdef __cplusplus
