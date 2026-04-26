@@ -157,16 +157,32 @@ void FEB_Main_While()
     FEB_ADC_GetAPPSData(&apps_data);
     FEB_ADC_GetBrakeData(&brake_data);
 
-    // Enhanced debug output with raw ADC values
-    LOG_D(TAG_MAIN, "APPS1: %4d ADC (%.2fV / %.1f%%) | APPS2: %4d ADC (%.2fV / %.1f%%) | Avg: %.1f%% | %s",
-          FEB_ADC_GetAccelPedal1Raw(), FEB_ADC_GetAccelPedal1Voltage(), apps_data.position1,
-          FEB_ADC_GetAccelPedal2Raw(), FEB_ADC_GetAccelPedal2Voltage(), apps_data.position2, apps_data.acceleration,
-          apps_data.plausible ? "PLAUS" : "IMPLAUS");
+    uint16_t apps1_raw = FEB_ADC_GetAccelPedal1Raw();
+    uint16_t apps2_raw = FEB_ADC_GetAccelPedal2Raw();
+    uint16_t brake1_raw = FEB_ADC_GetBrakePressure1Raw();
+    uint16_t brake2_raw = FEB_ADC_GetBrakePressure2Raw();
+    uint16_t brake_input_raw = FEB_ADC_GetBrakeInputRaw();
 
-    LOG_D(TAG_MAIN, "Brake1: %4d ADC (%.2fV / %.1f%%) | Brake2: %4d ADC (%.2fV / %.1f%%) | Brake Input: %.1f%% | %s",
-          FEB_ADC_GetBrakePressure1Raw(), FEB_ADC_GetBrakePressure1Voltage(), brake_data.pressure1_percent,
-          FEB_ADC_GetBrakePressure2Raw(), FEB_ADC_GetBrakePressure2Voltage(), brake_data.pressure2_percent,
-          brake_data.brake_position, brake_data.brake_pressed ? "PRESSED" : "RELEASED");
+    uint32_t apps1_mv = (uint32_t)(FEB_ADC_GetAccelPedal1Voltage() * 1000.0f);
+    uint32_t apps2_mv = (uint32_t)(FEB_ADC_GetAccelPedal2Voltage() * 1000.0f);
+    uint32_t brake1_mv = (uint32_t)(FEB_ADC_GetBrakePressure1Voltage() * 1000.0f);
+    uint32_t brake2_mv = (uint32_t)(FEB_ADC_GetBrakePressure2Voltage() * 1000.0f);
+    uint32_t brake_input_mv = (uint32_t)(FEB_ADC_GetBrakeInputVoltage() * 1000.0f);
+
+    // Info-level integer output avoids hidden LOG_D messages and float printf issues.
+    LOG_I(TAG_MAIN, "APPS: raw=%u/%u mv=%lu/%lu pos=%ld/%ld avg=%ld %s",
+          apps1_raw, apps2_raw, apps1_mv, apps2_mv, (int32_t)apps_data.position1, (int32_t)apps_data.position2,
+          (int32_t)apps_data.acceleration, apps_data.plausible ? "PLAUS" : "IMPLAUS");
+
+    LOG_I(TAG_MAIN, "BRAKE: raw=%u/%u input=%u mv=%lu/%lu input=%lu pos=%ld %s %s",
+          brake1_raw, brake2_raw, brake_input_raw, brake1_mv, brake2_mv, brake_input_mv,
+          (int32_t)brake_data.brake_position, brake_data.brake_pressed ? "PRESSED" : "RELEASED",
+          brake_data.plausible ? "PLAUS" : "IMPLAUS");
+
+    LOG_I(TAG_MAIN, "ADC3: state=0x%08lX err=0x%08lX ndtr=%lu slots=%u/%u/%u/%u",
+          FEB_ADC_GetADC3State(), FEB_ADC_GetADC3ErrorCode(), FEB_ADC_GetADC3DMARemaining(),
+          FEB_ADC_GetADC3DMASlot(0), FEB_ADC_GetADC3DMASlot(1), FEB_ADC_GetADC3DMASlot(2),
+          FEB_ADC_GetADC3DMASlot(3));
   }
 
   /* Main loop timing: 10ms cycle (100Hz) */

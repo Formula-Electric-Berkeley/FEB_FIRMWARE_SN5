@@ -212,9 +212,13 @@ extern "C"
   uint16_t FEB_ADC_GetBrakePressure1Raw(void);
   uint16_t FEB_ADC_GetBrakePressure2Raw(void);
 
-  /* Accelerator Pedal Raw Values */
-  uint16_t FEB_ADC_GetAccelPedal1Raw(void);
-  uint16_t FEB_ADC_GetAccelPedal2Raw(void);
+	  /* Accelerator Pedal Raw Values */
+	  uint16_t FEB_ADC_GetAccelPedal1Raw(void);
+	  uint16_t FEB_ADC_GetAccelPedal2Raw(void);
+	  uint16_t FEB_ADC_GetADC3DMASlot(uint8_t slot);
+	  uint32_t FEB_ADC_GetADC3State(void);
+	  uint32_t FEB_ADC_GetADC3ErrorCode(void);
+	  uint32_t FEB_ADC_GetADC3DMARemaining(void);
 
   /* Power System Raw Values */
   uint16_t FEB_ADC_GetCurrentSenseRaw(void);
