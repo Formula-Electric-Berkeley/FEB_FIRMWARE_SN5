@@ -9,8 +9,11 @@
 #include "feb_can_lib.h"
 #include "feb_can.h"
 #include "feb_console.h"
+#include "feb_log.h"
 #include <stdbool.h>
 #include <string.h>
+
+#define TAG_STATE "[STATE]"
 
 /* CAN ready flag - prevents transmission before CAN is initialized */
 static volatile bool can_ready = false;
@@ -93,6 +96,6 @@ void FEB_CAN_State_Tick(void)
                       FEB_CAN_DASH_STATE_LENGTH);
     }
 
-    FEB_Console_Printf("Sending Dash IO State Over CAN: %X %X\r\n", tx_data[0], tx_data[1]);
+    LOG_D(TAG_STATE, "Sending Dash IO State Over CAN: %02X %02X", tx_data[0], tx_data[1]);
   }
 }

@@ -20,6 +20,8 @@
 
 #include "feb_can_lib.h"
 #include "cmsis_os2.h"
+#include "FreeRTOS.h"
+#include "task.h"
 #include "feb_console.h"
 #include "main.h"
 #include "feb_log.h"
@@ -116,7 +118,7 @@ void StartDASHTaskRx(void *argument)
 {
   (void)argument;
 
-  FEB_Console_Printf("gurt: yo\r\n");
+  LOG_D(TAG_CAN, "gurt: yo");
 
   /* CAN init MUST occur after scheduler start */
   DASH_CAN_Init();
@@ -138,32 +140,29 @@ void StartDASHTaskRx(void *argument)
 
 /**
  * @brief DASH CAN TX task
+ *
+ * Driven by a 1 ms task notification from TIM6's HAL_TIM_PeriodElapsedCallback
+ * (see DASH/Core/Src/main.c). The 1 ms notification gives FEB_CAN_State_Tick's
+ * internal /100 divider a stable cadence, and folds PingPong_Tick onto the
+ * same time base so it doesn't contend with this task at the same priority.
  */
 void StartDASHTaskTx(void *argument)
 {
   (void)argument;
 
-  for (;;)
-  {
-    FEB_CAN_State_Tick();
-    /* Drain TX queue into CAN mailboxes */
-    FEB_CAN_TX_Process();
-    osDelay(1);
-  }
-}
+  static uint16_t pingpong_divider = 0;
 
-/**
- * @brief Ping/pong periodic task - ticks the ping/pong state machine every 100 ms
- *        in FreeRTOS task context (not ISR), keeping LOG and mutex-protected paths safe.
- */
-void StartPingPongTask(void *argument)
-{
-  (void)argument;
-  /* Let StartDASHTaskRx finish CAN init + FEB_CAN_PingPong_Init before first tick */
-  osDelay(100);
   for (;;)
   {
-    FEB_CAN_PingPong_Tick();
-    osDelay(100);
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+    FEB_CAN_State_Tick();
+    FEB_CAN_TX_Process();
+
+    if (++pingpong_divider >= 100)
+    {
+      pingpong_divider = 0;
+      FEB_CAN_PingPong_Tick();
+    }
   }
 }

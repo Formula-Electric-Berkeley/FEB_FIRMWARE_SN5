@@ -93,13 +93,6 @@ const osThreadAttr_t DASHTaskTx_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
-/* Definitions for pingPongTask */
-osThreadId_t pingPongTaskHandle;
-const osThreadAttr_t pingPongTask_attributes = {
-  .name = "pingPongTask",
-  .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityLow,
-};
 /* Definitions for canTxQueue */
 osMessageQueueId_t canTxQueueHandle;
 const osMessageQueueAttr_t canTxQueue_attributes = {
@@ -162,7 +155,6 @@ void StartUartRxTask(void *argument);
 void StartUartTxTask(void *argument);
 void StartDASHTaskRx(void *argument);
 void StartDASHTaskTx(void *argument);
-void StartPingPongTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -298,9 +290,6 @@ void MX_FREERTOS_Init(void) {
   /* creation of DASHTaskTx */
   DASHTaskTxHandle = osThreadNew(StartDASHTaskTx, NULL, &DASHTaskTx_attributes);
 
-  /* creation of pingPongTask */
-  pingPongTaskHandle = osThreadNew(StartPingPongTask, NULL, &pingPongTask_attributes);
-
   /* USER CODE BEGIN RTOS_THREADS */
   /* Validate all thread creations - fail fast on low heap */
   REQUIRE_RTOS_HANDLE(btnTxLoopTaskHandle);
@@ -309,7 +298,6 @@ void MX_FREERTOS_Init(void) {
   REQUIRE_RTOS_HANDLE(uartTxTaskHandle);
   REQUIRE_RTOS_HANDLE(DASHTaskRxHandle);
   REQUIRE_RTOS_HANDLE(DASHTaskTxHandle);
-  REQUIRE_RTOS_HANDLE(pingPongTaskHandle);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -425,24 +413,6 @@ __weak void StartDASHTaskTx(void *argument)
     osDelay(1);
   }
   /* USER CODE END StartDASHTaskTx */
-}
-
-/* USER CODE BEGIN Header_StartPingPongTask */
-/**
-* @brief Function implementing the pingPongTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartPingPongTask */
-__weak void StartPingPongTask(void *argument)
-{
-  /* USER CODE BEGIN StartPingPongTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartPingPongTask */
 }
 
 /* Private application code --------------------------------------------------*/

@@ -249,6 +249,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
+  /* Notify DASHTaskTx every 1 ms so FEB_CAN_State_Tick / TX_Process / PingPong
+     run on a stable cadence independent of CPU load (mirrors the BMS pattern
+     in BMS/Core/Src/main.c). */
+  extern osThreadId_t DASHTaskTxHandle;
+  if (DASHTaskTxHandle != NULL)
+  {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    vTaskNotifyGiveFromISR((TaskHandle_t)DASHTaskTxHandle, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+  }
   /* USER CODE END Callback 1 */
 }
 

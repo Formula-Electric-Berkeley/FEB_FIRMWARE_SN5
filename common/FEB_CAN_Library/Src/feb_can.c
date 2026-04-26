@@ -306,6 +306,45 @@ void FEB_CAN_ErrorCallback(FEB_CAN_Handle_t hcan)
 }
 
 /* ============================================================================
+ * Default HAL Callback Wrappers
+ *
+ * Weak-overridable forwarders from STM32 HAL CAN callbacks into the FEB CAN
+ * library. Boards do not need to define these in stm32f4xx_it.c; the library
+ * provides them automatically. Override (provide a strong definition) only if
+ * a board needs to extend the behavior on top of the library forward.
+ * ============================================================================ */
+
+__weak void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
+{
+  FEB_CAN_RxFifo0Callback(hcan);
+}
+
+__weak void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
+{
+  FEB_CAN_RxFifo1Callback(hcan);
+}
+
+__weak void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
+{
+  FEB_CAN_TxMailbox0CompleteCallback(hcan);
+}
+
+__weak void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
+{
+  FEB_CAN_TxMailbox1CompleteCallback(hcan);
+}
+
+__weak void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
+{
+  FEB_CAN_TxMailbox2CompleteCallback(hcan);
+}
+
+__weak void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
+{
+  FEB_CAN_ErrorCallback(hcan);
+}
+
+/* ============================================================================
  * Status API
  * ============================================================================ */
 

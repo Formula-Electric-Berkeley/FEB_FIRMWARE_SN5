@@ -1,6 +1,6 @@
 /**
  * @file FEB_CAN_DASH.h
- * @brief DASH CAN message reception for BMS (Ready-to-Drive signal)
+ * @brief DASH CAN message reception for BMS
  *
  * FreeRTOS Safety:
  * - All shared data uses volatile for ISR/task visibility
@@ -13,6 +13,18 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+
+typedef struct
+{
+  volatile bool ready_to_drive;
+  volatile bool data_logging;
+  volatile bool coolant_pump;
+  volatile bool radiator_fan;
+  volatile bool accumulator_fan;
+  volatile uint32_t last_rx_tick;
+} DASH_IO_t;
+
+extern DASH_IO_t DASH_IO;
 
 /**
  * @brief Initialize DASH CAN message reception

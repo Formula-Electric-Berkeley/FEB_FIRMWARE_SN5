@@ -37,41 +37,19 @@ Configure your CAN peripheral:
 
 ### 3. HAL Callback Wiring
 
-In `stm32f4xx_it.c` or a callbacks file, route HAL callbacks to the library:
+The library provides `__weak` `HAL_CAN_*Callback` forwarders by default — no per-board wiring is required. The HAL CAN interrupts route directly into the library as soon as you link `feb_can`.
+
+If a board needs to extend a callback (e.g., toggle a status LED on RX, or augment error handling), provide a strong definition that does the extra work and then calls the library's `FEB_CAN_*Callback`:
 
 ```c
-#include "feb_can_lib.h"
-
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
-    FEB_CAN_RxFifo0Callback(hcan);
-}
-
-void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
-{
-    FEB_CAN_RxFifo1Callback(hcan);
-}
-
-void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-    FEB_CAN_TxMailbox0CompleteCallback(hcan);
-}
-
-void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-    FEB_CAN_TxMailbox1CompleteCallback(hcan);
-}
-
-void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-    FEB_CAN_TxMailbox2CompleteCallback(hcan);
-}
-
-void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
-{
-    FEB_CAN_ErrorCallback(hcan);
+    HAL_GPIO_TogglePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
+    FEB_CAN_RxFifo0Callback(hcan);  // still forward into the library
 }
 ```
+
+The strong definition shadows the library's weak default at link time.
 
 ### 4. Initialization
 
