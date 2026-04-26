@@ -580,12 +580,12 @@ ADC_StatusTypeDef FEB_ADC_GetBrakeData(Brake_DataTypeDef *brake_data)
   brake_data->brake_position = brake_data->brake_switch ? brake_data->pressure2_percent : brake_data->pressure1_percent;
 
   /* Check plausibility between pressure sensors */
-  float pressure_diff = fabs(brake_data->pressure1_percent - brake_data->pressure2_percent);
+  // float pressure_diff = fabs(brake_data->pressure1_percent - brake_data->pressure2_percent);
 
-  if (pressure_diff > (BRAKE_PRESSURE_MAX_PHYSICAL_BAR * 0.2f))
-  {
-    brake_data->plausible = false;
-  } /* 20% tolerance */
+  // if (pressure_diff > (BRAKE_PRESSURE_MAX_PHYSICAL_BAR * 0.2f))
+  // {
+  //   brake_data->plausible = false;
+  // } /* 20% tolerance */
 
   /* Check BOTS */
   brake_data->bots_active = (brake_data->brake_position > BOTS_ACTIVATION_PERCENT);
