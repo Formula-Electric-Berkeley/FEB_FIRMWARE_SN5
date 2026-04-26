@@ -109,9 +109,6 @@ static void DASH_CAN_Init(void)
 
   /* Ensure filters reflect registry */
   FEB_CAN_Filter_UpdateFromRegistry(FEB_CAN_INSTANCE_1);
-
-  /* One-shot diagnostic: confirm filter banks landed correctly */
-  FEB_CAN_Filter_Dump(FEB_CAN_INSTANCE_1);
 }
 
 /* ============================================================================
@@ -124,8 +121,6 @@ static void DASH_CAN_Init(void)
 void StartDASHTaskRx(void *argument)
 {
   (void)argument;
-
-  LOG_D(TAG_CAN, "gurt: yo");
 
   /* CAN init MUST occur after scheduler start */
   DASH_CAN_Init();

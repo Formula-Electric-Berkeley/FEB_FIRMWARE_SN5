@@ -37,6 +37,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "FEB_Main.h"
 #include "FEB_CAN_State.h"
 #include <stdio.h>
 #include <string.h>
