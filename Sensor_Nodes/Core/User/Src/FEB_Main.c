@@ -146,12 +146,13 @@ void FEB_Init(void)
 
 void FEB_Main_Loop(void)
 {
-  FEB_Update();
 
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
   if (gps_ready)
   {
     FEB_GPS_Process();
   }
+
+  FEB_Update();
   HAL_Delay(100);
 }
