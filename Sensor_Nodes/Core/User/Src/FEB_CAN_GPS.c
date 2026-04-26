@@ -56,36 +56,53 @@ void FEB_CAN_GPS_Tick(void)
   int packed;
 
   /* --- POSITION: gps_latlong_data (lat, long) --- */
-  struct feb_can_gps_latlong_data_t latlong = {
-      .latitude = feb_can_gps_latlong_data_latitude_encode(gps_data.latitude),
-      .longitude = feb_can_gps_latlong_data_longitude_encode(gps_data.longitude),
-  };
-  packed = feb_can_gps_latlong_data_pack(tx_data, &latlong, sizeof(tx_data));
-  if (packed >= 0)
-    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_GPS_LATLONG_DATA_FRAME_ID, FEB_CAN_ID_STD, tx_data,
-                    FEB_CAN_GPS_LATLONG_DATA_LENGTH);
-  else
-    can_tx_error_count++;
 
-  // FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_GPS_LATLONG_DATA_FRAME_ID,
-  //    FEB_CAN_ID_STD, tx_data, FEB_CAN_GPS_LATLONG_DATA_LENGTH);
-  // FEB_Console_Printf("\r\nGPS LatLong CAN Tx: lat=%.6f, long=%.6f", latlong.latitude, latlong.longitude);
-  FEB_Console_Printf("\r\n packed latlon: %d", packed);
+  // uint16_t tx_data[4] = {0};
+  uint16_t packed_lat = (int16_t)(gps_data.latitude);
+  uint16_t packed_long = (int16_t)(gps_data.longitude);
 
-  // /* --- MOTION: gps_motion_data (speed, course) --- */
-  struct feb_can_gps_motion_data_t motion = {
-      .speed = feb_can_gps_motion_data_speed_encode(gps_data.speed_kmh),
-      .course = feb_can_gps_motion_data_course_encode(gps_data.course),
-  };
-  packed = feb_can_gps_motion_data_pack(tx_data, &motion, sizeof(tx_data));
-  if (packed >= 0)
-    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_GPS_MOTION_DATA_FRAME_ID, FEB_CAN_ID_STD, tx_data,
-                    FEB_CAN_GPS_MOTION_DATA_LENGTH);
-  else
+  memcpy(&tx_data[0], &packed_lat, sizeof(uint16_t));
+  memcpy(&tx_data[2], &packed_long, sizeof(uint16_t));
+
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_GPS_POS_DATA_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                                            FEB_CAN_GPS_POS_DATA_LENGTH);
+  if (status != FEB_CAN_OK)
+  {
     can_tx_error_count++;
-  FEB_Console_Printf("\r\n packed motion: %d", packed);
-  FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_GPS_MOTION_DATA_FRAME_ID, FEB_CAN_ID_STD, tx_data,
-                  FEB_CAN_GPS_MOTION_DATA_LENGTH);
+  }
+
+  // struct feb_can_gps_latlong_data_t latlong = {
+  //     .latitude = feb_can_gps_latlong_data_latitude_encode(gps_data.latitude),
+  //     .longitude = feb_can_gps_latlong_data_longitude_encode(gps_data.longitude),
+  // };
+  // packed = feb_can_gps_latlong_data_pack(tx_data, &latlong, sizeof(tx_data));
+  // if (packed >= 0)
+  //   FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_GPS_LATLONG_DATA_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+  //                   FEB_CAN_GPS_LATLONG_DATA_LENGTH);
+  //     FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, 0x123, FEB_CAN_ID_STD, tx_data,
+  //                   4);
+  // else
+  //   can_tx_error_count++;
+
+  // // FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_GPS_LATLONG_DATA_FRAME_ID,
+  // //    FEB_CAN_ID_STD, tx_data, FEB_CAN_GPS_LATLONG_DATA_LENGTH);
+  // // FEB_Console_Printf("\r\nGPS LatLong CAN Tx: lat=%.6f, long=%.6f", latlong.latitude, latlong.longitude);
+  // FEB_Console_Printf("\r\n packed latlon: %d", packed);
+
+  // // /* --- MOTION: gps_motion_data (speed, course) --- */
+  // struct feb_can_gps_motion_data_t motion = {
+  //     .speed = feb_can_gps_motion_data_speed_encode(gps_data.speed_kmh),
+  //     .course = feb_can_gps_motion_data_course_encode(gps_data.course),
+  // };
+  // packed = feb_can_gps_motion_data_pack(tx_data, &motion, sizeof(tx_data));
+  // if (packed >= 0)
+  //   FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_GPS_MOTION_DATA_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+  //                   FEB_CAN_GPS_MOTION_DATA_LENGTH);
+  // else
+  //   can_tx_error_count++;
+  // FEB_Console_Printf("\r\n packed motion: %d", packed);
+  // FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_GPS_MOTION_DATA_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+  //                 FEB_CAN_GPS_MOTION_DATA_LENGTH);
 
   // /* --- TIME: gps_time_data (hours, minutes, seconds) --- */
   // struct feb_can_gps_time_data_t time_data = {
