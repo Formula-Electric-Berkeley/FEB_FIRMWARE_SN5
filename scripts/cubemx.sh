@@ -18,7 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR/.."
 
 # Available boards
-BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART_TEST")
+BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART" "UART_TEST")
 
 # Colors for output
 RED='\033[0;31m'
@@ -283,6 +283,30 @@ show_peripherals() {
     fi
 }
 
+# On Windows Git Bash (MSYS/MINGW), STM32CubeMX.exe is a native Windows binary
+# that wants native paths (C:\ST\...) in its script-load arguments and on the
+# command line, not POSIX paths (/c/ST/...). Convert via cygpath when present,
+# sed fallback otherwise. On macOS/Linux, prints the argument unchanged.
+posix_to_native_path() {
+    local p="$1"
+    case "$(uname -s)" in
+        MINGW*|MSYS*|CYGWIN*)
+            if command -v cygpath >/dev/null 2>&1; then
+                # -m emits mixed paths (C:/ST/...) instead of -w's backslashed
+                # form. STM32CubeMX accepts both, and forward slashes survive
+                # heredoc interpolation without being consumed as escapes.
+                # Keeps the cygpath branch consistent with the sed fallback below.
+                cygpath -m "$p"
+            else
+                echo "$p" | sed -E 's|^/([a-zA-Z])/|\1:/|'
+            fi
+            ;;
+        *)
+            echo "$p"
+            ;;
+    esac
+}
+
 # Generate code from .ioc file
 generate_code() {
     local board="$1"
@@ -302,14 +326,19 @@ generate_code() {
     local script_file
     script_file=$(mktemp)
 
+    local ioc_for_cubemx
+    local script_for_cubemx
+    ioc_for_cubemx=$(posix_to_native_path "$ioc_file")
+    script_for_cubemx=$(posix_to_native_path "$script_file")
+
     cat > "$script_file" << EOF
-config load "$ioc_file"
+config load "$ioc_for_cubemx"
 project generate
 exit
 EOF
 
     # Run STM32CubeMX in script mode
-    if "$CUBEMX_PATH" -q "$script_file"; then
+    if "$CUBEMX_PATH" -q "$script_for_cubemx"; then
         log_info "Code generation completed for $board"
         rm -f "$script_file"
         return 0
@@ -368,15 +397,20 @@ migrate_ioc() {
     local script_file
     script_file=$(mktemp)
 
+    local ioc_for_cubemx
+    local script_for_cubemx
+    ioc_for_cubemx=$(posix_to_native_path "$ioc_file")
+    script_for_cubemx=$(posix_to_native_path "$script_file")
+
     # Loading and saving with newer CubeMX auto-migrates the .ioc file
     cat > "$script_file" << EOF
-config load "$ioc_file"
-config saveext "$ioc_file"
+config load "$ioc_for_cubemx"
+config saveext "$ioc_for_cubemx"
 exit
 EOF
 
     # Run STM32CubeMX in script mode
-    if "$CUBEMX_PATH" -q "$script_file"; then
+    if "$CUBEMX_PATH" -q "$script_for_cubemx"; then
         local new_version
         new_version=$(ioc_get_value "$ioc_file" "MxCube.Version")
         log_info "Migration completed for $board (now version: ${new_version:-unknown})"
@@ -434,8 +468,11 @@ swupdate install all
 exit
 EOF
 
+    local script_for_cubemx
+    script_for_cubemx=$(posix_to_native_path "$script_file")
+
     # Run STM32CubeMX in script mode
-    if "$CUBEMX_PATH" -q "$script_file"; then
+    if "$CUBEMX_PATH" -q "$script_for_cubemx"; then
         log_info "Firmware pack update completed"
         rm -f "$script_file"
         return 0
@@ -552,7 +589,7 @@ interactive_mode() {
             q|Q|quit|exit)
                 return 0
                 ;;
-            [1-8])
+            [1-9])
                 local index=$((selection - 1))
                 if [ $index -ge 0 ] && [ $index -lt ${#BOARDS[@]} ]; then
                     local board="${BOARDS[$index]}"
@@ -601,7 +638,7 @@ Options:
   --list-boards          Show all boards with .ioc status
   -h, --help             Show this help message
 
-Boards: ${BOARDS[*]}
+Boards: ${BOARDS[*]} (or 'all')
 
 Examples:
   ./scripts/cubemx.sh                    # Interactive menu
@@ -610,6 +647,7 @@ Examples:
   ./scripts/cubemx.sh -m -g -b BMS       # Migrate and generate for BMS
   ./scripts/cubemx.sh -a -m              # Migrate all boards
   ./scripts/cubemx.sh -a -g              # Generate code for all boards
+  ./scripts/cubemx.sh -g -b all          # Generate code for all boards
   ./scripts/cubemx.sh --update-packs     # Update firmware packs
   ./scripts/cubemx.sh -i -b LVPDB        # Inspect LVPDB configuration
   ./scripts/cubemx.sh --show-pins -b PCU # Show PCU pin assignments
@@ -714,16 +752,16 @@ main() {
     fi
 
     # Validate board if specified
-    if [ -n "$board" ]; then
+    if [ -n "$board" ] && [ "$board" != "all" ]; then
         if ! is_valid_board "$board"; then
             log_error "Invalid board: $board"
-            echo "Valid boards: ${BOARDS[*]}"
+            echo "Valid boards: ${BOARDS[*]} all"
             exit 1
         fi
     fi
 
     # Handle batch operations
-    if [ "$process_all" = true ]; then
+    if [ "$process_all" = true ] || [ "$board" = "all" ]; then
         if ! check_cubemx; then
             show_cubemx_install_instructions
             exit 1

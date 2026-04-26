@@ -5,7 +5,6 @@
 
 #include <stm32f0xx_hal.h>
 #include <stdbool.h>
-#include <math.h>
 
 // ********************************** Defines **********************************
 
@@ -15,11 +14,11 @@
 
 #define TIMCLOCK (uint32_t)48000000
 #define PRESCALAR (uint32_t)1
-#define REF_CLOCK (float)TIMCLOCK / PRESCALAR
+#define REF_CLOCK (TIMCLOCK / PRESCALAR)
 #define NUM_FANS (uint32_t)5
 #define PWM_SIZE (uint32_t)40
-#define PWM_COUNTER (uint32_t)(TIMCLOCK * PWM_SIZE / (1000.0f * 1000.0f))
-#define PWM_START_PERCENT (float)1
+#define PWM_COUNTER ((uint32_t)((TIMCLOCK * PWM_SIZE) / 1000000u))
+#define PWM_START_PERCENT 1u
 
 #define TEMP_START_FAN 25
 #define TEMP_END_FAN 45

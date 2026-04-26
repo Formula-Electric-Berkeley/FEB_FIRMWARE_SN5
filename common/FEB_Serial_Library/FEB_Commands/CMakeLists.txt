@@ -27,5 +27,5 @@ target_include_directories(feb_commands INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/../..  # For #include "FEB_Serial_Library/FEB_Commands/..."
 )
 
-# Commands depends on Console and Log libraries
-target_link_libraries(feb_commands INTERFACE feb_console feb_log)
+# Commands depends on Console, Log, and Version libraries
+target_link_libraries(feb_commands INTERFACE feb_console feb_log feb_version)

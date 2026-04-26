@@ -15,7 +15,10 @@
 #include "FEB_CAN.h"
 #include "FEB_Fan.h"
 #include "feb_console.h"
+#include "feb_log.h"
 #include "feb_string_utils.h"
+
+#define TAG_DART "[DART]"
 
 extern uint16_t frequency[NUM_FANS];
 
@@ -87,6 +90,12 @@ static void print_dart_help(void)
   FEB_Console_Printf("  DART|tach|<1-5|all>               - read tach (Hz, RPM, %% of max)\r\n");
   FEB_Console_Printf("  DART|temp                         - BMS max cell temp + staleness\r\n");
   FEB_Console_Printf("  DART|cans                         - CAN RX/TX diagnostics\r\n");
+  FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
+  FEB_Console_Printf("  DART|csv|<tx_id>|<sub>  - any subcommand above also works as CSV\r\n");
+  FEB_Console_Printf("  DART|csv|<tx_id>|pwm-get / pwm-set - flat CSV form of pwm|get/set\r\n");
+  FEB_Console_Printf("  *|csv|<tx_id>|hello     - Discover all boards (system command)\r\n");
+  FEB_Console_Printf("Each request emits: ack -> [rows] -> done\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("FAN_MAX_RPM=%u  PWM_COUNTER=%u\r\n", (unsigned)FAN_MAX_RPM, (unsigned)PWM_COUNTER);
 }
@@ -241,28 +250,36 @@ static void sub_tach(int argc, char *argv[])
  * Other Subcommands
  * ============================================================================ */
 
-static void sub_auto(void)
+static void sub_auto(int argc, char *argv[])
 {
+  (void)argc;
+  (void)argv;
   FEB_Fan_SetManualOverride(false, 0);
   FEB_Console_Printf("fan auto (CAN-driven)\r\n");
 }
 
-static void sub_temp(void)
+static void sub_temp(int argc, char *argv[])
 {
+  (void)argc;
+  (void)argv;
   int16_t t = FEB_Fan_GetLastMaxCellTemp();
   uint32_t age = FEB_Fan_GetStalenessMs();
   FEB_Console_Printf("max_cell_temp=%d staleness=%u ms watchdog=%s\r\n", (int)t, (unsigned)age,
                      (age > BMS_RX_TIMEOUT_MS) ? "TRIPPED" : "ok");
 }
 
-static void sub_cans(void)
+static void sub_cans(int argc, char *argv[])
 {
+  (void)argc;
+  (void)argv;
   FEB_Console_Printf("rx=%u tx_timeout=%u tx_err=%u\r\n", (unsigned)FEB_CAN_GetRxCount(),
                      (unsigned)FEB_CAN_GetTxTimeoutCount(), (unsigned)FEB_CAN_GetTxHalErrorCount());
 }
 
-static void sub_status(void)
+static void sub_status(int argc, char *argv[])
 {
+  (void)argc;
+  (void)argv;
   FEB_Console_Printf("DART Status (mode: %s):\r\n", FEB_Fan_IsManualOverride() ? "manual" : "auto");
   FEB_Console_Printf("%-5s %6s %8s %6s %7s %5s\r\n", "Fan", "PWM%", "Counts", "Hz", "RPM", "%max");
   FEB_Console_Printf("----- ------ -------- ------ ------- -----\r\n");
@@ -276,12 +293,189 @@ static void sub_status(void)
     FEB_Console_Printf("fan%-2d %5u%% %8u %6u %7u %4u%%\r\n", i + 1, (unsigned)pct, (unsigned)counts, (unsigned)hz,
                        (unsigned)rpm, (unsigned)tpct);
   }
-  sub_temp();
+  sub_temp(0, NULL);
+}
+
+/* Forward declaration: cmd_dart is defined after DART_SUBCMDS below. */
+static void cmd_dart(int argc, char *argv[]);
+
+/* ============================================================================
+ * CSV-Mode Handlers (registered at top level per spec command name)
+ * ============================================================================ */
+
+static void emit_fan_row(int i)
+{
+  uint8_t pct = FEB_Fan_GetCommandedPercent((uint8_t)i);
+  uint32_t counts = FEB_Fan_GetCommandedCounts((uint8_t)i);
+  uint16_t hz = frequency[i];
+  uint32_t rpm = (uint32_t)hz * 30u;
+  uint32_t tpct = rpm_percent(hz);
+  FEB_Console_CsvEmit("fan", "%d,%u,%u,%u,%u,%u", i + 1, (unsigned)pct, (unsigned)counts, (unsigned)hz, (unsigned)rpm,
+                      (unsigned)tpct);
+}
+
+static void cmd_status_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  FEB_Console_CsvEmit("mode", "%s", FEB_Fan_IsManualOverride() ? "manual" : "auto");
+  for (int i = 0; i < (int)NUM_FANS; ++i)
+  {
+    emit_fan_row(i);
+  }
+  int16_t t = FEB_Fan_GetLastMaxCellTemp();
+  uint32_t age = FEB_Fan_GetStalenessMs();
+  FEB_Console_CsvEmit("temp", "%d,%u,%d", (int)t, (unsigned)age, (age > BMS_RX_TIMEOUT_MS) ? 0 : 1);
+}
+
+static void cmd_tach_csv(int argc, char *argv[])
+{
+  /* argv = ["tach", <fan>] */
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("error", "usage,tach|<1-5|all>");
+    return;
+  }
+  int fan_idx = -1;
+  bool all = false;
+  if (!parse_fan(argv[1], &fan_idx, &all))
+  {
+    FEB_Console_CsvError("error", "fan,%s", argv[1]);
+    return;
+  }
+  if (all)
+  {
+    for (int i = 0; i < (int)NUM_FANS; ++i)
+    {
+      emit_fan_row(i);
+    }
+  }
+  else
+  {
+    emit_fan_row(fan_idx);
+  }
+}
+
+static void cmd_pwm_get_csv(int argc, char *argv[])
+{
+  /* argv = ["pwm-get", <fan>] */
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("error", "usage,pwm-get|<1-5|all>");
+    return;
+  }
+  int fan_idx = -1;
+  bool all = false;
+  if (!parse_fan(argv[1], &fan_idx, &all))
+  {
+    FEB_Console_CsvError("error", "fan,%s", argv[1]);
+    return;
+  }
+  FEB_Console_CsvEmit("mode", "%s", FEB_Fan_IsManualOverride() ? "manual" : "auto");
+  if (all)
+  {
+    for (int i = 0; i < (int)NUM_FANS; ++i)
+    {
+      emit_fan_row(i);
+    }
+  }
+  else
+  {
+    emit_fan_row(fan_idx);
+  }
+}
+
+static void cmd_pwm_set_csv(int argc, char *argv[])
+{
+  /* argv = ["pwm-set", <fan>, <pct>] */
+  if (argc < 3)
+  {
+    FEB_Console_CsvError("error", "usage,pwm-set|<1-5|all>|<0-100>");
+    return;
+  }
+  int fan_idx = -1;
+  bool all = false;
+  if (!parse_fan(argv[1], &fan_idx, &all))
+  {
+    FEB_Console_CsvError("error", "fan,%s", argv[1]);
+    return;
+  }
+  int pct = 0;
+  if (!parse_percent(argv[2], &pct))
+  {
+    FEB_Console_CsvError("error", "percent,%s", argv[2]);
+    return;
+  }
+  if (all)
+  {
+    FEB_Fan_SetManualOverride(true, (uint8_t)pct);
+    FEB_Console_CsvEmit("pwm_set", "all,%d", pct);
+  }
+  else
+  {
+    FEB_Fan_SetManualFan((uint8_t)fan_idx, (uint8_t)pct);
+    FEB_Console_CsvEmit("pwm_set", "%d,%d", fan_idx + 1, pct);
+  }
+}
+
+static void cmd_auto_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  FEB_Fan_SetManualOverride(false, 0);
+  FEB_Console_CsvEmit("mode", "auto");
+}
+
+static void cmd_temp_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  int16_t t = FEB_Fan_GetLastMaxCellTemp();
+  uint32_t age = FEB_Fan_GetStalenessMs();
+  FEB_Console_CsvEmit("temp", "%d,%u,%d", (int)t, (unsigned)age, (age > BMS_RX_TIMEOUT_MS) ? 0 : 1);
+}
+
+static void cmd_cans_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  FEB_Console_CsvEmit("can", "%u,%u,%u", (unsigned)FEB_CAN_GetRxCount(), (unsigned)FEB_CAN_GetTxTimeoutCount(),
+                      (unsigned)FEB_CAN_GetTxHalErrorCount());
 }
 
 /* ============================================================================
- * Main Dispatcher
+ * Command Descriptors
+ *
+ * One unified FEB_Console_Cmd_t per subcommand: .handler is the human text
+ * impl, .csv_handler is the machine-readable CSV impl. Either may be NULL if
+ * that mode isn't supported. Each is registered top-level so the CSV parser's
+ * `DART|csv|<tx_id>|<name>` lookup resolves directly; bare-name text invocation
+ * also works as a shorthand. Canonical text form: `DART|<sub>` via cmd_dart.
  * ============================================================================ */
+static const FEB_Console_Cmd_t dart_status_cmd = {
+    .name = "status", .help = "Mode + per-fan rows + temp", .handler = sub_status, .csv_handler = cmd_status_csv};
+static const FEB_Console_Cmd_t dart_pwm_cmd = {
+    .name = "pwm", .help = "PWM router: pwm|set|<fan>|<pct>, pwm|get|<fan>", .handler = sub_pwm, .csv_handler = NULL};
+static const FEB_Console_Cmd_t dart_pwm_get_cmd = {
+    .name = "pwm-get", .help = "Read commanded PWM duty", .handler = cmd_pwm_get, .csv_handler = cmd_pwm_get_csv};
+static const FEB_Console_Cmd_t dart_pwm_set_cmd = {.name = "pwm-set",
+                                                   .help = "Set manual PWM: pwm-set|<1-5|all>|<0-100>",
+                                                   .handler = cmd_pwm_set,
+                                                   .csv_handler = cmd_pwm_set_csv};
+static const FEB_Console_Cmd_t dart_tach_cmd = {
+    .name = "tach", .help = "Tach (Hz, RPM, %% of max)", .handler = sub_tach, .csv_handler = cmd_tach_csv};
+static const FEB_Console_Cmd_t dart_auto_cmd = {
+    .name = "auto", .help = "Return to CAN-driven mode", .handler = sub_auto, .csv_handler = cmd_auto_csv};
+static const FEB_Console_Cmd_t dart_temp_cmd = {
+    .name = "temp", .help = "BMS max cell temp + staleness", .handler = sub_temp, .csv_handler = cmd_temp_csv};
+static const FEB_Console_Cmd_t dart_cans_cmd = {
+    .name = "cans", .help = "CAN RX/TX diagnostics", .handler = sub_cans, .csv_handler = cmd_cans_csv};
+
+static const FEB_Console_Cmd_t *const DART_SUBCMDS[] = {
+    &dart_status_cmd, &dart_pwm_cmd,  &dart_pwm_get_cmd, &dart_pwm_set_cmd,
+    &dart_tach_cmd,   &dart_auto_cmd, &dart_temp_cmd,    &dart_cans_cmd,
+};
+#define DART_SUBCMDS_COUNT (sizeof(DART_SUBCMDS) / sizeof(DART_SUBCMDS[0]))
 
 static void cmd_dart(int argc, char *argv[])
 {
@@ -290,55 +484,51 @@ static void cmd_dart(int argc, char *argv[])
     print_dart_help();
     return;
   }
-
   const char *subcmd = argv[1];
-
-  if (FEB_strcasecmp(subcmd, "status") == 0)
-  {
-    sub_status();
-  }
-  else if (FEB_strcasecmp(subcmd, "pwm") == 0)
-  {
-    sub_pwm(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "auto") == 0)
-  {
-    sub_auto();
-  }
-  else if (FEB_strcasecmp(subcmd, "tach") == 0)
-  {
-    sub_tach(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "temp") == 0)
-  {
-    sub_temp();
-  }
-  else if (FEB_strcasecmp(subcmd, "cans") == 0)
-  {
-    sub_cans();
-  }
-  else if (FEB_strcasecmp(subcmd, "help") == 0)
+  if (FEB_strcasecmp(subcmd, "help") == 0)
   {
     print_dart_help();
+    return;
   }
-  else
+  for (size_t i = 0; i < DART_SUBCMDS_COUNT; i++)
   {
-    FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
-    print_dart_help();
+    if (FEB_strcasecmp(DART_SUBCMDS[i]->name, subcmd) == 0)
+    {
+      if (DART_SUBCMDS[i]->handler != NULL)
+      {
+        DART_SUBCMDS[i]->handler(argc - 1, argv + 1);
+      }
+      else
+      {
+        FEB_Console_Printf("Subcommand %s is CSV-only\r\n", subcmd);
+      }
+      return;
+    }
   }
+  FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
+  print_dart_help();
 }
-
-/* ============================================================================
- * Command Descriptor & Registration
- * ============================================================================ */
 
 static const FEB_Console_Cmd_t dart_cmd = {
     .name = "DART",
-    .help = "DART board commands (DART|status, DART|pwm|set|all|50, DART|tach|all)",
+    .help = "DART commands (DART|<sub>) - run DART alone for full list",
     .handler = cmd_dart,
+    .csv_handler = NULL,
 };
 
 void DART_RegisterCommands(void)
 {
-  FEB_Console_Register(&dart_cmd);
+  int rc = FEB_Console_Register(&dart_cmd);
+  if (rc != 0)
+  {
+    LOG_E(TAG_DART, "Failed to register '%s' (rc=%d)", dart_cmd.name, rc);
+  }
+  for (size_t i = 0; i < DART_SUBCMDS_COUNT; i++)
+  {
+    rc = FEB_Console_Register(DART_SUBCMDS[i]);
+    if (rc != 0)
+    {
+      LOG_E(TAG_DART, "Failed to register '%s' (rc=%d)", DART_SUBCMDS[i]->name, rc);
+    }
+  }
 }

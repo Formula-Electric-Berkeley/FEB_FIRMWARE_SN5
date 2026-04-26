@@ -4,7 +4,14 @@
  * @brief          : BMS-specific console commands
  * @author         : Formula Electric @ Berkeley
  *
- * Commands follow hierarchical pattern: BMS|subcommand|args
+ * Text mode (human): one `BMS` descriptor sub-dispatches on the second
+ * token (BMS|status, BMS|cells, BMS|state, ...).
+ *
+ * CSV mode (spec): parser strips the `BMS|csv|<tx_id>|` prefix so each
+ * command needs its own top-level descriptor. We register the text-mode
+ * BMS descriptor with no .csv_handler, and register a CSV-only descriptor
+ * per spec-facing command. Mandatory: `cell-stats`. The rest surface
+ * the existing diagnostic subcommands to CSV clients.
  ******************************************************************************
  */
 
@@ -127,6 +134,53 @@ static void subcmd_temps(int argc, char *argv[])
 }
 
 /* ============================================================================
+ * Subcommand: therm-raw - Show raw thermistor voltages and ADC codes
+ * ============================================================================ */
+static void subcmd_therm_raw(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  FEB_Console_Printf("\r\n=== Thermistor Raw Voltages (mV) ===\r\n");
+  for (int bank = 0; bank < FEB_NBANKS; bank++)
+  {
+    for (int ic = 0; ic < FEB_NUM_ICPBANK; ic++)
+    {
+      FEB_Console_Printf("Bank %d IC %d\r\n", bank + 1, ic + 1);
+      for (int mux = 0; mux < 6; mux++)
+      {
+        FEB_Console_Printf("  MUX%d ch0..6:", mux + 1);
+        for (int ch = 0; ch < 7; ch++)
+        {
+          uint16_t sensor = (uint16_t)(ic * FEB_NUM_TEMP_SENSE_PER_IC + mux * 7 + ch);
+          FEB_Console_Printf(" %7.1f", FEB_ADBMS_GET_Therm_Raw_mV((uint8_t)bank, sensor));
+        }
+        FEB_Console_Printf("\r\n");
+      }
+    }
+  }
+  FEB_Console_Printf("\r\n=== Thermistor Raw Codes (hex) ===\r\n");
+  for (int bank = 0; bank < FEB_NBANKS; bank++)
+  {
+    for (int ic = 0; ic < FEB_NUM_ICPBANK; ic++)
+    {
+      FEB_Console_Printf("Bank %d IC %d\r\n", bank + 1, ic + 1);
+      for (int mux = 0; mux < 6; mux++)
+      {
+        FEB_Console_Printf("  MUX%d ch0..6:", mux + 1);
+        for (int ch = 0; ch < 7; ch++)
+        {
+          uint16_t sensor = (uint16_t)(ic * FEB_NUM_TEMP_SENSE_PER_IC + mux * 7 + ch);
+          FEB_Console_Printf(" 0x%04X", FEB_ADBMS_GET_Therm_Raw_Code((uint8_t)bank, sensor));
+        }
+        FEB_Console_Printf("\r\n");
+      }
+    }
+  }
+  FEB_Console_Printf("Note: 0x%04X / NaN = PEC failure on that aux register\r\n", 0xFFFF);
+}
+
+/* ============================================================================
  * Subcommand: balance - Show/control cell balancing
  * ============================================================================ */
 
@@ -156,7 +210,7 @@ static void subcmd_balance(int argc, char *argv[])
     return;
   }
 
-  if (argv[1][0] == 'o' && argv[1][1] == 'n')
+  if (FEB_strcasecmp(argv[1], "on") == 0)
   {
     /* Safety check: only allow balancing in safe states */
     if (!is_balancing_allowed())
@@ -169,7 +223,7 @@ static void subcmd_balance(int argc, char *argv[])
     FEB_Cell_Balance_Start();
     FEB_Console_Printf("Balancing started\r\n");
   }
-  else if (argv[1][0] == 'o' && argv[1][1] == 'f')
+  else if (FEB_strcasecmp(argv[1], "off") == 0)
   {
     FEB_Stop_Balance();
     FEB_Console_Printf("Balancing stopped\r\n");
@@ -182,47 +236,20 @@ static void subcmd_balance(int argc, char *argv[])
 }
 
 /* ============================================================================
- * Subcommand: dump - Print full accumulator status
- * ============================================================================ */
-static void subcmd_dump(int argc, char *argv[])
-{
-  (void)argc;
-  (void)argv;
-
-  FEB_ADBMS_Print_Accumulator();
-}
-
-/* ============================================================================
  * Subcommand: state - Show/set BMS state (with safety restrictions)
  * ============================================================================ */
 
-/**
- * @brief Check if a state transition is allowed via console command
- * @param current Current BMS state
- * @param target Target BMS state
- * @return true if transition is allowed
- *
- * Allowed transitions:
- * - Any fault state (FAULT_BMS, FAULT_BSPD, FAULT_IMD, FAULT_CHARGING)
- * - ENERGIZED <-> DRIVE (overrides R2D signal)
- * - LV_POWER or BUS_HEALTH_CHECK -> BATTERY_FREE
- */
 static bool is_state_transition_allowed(BMS_State_t current, BMS_State_t target)
 {
-  /* Always allow entering fault states */
   if (target >= BMS_STATE_FAULT_BMS && target <= BMS_STATE_FAULT_CHARGING)
   {
     return true;
   }
-
-  /* Allow R2D override: ENERGIZED <-> DRIVE */
   if ((current == BMS_STATE_ENERGIZED && target == BMS_STATE_DRIVE) ||
       (current == BMS_STATE_DRIVE && target == BMS_STATE_ENERGIZED))
   {
     return true;
   }
-
-  /* BATTERY_FREE only allowed from LV_POWER or BUS_HEALTH_CHECK */
   if (target == BMS_STATE_BATTERY_FREE)
   {
     if (current == BMS_STATE_LV_POWER || current == BMS_STATE_BUS_HEALTH_CHECK)
@@ -233,7 +260,6 @@ static bool is_state_transition_allowed(BMS_State_t current, BMS_State_t target)
           FEB_CAN_State_GetStateName(current));
     return false;
   }
-
   return false;
 }
 
@@ -306,7 +332,6 @@ static void subcmd_state(int argc, char *argv[])
     }
   }
 
-  /* Check if transition is allowed */
   if (!is_state_transition_allowed(current_state, new_state))
   {
     FEB_Console_Printf("Error: Transition %s -> %s not allowed\r\n", FEB_CAN_State_GetStateName(current_state),
@@ -315,7 +340,6 @@ static void subcmd_state(int argc, char *argv[])
     return;
   }
 
-  /* Use state machine transition for proper relay handling */
   FEB_SM_Transition(new_state);
   FEB_Console_Printf("State transition requested: %s -> %s\r\n", FEB_CAN_State_GetStateName(current_state),
                      FEB_CAN_State_GetStateName(new_state));
@@ -501,6 +525,25 @@ static void subcmd_spi(int argc, char *argv[])
 /* ============================================================================
  * Subcommand: errors - Show error summary
  * ============================================================================ */
+static const char *err_type_name(uint8_t err)
+{
+  switch (err)
+  {
+  case 0x00:
+    return "None";
+  case ERROR_TYPE_TEMP_VIOLATION:
+    return "Temperature Violation";
+  case ERROR_TYPE_LOW_TEMP_READS:
+    return "Low Temp Reads";
+  case ERROR_TYPE_VOLTAGE_VIOLATION:
+    return "Voltage Violation";
+  case ERROR_TYPE_INIT_FAILURE:
+    return "Init Failure";
+  default:
+    return "Unknown";
+  }
+}
+
 static void subcmd_errors(int argc, char *argv[])
 {
   (void)argc;
@@ -510,103 +553,11 @@ static void subcmd_errors(int argc, char *argv[])
   BMS_State_t state = FEB_SM_Get_Current_State();
   bool faulted = FEB_SM_Is_Faulted();
 
-  const char *err_str;
-  switch (err)
-  {
-  case 0x00:
-    err_str = "None";
-    break;
-  case ERROR_TYPE_TEMP_VIOLATION:
-    err_str = "Temperature Violation";
-    break;
-  case ERROR_TYPE_LOW_TEMP_READS:
-    err_str = "Low Temp Reads";
-    break;
-  case ERROR_TYPE_VOLTAGE_VIOLATION:
-    err_str = "Voltage Violation";
-    break;
-  case ERROR_TYPE_INIT_FAILURE:
-    err_str = "Init Failure";
-    break;
-  default:
-    err_str = "Unknown";
-    break;
-  }
-
   FEB_Console_Printf("\r\n=== Error Summary ===\r\n");
-  FEB_Console_Printf("Error Type:     0x%02X (%s)\r\n", err, err_str);
+  FEB_Console_Printf("Error Type:     0x%02X (%s)\r\n", err, err_type_name(err));
   FEB_Console_Printf("Current State:  %s\r\n", FEB_CAN_State_GetStateName(state));
   FEB_Console_Printf("Faulted:        %s\r\n", faulted ? "YES" : "NO");
   FEB_Console_Printf("HV Active:      %s\r\n", FEB_SM_Is_HV_Active() ? "YES" : "NO");
-}
-
-/* ============================================================================
- * Subcommand: csv - Output data in CSV format
- * ============================================================================ */
-
-void subcmd_csv(int argc, char *argv[])
-{
-  if (argc < 2)
-  {
-    FEB_Console_Printf("Usage: BMS|csv|<mode>\r\n");
-    FEB_Console_Printf("  volts  - Cell voltages (V,bank,cell,v_C,v_S)\r\n");
-    FEB_Console_Printf("  temps  - Temperature sensors (T,bank,sensor,temp_deg_C)\r\n");
-    FEB_Console_Printf("  all    - Combined (type,bank,index,reading1,reading2)\r\n");
-    return;
-  }
-
-  const char *mode = argv[1];
-
-  if (FEB_strcasecmp(mode, "volts") == 0)
-  {
-    for (int bank = 0; bank < FEB_NBANKS; bank++)
-    {
-      for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
-      {
-        float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
-        float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
-        FEB_Console_Printf("V,%d,%d,%.3f,%.3f\r\n", bank + 1, cell + 1, v_c, v_s);
-      }
-    }
-  }
-  else if (FEB_strcasecmp(mode, "temps") == 0)
-  {
-    for (int bank = 0; bank < FEB_NBANKS; bank++)
-    {
-      for (int sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
-      {
-        float temp = FEB_ADBMS_GET_Cell_Temperature(bank, sensor);
-        FEB_Console_Printf("T,%d,%d,%.1f\r\n", bank + 1, sensor + 1, temp);
-      }
-    }
-  }
-  else if (FEB_strcasecmp(mode, "all") == 0)
-  {
-    /* Voltage readings */
-    for (int bank = 0; bank < FEB_NBANKS; bank++)
-    {
-      for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
-      {
-        float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
-        float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
-        FEB_Console_Printf("V,%d,%d,%.3f,%.3f\r\n", bank + 1, cell + 1, v_c, v_s);
-      }
-    }
-    /* Temperature readings */
-    for (int bank = 0; bank < FEB_NBANKS; bank++)
-    {
-      for (int sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
-      {
-        float temp = FEB_ADBMS_GET_Cell_Temperature(bank, sensor);
-        FEB_Console_Printf("T,%d,%d,%.1f\r\n", bank + 1, sensor + 1, temp);
-      }
-    }
-  }
-  else
-  {
-    FEB_Console_Printf("Unknown mode: %s\r\n", mode);
-    FEB_Console_Printf("Usage: BMS|csv|[volts|temps|all]\r\n");
-  }
 }
 
 /* ============================================================================
@@ -742,6 +693,17 @@ static void subcmd_canstatus(int argc, char *argv[])
 }
 
 /* ============================================================================
+ * Subcommand: cell-stats - Combined cell voltages and temperatures
+ * ============================================================================ */
+static void subcmd_cell_stats(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  subcmd_cells(0, NULL);
+  subcmd_temps(0, NULL);
+}
+
+/* ============================================================================
  * Help Display
  * ============================================================================ */
 static void print_bms_help(void)
@@ -750,9 +712,9 @@ static void print_bms_help(void)
   FEB_Console_Printf("  BMS|status              - Show BMS status summary\r\n");
   FEB_Console_Printf("  BMS|cells               - Show all cell voltages\r\n");
   FEB_Console_Printf("  BMS|temps               - Show temperature readings\r\n");
+  FEB_Console_Printf("  BMS|therm-raw           - Show raw thermistor voltages + ADC codes\r\n");
   FEB_Console_Printf("  BMS|state [<name>]      - Show/set BMS state\r\n");
   FEB_Console_Printf("  BMS|balance|on/off      - Control cell balancing\r\n");
-  FEB_Console_Printf("  BMS|dump                - Full accumulator status\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("Diagnostics:\r\n");
   FEB_Console_Printf("  BMS|gpio                - Show hardware I/O status\r\n");
@@ -763,12 +725,6 @@ static void print_bms_help(void)
   FEB_Console_Printf("  BMS|spi                 - Show isoSPI status\r\n");
   FEB_Console_Printf("  BMS|errors              - Show error summary\r\n");
   FEB_Console_Printf("  BMS|config              - Show configuration\r\n");
-  FEB_Console_Printf("\r\n");
-  FEB_Console_Printf("Data Export:\r\n");
-  FEB_Console_Printf("  BMS|csv                 - Show CSV export options\r\n");
-  FEB_Console_Printf("  BMS|csv|volts           - Cell voltages (CSV)\r\n");
-  FEB_Console_Printf("  BMS|csv|temps           - Temperature sensors (CSV)\r\n");
-  FEB_Console_Printf("  BMS|csv|all             - Combined voltages + temps (CSV)\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("Register Access:\r\n");
   FEB_Console_Printf("  BMS|reg|list            - List all ADBMS commands\r\n");
@@ -784,14 +740,337 @@ static void print_bms_help(void)
   FEB_Console_Printf("  BMS|canstop|<ch|all>    - Stop channel(s)\r\n");
   FEB_Console_Printf("  BMS|canstatus           - Show CAN ping/pong status\r\n");
   FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
+  FEB_Console_Printf("  BMS|csv|<tx_id>|<sub>   - CSV-capable subs: status, cells, temps,\r\n");
+  FEB_Console_Printf("                            therm-raw, state, gpio, ivt, tasks, mem,\r\n");
+  FEB_Console_Printf("                            errors, config, canstatus, cell-stats\r\n");
+  FEB_Console_Printf("  BMS|csv|<tx_id>|cell-stats - Voltages + temps (per cell / per sensor)\r\n");
+  FEB_Console_Printf("  *|csv|<tx_id>|hello     - Discover all boards (system command)\r\n");
+  FEB_Console_Printf("Each request emits: ack -> [rows] -> done\r\n");
+  FEB_Console_Printf("\r\n");
   FEB_Console_Printf("States: boot, lv_power, bus_health, precharge, energized,\r\n");
   FEB_Console_Printf("        drive, battery_free, charger_pre, charging, balance,\r\n");
   FEB_Console_Printf("        fault_bms, fault_bspd, fault_imd, fault_charging\r\n");
 }
 
+/* Forward declaration: the table-driven cmd_bms is defined after BMS_SUBCMDS
+ * (which references the per-subcommand descriptors below the CSV handlers). */
+static void cmd_bms(int argc, char *argv[]);
+
 /* ============================================================================
- * Main BMS Command Handler
+ * CSV-Mode Handlers (one per spec command, registered at top level)
  * ============================================================================ */
+
+/* Mandatory per spec. Emits voltage,<module>,<cell>,<primary>,<secondary>
+ * for every cell, then temp,<module>,<sensor>,<temp> for every sensor.
+ * "module" is the 1-indexed bank number. */
+static void cmd_cell_stats_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  for (int bank = 0; bank < FEB_NBANKS; bank++)
+  {
+    for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
+    {
+      float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
+      float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
+      FEB_Console_CsvEmit("voltage", "%d,%d,%.3f,%.3f", bank + 1, cell + 1, v_c, v_s);
+    }
+  }
+  for (int bank = 0; bank < FEB_NBANKS; bank++)
+  {
+    for (int sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
+    {
+      float temp = FEB_ADBMS_GET_Cell_Temperature(bank, sensor);
+      FEB_Console_CsvEmit("temp", "%d,%d,%.1f", bank + 1, sensor + 1, temp);
+    }
+  }
+}
+
+static void cmd_status_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  float min_c = 999.0f, max_c = 0.0f, min_s = 999.0f, max_s = 0.0f;
+  for (int bank = 0; bank < FEB_NBANKS; bank++)
+  {
+    for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
+    {
+      float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
+      float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
+      if (v_c > 0)
+      {
+        if (v_c < min_c)
+          min_c = v_c;
+        if (v_c > max_c)
+          max_c = v_c;
+      }
+      if (v_s > 0)
+      {
+        if (v_s < min_s)
+          min_s = v_s;
+        if (v_s > max_s)
+          max_s = v_s;
+      }
+    }
+  }
+
+  /* Body fields: state,pack_v,min_c,max_c,min_s,max_s,min_t,max_t,avg_t,balancing,err_type */
+  FEB_Console_CsvEmit("status", "%s,%.2f,%.3f,%.3f,%.3f,%.3f,%.1f,%.1f,%.1f,%d,0x%02X",
+                      FEB_CAN_State_GetStateName(FEB_SM_Get_Current_State()), FEB_ADBMS_GET_ACC_Total_Voltage(), min_c,
+                      max_c, min_s, max_s, FEB_ADBMS_GET_ACC_MIN_Temp(), FEB_ADBMS_GET_ACC_MAX_Temp(),
+                      FEB_ADBMS_GET_ACC_AVG_Temp(), FEB_Cell_Balancing_Status() ? 1 : 0, FEB_ADBMS_Get_Error_Type());
+}
+
+static void cmd_cells_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  for (int bank = 0; bank < FEB_NBANKS; bank++)
+  {
+    for (int cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
+    {
+      float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
+      float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
+      FEB_Console_CsvEmit("voltage", "%d,%d,%.3f,%.3f", bank + 1, cell + 1, v_c, v_s);
+    }
+  }
+}
+
+static void cmd_temps_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  for (int bank = 0; bank < FEB_NBANKS; bank++)
+  {
+    for (int sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
+    {
+      float temp = FEB_ADBMS_GET_Cell_Temperature(bank, sensor);
+      FEB_Console_CsvEmit("temp", "%d,%d,%.1f", bank + 1, sensor + 1, temp);
+    }
+  }
+}
+
+/* Body fields: module,ic,mux,channel,raw_code,voltage_mV
+ * raw_code == 0xFFFF and voltage_mV == NaN indicates aux-PEC failure. */
+static void cmd_therm_raw_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  for (int bank = 0; bank < FEB_NBANKS; bank++)
+  {
+    for (int ic = 0; ic < FEB_NUM_ICPBANK; ic++)
+    {
+      for (int mux = 0; mux < 6; mux++)
+      {
+        for (int ch = 0; ch < 7; ch++)
+        {
+          uint16_t sensor = (uint16_t)(ic * FEB_NUM_TEMP_SENSE_PER_IC + mux * 7 + ch);
+          uint16_t code = FEB_ADBMS_GET_Therm_Raw_Code((uint8_t)bank, sensor);
+          float mV = FEB_ADBMS_GET_Therm_Raw_mV((uint8_t)bank, sensor);
+          FEB_Console_CsvEmit("therm-raw", "%d,%d,%d,%d,0x%04X,%.1f", bank + 1, ic + 1, mux + 1, ch, code, mV);
+        }
+      }
+    }
+  }
+}
+
+static void cmd_state_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  BMS_State_t s = FEB_SM_Get_Current_State();
+  FEB_Console_CsvEmit("state", "%s,%d", FEB_CAN_State_GetStateName(s), (int)s);
+}
+
+static void cmd_ivt_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  const FEB_CAN_IVT_Data_t *ivt = FEB_CAN_IVT_GetData();
+  uint32_t now = HAL_GetTick();
+  uint32_t age = now - ivt->last_rx_tick;
+  bool fresh = FEB_CAN_IVT_IsDataFresh(1000);
+  FEB_Console_CsvEmit("ivt", "%.3f,%.3f,%.3f,%.3f,%.1f,%lu,%d", ivt->current_mA / 1000.0f, ivt->voltage_1_mV / 1000.0f,
+                      ivt->voltage_2_mV / 1000.0f, ivt->voltage_3_mV / 1000.0f, ivt->temperature_C, (unsigned long)age,
+                      fresh ? 1 : 0);
+}
+
+static void cmd_errors_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  uint8_t err = FEB_ADBMS_Get_Error_Type();
+  BMS_State_t state = FEB_SM_Get_Current_State();
+  FEB_Console_CsvEmit("errors", "0x%02X,\"%s\",%s,%d,%d", err, err_type_name(err), FEB_CAN_State_GetStateName(state),
+                      FEB_SM_Is_Faulted() ? 1 : 0, FEB_SM_Is_HV_Active() ? 1 : 0);
+}
+
+static void cmd_config_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  const char *mode_str;
+  switch (ISOSPI_MODE)
+  {
+  case ISOSPI_MODE_REDUNDANT:
+    mode_str = "REDUNDANT";
+    break;
+  case ISOSPI_MODE_SPI1_ONLY:
+    mode_str = "SPI1_ONLY";
+    break;
+  case ISOSPI_MODE_SPI2_ONLY:
+    mode_str = "SPI2_ONLY";
+    break;
+  default:
+    mode_str = "UNKNOWN";
+    break;
+  }
+  FEB_Console_CsvEmit("config", "%d,%d,%d,%d,%s,%.3f,%.3f,%.1f,%.1f", FEB_NBANKS, FEB_NUM_ICPBANK,
+                      FEB_NUM_CELLS_PER_BANK, FEB_NUM_TEMP_SENSORS, mode_str, FEB_CELL_MAX_VOLTAGE_MV / 1000.0f,
+                      FEB_CELL_MIN_VOLTAGE_MV / 1000.0f, FEB_CELL_MAX_TEMP_DC / 10.0f, FEB_CELL_MIN_TEMP_DC / 10.0f);
+}
+
+static void cmd_gpio_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  /* Body: air_plus_cmd,precharge_cmd,air_minus_sense,air_plus_sense,
+   *       shutdown,imd_ok,tsms_active,reset_btn,hv_safe  (all 0/1) */
+  FEB_Console_CsvEmit("gpio", "%d,%d,%d,%d,%d,%d,%d,%d,%d", FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0,
+                      FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0,
+                      FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0,
+                      FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0,
+                      FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0,
+                      FEB_HW_IMD_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0,
+                      FEB_HW_TSMS_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0, FEB_HW_Reset_Button_Pressed() ? 1 : 0,
+                      FEB_HW_Is_HV_Safe() ? 1 : 0);
+}
+
+static void cmd_mem_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  size_t total = configTOTAL_HEAP_SIZE;
+  size_t free_heap = xPortGetFreeHeapSize();
+  size_t min_free = xPortGetMinimumEverFreeHeapSize();
+  size_t used = total - free_heap;
+  uint32_t percent = (used * 100) / (total > 0 ? total : 1);
+  FEB_Console_CsvEmit("mem", "%u,%u,%u,%u,%u", (unsigned)total, (unsigned)free_heap, (unsigned)min_free, (unsigned)used,
+                      (unsigned)percent);
+}
+
+static void cmd_tasks_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  struct
+  {
+    const char *name;
+    osThreadId_t handle;
+  } tasks[] = {{"uartRxTask", uartRxTaskHandle},
+               {"ADBMSTask", ADBMSTaskHandle},
+               {"TPSTask", TPSTaskHandle},
+               {"BMSTaskRx", BMSTaskRxHandle},
+               {"BMSTaskTx", BMSTaskTxHandle}};
+  for (size_t i = 0; i < sizeof(tasks) / sizeof(tasks[0]); i++)
+  {
+    if (tasks[i].handle != NULL)
+    {
+      UBaseType_t hwm = uxTaskGetStackHighWaterMark((TaskHandle_t)tasks[i].handle);
+      FEB_Console_CsvEmit("task", "%s,%u", tasks[i].name, (unsigned)hwm);
+    }
+  }
+}
+
+static void cmd_canstatus_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  for (int ch = 1; ch <= 4; ch++)
+  {
+    FEB_PingPong_Mode_t mode = FEB_CAN_PingPong_GetMode((uint8_t)ch);
+    uint32_t tx_count = FEB_CAN_PingPong_GetTxCount((uint8_t)ch);
+    uint32_t rx_count = FEB_CAN_PingPong_GetRxCount((uint8_t)ch);
+    int32_t last_rx = FEB_CAN_PingPong_GetLastCounter((uint8_t)ch);
+    FEB_Console_CsvEmit("can", "%d,0x%02X,%s,%u,%u,%d", ch, (unsigned int)pingpong_frame_ids[ch - 1], mode_names[mode],
+                        (unsigned)tx_count, (unsigned)rx_count, (int)last_rx);
+  }
+}
+
+/* ============================================================================
+ * Command Descriptors
+ *
+ * One unified FEB_Console_Cmd_t per subcommand: .handler is the human text
+ * impl, .csv_handler is the machine-readable CSV impl. Either may be NULL if
+ * that mode isn't supported. Each is registered top-level so the CSV parser's
+ * `BMS|csv|<tx_id>|<name>` lookup resolves directly; bare-name text invocation
+ * also works as a shorthand. The canonical text form remains `BMS|<sub>` via
+ * the cmd_bms mega-dispatcher.
+ * ============================================================================ */
+static const FEB_Console_Cmd_t bms_status_cmd = {
+    .name = "status", .help = "Status summary", .handler = subcmd_status, .csv_handler = cmd_status_csv};
+static const FEB_Console_Cmd_t bms_cells_cmd = {
+    .name = "cells", .help = "Per-cell voltages (C/S)", .handler = subcmd_cells, .csv_handler = cmd_cells_csv};
+static const FEB_Console_Cmd_t bms_temps_cmd = {
+    .name = "temps", .help = "Per-sensor temperatures", .handler = subcmd_temps, .csv_handler = cmd_temps_csv};
+static const FEB_Console_Cmd_t bms_therm_raw_cmd = {.name = "therm-raw",
+                                                    .help = "Raw thermistor voltages and ADC codes (42 channels)",
+                                                    .handler = subcmd_therm_raw,
+                                                    .csv_handler = cmd_therm_raw_csv};
+static const FEB_Console_Cmd_t bms_state_cmd = {
+    .name = "state", .help = "Show/set BMS state", .handler = subcmd_state, .csv_handler = cmd_state_csv};
+static const FEB_Console_Cmd_t bms_balance_cmd = {
+    .name = "balance", .help = "Control cell balancing (on/off)", .handler = subcmd_balance, .csv_handler = NULL};
+static const FEB_Console_Cmd_t bms_gpio_cmd = {
+    .name = "gpio", .help = "Hardware I/O status", .handler = subcmd_gpio, .csv_handler = cmd_gpio_csv};
+static const FEB_Console_Cmd_t bms_ivt_cmd = {
+    .name = "ivt", .help = "IVT sensor data", .handler = subcmd_ivt, .csv_handler = cmd_ivt_csv};
+static const FEB_Console_Cmd_t bms_tasks_cmd = {
+    .name = "tasks", .help = "FreeRTOS task stack stats", .handler = subcmd_tasks, .csv_handler = cmd_tasks_csv};
+static const FEB_Console_Cmd_t bms_mem_cmd = {
+    .name = "mem", .help = "Heap usage", .handler = subcmd_mem, .csv_handler = cmd_mem_csv};
+static const FEB_Console_Cmd_t bms_cell_cmd = {
+    .name = "cell", .help = "Single cell details: cell|<bank>|<cell>", .handler = subcmd_cell, .csv_handler = NULL};
+static const FEB_Console_Cmd_t bms_spi_cmd = {
+    .name = "spi", .help = "isoSPI status", .handler = subcmd_spi, .csv_handler = NULL};
+static const FEB_Console_Cmd_t bms_errors_cmd = {
+    .name = "errors", .help = "Error summary", .handler = subcmd_errors, .csv_handler = cmd_errors_csv};
+static const FEB_Console_Cmd_t bms_config_cmd = {
+    .name = "config", .help = "Configuration constants", .handler = subcmd_config, .csv_handler = cmd_config_csv};
+static const FEB_Console_Cmd_t bms_ping_cmd = {
+    .name = "ping", .help = "Start CAN ping: ping|<1-4>", .handler = subcmd_ping, .csv_handler = NULL};
+static const FEB_Console_Cmd_t bms_pong_cmd = {
+    .name = "pong", .help = "Start CAN pong: pong|<1-4>", .handler = subcmd_pong, .csv_handler = NULL};
+static const FEB_Console_Cmd_t bms_canstop_cmd = {
+    .name = "canstop", .help = "Stop CAN ch: canstop|<1-4|all>", .handler = subcmd_canstop, .csv_handler = NULL};
+static const FEB_Console_Cmd_t bms_canstatus_cmd = {
+    .name = "canstatus", .help = "CAN ping/pong status", .handler = subcmd_canstatus, .csv_handler = cmd_canstatus_csv};
+static const FEB_Console_Cmd_t bms_cell_stats_cmd = {.name = "cell-stats",
+                                                     .help = "Voltages + temps (per cell / per sensor)",
+                                                     .handler = subcmd_cell_stats,
+                                                     .csv_handler = cmd_cell_stats_csv};
+static const FEB_Console_Cmd_t bms_reg_cmd = {.name = "reg",
+                                              .help = "ADBMS register access (reg|list, reg|read|<n>, reg|dump, ...)",
+                                              .handler = ADBMS_RegSubcmd,
+                                              .csv_handler = NULL};
+
+/* Per-board subcommand table. cmd_bms iterates this for `BMS|<sub>` dispatch.
+ * Adding a subcommand: define its FEB_Console_Cmd_t above and append a pointer
+ * here. Registration auto-picks it up. */
+static const FEB_Console_Cmd_t *const BMS_SUBCMDS[] = {
+    &bms_status_cmd,  &bms_cells_cmd,   &bms_temps_cmd,     &bms_therm_raw_cmd,  &bms_state_cmd,
+    &bms_balance_cmd, &bms_gpio_cmd,    &bms_ivt_cmd,       &bms_tasks_cmd,      &bms_mem_cmd,
+    &bms_cell_cmd,    &bms_spi_cmd,     &bms_errors_cmd,    &bms_config_cmd,     &bms_ping_cmd,
+    &bms_pong_cmd,    &bms_canstop_cmd, &bms_canstatus_cmd, &bms_cell_stats_cmd, &bms_reg_cmd,
+};
+#define BMS_SUBCMDS_COUNT (sizeof(BMS_SUBCMDS) / sizeof(BMS_SUBCMDS[0]))
+
+/* Mega-dispatcher: `BMS|<sub>|<args>` looks up `<sub>` in the table and calls
+ * its text handler. Bare `<sub>` (no BMS prefix) also works because each
+ * subcommand is registered top-level. */
 static void cmd_bms(int argc, char *argv[])
 {
   if (argc < 2)
@@ -799,105 +1078,31 @@ static void cmd_bms(int argc, char *argv[])
     print_bms_help();
     return;
   }
-
   const char *subcmd = argv[1];
-
-  /* Dispatch to subcommand handler */
-  if (FEB_strcasecmp(subcmd, "status") == 0)
-  {
-    subcmd_status(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "cells") == 0)
-  {
-    subcmd_cells(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "temps") == 0)
-  {
-    subcmd_temps(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "state") == 0)
-  {
-    subcmd_state(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "balance") == 0)
-  {
-    subcmd_balance(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "dump") == 0)
-  {
-    subcmd_dump(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "ping") == 0)
-  {
-    subcmd_ping(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "pong") == 0)
-  {
-    subcmd_pong(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "canstop") == 0 || FEB_strcasecmp(subcmd, "stop") == 0)
+  /* Legacy alias: "stop" maps to canstop. */
+  if (FEB_strcasecmp(subcmd, "stop") == 0)
   {
     subcmd_canstop(argc - 1, argv + 1);
+    return;
   }
-  else if (FEB_strcasecmp(subcmd, "canstatus") == 0)
+  for (size_t i = 0; i < BMS_SUBCMDS_COUNT; i++)
   {
-    subcmd_canstatus(argc - 1, argv + 1);
+    if (FEB_strcasecmp(BMS_SUBCMDS[i]->name, subcmd) == 0)
+    {
+      BMS_SUBCMDS[i]->handler(argc - 1, argv + 1);
+      return;
+    }
   }
-  /* Diagnostic commands */
-  else if (FEB_strcasecmp(subcmd, "gpio") == 0)
-  {
-    subcmd_gpio(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "ivt") == 0)
-  {
-    subcmd_ivt(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "tasks") == 0)
-  {
-    subcmd_tasks(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "mem") == 0)
-  {
-    subcmd_mem(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "cell") == 0)
-  {
-    subcmd_cell(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "spi") == 0)
-  {
-    subcmd_spi(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "errors") == 0)
-  {
-    subcmd_errors(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "config") == 0)
-  {
-    subcmd_config(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "csv") == 0)
-  {
-    subcmd_csv(argc - 1, argv + 1);
-  }
-  else if (FEB_strcasecmp(subcmd, "reg") == 0)
-  {
-    ADBMS_RegSubcmd(argc - 1, argv + 1);
-  }
-  else
-  {
-    FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
-    print_bms_help();
-  }
+  FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
+  print_bms_help();
 }
 
-/* ============================================================================
- * Command Descriptor
- * ============================================================================ */
+/* Text-mode entry point: `BMS|<subcmd>|<args>` dispatches via cmd_bms. */
 static const FEB_Console_Cmd_t bms_cmd = {
     .name = "BMS",
-    .help = "BMS commands (BMS|status, BMS|cells, BMS|state, etc.)",
+    .help = "BMS commands (BMS|<sub>) - run BMS alone for full list",
     .handler = cmd_bms,
+    .csv_handler = NULL,
 };
 
 /* ============================================================================
@@ -905,5 +1110,17 @@ static const FEB_Console_Cmd_t bms_cmd = {
  * ============================================================================ */
 void BMS_RegisterCommands(void)
 {
-  FEB_Console_Register(&bms_cmd);
+  int rc = FEB_Console_Register(&bms_cmd);
+  if (rc != 0)
+  {
+    LOG_E(TAG_BMS, "Failed to register '%s' (rc=%d)", bms_cmd.name, rc);
+  }
+  for (size_t i = 0; i < BMS_SUBCMDS_COUNT; i++)
+  {
+    rc = FEB_Console_Register(BMS_SUBCMDS[i]);
+    if (rc != 0)
+    {
+      LOG_E(TAG_BMS, "Failed to register '%s' (rc=%d)", BMS_SUBCMDS[i]->name, rc);
+    }
+  }
 }

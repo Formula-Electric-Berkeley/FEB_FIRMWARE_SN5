@@ -45,7 +45,7 @@ extern "C"
   extern const FEB_Console_Cmd_t feb_cmd_echo;
 
   /**
-   * @brief help - Show available commands
+   * @brief help - Show available commands (human-readable)
    *
    * Usage: help [command]
    * Example: help
@@ -54,32 +54,40 @@ extern "C"
   extern const FEB_Console_Cmd_t feb_cmd_help;
 
   /**
-   * @brief version - Show firmware version and build info
+   * @brief commands - List registered commands (CSV protocol)
    *
-   * Usage: version
+   * CSV usage (primary): <board>|csv|<tx>|commands
+   * Text usage: commands    (prints name + description per line)
+   */
+  extern const FEB_Console_Cmd_t feb_cmd_commands;
+
+  /**
+   * @brief hello - Heartbeat / discovery command
+   *
+   * CSV usage: <board>|csv|<tx>|hello    or    *|csv|<tx>|hello
+   * Text usage: hello
+   */
+  extern const FEB_Console_Cmd_t feb_cmd_hello;
+
+  /**
+   * @brief version - Show firmware version and build info
    */
   extern const FEB_Console_Cmd_t feb_cmd_version;
 
   /**
    * @brief uptime - Show system uptime
-   *
-   * Usage: uptime
    */
   extern const FEB_Console_Cmd_t feb_cmd_uptime;
 
   /**
    * @brief reboot - Perform software reset
-   *
-   * Usage: reboot
    */
   extern const FEB_Console_Cmd_t feb_cmd_reboot;
 
   /**
    * @brief log - Get/set log level
    *
-   * Usage: log
-   * Usage: log|<error|warn|info|debug|trace|none>
-   * Example: log|debug
+   * Usage: log | log|<error|warn|info|debug|trace|none>
    */
   extern const FEB_Console_Cmd_t feb_cmd_log;
 

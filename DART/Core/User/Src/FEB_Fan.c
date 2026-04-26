@@ -59,9 +59,9 @@ void FEB_Fan_Init(void)
   FEB_Fan_PWM_Init();
   for (size_t i = 0; i < NUM_FANS; ++i)
   {
-    commanded_percent[i] = (uint8_t)(PWM_START_PERCENT * 100.0f);
+    commanded_percent[i] = (uint8_t)(PWM_START_PERCENT * 100u);
   }
-  FEB_Fan_All_Speed_Set((uint32_t)(PWM_COUNTER * PWM_START_PERCENT)); // starts at 100% duty cycle
+  FEB_Fan_All_Speed_Set(PWM_COUNTER * PWM_START_PERCENT); // starts at 100% duty cycle
   FEB_Fan_TACH_Init();
 }
 
@@ -84,23 +84,24 @@ void FEB_Fan_CAN_Msg_Process(uint8_t *FEB_CAN_Rx_Data)
     return;
   }
 
-  float fanPercent = 0.0f;
+  uint32_t fan_pct = 0;
   if (last_max_cell_temp > TEMP_START_FAN)
   {
-    float span = (float)(TEMP_END_FAN - TEMP_START_FAN);
-    fanPercent = (last_max_cell_temp - TEMP_START_FAN) / span;
-    if (fanPercent > 1.0f)
+    const int32_t span = TEMP_END_FAN - TEMP_START_FAN;
+    int32_t delta = (int32_t)last_max_cell_temp - TEMP_START_FAN;
+    fan_pct = (uint32_t)((delta * 100) / span);
+    if (fan_pct > 100u)
     {
-      fanPercent = 1.0f;
+      fan_pct = 100u;
     }
   }
 
-  uint8_t pct = (uint8_t)(fanPercent * 100.0f);
+  uint8_t pct = (uint8_t)fan_pct;
   for (size_t i = 0; i < NUM_FANS; ++i)
   {
     commanded_percent[i] = pct;
   }
-  FEB_Fan_All_Speed_Set((uint32_t)(PWM_COUNTER * fanPercent));
+  FEB_Fan_All_Speed_Set((PWM_COUNTER * fan_pct) / 100u);
 }
 
 void FEB_Fan_Watchdog_Tick(void)

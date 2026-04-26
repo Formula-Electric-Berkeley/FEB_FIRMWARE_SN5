@@ -18,13 +18,10 @@
 // Total number of cells per bank
 #define FEB_NUM_CELLS_PER_BANK (FEB_NUM_CELLS_PER_IC * FEB_NUM_ICPBANK)
 
-// Alias for compatibility
-#define FEB_NUM_CELL_PER_BANK FEB_NUM_CELLS_PER_BANK
+// Number of temperature sensors per IC: 6 MUXes × 7 channels = 42
+#define FEB_NUM_TEMP_SENSE_PER_IC 42
 
-// Number of temperature sensors per IC (for MUX reading)
-#define FEB_NUM_TEMP_SENSE_PER_IC 41
-
-// Total number of temperature sensors per bank (10 per IC × 2 ICs)
+// Total number of temperature sensors per bank
 #define FEB_NUM_TEMP_SENSORS (FEB_NUM_TEMP_SENSE_PER_IC * FEB_NUM_ICPBANK)
 
 // ********************************** ADBMS6830B ADC Conversion Constants ********
@@ -129,6 +126,8 @@ typedef struct
   uint8_t badReadV;                                   // Bad voltage read counter
   float temp_sensor_readings_V[FEB_NUM_TEMP_SENSORS]; // Temperature sensor readings
   uint8_t temp_violations[FEB_NUM_TEMP_SENSORS];      // Per-sensor violation counters
+  uint16_t therm_raw_codes[FEB_NUM_TEMP_SENSORS];     // Raw ADC codes (0xFFFF = PEC failure)
+  float therm_raw_voltages_mV[FEB_NUM_TEMP_SENSORS];  // Converted mV (NaN = PEC failure)
 } bank_data_t;
 
 typedef struct

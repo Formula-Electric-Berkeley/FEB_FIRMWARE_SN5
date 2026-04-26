@@ -21,7 +21,7 @@ REPO_ROOT="$SCRIPT_DIR/.."
 MANIFEST_FILE="$REPO_ROOT/.cubemx-manifest.json"
 
 # Available boards (same as cubemx.sh)
-BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART_TEST")
+BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART" "UART_TEST")
 
 # IOC metadata patterns to EXCLUDE from hash (GUI-only, don't affect code generation)
 EXCLUDE_PATTERNS=(
@@ -620,6 +620,7 @@ Examples:
   ./scripts/cubemx-sync.sh --status              # See current sync state
   ./scripts/cubemx-sync.sh --update              # Update manifest (all boards)
   ./scripts/cubemx-sync.sh --update -b BMS       # Update manifest (BMS only)
+  ./scripts/cubemx-sync.sh --update -b all       # Update manifest (all boards)
   ./scripts/cubemx-sync.sh --validate            # CI validation
   ./scripts/cubemx-sync.sh --check               # Pre-commit check
 
@@ -629,7 +630,7 @@ Workflow:
   3. Update manifest: ./scripts/cubemx-sync.sh --update -b BOARD
   4. Commit all changes
 
-Boards: ${BOARDS[*]}
+Boards: ${BOARDS[*]} (or 'all')
 EOF
 }
 
@@ -679,10 +680,10 @@ main() {
     done
 
     # Validate board if specified
-    if [ -n "$board" ]; then
+    if [ -n "$board" ] && [ "$board" != "all" ]; then
         if ! is_valid_board "$board"; then
             log_error "Invalid board: $board"
-            echo "Valid boards: ${BOARDS[*]}"
+            echo "Valid boards: ${BOARDS[*]} all"
             exit 1
         fi
     fi

@@ -306,3 +306,14 @@ Status codes:
 - `FEB_TPS_ERR_NOT_INIT` - Library/device not initialized
 - `FEB_TPS_ERR_CONFIG_MISMATCH` - Config readback mismatch
 - `FEB_TPS_ERR_MAX_DEVICES` - Maximum device count exceeded
+
+## Boards Using This Library
+
+- [BMS](../../BMS/README.md) — single device at 0x40, 2 mOhm shunt, polled from a FreeRTOS task
+- [LVPDB](../../LVPDB/README.md) — 7 devices with per-device EN/PG/Alert GPIO, batch-polled
+- [PCU](../../PCU/README.md) — single device at 0x40, 12 mOhm shunt, rate-limited
+- [Sensor_Nodes](../../Sensor_Nodes/README.md) — single device
+
+## See Also
+
+- [`common/README.md`](../README.md) — library index

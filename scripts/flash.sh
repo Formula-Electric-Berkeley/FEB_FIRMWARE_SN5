@@ -13,7 +13,7 @@
 set -e
 
 # Available boards
-BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART_TEST")
+BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART" "UART_TEST")
 
 # Colors for output
 RED='\033[0;31m'
@@ -24,20 +24,30 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
+# All log helpers write to stderr. Some callers capture stdout via $(...)
+# for structured return values; routing diagnostics to stderr keeps them
+# visible in the terminal without contaminating captured output.
 log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
+    echo -e "${GREEN}[INFO]${NC} $1" >&2
 }
 
 log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+    echo -e "${YELLOW}[WARN]${NC} $1" >&2
 }
 
 log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
 log_header() {
-    echo -e "\n${BLUE}=== $1 ===${NC}\n"
+    echo -e "\n${BLUE}=== $1 ===${NC}\n" >&2
+}
+
+# RFC 4180: double any embedded quote and wrap the field in quotes so commas,
+# quotes, and CR/LF in elf paths or usernames don't corrupt the row.
+csv_escape() {
+    local field="$1"
+    printf '"%s"' "${field//\"/\"\"}"
 }
 
 # Check if STM32_Programmer_CLI is available
@@ -46,21 +56,37 @@ check_prerequisites() {
         return 0
     fi
 
-    # Check common installation paths
-    local common_paths=(
+    # Check common installation paths. Globs match version-suffixed installs
+    # (e.g., STM32CubeCLT_1.19.0). Most entries list both macOS/Linux style
+    # (no .exe) and Windows Git Bash style (.exe) so the same script handles all.
+    local common_globs=(
+        # macOS (STM32CubeProgrammer app bundle)
         "/Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/MacOs/bin/STM32_Programmer_CLI"
-        "/opt/st/stm32cubeclt/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
-        "$HOME/STM32CubeCLT/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
+        # macOS (STM32CubeCLT install)
+        "/opt/ST/STM32CubeCLT"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
+        "/Applications/STMicroelectronics/STM32CubeCLT"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
+        # Linux
+        "/opt/st/stm32cubeclt"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
         "/usr/local/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
+        # User-home install (any platform)
+        "$HOME/STM32CubeCLT"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
+        # Windows Git Bash
+        "/c/ST/STM32CubeCLT"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe"
+        "/c/Program Files/STMicroelectronics/STM32CubeCLT"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe"
     )
 
-    for path in "${common_paths[@]}"; do
-        if [ -x "$path" ]; then
-            log_warn "Found STM32_Programmer_CLI at: $path"
-            log_warn "Add it to your PATH for convenience."
-            export PATH="$(dirname "$path"):$PATH"
-            return 0
-        fi
+    local path
+    for glob in "${common_globs[@]}"; do
+        # compgen -G expands the glob without IFS word-splitting, so paths
+        # containing spaces (e.g. "/c/Program Files/...") match correctly.
+        while IFS= read -r path; do
+            if [ -x "$path" ]; then
+                log_warn "Found STM32_Programmer_CLI at: $path"
+                log_warn "Add it to your PATH for convenience."
+                export PATH="$(dirname "$path"):$PATH"
+                return 0
+            fi
+        done < <(compgen -G "$glob" || true)
     done
 
     return 1
@@ -196,25 +222,162 @@ is_valid_board() {
     return 1
 }
 
+# Patch an ELF with flash-time metadata using scripts/flash-patcher.py.
+# Writes results to globals so the caller's parent shell sees them:
+#   FEB_FLASH_FILE          - path to flash (patched on success, original on fallback)
+#   FEB_LAST_FLASH_METADATA - key=value lines from flash-patcher --print, or empty
+# Must NOT be invoked via $(...) — that runs in a subshell and discards globals.
+patch_elf_for_flash() {
+    local src_elf="$1"
+    FEB_FLASH_FILE="$src_elf"
+
+    if [[ "$src_elf" != *.elf ]]; then
+        return 0
+    fi
+
+    local script_dir
+    script_dir="$(get_script_dir)"
+    local patcher="$script_dir/flash-patcher.py"
+
+    # -f (not -x) because the patcher is always invoked via `python3 "$patcher"` —
+    # the execute bit is irrelevant; only readability matters.
+    if [ ! -f "$patcher" ]; then
+        log_warn "flash-patcher.py not found at $patcher - flashing without metadata stamp"
+        return 0
+    fi
+
+    if ! command -v python3 &> /dev/null; then
+        log_warn "python3 not found - flashing without metadata stamp"
+        return 0
+    fi
+
+    local patched_elf="${src_elf%.elf}.patched.elf"
+
+    # Capture metadata for logging via --print mode. --print emits key=value
+    # lines on stdout; human-readable progress goes to stderr via the logger.
+    # Redirect stderr to a temp file so failure diagnostics surface instead of
+    # being swallowed.
+    local metadata
+    local patcher_stderr
+    patcher_stderr=$(mktemp)
+    if ! metadata=$(python3 "$patcher" --elf "$src_elf" --out "$patched_elf" --print 2>"$patcher_stderr"); then
+        local err_detail
+        err_detail=$(<"$patcher_stderr")
+        rm -f "$patcher_stderr"
+        if [ -n "$err_detail" ]; then
+            log_warn "flash-patcher failed - flashing original ELF unpatched: $err_detail"
+        else
+            log_warn "flash-patcher failed - flashing original ELF unpatched"
+        fi
+        return 0
+    fi
+    rm -f "$patcher_stderr"
+
+    # Echo metadata back through stderr for human visibility. Keys are
+    # flash_utc / flasher_user / flasher_host / elf (from --print).
+    log_info "Stamped flash metadata:"
+    while IFS='=' read -r k v; do
+        case "$k" in
+            flash_utc|flasher_user|flasher_host)
+                printf "  %-14s %s\n" "$k" "$v" >&2
+                ;;
+        esac
+    done <<< "$metadata"
+
+    FEB_LAST_FLASH_METADATA="$metadata"
+    FEB_FLASH_FILE="$patched_elf"
+}
+
+# Append a row to build/flash_history.csv after a successful flash.
+# Silent on missing build dir (standalone mode).
+record_flash() {
+    local board_name="$1"
+    local elf_file="$2"
+    local exit_code="$3"
+
+    # Only log successful flashes - failures are noise.
+    if [ "$exit_code" -ne 0 ]; then
+        return 0
+    fi
+
+    local script_dir
+    script_dir="$(get_script_dir)"
+    local build_dir
+    build_dir="$(get_build_dir)"
+
+    # Skip logging if we have no writable build directory (standalone).
+    if [ ! -d "$build_dir" ]; then
+        return 0
+    fi
+
+    local history="$build_dir/../flash_history.csv"
+    local flash_utc="" flasher_user="" flasher_host=""
+    if [ -n "${FEB_LAST_FLASH_METADATA:-}" ]; then
+        while IFS='=' read -r k v; do
+            case "$k" in
+                flash_utc)    flash_utc="$v" ;;
+                flasher_user) flasher_user="$v" ;;
+                flasher_host) flasher_host="$v" ;;
+            esac
+        done <<< "$FEB_LAST_FLASH_METADATA"
+    fi
+    if [ -z "$flash_utc" ]; then
+        flash_utc=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
+    fi
+    if [ -z "$flasher_user" ]; then
+        flasher_user="${USER:-unknown}"
+    fi
+    if [ -z "$flasher_host" ]; then
+        flasher_host=$(hostname -s 2>/dev/null || echo "unknown")
+    fi
+
+    # Write header on first append.
+    if [ ! -f "$history" ]; then
+        echo "flash_utc,board,elf,flasher_user,flasher_host" > "$history"
+    fi
+    printf '%s,%s,%s,%s,%s\n' \
+        "$(csv_escape "$flash_utc")" \
+        "$(csv_escape "${board_name:-unknown}")" \
+        "$(csv_escape "$elf_file")" \
+        "$(csv_escape "$flasher_user")" \
+        "$(csv_escape "$flasher_host")" >> "$history"
+    log_info "Recorded flash in $(basename "$history")"
+}
+
 # Flash a target file
 flash_target() {
     local target_file="$1"
+    local board_name="${2:-}"
 
     if [ ! -f "$target_file" ]; then
         log_error "File not found: $target_file"
         return 1
     fi
 
-    log_info "Flashing: $target_file"
+    # Reset globals; patch_elf_for_flash populates them.
+    FEB_LAST_FLASH_METADATA=""
+    FEB_FLASH_FILE=""
+
+    # Stamp flash-time provenance into the ELF (falls back to original
+    # on any failure so legacy/missing-section ELFs still flash).
+    # Direct call (not $()) so the function's global assignments survive.
+    patch_elf_for_flash "$target_file"
+    local flash_file="$FEB_FLASH_FILE"
+
+    log_info "Flashing: $flash_file"
     echo ""
 
-    STM32_Programmer_CLI --connect port=swd --download "$target_file" -hardRst -rst --start
-
-    local exit_code=$?
+    # set -e at the top of this script would abort before we can record
+    # the failure; '|| exit_code=$?' keeps the script alive so the logging
+    # and record_flash calls below run on both success and failure.
+    local exit_code=0
+    STM32_Programmer_CLI --connect port=swd --download "$flash_file" -hardRst -rst --start \
+        || exit_code=$?
     echo ""
 
     if [ $exit_code -eq 0 ]; then
         log_info "Flash completed successfully!"
+        record_flash "$board_name" "$flash_file" $exit_code
     else
         log_error "Flash failed with exit code: $exit_code"
     fi
@@ -259,7 +422,7 @@ flash_board() {
         fi
     fi
 
-    flash_target "$elf_path"
+    flash_target "$elf_path" "$board"
 }
 
 # Get file modification time (cross-platform)
@@ -318,7 +481,7 @@ interactive_select() {
         q|Q|quit|exit)
             return 1
             ;;
-        [1-8])
+        [1-9])
             local index=$((selection - 1))
             if [ $index -ge 0 ] && [ $index -lt ${#BOARDS[@]} ]; then
                 flash_board "${BOARDS[$index]}"
@@ -373,7 +536,7 @@ show_help() {
     echo "Usage: ./scripts/flash.sh [options]"
     echo ""
     echo "Options:"
-    echo "  -b, --board <BOARD>    Flash specified board (BMS, DASH, DART, DCU, LVPDB, PCU, Sensor_Nodes)"
+    echo "  -b, --board <BOARD>    Flash specified board (BMS, DASH, DART, DCU, LVPDB, PCU, Sensor_Nodes, UART, UART_TEST)"
     echo "  -f, --file <PATH>      Flash a specific .elf/.bin/.hex file"
     echo "  -l, --loop             Loop mode: keep prompting for boards to flash"
     echo "      --list-probes      List connected SWD probes"
