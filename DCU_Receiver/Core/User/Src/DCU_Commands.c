@@ -221,10 +221,15 @@ static void cmd_radio_config(int argc, char *argv[])
 
   if (FEB_strcasecmp(param, "freq") == 0)
   {
-    if (rfm95_set_frequency(&s_debug_handle, (uint32_t)value))
-      FEB_Console_Printf("Frequency set to %ld Hz\r\n", value);
-    else
-      FEB_Console_Printf("Failed to set frequency\r\n");
+    if (value < 902000000 || value > 928000000) {
+      FEB_Console_Printf("Invalid frequency value");
+    }
+    else {
+      if (rfm95_set_frequency(&s_debug_handle, (uint32_t)value))
+        FEB_Console_Printf("Frequency set to %ld Hz\r\n", value);
+      else
+        FEB_Console_Printf("Failed to set frequency\r\n");
+    }
   }
   else if (FEB_strcasecmp(param, "power") == 0)
   {

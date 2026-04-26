@@ -5,6 +5,9 @@
             "shell": {
                 "executable": "cmd.exe",
                 "args": ["/d", "/c"]
+            },
+            "env": {
+                "PATH": "${env:LOCALAPPDATA}\\stm32cube\\bundles\\cmake\\4.0.1+st.3\\bin;${env:LOCALAPPDATA}\\stm32cube\\bundles\\gnu-tools-for-stm32\\14.3.1+st.2\\bin;${env:LOCALAPPDATA}\\stm32cube\\bundles\\programmer\\2.20.0\\bin;${env:PATH}"
             }
         }
     },

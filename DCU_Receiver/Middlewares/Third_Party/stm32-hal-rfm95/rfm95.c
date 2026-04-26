@@ -272,7 +272,7 @@ bool rfm95_init(rfm95_handle_t *handle)
 bool rfm95_set_power(rfm95_handle_t *handle, int8_t power)
 {
     /* Clamp power to valid range */
-    if (power < 2) power = 2;
+    if (power < 5) power = 5;
     if (power > 20) power = 20;
 
     handle->config.tx_power = power;

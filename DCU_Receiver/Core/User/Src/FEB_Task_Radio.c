@@ -8,9 +8,11 @@
 #include "FEB_RFM95.h"
 #include "feb_can_latest.h"
 #include "feb_log.h"
+#include "feb_uart.h"
 #include "cmsis_os.h"
 #include "stm32f4xx_hal.h"
 #include <string.h>
+#include <stdio.h>
 
 #define TAG "[Radio]"
 
@@ -23,7 +25,7 @@
 /* Role Selection - change for second device */
 #define RADIO_ROLE_PING 0
 #define RADIO_ROLE_PONG 1
-#define RADIO_ROLE RADIO_ROLE_PONG
+#define RADIO_ROLE RADIO_ROLE_PING
 
 /* Messages */
 static const char PING_MSG[] = "PING";
@@ -58,6 +60,21 @@ static void handle_radio_payload(const uint8_t *buf, uint8_t len)
       LOG_W(TAG, "CAN frame malformed: len=%u dlc=%u", (unsigned)len, (unsigned)dlc);
     }
   }
+}
+
+static void print_raw_packet(const uint8_t *buf, uint8_t len, int16_t rssi, int8_t snr)
+{
+  char line[128];
+  int pos = 0;
+  pos += snprintf(line + pos, sizeof(line) - pos, "RX[%d] RSSI=%d SNR=%d: ", len, rssi, snr);
+  for (uint8_t i = 0; i < len && pos < (int)(sizeof(line) - 4); i++)
+  {
+    pos += snprintf(line + pos, sizeof(line) - pos, "%02X ", buf[i]);
+  }
+  line[pos++] = '\r';
+  line[pos++] = '\n';
+  FEB_UART_Write(FEB_UART_INSTANCE_1, (const uint8_t *)line, pos);
+  FEB_UART_Write(FEB_UART_INSTANCE_2, (const uint8_t *)line, pos);
 }
 
 static volatile bool s_listen_mode = false;
@@ -122,6 +139,7 @@ void StartRadioTask(void *argument)
       {
         LOG_I(TAG, "[listen] RX %u bytes, RSSI=%d, SNR=%d",
               rx_len, FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
+        print_raw_packet(rx_buffer, rx_len, FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
         handle_radio_payload(rx_buffer, rx_len);
       }
       osDelay(pdMS_TO_TICKS(10));
@@ -165,6 +183,7 @@ void StartRadioTask(void *argument)
     if (status == FEB_RFM95_OK)
     {
       LOG_I(TAG, "RX %u bytes, RSSI=%d, SNR=%d", rx_len, FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
+      print_raw_packet(rx_buffer, rx_len, FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
 
       if (rx_len >= 4 && memcmp(rx_buffer, PING_MSG, 4) == 0)
       {
