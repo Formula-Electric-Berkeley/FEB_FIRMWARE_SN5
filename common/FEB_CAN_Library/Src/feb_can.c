@@ -220,6 +220,80 @@ bool FEB_CAN_IsInitialized(void)
 }
 
 /* ============================================================================
+ * Bus-off recovery
+ *
+ * AutoBusOff=DISABLE in the .ioc — the bxCAN core latches into bus-off and
+ * stays there until software exits INIT mode (clears INRQ). We also re-prime
+ * the user's counting semaphore so the permit count matches hardware reality.
+ *
+ * HAL STATE MACHINE TRAP: HAL_CAN_IRQHandler() changes hcan->State from
+ * LISTENING → ERROR for EWG, EPV, and BOF events. HAL_CAN_Stop() requires
+ * LISTENING; HAL_CAN_Start() requires READY. If we naively call Stop+Start
+ * when State==ERROR, both calls return HAL_ERROR silently and the peripheral
+ * stays in INRQ mode forever. Workaround: when State==ERROR (always the case
+ * at bus-off because EWG/EPV fired first at lower TEC), skip Stop (hardware
+ * is already in INRQ from bus-off), force State→READY, then call Start which
+ * clears INRQ, resets ErrorCode, and returns to LISTENING.
+ *
+ * Called from FEB_CAN_TX_Process (task context). NEVER call from ISR.
+ * ============================================================================ */
+
+#if FEB_CAN_USE_FREERTOS
+static void feb_can_recover_instance(CAN_HandleTypeDef *hcan)
+{
+  if (hcan == NULL)
+  {
+    return;
+  }
+
+  if (hcan->State == HAL_CAN_STATE_ERROR)
+  {
+    /* Hardware is already in INRQ (bus-off forces INIT mode).
+     * Force HAL state to READY so Start() can exit INRQ cleanly. */
+    hcan->State = HAL_CAN_STATE_READY;
+    hcan->ErrorCode = HAL_CAN_ERROR_NONE;
+  }
+  else
+  {
+    /* Normal path: LISTENING → READY (sets INRQ, deactivates notifications) */
+    HAL_CAN_Stop(hcan);
+  }
+
+  /* READY → LISTENING: clears INRQ, resets ErrorCode, re-arms hardware */
+  HAL_CAN_Start(hcan);
+  HAL_CAN_ActivateNotification(hcan, FEB_CAN_RX_NOTIFICATIONS | FEB_CAN_TX_NOTIFICATIONS |
+                                         FEB_CAN_ERROR_NOTIFICATIONS);
+}
+
+void feb_can_recover_bus_off(void)
+{
+  CAN_HandleTypeDef *hcan1 = (CAN_HandleTypeDef *)feb_can_ctx.hcan[FEB_CAN_INSTANCE_1];
+  CAN_HandleTypeDef *hcan2 = (CAN_HandleTypeDef *)feb_can_ctx.hcan[FEB_CAN_INSTANCE_2];
+
+  feb_can_recover_instance(hcan1);
+  feb_can_recover_instance(hcan2);
+
+  feb_can_ctx.bus_off_count++;
+
+  /* Mailboxes are empty after recovery. Re-sync bookkeeping: any frames we
+   * thought were in flight are gone, and tx_sem must reflect three free
+   * mailboxes regardless of whatever drift happened before. */
+  feb_can_ctx.tx_pending_count = 0;
+
+  /* Drain any stale permits, then push exactly three. The sem was created
+   * with max=3 in the .ioc so this can never overflow. */
+  while (FEB_CAN_SEM_TAKE(feb_can_ctx.tx_sem, 0))
+  {
+    /* drain */
+  }
+  for (uint8_t i = 0; i < 3U; i++)
+  {
+    FEB_CAN_SEM_GIVE(feb_can_ctx.tx_sem);
+  }
+}
+#endif
+
+/* ============================================================================
  * HAL Callback Routing - RX
  * ============================================================================ */
 
@@ -326,6 +400,26 @@ void FEB_CAN_TxMailbox2CompleteCallback(FEB_CAN_Handle_t hcan)
   feb_can_tx_complete_callback(hcan);
 }
 
+/* Software-abort callbacks: hardware mailbox is freed regardless, so the
+ * accounting must mirror the success path. Without these overrides the HAL
+ * weak stubs run and tx_sem leaks one permit per HAL_CAN_AbortTxRequest()
+ * call. We don't currently call AbortTxRequest, but if anyone adds it later
+ * this stays correct without a second bug hunt. */
+void FEB_CAN_TxMailbox0AbortCallback(FEB_CAN_Handle_t hcan)
+{
+  feb_can_tx_complete_callback(hcan);
+}
+
+void FEB_CAN_TxMailbox1AbortCallback(FEB_CAN_Handle_t hcan)
+{
+  feb_can_tx_complete_callback(hcan);
+}
+
+void FEB_CAN_TxMailbox2AbortCallback(FEB_CAN_Handle_t hcan)
+{
+  feb_can_tx_complete_callback(hcan);
+}
+
 /* ============================================================================
  * HAL Callback Routing - Error
  * ============================================================================ */
@@ -344,6 +438,97 @@ void FEB_CAN_ErrorCallback(FEB_CAN_Handle_t hcan)
   feb_can_ctx.last_error_esr = h->Instance->ESR;
   feb_can_ctx.last_error_code = h->ErrorCode;
   feb_can_ctx.error_callback_count++;
+
+#if FEB_CAN_USE_FREERTOS
+  /* ----------------------------------------------------------------------
+   * Recover the mailbox semaphore on failed transmissions.
+   *
+   * When a queued TX fails because the frame was NACK'd (TERR) or lost
+   * arbitration (ALST), the HAL ISR clears RQCPx and frees the mailbox in
+   * hardware, but does NOT call HAL_CAN_TxMailboxXCompleteCallback or
+   * HAL_CAN_TxMailboxXAbortCallback for that mailbox — it only OR's
+   * HAL_CAN_ERROR_TX_{ALST,TERR}{0,1,2} into hcan->ErrorCode and then calls
+   * HAL_CAN_ErrorCallback (us). See stm32f4xx_hal_can.c around the
+   * "Transmit Mailbox X management" blocks: the failure path is just
+   * `errorcode |= ...` with no mailbox callback.
+   *
+   * Because feb_can_tx_hal_transmit() unconditionally tx_pending_count++ed
+   * and took a tx_sem permit before AddTxMessage, every NACK/ALST silently
+   * leaks one permit out of the 3-mailbox semaphore. After ~3 failures the
+   * semaphore is at 0 forever and FEB_CAN_TX_Process times out on every
+   * message — observed externally as "the module stops sending CAN."
+   *
+   * Fix: for each per-mailbox TX-failure bit set, release one ISR-side
+   * permit and decrement tx_pending_count, then clear those bits so a
+   * subsequent unrelated error callback (EWG/EPV/etc.) doesn't double-free.
+   *
+   * AutoRetransmission=DISABLE in the .ioc means a single missing ACK is
+   * enough to land us in this path on every frame, which is why this matters
+   * so much for DASH at boot before the rest of the bus is awake.
+   * ---------------------------------------------------------------------- */
+  uint32_t err = h->ErrorCode;
+  uint32_t handled = 0;
+
+  static const uint32_t TX_FAIL_BITS[3] = {
+      HAL_CAN_ERROR_TX_ALST0 | HAL_CAN_ERROR_TX_TERR0,
+      HAL_CAN_ERROR_TX_ALST1 | HAL_CAN_ERROR_TX_TERR1,
+      HAL_CAN_ERROR_TX_ALST2 | HAL_CAN_ERROR_TX_TERR2,
+  };
+
+  for (uint32_t i = 0; i < 3U; i++)
+  {
+    if ((err & TX_FAIL_BITS[i]) != 0U)
+    {
+      /* One failed mailbox transmission == one loaded frame that's now
+       * gone, mirroring the success path in feb_can_tx_complete_callback. */
+      if (feb_can_ctx.tx_pending_count > 0U)
+      {
+        feb_can_ctx.tx_pending_count--;
+      }
+      FEB_CAN_SEM_GIVE_ISR(feb_can_ctx.tx_sem);
+      handled |= TX_FAIL_BITS[i];
+    }
+  }
+
+  if (handled != 0U)
+  {
+    /* Clear the bits we just consumed so this callback doesn't release the
+     * same permit again on the next ESR-only error (e.g. an EWG that fires
+     * later while ErrorCode still has a stale TERR bit). */
+    h->ErrorCode &= ~handled;
+  }
+
+  /* ----------------------------------------------------------------------
+   * EWG / EPV: HAL state machine trap.
+   *
+   * HAL_CAN_IRQHandler() sets hcan->State = HAL_CAN_STATE_ERROR for EWG
+   * (TEC ≥ 96) and EPV (TEC ≥ 128) even though bxCAN hardware can still
+   * transmit in both states — only BOF (TEC ≥ 255) actually halts TX in
+   * hardware. After the state change, HAL_CAN_AddTxMessage() refuses every
+   * submission (state != LISTENING), so all TX silently fails until the MCU
+   * resets. Fix: reset the HAL state back to LISTENING here in the callback
+   * (we are still in the same IRQ that made the change, so it is safe to
+   * undo it). BOF is handled separately via bus_off_pending below.
+   * ---------------------------------------------------------------------- */
+  if ((err & (HAL_CAN_ERROR_EWG | HAL_CAN_ERROR_EPV)) != 0U)
+  {
+    if (h->State == HAL_CAN_STATE_ERROR)
+    {
+      h->State = HAL_CAN_STATE_LISTENING;
+      feb_can_ctx.ewg_recovery_count++;
+    }
+  }
+
+  /* Bus-off latched. With AutoBusOff=DISABLE this controller will not TX
+   * again until software requests INIT mode (HAL_CAN_Stop) and exits it
+   * (HAL_CAN_Start). Defer the recovery to task context — it touches the
+   * same hardware as ongoing TX_Process and we don't want to wrestle with
+   * the ISR for the peripheral. */
+  if ((err & HAL_CAN_ERROR_BOF) != 0U)
+  {
+    feb_can_ctx.bus_off_pending = 1U;
+  }
+#endif /* FEB_CAN_USE_FREERTOS */
 }
 
 /* ============================================================================
@@ -381,6 +566,21 @@ void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
 void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
 {
   FEB_CAN_TxMailbox2CompleteCallback(hcan);
+}
+
+void HAL_CAN_TxMailbox0AbortCallback(CAN_HandleTypeDef *hcan)
+{
+  FEB_CAN_TxMailbox0AbortCallback(hcan);
+}
+
+void HAL_CAN_TxMailbox1AbortCallback(CAN_HandleTypeDef *hcan)
+{
+  FEB_CAN_TxMailbox1AbortCallback(hcan);
+}
+
+void HAL_CAN_TxMailbox2AbortCallback(CAN_HandleTypeDef *hcan)
+{
+  FEB_CAN_TxMailbox2AbortCallback(hcan);
 }
 
 void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
@@ -470,12 +670,24 @@ uint32_t FEB_CAN_GetHalErrorCount(void)
   return feb_can_ctx.hal_error_count;
 }
 
+uint32_t FEB_CAN_GetBusOffCount(void)
+{
+  return feb_can_ctx.bus_off_count;
+}
+
+uint32_t FEB_CAN_GetEwgRecoveryCount(void)
+{
+  return feb_can_ctx.ewg_recovery_count;
+}
+
 void FEB_CAN_ResetErrorCounters(void)
 {
   feb_can_ctx.rx_queue_overflow_count = 0;
   feb_can_ctx.tx_queue_overflow_count = 0;
   feb_can_ctx.tx_timeout_count = 0;
   feb_can_ctx.hal_error_count = 0;
+  feb_can_ctx.bus_off_count = 0;
+  feb_can_ctx.ewg_recovery_count = 0;
 }
 
 const char *FEB_CAN_StatusToString(FEB_CAN_Status_t status)

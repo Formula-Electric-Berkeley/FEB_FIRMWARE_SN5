@@ -24,7 +24,6 @@
 #include "task.h"
 #include "feb_console.h"
 #include "main.h"
-#include "feb_log.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
 
@@ -40,9 +39,6 @@ extern osMutexId_t canTxMutexHandle;
 extern osMutexId_t canRxMutexHandle;
 extern osSemaphoreId_t canTxMailboxSemHandle;
 
-/* ========================== Module tag for logging ========================== */
-#define TAG_CAN "[CAN]"
-
 /* ========================== Local Prototypes ========================== */
 static void DASH_CAN_Init(void);
 static void DASH_CAN_RxCallback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
@@ -57,8 +53,8 @@ static void DASH_CAN_RxCallback(FEB_CAN_Instance_t instance, uint32_t can_id, FE
   (void)id_type;
   (void)data;
   (void)user_data;
-
-  LOG_D(TAG_CAN, "RX: ID=0x%lX len=%d", (unsigned long)can_id, length);
+  (void)can_id;
+  (void)length;
 }
 
 /* ========================== CAN Initialization ========================== */
@@ -113,14 +109,35 @@ static void DASH_CAN_Init(void)
 
 /* ============================================================================
  * FreeRTOS Tasks (override CubeMX weak stubs)
- * ============================================================================ */
+ * ============================================================================
+ *
+ * Task split mirrors the BMS layout (BMSTaskRx / SMTask / BMSTaskTx) but folds
+ * the periodic publishers (State_Tick, PingPong_Tick) into DASHTaskRx so we
+ * don't need a third task slot in the .ioc:
+ *
+ *   - DASHTaskRx : RX_Process + State_Tick + PingPong_Tick (publishers only
+ *                  enqueue into the TX queue; they never take the mailbox
+ *                  semaphore, so they cannot block on a stuck CAN bus)
+ *   - DASHTaskTx : FEB_CAN_TX_Process() only, paced by osDelay(1)
+ *
+ * The previous design ran all three publishers AND TX_Process in the single
+ * DASHTaskTx, gated on a TIM6 task notification. When TX_Process started
+ * timing out on the mailbox semaphore (FEB_CAN_TX_TIMEOUT_MS = 100 ms per
+ * queued message), the whole task stalled, accumulated TIM6 notifications
+ * collapsed to a single take (pdTRUE), and the heartbeat / state / pingpong
+ * cadence quietly stretched out — observed externally as "DASH stops sending
+ * CAN." Splitting publishers from TX_Process matches the BMS pattern, which
+ * is why the BMS keeps publishing through the same kind of bus hiccup.
+ */
 
 /**
- * @brief DASH CAN RX task
+ * @brief DASH CAN RX task — also drives the periodic publishers.
  */
 void StartDASHTaskRx(void *argument)
 {
   (void)argument;
+
+  static uint16_t pingpong_divider = 0;
 
   /* CAN init MUST occur after scheduler start */
   DASH_CAN_Init();
@@ -136,44 +153,36 @@ void StartDASHTaskRx(void *argument)
   {
     /* Dispatch RX queue and invoke callbacks */
     FEB_CAN_RX_Process();
-    osDelay(1);
-  }
-}
 
-/**
- * @brief DASH CAN TX task
- *
- * Driven by a 1 ms task notification from TIM6's HAL_TIM_PeriodElapsedCallback
- * (see DASH/Core/Src/main.c). The 1 ms notification gives FEB_CAN_State_Tick's
- * internal /100 divider a stable cadence, and folds PingPong_Tick onto the
- * same time base so it doesn't contend with this task at the same priority.
- */
-void StartDASHTaskTx(void *argument)
-{
-  (void)argument;
-
-  static uint16_t pingpong_divider = 0;
-
-  for (;;)
-  {
-    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-    /* TIM6 starts notifying us as soon as the scheduler runs, but the RX task
-       owns CAN init (must happen after scheduler start). Skip a tick rather
-       than transmit before filters are installed. This eliminates the
-       "CAN not ready" race window at boot. */
-    if (!FEB_CAN_State_IsReady())
-    {
-      continue;
-    }
-
+    /* Publish DASH state. State_Tick has an internal /100 divider so it only
+       emits a heartbeat every ~100 ms even though we call it every ~1 ms. */
     FEB_CAN_State_Tick();
-    FEB_CAN_TX_Process();
 
+    /* PingPong_Tick at ~100 ms cadence (same as the BMS SMTask divider). */
     if (++pingpong_divider >= 100)
     {
       pingpong_divider = 0;
       FEB_CAN_PingPong_Tick();
     }
+
+    osDelay(1);
+  }
+}
+
+/**
+ * @brief DASH CAN TX task — drains the TX queue into the CAN mailboxes.
+ *
+ * Mirrors BMSTaskTx exactly. Kept on its own osDelay(1) loop so a stalled
+ * mailbox (sem starved, bus-off, AutoRetransmission=DISABLE NACKs, etc.) only
+ * delays this task — not the publishers in DASHTaskRx.
+ */
+void StartDASHTaskTx(void *argument)
+{
+  (void)argument;
+
+  for (;;)
+  {
+    FEB_CAN_TX_Process();
+    osDelay(1);
   }
 }

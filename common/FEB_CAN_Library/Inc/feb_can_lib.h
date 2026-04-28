@@ -1,33 +1,91 @@
 /**
  ******************************************************************************
- * @file           : feb_can.h
+ * @file           : feb_can_lib.h
  * @brief          : Public API for FEB CAN Library
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
- * @details
  *
- * Provides a comprehensive CAN interface with:
- *   - FreeRTOS-safe queued TX/RX operations
- *   - TX registration with optional periodic auto-transmit
- *   - RX registration with flexible filtering (exact, mask, wildcard)
- *   - Multi-instance support (CAN1/CAN2)
- *   - Integration with generated feb_can.h pack/unpack functions
+ * ============================================================================
+ * QUICK START
+ * ============================================================================
  *
- * Usage:
- *   1. Configure CAN peripheral in STM32CubeMX
- *   2. Add library to CMakeLists.txt: target_link_libraries(... feb_can)
- *   3. Call FEB_CAN_Init() with configuration
- *   4. Register TX slots and RX callbacks
- *   5. Route HAL callbacks to library functions
- *   6. Call FEB_CAN_ProcessTx/Rx() in appropriate tasks
+ * 1. In STM32CubeMX (.ioc), configure CAN with:
+ *      AutoRetransmission = DISABLE   (prevents bus lockup when no nodes ACK)
+ *      AutoBusOff         = DISABLE   (library does software-controlled recovery)
+ *      Interrupt priority ≤ configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY
+ *    Enable CAN1_TX, CAN1_RX0, CAN1_RX1, CAN1_SCE IRQs.
  *
- * Example:
- *   FEB_CAN_Config_t cfg = {
- *     .hcan1 = &hcan1,
- *     .hcan2 = NULL,  // NULL if not using CAN2
- *     .get_tick_ms = HAL_GetTick,
- *   };
- *   FEB_CAN_Init(&cfg);
+ * 2. Call FEB_CAN_Init(&cfg) after the FreeRTOS scheduler has started (inside
+ *    the first task that runs, not from main() before osKernelStart()).
+ *
+ * ============================================================================
+ * FREERTOS MODE  (FEB_CAN_USE_FREERTOS == 1, default)
+ * ============================================================================
+ *
+ * Required CubeMX objects — pass handles in FEB_CAN_Config_t:
+ *   tx_queue       osMessageQueue  depth=16, item=sizeof(FEB_CAN_Message_t)
+ *   rx_queue       osMessageQueue  depth=32, item=sizeof(FEB_CAN_Message_t)
+ *   tx_mutex       osMutex         (default attributes)
+ *   rx_mutex       osMutex         (default attributes)
+ *   tx_mailbox_sem osSemaphore     max=3, initial=3   ← one permit per HW mailbox
+ *
+ * Recommended task layout (mirrors BMS pattern):
+ *
+ *   BoardTaskRx  [osPriorityLow]:
+ *     for(;;) {
+ *       FEB_CAN_RX_Process();          // dispatch RX queue → callbacks
+ *       FEB_CAN_State_Tick();          // enqueue heartbeat (no sem wait)
+ *       osDelay(1);
+ *     }
+ *
+ *   BoardTaskTx  [osPriorityLow]:
+ *     for(;;) {
+ *       FEB_CAN_TX_Process();          // drain TX queue → hardware mailboxes
+ *       osDelay(1);
+ *     }
+ *
+ * IMPORTANT: Publishers (anything that calls FEB_CAN_TX_Send) must live in a
+ * SEPARATE task from FEB_CAN_TX_Process(). TX_Process blocks on the mailbox
+ * semaphore (up to FEB_CAN_TX_TIMEOUT_MS = 100 ms per message). If publishers
+ * share the same task they stall and heartbeat cadence collapses — this was
+ * the original DASH failure mode.
+ *
+ * ============================================================================
+ * BARE-METAL MODE  (FEB_CAN_USE_FREERTOS == 0)
+ * ============================================================================
+ *
+ * No queues or semaphores. TX is direct-to-HAL; RX callbacks fire from ISR.
+ *
+ *   Main loop:
+ *     while(1) {
+ *       FEB_CAN_TX_Send(...);          // direct HAL_CAN_AddTxMessage
+ *       FEB_CAN_RX_Process();          // no-op in bare-metal (ISR dispatches)
+ *     }
+ *
+ * Set FEB_CAN_FORCE_BARE_METAL=1 in feb_can_config.h if you want
+ * __disable_irq() / __enable_irq() guards around shared state. Omit it (=0)
+ * for single-threaded code with no preemption concerns.
+ *
+ * ============================================================================
+ * KNOWN HAL QUIRK — EWG/EPV STATE TRAP
+ * ============================================================================
+ *
+ * HAL_CAN_IRQHandler() sets hcan->State = HAL_CAN_STATE_ERROR for error-
+ * warning (TEC ≥ 96), error-passive (TEC ≥ 128), AND bus-off (TEC ≥ 255).
+ * After this, HAL_CAN_AddTxMessage() rejects every submission (it checks
+ * state == LISTENING). Hardware can still transmit in EWG/EPV states; only
+ * BOF actually halts hardware TX.
+ *
+ * On a dead bus (no ACK, no termination) at 20 frames/sec, TEC hits 96 in
+ * ~0.6 s — CAN stops sending permanently until MCU reset.
+ *
+ * This library patches the HAL in FEB_CAN_ErrorCallback():
+ *   - EWG/EPV: state reset ERROR → LISTENING (hardware still works)
+ *   - BOF:     bus_off_pending flag set, recovery deferred to TX_Process task
+ *              which calls feb_can_recover_bus_off() (handles HAL_STATE_ERROR
+ *              correctly, unlike a naive HAL_CAN_Stop/Start sequence)
+ *
+ * Monitor with FEB_CAN_GetEwgRecoveryCount() and FEB_CAN_GetBusOffCount().
  *
  ******************************************************************************
  */
@@ -599,6 +657,32 @@ extern "C"
   uint32_t FEB_CAN_GetHalErrorCount(void);
 
   /**
+   * @brief Get bus-off recovery count
+   *
+   * Number of times the bus-off recovery sequence has run (TEC ≥ 255 events).
+   * Non-zero means the board has experienced severe bus errors. Increments on
+   * every successful recovery — if this grows continuously the bus is noisy or
+   * missing termination.
+   *
+   * @return Number of bus-off recoveries
+   */
+  uint32_t FEB_CAN_GetBusOffCount(void);
+
+  /**
+   * @brief Get EWG/EPV HAL state-reset count
+   *
+   * Number of times the library patched the HAL state machine back to
+   * LISTENING after an error-warning (TEC ≥ 96) or error-passive (TEC ≥ 128)
+   * interrupt. The HAL incorrectly enters ERROR state for these soft conditions,
+   * blocking HAL_CAN_AddTxMessage(). A non-zero count here is normal on a live
+   * bus that occasionally produces NACKs; a continuously growing count indicates
+   * persistent bus issues.
+   *
+   * @return Number of EWG/EPV state resets
+   */
+  uint32_t FEB_CAN_GetEwgRecoveryCount(void);
+
+  /**
    * @brief Reset all error counters to zero
    */
   void FEB_CAN_ResetErrorCounters(void);
@@ -652,6 +736,21 @@ extern "C"
    * @param hcan CAN handle (CAN_HandleTypeDef*)
    */
   void FEB_CAN_TxMailbox2CompleteCallback(FEB_CAN_Handle_t hcan);
+
+  /**
+   * @brief Call from HAL_CAN_TxMailbox{0,1,2}AbortCallback
+   *
+   * Mirrors the success path because, from a mailbox-accounting standpoint,
+   * a software-aborted TX frees the mailbox just like a successful one. We
+   * publish strong overrides for these so the HAL's empty weak stubs aren't
+   * picked by the linker — that would silently leak a tx_sem permit on every
+   * HAL_CAN_AbortTxRequest().
+   *
+   * @param hcan CAN handle (CAN_HandleTypeDef*)
+   */
+  void FEB_CAN_TxMailbox0AbortCallback(FEB_CAN_Handle_t hcan);
+  void FEB_CAN_TxMailbox1AbortCallback(FEB_CAN_Handle_t hcan);
+  void FEB_CAN_TxMailbox2AbortCallback(FEB_CAN_Handle_t hcan);
 
   /**
    * @brief Call from HAL_CAN_ErrorCallback

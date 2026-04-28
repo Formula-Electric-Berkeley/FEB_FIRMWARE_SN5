@@ -428,6 +428,16 @@ void FEB_CAN_TX_Process(void)
     return;
   }
 
+  /* Run pending bus-off recovery before draining the queue. Doing it here
+   * (task context) keeps the ISR path short and lets HAL_CAN_Stop/Start
+   * settle on the peripheral without racing TX submissions. */
+  if (ctx->bus_off_pending)
+  {
+    ctx->bus_off_pending = 0U;
+    feb_can_recover_bus_off();
+    LOG_W("[CAN-BOF]", "Bus-off recovery ran (total=%lu)", (unsigned long)ctx->bus_off_count);
+  }
+
   FEB_CAN_Message_t msg;
 
   /* Process pending messages */
