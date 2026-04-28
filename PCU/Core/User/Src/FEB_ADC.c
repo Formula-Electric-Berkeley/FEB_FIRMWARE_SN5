@@ -13,7 +13,9 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "FEB_ADC.h"
+#include "FEB_CAN_BMS.h"
 #include "feb_log.h"
+#include "feb_string_utils.h"
 #include "adc.h"
 #include "usart.h"
 
@@ -37,6 +39,19 @@ typedef struct
 #define FAULT_BRAKE_SENSOR_FAULT (1 << 5)
 #define FAULT_CURRENT_SENSOR_FAULT (1 << 6)
 #define FAULT_ADC_TIMEOUT (1 << 7)
+#define FAULT_BIT_COUNT 8
+
+/* Faults that must NOT be clearable via the CLI while the car is in drive. */
+#define FAULT_DRIVE_LOCKED_MASK                                                                                        \
+  (FAULT_APPS_IMPLAUSIBILITY | FAULT_APPS_SHORT_CIRCUIT | FAULT_APPS_OPEN_CIRCUIT | FAULT_BRAKE_PLAUSIBILITY |         \
+   FAULT_BOTS_ACTIVE | FAULT_BRAKE_SENSOR_FAULT)
+
+#define APPS_SIM_DURATION_MS 30000u
+#define APPS_LOG_RATE_LIMIT_MS 500u
+
+/* DRIVE_STATE is owned by FEB_RMS.c. We treat "in drive" as either the
+ * locally cached flag OR the BMS reporting drive state. */
+extern bool DRIVE_STATE;
 
 /* Private variables ---------------------------------------------------------*/
 extern ADC_HandleTypeDef hadc1;
@@ -45,6 +60,38 @@ extern ADC_HandleTypeDef hadc3;
 
 static ADC_RuntimeDataTypeDef adc_runtime = {0};
 static uint32_t active_faults = 0;
+static uint32_t prev_active_faults = 0;
+static uint32_t fault_hit_counts[FAULT_BIT_COUNT] = {0};
+
+/* Cached APPS data — written by FEB_ADC_TickAPPS, read by every consumer. */
+static APPS_DataTypeDef apps_cache = {0};
+static uint32_t apps_implaus_start_tick = 0;
+static float apps_latest_deviation = 0.0f;
+static uint32_t apps_v1_mv_cached = 0;
+static uint32_t apps_v2_mv_cached = 0;
+static uint16_t apps_raw1_cached = 0;
+static uint16_t apps_raw2_cached = 0;
+
+/* APPS sim injection state. */
+static bool apps_sim_active = false;
+static float apps_sim_percent = 0.0f;
+static uint32_t apps_sim_until_tick = 0;
+
+/* Runtime tunables (replace compile-time #defines for live tuning). */
+bool FEB_APPS_SingleSensorMode = false;
+static float apps_deadzone_percent = (float)APPS_DEADZONE_PERCENT;
+
+/* Running statistics over the post-deadzone APPS positions. */
+static struct
+{
+  float p1_min, p1_max, p2_min, p2_max, dev_max;
+  double p1_sum, p2_sum;
+  uint32_t samples;
+} apps_stats = {0};
+
+/* Rate-limit timestamps for noisy fault logs. */
+static uint32_t last_open_log_tick = 0;
+static uint32_t last_short_log_tick = 0;
 
 /* DMA Buffers for continuous conversion - must match number of channels */
 static uint16_t adc1_dma_buffer[3 * ADC_DMA_BUFFER_SIZE]; /* 3 channels: PA0, PA1, PC4 */
@@ -111,12 +158,15 @@ static ADC_CalibrationTypeDef brake_pressure2_calibration = {
     .max_physical = BRAKE_PRESSURE_MAX_PHYSICAL_BAR, /* Physical: 200 bar */
     .inverted = false};
 
-#define VOLTAGE_DIVIDER_RATIO (5.0f / 3.3f)
-#define VOLTAGE_DIVIDER_RATIO_ACCEL1 2.0f
+#define VOLTAGE_DIVIDER_RATIO (5.0f / 3.3f) /* brake pressure, shutdown, BSPD */
+#define VOLTAGE_DIVIDER_RATIO_ACCEL1 1.168f /* APPS1: k=0.856 measured (2.16V→1.849V at ADC) */
+#define VOLTAGE_DIVIDER_RATIO_ACCEL2 1.0f   /* APPS2: direct connection, no resistor divider */
 
 /* Private function prototypes -----------------------------------------------*/
 static uint16_t GetAveragedADCValue(ADC_HandleTypeDef *hadc, uint32_t channel, uint8_t samples);
-static void UpdateFaultTimer(uint32_t *timer, bool fault_condition, uint32_t threshold);
+static bool ADC_InDriveState(void);
+static void ADC_UpdateFaultEdges(uint32_t new_faults);
+static void ADC_StatsAccumulate(float p1, float p2, float deviation);
 
 /* Initialization Functions --------------------------------------------------*/
 
@@ -188,6 +238,22 @@ ADC_StatusTypeDef FEB_ADC_Init(void)
   memset(&adc_runtime, 0, sizeof(adc_runtime));
   adc_runtime.initialized = true;
 
+  /* Reset APPS cache + debug state. apps_cache.plausible defaults to true so
+   * the very first tick before any fault evaluation does not lock out RMS. */
+  memset(&apps_cache, 0, sizeof(apps_cache));
+  apps_cache.plausible = true;
+  apps_implaus_start_tick = 0;
+  apps_latest_deviation = 0.0f;
+  apps_v1_mv_cached = 0;
+  apps_v2_mv_cached = 0;
+  apps_raw1_cached = 0;
+  apps_raw2_cached = 0;
+  apps_sim_active = false;
+  active_faults = 0;
+  prev_active_faults = 0;
+  memset(fault_hit_counts, 0, sizeof(fault_hit_counts));
+  FEB_ADC_ResetAPPSStats();
+
   LOG_I(TAG_ADC, "ADC initialized");
   return ADC_STATUS_OK;
 }
@@ -250,16 +316,20 @@ ADC_StatusTypeDef FEB_ADC_Stop(void)
 
 uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef *hadc, uint32_t channel)
 {
-  /* This function now reads from DMA buffer instead of polling */
-  /* DMA continuously updates the buffers in the background */
-
+  /* Read from DMA buffer. The ADC driver fills the buffer circularly:
+   *   [ch0_s0, ch1_s0, ..., chN-1_s0, ch0_s1, ch1_s1, ...]
+   * The DMA stream's NDTR register reports remaining transfers. The slot
+   * the DMA last wrote to is therefore: (buffer_total - NDTR - 1) mod
+   * buffer_total. From there we walk back to the most recent sample for
+   * the requested channel. */
   uint16_t *buffer_ptr = NULL;
   uint32_t channel_idx = 0;
+  uint32_t num_channels = 0;
 
-  /* Map hardware channel number to DMA buffer index */
   if (hadc == &hadc1)
   {
     buffer_ptr = adc1_dma_buffer;
+    num_channels = 3;
     if (channel == ADC_CHANNEL_0)
       channel_idx = ADC1_CH0_BRAKE_PRESSURE1_IDX;
     else if (channel == ADC_CHANNEL_1)
@@ -272,6 +342,7 @@ uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef *hadc, uint32_t channel)
   else if (hadc == &hadc2)
   {
     buffer_ptr = adc2_dma_buffer;
+    num_channels = 3;
     if (channel == ADC_CHANNEL_4)
       channel_idx = ADC2_CH4_CURRENT_SENSE_IDX;
     else if (channel == ADC_CHANNEL_6)
@@ -284,6 +355,7 @@ uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef *hadc, uint32_t channel)
   else if (hadc == &hadc3)
   {
     buffer_ptr = adc3_dma_buffer;
+    num_channels = 4;
     if (channel == ADC_CHANNEL_8)
       channel_idx = ADC3_CH8_BSPD_INDICATOR_IDX;
     else if (channel == ADC_CHANNEL_9)
@@ -300,12 +372,28 @@ uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef *hadc, uint32_t channel)
     return 0;
   }
 
-  /* Read the latest value from DMA buffer */
-  /* The buffer is organized as: [ch0_sample0, ch1_sample0, ch2_sample0, ch0_sample1, ...] */
-  /* We read the most recent sample (first in the circular buffer) */
-  uint16_t value = buffer_ptr[channel_idx];
+  uint32_t buffer_total = num_channels * ADC_DMA_BUFFER_SIZE;
 
-  return value;
+  /* If DMA is not running yet, fall back to slot 0. */
+  if (hadc->DMA_Handle == NULL)
+  {
+    return buffer_ptr[channel_idx];
+  }
+
+  uint32_t ndtr = __HAL_DMA_GET_COUNTER(hadc->DMA_Handle);
+  if (ndtr == 0 || ndtr > buffer_total)
+  {
+    return buffer_ptr[channel_idx];
+  }
+
+  /* Index of the slot the DMA last completed. */
+  uint32_t last_written = (buffer_total - ndtr + buffer_total - 1) % buffer_total;
+
+  /* Walk back to the most recent slot whose modular index matches our channel. */
+  uint32_t offset = (last_written + buffer_total - channel_idx) % num_channels;
+  uint32_t latest = (last_written + buffer_total - offset) % buffer_total;
+
+  return buffer_ptr[latest];
 }
 
 uint16_t FEB_ADC_GetFilteredValue(ADC_HandleTypeDef *hadc, uint32_t channel, uint8_t samples)
@@ -403,7 +491,7 @@ float FEB_ADC_GetAccelPedal2Voltage(void)
   uint16_t raw = accel_pedal2_config.filter.enabled
                      ? FEB_ADC_GetFilteredValue(&hadc3, ADC3_ACCEL_PEDAL_2_CHANNEL, accel_pedal2_config.filter.samples)
                      : FEB_ADC_GetAccelPedal2Raw();
-  return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO;
+  return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO_ACCEL2;
 }
 
 float FEB_ADC_GetBrakePressure1Voltage(void)
@@ -455,94 +543,236 @@ float FEB_ADC_GetBSPDResetVoltage(void)
 
 /* Normalized/Physical Value Functions ---------------------------------------*/
 
+void FEB_ADC_TickAPPS(void)
+{
+  uint32_t now = HAL_GetTick();
+
+  /* Defense in depth: a sim must never survive entry into drive state. */
+  if (apps_sim_active && ADC_InDriveState())
+  {
+    apps_sim_active = false;
+    LOG_W(TAG_ADC, "APPS sim cancelled: BMS entered drive state");
+  }
+
+  /* Cache raw + voltage readings up front so the snapshot view is
+   * self-consistent with whatever the plausibility logic uses below. */
+  apps_raw1_cached = FEB_ADC_GetAccelPedal1Raw();
+  apps_raw2_cached = FEB_ADC_GetAccelPedal2Raw();
+  float voltage1 = FEB_ADC_GetAccelPedal1Voltage() * 1000.0f;
+  float voltage2 = FEB_ADC_GetAccelPedal2Voltage() * 1000.0f;
+  apps_v1_mv_cached = (uint32_t)voltage1;
+  apps_v2_mv_cached = (uint32_t)voltage2;
+
+  /* Sim short-circuits the rest of the path. The sim window is 30 s; on
+   * expiry we log once and drop back to real sensor handling. */
+  if (apps_sim_active)
+  {
+    if ((int32_t)(now - apps_sim_until_tick) >= 0)
+    {
+      apps_sim_active = false;
+      LOG_W(TAG_ADC, "APPS sim window expired");
+    }
+    else
+    {
+      apps_cache.position1 = apps_sim_percent;
+      apps_cache.position2 = apps_sim_percent;
+      apps_cache.acceleration = apps_sim_percent;
+      apps_cache.plausible = true;
+      apps_cache.short_circuit = false;
+      apps_cache.open_circuit = false;
+      apps_cache.implausibility_time = 0;
+      apps_implaus_start_tick = 0;
+      apps_latest_deviation = 0.0f;
+      ADC_StatsAccumulate(apps_sim_percent, apps_sim_percent, 0.0f);
+      ADC_UpdateFaultEdges(active_faults);
+      return;
+    }
+  }
+
+  /* Sensor circuit faults — voltage is post-divider, in mV. */
+  bool short_circuit = (voltage1 < APPS_SHORT_CIRCUIT_DETECT_MV) || (voltage2 < APPS_SHORT_CIRCUIT_DETECT_MV);
+  bool open_circuit = (voltage1 > APPS_OPEN_CIRCUIT_DETECT_MV) || (voltage2 > APPS_OPEN_CIRCUIT_DETECT_MV);
+  apps_cache.short_circuit = short_circuit;
+  apps_cache.open_circuit = open_circuit;
+
+  if (short_circuit && (now - last_short_log_tick) >= APPS_LOG_RATE_LIMIT_MS)
+  {
+    last_short_log_tick = now;
+    LOG_E(TAG_ADC, "APPS short circuit: V1=%.0fmV V2=%.0fmV", voltage1, voltage2);
+  }
+  if (open_circuit && (now - last_open_log_tick) >= APPS_LOG_RATE_LIMIT_MS)
+  {
+    last_open_log_tick = now;
+    LOG_E(TAG_ADC, "APPS open circuit: V1=%.0fmV V2=%.0fmV", voltage1, voltage2);
+  }
+
+  /* Map voltage → percent using current calibration, constrain, then deadzone. */
+  float position1 =
+      FEB_ADC_MapRange(voltage1, apps1_calibration.min_voltage, apps1_calibration.max_voltage, 0.0f, 100.0f);
+  float position2 =
+      FEB_ADC_MapRange(voltage2, apps2_calibration.min_voltage, apps2_calibration.max_voltage, 0.0f, 100.0f);
+  position1 = FEB_ADC_Constrain(position1, 0.0f, 100.0f);
+  position2 = FEB_ADC_Constrain(position2, 0.0f, 100.0f);
+  position1 = FEB_ADC_ApplyDeadzone(position1, apps_deadzone_percent);
+  position2 = FEB_ADC_ApplyDeadzone(position2, apps_deadzone_percent);
+
+  apps_cache.position1 = position1;
+  apps_cache.position2 = position2;
+
+  float deviation = fabsf(position1 - position2);
+  apps_latest_deviation = deviation;
+
+  if (FEB_APPS_SingleSensorMode)
+  {
+    /* Bench-mode bypass — only available outside drive state, so we don't
+     * gate again here, just skip the dual-sensor logic. */
+    apps_cache.position2 = position1;
+    apps_cache.acceleration = position1;
+    apps_cache.plausible = true;
+    apps_cache.implausibility_time = 0;
+    apps_implaus_start_tick = 0;
+  }
+  else
+  {
+    apps_cache.acceleration = (position1 + position2) / 2.0f;
+
+    /* FSAE EV.5.3: implausible = persistent disagreement >10% for >100 ms. */
+    bool in_disagreement = (deviation > (float)APPS_PLAUSIBILITY_TOLERANCE);
+
+    if (in_disagreement)
+    {
+      if (apps_implaus_start_tick == 0)
+      {
+        apps_implaus_start_tick = now;
+        if (apps_implaus_start_tick == 0)
+          apps_implaus_start_tick = 1; /* sentinel: 0 means "not started" */
+      }
+      uint32_t elapsed = now - apps_implaus_start_tick;
+      apps_cache.implausibility_time = elapsed;
+
+      /* Latch the fault and the local plausible flag once we cross the
+       * 100 ms persistence threshold; both stay set until cleared by
+       * release-and-reset (FEB_ADC_AcknowledgeAPPSImplausibility). */
+      if (elapsed > APPS_IMPLAUSIBILITY_TIME_MS)
+      {
+        if ((active_faults & FAULT_APPS_IMPLAUSIBILITY) == 0)
+        {
+          LOG_E(TAG_ADC, "APPS implausibility latched (%.1fms, dev=%.1f%%)", (double)elapsed, (double)deviation);
+        }
+        active_faults |= FAULT_APPS_IMPLAUSIBILITY;
+        apps_cache.plausible = false;
+      }
+      else if ((active_faults & FAULT_APPS_IMPLAUSIBILITY) == 0)
+      {
+        /* Disagreeing but not yet latched — caller may still drive. */
+        apps_cache.plausible = true;
+      }
+      else
+      {
+        apps_cache.plausible = false;
+      }
+    }
+    else
+    {
+      apps_implaus_start_tick = 0;
+      /* If a previous latch exists, leave plausible=false until the
+       * release-and-reset condition clears it. */
+      if ((active_faults & FAULT_APPS_IMPLAUSIBILITY) == 0)
+      {
+        apps_cache.plausible = true;
+        apps_cache.implausibility_time = 0;
+      }
+      else
+      {
+        apps_cache.plausible = false;
+      }
+    }
+  }
+
+  /* Latch sensor-circuit faults. They clear when the condition clears. */
+  if (short_circuit)
+    active_faults |= FAULT_APPS_SHORT_CIRCUIT;
+  else
+    active_faults &= ~FAULT_APPS_SHORT_CIRCUIT;
+
+  if (open_circuit)
+    active_faults |= FAULT_APPS_OPEN_CIRCUIT;
+  else
+    active_faults &= ~FAULT_APPS_OPEN_CIRCUIT;
+
+  ADC_StatsAccumulate(apps_cache.position1, apps_cache.position2, deviation);
+  ADC_UpdateFaultEdges(active_faults);
+}
+
 ADC_StatusTypeDef FEB_ADC_GetAPPSData(APPS_DataTypeDef *apps_data)
 {
   if (!apps_data)
     return ADC_STATUS_ERROR;
-
-  /* Get voltage readings */
-  float voltage1 = FEB_ADC_GetAccelPedal1Voltage() * 1000.0f; /* Convert to mV */
-  float voltage2 = FEB_ADC_GetAccelPedal2Voltage() * 1000.0f;
-
-  /* Check for sensor faults */
-  apps_data->short_circuit = (voltage1 < APPS_SHORT_CIRCUIT_DETECT_MV) || (voltage2 < APPS_SHORT_CIRCUIT_DETECT_MV);
-  apps_data->open_circuit = (voltage1 > APPS_OPEN_CIRCUIT_DETECT_MV) || (voltage2 > APPS_OPEN_CIRCUIT_DETECT_MV);
-
-  if (apps_data->short_circuit)
-  {
-    // LOG_E(TAG_ADC, "APPS short circuit detected: V1=%.0fmV V2=%.0fmV", voltage1, voltage2);
-  }
-  if (apps_data->open_circuit)
-  {
-    // LOG_E(TAG_ADC, "APPS open circuit detected: V1=%.0fmV V2=%.0fmV", voltage1, voltage2);
-  }
-
-  // OVERRIDE: Allow operation with single APPS sensor for testing
-  // if (apps_data->short_circuit || apps_data->open_circuit)
-  // {
-  //   apps_data->position1 = 0.0f;
-  //   apps_data->position2 = 0.0f;
-  //   apps_data->acceleration = 0.0f;
-  //   apps_data->plausible = false;
-  //   return ADC_STATUS_OUT_OF_RANGE;
-  // }
-
-  /* Apply calibration and convert to percentage */
-  apps_data->position1 =
-      FEB_ADC_MapRange(voltage1, apps1_calibration.min_voltage, apps1_calibration.max_voltage, 0.0f, 100.0f);
-  apps_data->position2 =
-      FEB_ADC_MapRange(voltage2, apps2_calibration.min_voltage, apps2_calibration.max_voltage, 0.0f, 100.0f);
-
-  /* Constrain to valid range */
-  apps_data->position1 = FEB_ADC_Constrain(apps_data->position1, 0.0f, 100.0f);
-  apps_data->position2 = FEB_ADC_Constrain(apps_data->position2, 0.0f, 100.0f);
-
-  /* Apply deadzone */
-  apps_data->position1 = FEB_ADC_ApplyDeadzone(apps_data->position1, APPS_DEADZONE_PERCENT);
-  apps_data->position2 = FEB_ADC_ApplyDeadzone(apps_data->position2, APPS_DEADZONE_PERCENT);
-
-#if SINGLE_APPS_MODE
-  /* Single sensor mode: use APPS1 only, bypass dual-sensor plausibility check */
-  apps_data->position2 = apps_data->position1;
-  apps_data->acceleration = apps_data->position1;
-  apps_data->plausible = true;
-#else
-  /* Calculate average */
-  apps_data->acceleration = (apps_data->position1 + apps_data->position2) / 2.0f;
-
-  /* Check plausibility */
-  float deviation = fabs(apps_data->position1 - apps_data->position2);
-  if (deviation >= APPS_PLAUSIBILITY_TOLERANCE)
-  {
-    apps_data->plausible = false;
-    LOG_W(TAG_ADC, "APPS implausible: deviation=%.1f%% (P1=%.1f%% P2=%.1f%%)", deviation, apps_data->position1,
-          apps_data->position2);
-  }
-  else
-  {
-    apps_data->plausible = true;
-  }
-#endif
-
-  if (!apps_data->plausible)
-  {
-    if (apps_data->implausibility_time == 0)
-    {
-      apps_data->implausibility_time = HAL_GetTick();
-    }
-  }
-  else
-  {
-    apps_data->implausibility_time = 0;
-  }
-
+  *apps_data = apps_cache;
   return ADC_STATUS_OK;
+}
+
+void FEB_ADC_GetAPPSCacheSnapshot(APPS_DataTypeDef *out, uint16_t *raw1, uint16_t *raw2, float *v1_mv, float *v2_mv,
+                                  uint32_t *fault_bitmask, uint32_t *implaus_elapsed_ms, float *latest_deviation)
+{
+  if (out)
+    *out = apps_cache;
+  if (raw1)
+    *raw1 = apps_raw1_cached;
+  if (raw2)
+    *raw2 = apps_raw2_cached;
+  if (v1_mv)
+    *v1_mv = (float)apps_v1_mv_cached;
+  if (v2_mv)
+    *v2_mv = (float)apps_v2_mv_cached;
+  if (fault_bitmask)
+    *fault_bitmask = active_faults;
+  if (implaus_elapsed_ms)
+    *implaus_elapsed_ms = apps_cache.implausibility_time;
+  if (latest_deviation)
+    *latest_deviation = apps_latest_deviation;
+}
+
+void FEB_ADC_AcknowledgeAPPSImplausibility(void)
+{
+  if (apps_cache.position1 < 5.0f && apps_cache.position2 < 5.0f)
+  {
+    if (active_faults & FAULT_APPS_IMPLAUSIBILITY)
+    {
+      LOG_I(TAG_ADC, "APPS plausibility cleared on release");
+    }
+    active_faults &= ~FAULT_APPS_IMPLAUSIBILITY;
+    apps_implaus_start_tick = 0;
+    apps_cache.plausible = true;
+    apps_cache.implausibility_time = 0;
+  }
+}
+
+void FEB_ADC_AcknowledgeBrakeImplausibility(void)
+{
+  /* Brake plausibility is recomputed every read in FEB_ADC_GetBrakeData;
+   * here we only clear the latched fault bit and timer once travel is low. */
+  Brake_DataTypeDef brake_data;
+  if (FEB_ADC_GetBrakeData(&brake_data) != ADC_STATUS_OK)
+    return;
+  if (brake_data.brake_position < 15.0f)
+  {
+    if (active_faults & FAULT_BRAKE_PLAUSIBILITY)
+    {
+      LOG_I(TAG_ADC, "Brake plausibility cleared on release");
+    }
+    active_faults &= ~FAULT_BRAKE_PLAUSIBILITY;
+    adc_runtime.brake_plausibility_timer = 0;
+  }
 }
 
 ADC_StatusTypeDef FEB_ADC_GetBrakeData(Brake_DataTypeDef *brake_data)
 {
   if (!brake_data)
     return ADC_STATUS_ERROR;
+
+  /* Default to plausible; the disagreement check below flips it to false. */
+  brake_data->plausible = true;
 
   /* Get brake pressure readings */
   float pressure1_voltage = FEB_ADC_GetBrakePressure1Voltage() * 1000.0f; /* mV */
@@ -579,13 +809,10 @@ ADC_StatusTypeDef FEB_ADC_GetBrakeData(Brake_DataTypeDef *brake_data)
   // float avg_pressure = (brake_data->pressure1_percent + brake_data->pressure2_percent) / 2.0f;
   brake_data->brake_position = brake_data->brake_switch ? brake_data->pressure2_percent : brake_data->pressure1_percent;
 
-  /* Check plausibility between pressure sensors */
-  float pressure_diff = fabs(brake_data->pressure1_percent - brake_data->pressure2_percent);
-
-  if (pressure_diff > (BRAKE_PRESSURE_MAX_PHYSICAL_BAR * 0.2f))
-  {
-    brake_data->plausible = false;
-  } /* 20% tolerance */
+  /* Check plausibility between pressure sensors. Both inputs are
+   * percentages, so the threshold must be a percentage too. */
+  float pressure_diff = fabsf(brake_data->pressure1_percent - brake_data->pressure2_percent);
+  brake_data->plausible = (pressure_diff <= BRAKE_PRESSURE_PLAUSIBILITY_TOLERANCE_PERCENT);
 
   /* Check BOTS */
   brake_data->bots_active = (brake_data->brake_position > BOTS_ACTIVATION_PERCENT);
@@ -793,39 +1020,11 @@ ADC_StatusTypeDef FEB_ADC_SetCalibration(ADC_ChannelConfigTypeDef *config, ADC_C
 
 bool FEB_ADC_CheckAPPSPlausibility(void)
 {
-  APPS_DataTypeDef apps_data;
-
-  if (FEB_ADC_GetAPPSData(&apps_data) != ADC_STATUS_OK)
-  {
+  /* All actual computation lives in FEB_ADC_TickAPPS(); this entry point
+   * just reports the latched state so consumers stay in sync. */
+  if (active_faults & (FAULT_APPS_IMPLAUSIBILITY | FAULT_APPS_SHORT_CIRCUIT | FAULT_APPS_OPEN_CIRCUIT))
     return false;
-  }
-
-  /* Check if implausibility has persisted long enough */
-  if (!apps_data.plausible && apps_data.implausibility_time > 0)
-  {
-    uint32_t elapsed = HAL_GetTick() - apps_data.implausibility_time;
-    if (elapsed > APPS_IMPLAUSIBILITY_TIME_MS)
-    {
-      LOG_E(TAG_ADC, "APPS implausibility fault: persisted for %lums", (unsigned long)elapsed);
-      active_faults |= FAULT_APPS_IMPLAUSIBILITY;
-      return false;
-    }
-  }
-
-  /* Check for sensor faults */
-  if (apps_data.short_circuit)
-  {
-    active_faults |= FAULT_APPS_SHORT_CIRCUIT;
-    return false;
-  }
-
-  if (apps_data.open_circuit)
-  {
-    active_faults |= FAULT_APPS_OPEN_CIRCUIT;
-    return false;
-  }
-
-  return apps_data.plausible;
+  return apps_cache.plausible;
 }
 
 bool FEB_ADC_CheckBrakePlausibility(void)
@@ -838,19 +1037,30 @@ bool FEB_ADC_CheckBrakePlausibility(void)
     return false;
   }
 
-  /* FSAE rule: If brake is pressed hard and throttle > 25%, cut throttle */
+  /* FSAE EV.5.7: brake hard + throttle >25% latches BSPD until both
+   * conditions clear; latch persists for 100 ms before becoming a fault. */
   bool brake_hard = (brake_data.pressure1_percent > BRAKE_PRESSURE_THRESHOLD_PERCENT) ||
                     (brake_data.pressure2_percent > BRAKE_PRESSURE_THRESHOLD_PERCENT);
   bool throttle_high = (apps_data.acceleration > 25.0f);
+  uint32_t now = HAL_GetTick();
 
   if (brake_hard && throttle_high)
   {
-    UpdateFaultTimer(&adc_runtime.brake_plausibility_timer, true, BRAKE_PLAUSIBILITY_TIME_MS);
-
-    if (adc_runtime.brake_plausibility_timer > BRAKE_PLAUSIBILITY_TIME_MS)
+    if (adc_runtime.brake_plausibility_timer == 0)
     {
-      LOG_E(TAG_ADC, "Brake plausibility fault: brake pressed + throttle >25%%");
+      adc_runtime.brake_plausibility_timer = now;
+      if (adc_runtime.brake_plausibility_timer == 0)
+        adc_runtime.brake_plausibility_timer = 1;
+    }
+    uint32_t elapsed = now - adc_runtime.brake_plausibility_timer;
+    if (elapsed > BRAKE_PLAUSIBILITY_TIME_MS)
+    {
+      if ((active_faults & FAULT_BRAKE_PLAUSIBILITY) == 0)
+      {
+        LOG_E(TAG_ADC, "Brake plausibility fault: brake hard + throttle >25%%");
+      }
       active_faults |= FAULT_BRAKE_PLAUSIBILITY;
+      ADC_UpdateFaultEdges(active_faults);
       return false;
     }
   }
@@ -859,7 +1069,7 @@ bool FEB_ADC_CheckBrakePlausibility(void)
     adc_runtime.brake_plausibility_timer = 0;
   }
 
-  return true;
+  return (active_faults & FAULT_BRAKE_PLAUSIBILITY) == 0;
 }
 
 bool FEB_ADC_CheckBOTS(void)
@@ -904,11 +1114,15 @@ uint32_t FEB_ADC_PerformSafetyChecks(void)
 ADC_StatusTypeDef FEB_ADC_ClearFaults(uint32_t fault_mask)
 {
   active_faults &= ~fault_mask;
+  prev_active_faults &= ~fault_mask;
 
   /* Reset associated timers */
   if (fault_mask & FAULT_APPS_IMPLAUSIBILITY)
   {
     adc_runtime.apps_implausibility_timer = 0;
+    apps_implaus_start_tick = 0;
+    apps_cache.plausible = true;
+    apps_cache.implausibility_time = 0;
   }
   if (fault_mask & FAULT_BRAKE_PLAUSIBILITY)
   {
@@ -920,6 +1134,265 @@ ADC_StatusTypeDef FEB_ADC_ClearFaults(uint32_t fault_mask)
   }
 
   return ADC_STATUS_OK;
+}
+
+uint32_t FEB_ADC_GetActiveFaults(void)
+{
+  return active_faults;
+}
+
+/* Map a single-bit fault value to the index used by fault_hit_counts. */
+static int fault_bit_to_index(uint32_t fault_bit)
+{
+  switch (fault_bit)
+  {
+  case FAULT_APPS_IMPLAUSIBILITY:
+    return 0;
+  case FAULT_BRAKE_PLAUSIBILITY:
+    return 1;
+  case FAULT_BOTS_ACTIVE:
+    return 2;
+  case FAULT_APPS_SHORT_CIRCUIT:
+    return 3;
+  case FAULT_APPS_OPEN_CIRCUIT:
+    return 4;
+  case FAULT_BRAKE_SENSOR_FAULT:
+    return 5;
+  case FAULT_CURRENT_SENSOR_FAULT:
+    return 6;
+  case FAULT_ADC_TIMEOUT:
+    return 7;
+  default:
+    return -1;
+  }
+}
+
+uint32_t FEB_ADC_GetFaultHitCount(uint32_t fault_bit)
+{
+  int idx = fault_bit_to_index(fault_bit);
+  if (idx < 0)
+    return 0;
+  return fault_hit_counts[idx];
+}
+
+static const struct
+{
+  const char *name;
+  uint32_t bit;
+} fault_name_table[] = {
+    {"APPS_IMPLAUSIBILITY", FAULT_APPS_IMPLAUSIBILITY},
+    {"BRAKE_PLAUSIBILITY", FAULT_BRAKE_PLAUSIBILITY},
+    {"BOTS_ACTIVE", FAULT_BOTS_ACTIVE},
+    {"APPS_SHORT_CIRCUIT", FAULT_APPS_SHORT_CIRCUIT},
+    {"APPS_OPEN_CIRCUIT", FAULT_APPS_OPEN_CIRCUIT},
+    {"BRAKE_SENSOR_FAULT", FAULT_BRAKE_SENSOR_FAULT},
+    {"CURRENT_SENSOR_FAULT", FAULT_CURRENT_SENSOR_FAULT},
+    {"ADC_TIMEOUT", FAULT_ADC_TIMEOUT},
+};
+#define FAULT_NAME_COUNT (sizeof(fault_name_table) / sizeof(fault_name_table[0]))
+
+uint32_t FEB_ADC_FaultBitFromName(const char *name)
+{
+  if (!name)
+    return 0;
+  /* Skip an optional "FAULT_" prefix so callers can pass the C-style
+   * define name interchangeably with the short form. */
+  const char *bare = name;
+  if ((bare[0] == 'F' || bare[0] == 'f') && (bare[1] == 'A' || bare[1] == 'a') && (bare[2] == 'U' || bare[2] == 'u') &&
+      (bare[3] == 'L' || bare[3] == 'l') && (bare[4] == 'T' || bare[4] == 't') && bare[5] == '_')
+  {
+    bare += 6;
+  }
+  for (size_t i = 0; i < FAULT_NAME_COUNT; i++)
+  {
+    if (FEB_strcasecmp(name, fault_name_table[i].name) == 0)
+      return fault_name_table[i].bit;
+    if (bare != name && FEB_strcasecmp(bare, fault_name_table[i].name) == 0)
+      return fault_name_table[i].bit;
+  }
+  return 0;
+}
+
+const char *FEB_ADC_FaultBitName(uint32_t fault_bit)
+{
+  for (size_t i = 0; i < FAULT_NAME_COUNT; i++)
+  {
+    if (fault_name_table[i].bit == fault_bit)
+      return fault_name_table[i].name;
+  }
+  return "UNKNOWN";
+}
+
+ADC_StatusTypeDef FEB_ADC_InjectFault(uint32_t fault_bit)
+{
+  if (fault_bit == 0)
+    return ADC_STATUS_ERROR;
+  if (ADC_InDriveState())
+    return ADC_STATUS_ERROR;
+  active_faults |= fault_bit;
+  if (fault_bit & FAULT_APPS_IMPLAUSIBILITY)
+  {
+    apps_cache.plausible = false;
+    if (apps_implaus_start_tick == 0)
+      apps_implaus_start_tick = HAL_GetTick();
+  }
+  ADC_UpdateFaultEdges(active_faults);
+  LOG_W(TAG_ADC, "Fault injected: %s", FEB_ADC_FaultBitName(fault_bit));
+  return ADC_STATUS_OK;
+}
+
+ADC_StatusTypeDef FEB_ADC_ClearFaultsByName(const char *name)
+{
+  if (!name)
+    return ADC_STATUS_ERROR;
+  uint32_t mask;
+  if (FEB_strcasecmp(name, "all") == 0)
+  {
+    mask = ~0u;
+  }
+  else
+  {
+    mask = FEB_ADC_FaultBitFromName(name);
+    if (mask == 0)
+      return ADC_STATUS_ERROR;
+  }
+
+  /* Refuse to clear safety-related faults while the car is live. */
+  if (ADC_InDriveState() && (mask & FAULT_DRIVE_LOCKED_MASK))
+    return ADC_STATUS_ERROR;
+
+  return FEB_ADC_ClearFaults(mask);
+}
+
+/* ============================================================================
+ * Runtime overrides for bench debugging
+ * ============================================================================ */
+
+ADC_StatusTypeDef FEB_ADC_SetSingleSensorMode(bool enabled)
+{
+  if (enabled && ADC_InDriveState())
+    return ADC_STATUS_ERROR;
+  if (FEB_APPS_SingleSensorMode != enabled)
+  {
+    FEB_APPS_SingleSensorMode = enabled;
+    LOG_W(TAG_ADC, "APPS single-sensor mode %s", enabled ? "ENABLED" : "disabled");
+  }
+  return ADC_STATUS_OK;
+}
+
+ADC_StatusTypeDef FEB_ADC_SetAPPSSimulation(bool enabled, float percent)
+{
+  if (enabled && ADC_InDriveState())
+    return ADC_STATUS_ERROR;
+  if (!enabled)
+  {
+    if (apps_sim_active)
+      LOG_W(TAG_ADC, "APPS sim cleared");
+    apps_sim_active = false;
+    return ADC_STATUS_OK;
+  }
+  if (percent < 0.0f)
+    percent = 0.0f;
+  if (percent > 100.0f)
+    percent = 100.0f;
+  apps_sim_percent = percent;
+  apps_sim_until_tick = HAL_GetTick() + APPS_SIM_DURATION_MS;
+  apps_sim_active = true;
+  LOG_W(TAG_ADC, "APPS sim active at %.1f%% for %lums", (double)percent, (unsigned long)APPS_SIM_DURATION_MS);
+  return ADC_STATUS_OK;
+}
+
+ADC_StatusTypeDef FEB_ADC_CaptureAPPSCalibration(uint8_t sensor, bool capture_max)
+{
+  if (sensor != 1 && sensor != 2)
+    return ADC_STATUS_ERROR;
+  ADC_CalibrationTypeDef *cal = (sensor == 1) ? &apps1_calibration : &apps2_calibration;
+  float voltage_mv =
+      (sensor == 1) ? FEB_ADC_GetAccelPedal1Voltage() * 1000.0f : FEB_ADC_GetAccelPedal2Voltage() * 1000.0f;
+  if (capture_max)
+    cal->max_voltage = voltage_mv;
+  else
+    cal->min_voltage = voltage_mv;
+  LOG_I(TAG_ADC, "APPS%u %s captured at %.0fmV", sensor, capture_max ? "max" : "min", (double)voltage_mv);
+  return ADC_STATUS_OK;
+}
+
+void FEB_ADC_GetAPPSFilterConfig(bool *enabled, uint8_t *samples, float *alpha)
+{
+  if (enabled)
+    *enabled = accel_pedal1_config.filter.enabled ? true : false;
+  if (samples)
+    *samples = accel_pedal1_config.filter.samples;
+  if (alpha)
+    *alpha = accel_pedal1_config.filter.alpha;
+}
+
+ADC_StatusTypeDef FEB_ADC_SetAPPSFilter(bool enabled, uint8_t samples, float alpha)
+{
+  if (samples < 1)
+    samples = 1;
+  if (samples > ADC_DMA_BUFFER_SIZE)
+    samples = ADC_DMA_BUFFER_SIZE;
+  if (alpha < 0.0f)
+    alpha = 0.0f;
+  if (alpha > 1.0f)
+    alpha = 1.0f;
+  accel_pedal1_config.filter.enabled = enabled ? 1 : 0;
+  accel_pedal1_config.filter.samples = samples;
+  accel_pedal1_config.filter.alpha = alpha;
+  accel_pedal2_config.filter.enabled = enabled ? 1 : 0;
+  accel_pedal2_config.filter.samples = samples;
+  accel_pedal2_config.filter.alpha = alpha;
+  return ADC_STATUS_OK;
+}
+
+ADC_StatusTypeDef FEB_ADC_SetAPPSDeadzone(float percent)
+{
+  if (percent < 0.0f)
+    percent = 0.0f;
+  if (percent > 20.0f)
+    percent = 20.0f;
+  apps_deadzone_percent = percent;
+  return ADC_STATUS_OK;
+}
+
+float FEB_ADC_GetAPPSDeadzone(void)
+{
+  return apps_deadzone_percent;
+}
+
+void FEB_ADC_ResetAPPSStats(void)
+{
+  apps_stats.p1_min = 100.0f;
+  apps_stats.p1_max = 0.0f;
+  apps_stats.p2_min = 100.0f;
+  apps_stats.p2_max = 0.0f;
+  apps_stats.dev_max = 0.0f;
+  apps_stats.p1_sum = 0.0;
+  apps_stats.p2_sum = 0.0;
+  apps_stats.samples = 0;
+}
+
+void FEB_ADC_GetAPPSStats(float *p1_min, float *p1_max, float *p2_min, float *p2_max, float *p1_avg, float *p2_avg,
+                          float *dev_max, uint32_t *samples)
+{
+  uint32_t n = apps_stats.samples;
+  if (p1_min)
+    *p1_min = (n == 0) ? 0.0f : apps_stats.p1_min;
+  if (p1_max)
+    *p1_max = apps_stats.p1_max;
+  if (p2_min)
+    *p2_min = (n == 0) ? 0.0f : apps_stats.p2_min;
+  if (p2_max)
+    *p2_max = apps_stats.p2_max;
+  if (p1_avg)
+    *p1_avg = (n == 0) ? 0.0f : (float)(apps_stats.p1_sum / (double)n);
+  if (p2_avg)
+    *p2_avg = (n == 0) ? 0.0f : (float)(apps_stats.p2_sum / (double)n);
+  if (dev_max)
+    *dev_max = apps_stats.dev_max;
+  if (samples)
+    *samples = n;
 }
 
 /* Filter and Processing Functions -------------------------------------------*/
@@ -1148,17 +1621,49 @@ static uint16_t GetAveragedADCValue(ADC_HandleTypeDef *hadc, uint32_t channel, u
   return (uint16_t)(sum / samples);
 }
 
-static void UpdateFaultTimer(uint32_t *timer, bool fault_condition, uint32_t threshold)
+static bool ADC_InDriveState(void)
 {
-  if (fault_condition)
+  return DRIVE_STATE || FEB_CAN_BMS_InDriveState();
+}
+
+static void ADC_UpdateFaultEdges(uint32_t new_faults)
+{
+  uint32_t rising = new_faults & ~prev_active_faults;
+  if (rising)
   {
-    if (*timer == 0)
+    for (size_t i = 0; i < FAULT_BIT_COUNT; i++)
     {
-      *timer = HAL_GetTick();
+      if (rising & (1u << i))
+        fault_hit_counts[i]++;
     }
+  }
+  prev_active_faults = new_faults;
+}
+
+static void ADC_StatsAccumulate(float p1, float p2, float deviation)
+{
+  if (apps_stats.samples == 0)
+  {
+    apps_stats.p1_min = p1;
+    apps_stats.p1_max = p1;
+    apps_stats.p2_min = p2;
+    apps_stats.p2_max = p2;
+    apps_stats.dev_max = deviation;
   }
   else
   {
-    *timer = 0;
+    if (p1 < apps_stats.p1_min)
+      apps_stats.p1_min = p1;
+    if (p1 > apps_stats.p1_max)
+      apps_stats.p1_max = p1;
+    if (p2 < apps_stats.p2_min)
+      apps_stats.p2_min = p2;
+    if (p2 > apps_stats.p2_max)
+      apps_stats.p2_max = p2;
+    if (deviation > apps_stats.dev_max)
+      apps_stats.dev_max = deviation;
   }
+  apps_stats.p1_sum += p1;
+  apps_stats.p2_sum += p2;
+  apps_stats.samples++;
 }
