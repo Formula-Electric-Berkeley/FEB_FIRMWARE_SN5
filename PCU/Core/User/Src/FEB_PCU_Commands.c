@@ -11,6 +11,7 @@
 #include "FEB_CAN_BMS.h"
 #include "FEB_CAN_RMS.h"
 #include "FEB_CAN_TPS.h"
+#include "FEB_PCU_APPS_Commands.h"
 #include "FEB_RMS.h"
 #include "feb_console.h"
 #include "feb_string_utils.h"
@@ -26,11 +27,15 @@ static void print_pcu_help(void)
 {
   FEB_Console_Printf("PCU Commands:\r\n");
   FEB_Console_Printf("  PCU|status   - Show overall PCU status\r\n");
-  FEB_Console_Printf("  PCU|apps     - Show APPS sensor values and plausibility\r\n");
+  FEB_Console_Printf("  PCU|apps     - APPS summary (use PCU|apps alone for sub-commands)\r\n");
   FEB_Console_Printf("  PCU|brake    - Show brake sensor values and status\r\n");
   FEB_Console_Printf("  PCU|rms      - Show RMS motor controller status\r\n");
   FEB_Console_Printf("  PCU|tps      - Show TPS2482 voltage/current monitoring\r\n");
   FEB_Console_Printf("  PCU|bms      - Show BMS state information\r\n");
+  FEB_Console_Printf("  PCU|bms|state|<drive|0-13|off>  - Sim BMS state (bench only, refused if BMS on bus)\r\n");
+  FEB_Console_Printf("  PCU|faults   - Show active faults / faults|clear / faults|inject\r\n");
+  FEB_Console_Printf("\r\nDeep dives:\r\n");
+  FEB_Console_Printf("  PCU|apps|raw|stream|stats|cal|filter|deadzone|mode|sim\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
   FEB_Console_Printf("  PCU|csv|<tx_id>|<sub>  - any subcommand above also works as CSV\r\n");
@@ -203,10 +208,61 @@ static void cmd_tps(int argc, char *argv[])
   FEB_Console_Printf("  Shunt Voltage: %ld uV\r\n", tps_data.shunt_voltage_uv);
 }
 
+static void cmd_bms_state(int argc, char *argv[])
+{
+  /* PCU|bms|state|<0-13 | drive | off> */
+  if (argc < 2)
+  {
+    FEB_Console_Printf("Usage: PCU|bms|state|<0-13 | drive | off>\r\n");
+    FEB_Console_Printf("  Simulates BMS state when BMS is silent on CAN bus.\r\n");
+    FEB_Console_Printf("  Refused if BMS is actively sending messages.\r\n");
+    return;
+  }
+
+  const char *val = argv[1];
+
+  if (FEB_strcasecmp(val, "off") == 0)
+  {
+    FEB_CAN_BMS_SetStateSim(false, FEB_SM_ST_BOOT);
+    FEB_Console_Printf("BMS sim cleared\r\n");
+    return;
+  }
+
+  FEB_SM_ST_t state;
+  if (FEB_strcasecmp(val, "drive") == 0)
+  {
+    state = FEB_SM_ST_DRIVE;
+  }
+  else
+  {
+    char *end;
+    unsigned long n = strtoul(val, &end, 10);
+    if (*end != '\0' || n >= FEB_SM_ST_COUNT)
+    {
+      FEB_Console_Printf("Error: invalid state '%s' (use 0-%d or 'drive' or 'off')\r\n", val, (int)FEB_SM_ST_COUNT - 1);
+      return;
+    }
+    state = (FEB_SM_ST_t)n;
+  }
+
+  if (!FEB_CAN_BMS_SetStateSim(true, state))
+  {
+    FEB_Console_Printf("Error: refused — BMS is active on CAN bus\r\n");
+    return;
+  }
+
+  FEB_Console_Printf("BMS sim active: state=%d (%s)\r\n", (int)state,
+                     state == FEB_SM_ST_DRIVE ? "DRIVE" : "see PCU|bms for name");
+}
+
 static void cmd_bms(int argc, char *argv[])
 {
-  (void)argc;
-  (void)argv;
+  if (argc >= 2 && FEB_strcasecmp(argv[1], "state") == 0)
+  {
+    cmd_bms_state(argc - 1, argv + 1);
+    return;
+  }
+
   FEB_Console_Printf("=== BMS State Information ===\r\n");
   FEB_Console_Printf("\r\n");
 
@@ -411,6 +467,21 @@ static void cmd_pcu(int argc, char *argv[])
     return;
   }
   const char *subcmd = argv[1];
+
+  /* `PCU|apps|...` with deeper args is owned by the APPS module. The
+   * bare `PCU|apps` falls through to cmd_apps below for the legacy
+   * read-only summary. */
+  if (argc > 2 && FEB_strcasecmp(subcmd, "apps") == 0)
+  {
+    PCU_APPS_HandleAppsSubcommand(argc - 1, argv + 1);
+    return;
+  }
+  if (FEB_strcasecmp(subcmd, "faults") == 0)
+  {
+    PCU_APPS_HandleFaultsSubcommand(argc - 1, argv + 1);
+    return;
+  }
+
   for (size_t i = 0; i < PCU_SUBCMDS_COUNT; i++)
   {
     if (FEB_strcasecmp(PCU_SUBCMDS[i]->name, subcmd) == 0)
@@ -437,4 +508,5 @@ void PCU_RegisterCommands(void)
   {
     FEB_Console_Register(PCU_SUBCMDS[i]);
   }
+  PCU_APPS_RegisterCommands();
 }

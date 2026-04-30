@@ -21,6 +21,8 @@ APPS_DataTypeDef APPS_Data;
 extern Brake_DataTypeDef Brake_Data;
 bool DRIVE_STATE;
 
+static uint32_t last_rms_implaus_log_tick = 0;
+
 void FEB_RMS_Setup(void)
 {
   RMS_CONTROL_MESSAGE.enabled = 0;
@@ -188,46 +190,39 @@ void FEB_RMS_Torque(void)
     FEB_RMS_Disable();
   }
 
-  // Read latest sensor data
+  // Read latest sensor data from the cache (updated every 1 ms by
+  // FEB_ADC_TickAPPS). Plausibility and fault state are owned by FEB_ADC;
+  // this consumer must not write back into the cached structs.
   FEB_ADC_GetAPPSData(&APPS_Data);
   FEB_ADC_GetBrakeData(&Brake_Data);
-  Brake_Data.plausible = true; // OVERRIDE: Bypass brake plausibility check
+  // Run BSPD/brake-plausibility check so the fault latches when applicable.
+  FEB_ADC_CheckBrakePlausibility();
 
   // Check plausibility and safety conditions (require BMS in drive state)
   bool bms_in_drive = FEB_CAN_BMS_InDriveState();
-  bool sensors_plausible = bms_in_drive && DRIVE_STATE;
+  bool sensors_plausible = bms_in_drive && DRIVE_STATE && APPS_Data.plausible && Brake_Data.plausible;
 
   // Log any safety violations
   if (!sensors_plausible)
   {
-    if (Brake_Data.brake_position > BRAKE_POSITION_THRESHOLD)
+    uint32_t now_rms = HAL_GetTick();
+    if (!APPS_Data.plausible && (now_rms - last_rms_implaus_log_tick) >= 1000)
     {
-      LOG_W(TAG_RMS, "Brake pressed (%.1f%%), cutting torque", Brake_Data.brake_position);
-    }
-    if (!APPS_Data.plausible)
-    {
-      LOG_E(TAG_RMS, "APPS implausible, cutting torque");
+      last_rms_implaus_log_tick = now_rms;
+      float v1_mv = 0.0f, v2_mv = 0.0f;
+      FEB_ADC_GetAPPSCacheSnapshot(NULL, NULL, NULL, &v1_mv, &v2_mv, NULL, NULL, NULL);
+      LOG_E(TAG_RMS, "APPS implausible, cutting torque (V1=%.0fmV V2=%.0fmV)", v1_mv, v2_mv);
     }
     if (!Brake_Data.plausible)
     {
       LOG_E(TAG_RMS, "Brake sensor implausible, cutting torque");
     }
-    if (!DRIVE_STATE)
-    {
-      // LOG_W(TAG_RMS, "Not in drive state, cutting torque");
-    }
   }
 
-  // Reset plausibility if pedals are released
-  if (APPS_Data.position1 < 5.0f && APPS_Data.position2 < 5.0f && Brake_Data.brake_position < 15.0f)
-  {
-    if (!APPS_Data.plausible || !Brake_Data.plausible)
-    {
-      LOG_I(TAG_RMS, "Pedals released, resetting plausibility flags");
-    }
-    APPS_Data.plausible = true;
-    Brake_Data.plausible = true;
-  }
+  // Release-and-reset: independent conditions per FSAE EV.5.5.
+  // APPS fault clears when both pedals < 5%; brake fault clears when brake < 15%.
+  FEB_ADC_AcknowledgeAPPSImplausibility();
+  FEB_ADC_AcknowledgeBrakeImplausibility();
 
   // Determine operating mode: regen braking vs acceleration
   if (Brake_Data.brake_position > REGEN_BRAKE_POS_THRESH && sensors_plausible)

@@ -250,7 +250,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  FEB_CAN_State_Tick();
+  /* DASHTaskTx is no longer driven by a TIM6 notification; it runs a plain
+     osDelay(1) loop that just calls FEB_CAN_TX_Process(), exactly like
+     BMSTaskTx. The periodic publishers (State_Tick, PingPong_Tick) now live
+     inside DASHTaskRx so they can never be stalled by a blocked TX_Process.
+     See DASH/Core/User/Src/FEB_CAN.c for the rationale. */
   /* USER CODE END Callback 1 */
 }
 

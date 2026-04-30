@@ -111,9 +111,15 @@ SECTIONS
     . = ALIGN(16);
     __feb_flash_info_start = .;
     KEEP(*(.feb_flash_info))
-    . = __feb_flash_info_start + 128;
+    __feb_flash_info_data_end = .;
+    /* Pad to a fixed 128 bytes. MAX() prevents the location counter from
+       moving backwards if the input section overflows; the ASSERT below
+       then reports it cleanly. */
+    . = MAX(., __feb_flash_info_start + 128);
     __feb_flash_info_end = .;
   } >FLASH
+  ASSERT(__feb_flash_info_data_end - __feb_flash_info_start <= 128,
+         "feb_flash_info exceeds 128-byte reserved region")
 
   .ARM.extab (READONLY) : /* The "READONLY" keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {

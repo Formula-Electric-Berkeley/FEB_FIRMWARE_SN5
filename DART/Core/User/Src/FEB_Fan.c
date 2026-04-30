@@ -59,9 +59,9 @@ void FEB_Fan_Init(void)
   FEB_Fan_PWM_Init();
   for (size_t i = 0; i < NUM_FANS; ++i)
   {
-    commanded_percent[i] = (uint8_t)(PWM_START_PERCENT * 100u);
+    commanded_percent[i] = PWM_START_PERCENT;
   }
-  FEB_Fan_All_Speed_Set(PWM_COUNTER * PWM_START_PERCENT); // starts at 100% duty cycle
+  FEB_Fan_All_Speed_Set(percent_to_counts(PWM_START_PERCENT));
   FEB_Fan_TACH_Init();
 }
 
@@ -101,7 +101,7 @@ void FEB_Fan_CAN_Msg_Process(uint8_t *FEB_CAN_Rx_Data)
   {
     commanded_percent[i] = pct;
   }
-  FEB_Fan_All_Speed_Set((PWM_COUNTER * fan_pct) / 100u);
+  FEB_Fan_All_Speed_Set(percent_to_counts(pct));
 }
 
 void FEB_Fan_Watchdog_Tick(void)

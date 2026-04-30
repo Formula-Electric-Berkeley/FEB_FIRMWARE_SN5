@@ -7,9 +7,9 @@
 #include "feb_can.h"
 #include <string.h>
 
-/* RMS Motor Controller CAN IDs (external device, not in generated library) */
-#define FEB_CAN_ID_RMS_VOLTAGE ((uint32_t)0xa0)
-#define FEB_CAN_ID_RMS_MOTOR ((uint32_t)0xa5)
+/* RMS Motor Controller CAN IDs — resolved from generated feb_can.h */
+#define FEB_CAN_ID_RMS_VOLTAGE FEB_CAN_M160_TEMPERATURE_SET_1_FRAME_ID
+#define FEB_CAN_ID_RMS_MOTOR FEB_CAN_M165_MOTOR_POSITION_INFO_FRAME_ID
 
 #define FAULT_CLEAR_ADDR_UNDERVOLT 140
 #define FAULT_CLEAR_ADDR_PARAM_SAFETY 20

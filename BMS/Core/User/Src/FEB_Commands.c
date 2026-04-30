@@ -355,15 +355,12 @@ static void subcmd_gpio(int argc, char *argv[])
 
   FEB_Console_Printf("\r\n=== GPIO Status ===\r\n");
 
-  FEB_Console_Printf("Outputs:\r\n");
-  FEB_Console_Printf("  AIR+ Command:    %s\r\n", FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
-  FEB_Console_Printf("  Precharge Cmd:   %s\r\n",
-                     FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
-
-  FEB_Console_Printf("\r\nSense Inputs:\r\n");
+  FEB_Console_Printf("Sense Inputs:\r\n");
+  FEB_Console_Printf("  AIR+ Sense:      %s\r\n", FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
   FEB_Console_Printf("  AIR- Sense:      %s\r\n",
                      FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
-  FEB_Console_Printf("  AIR+ Sense:      %s\r\n", FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
+  FEB_Console_Printf("  Precharge Sense: %s\r\n",
+                     FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
   FEB_Console_Printf("  Shutdown Loop:   %s\r\n", FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
   FEB_Console_Printf("  IMD Status:      %s\r\n", FEB_HW_IMD_Sense() == FEB_RELAY_STATE_CLOSE ? "OK" : "FAULT");
   FEB_Console_Printf("  TSMS Status:     %s\r\n", FEB_HW_TSMS_Sense() == FEB_RELAY_STATE_CLOSE ? "ACTIVE" : "INACTIVE");
@@ -439,7 +436,7 @@ static void subcmd_mem(int argc, char *argv[])
   size_t free_heap = xPortGetFreeHeapSize();
   size_t min_free = xPortGetMinimumEverFreeHeapSize();
   size_t used = total - free_heap;
-  uint32_t percent = (used * 100) / total;
+  uint32_t percent = (used * 100) / (total > 0 ? total : 1);
 
   FEB_Console_Printf("\r\n=== Memory Usage ===\r\n");
   FEB_Console_Printf("Total Heap:    %u bytes\r\n", (unsigned int)total);
@@ -937,8 +934,10 @@ static void cmd_gpio_csv(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-  /* Body: air_plus_cmd,precharge_cmd,air_minus_sense,air_plus_sense,
-   *       shutdown,imd_ok,tsms_active,reset_btn,hv_safe  (all 0/1) */
+  /* Body: air_plus_sense,precharge_sense,air_minus_sense,air_plus_sense,
+   *       shutdown,imd_ok,tsms_active,reset_btn,hv_safe  (all 0/1)
+   * Note: cols 0 and 3 both report AIR+ sense — schema preserved for
+   * compatibility with existing log consumers. */
   FEB_Console_CsvEmit("gpio", "%d,%d,%d,%d,%d,%d,%d,%d,%d", FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0,
                       FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0,
                       FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0,

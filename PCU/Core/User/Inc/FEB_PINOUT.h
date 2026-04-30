@@ -66,12 +66,12 @@ extern "C"
 #define ADC3_BSPD_RESET_PIN GPIO_PIN_1
 #define ADC3_BSPD_RESET_PORT GPIOC
 
-#define ADC3_ACCEL_PEDAL_1_CHANNEL ADC_CHANNEL_12 /* PC2 - Accelerator Pedal Position 1 */
-#define ADC3_ACCEL_PEDAL_1_PIN GPIO_PIN_2
+#define ADC3_ACCEL_PEDAL_1_CHANNEL ADC_CHANNEL_13 /* PC3 - Accelerator Pedal Position 1 */
+#define ADC3_ACCEL_PEDAL_1_PIN GPIO_PIN_3
 #define ADC3_ACCEL_PEDAL_1_PORT GPIOC
 
-#define ADC3_ACCEL_PEDAL_2_CHANNEL ADC_CHANNEL_13 /* PC3 - Accelerator Pedal Position 2 */
-#define ADC3_ACCEL_PEDAL_2_PIN GPIO_PIN_3
+#define ADC3_ACCEL_PEDAL_2_CHANNEL ADC_CHANNEL_12 /* PC2 - Accelerator Pedal Position 2 */
+#define ADC3_ACCEL_PEDAL_2_PIN GPIO_PIN_2
 #define ADC3_ACCEL_PEDAL_2_PORT GPIOC
 
 /* ========================================================================== */
@@ -129,8 +129,10 @@ extern "C"
 /* Default Calibration Values - Used until runtime calibration is performed */
 /* These are DEFAULTS only - actual values are stored in calibration structs */
 
-/* Single APPS Sensor Mode - for testing only, not FSAE compliant */
-#define SINGLE_APPS_MODE 1 /* Set to 1 to use only APPS1 sensor */
+/* Single-APPS mode is now a runtime flag (FEB_APPS_SingleSensorMode in FEB_ADC.c).
+ * Default at boot is OFF — dual-sensor plausibility enforced (FSAE EV.5.3).
+ * Toggle for bench testing only via PCU|apps|mode|single|<on|off> while not in
+ * drive state. */
 
 /* Accelerator Pedal Default Calibration (APPS) */
 /* Calibrated values based on actual measurements with safety margin */
@@ -144,12 +146,13 @@ extern "C"
 #define APPS_PLAUSIBILITY_TOLERANCE 10    /* Maximum deviation between sensors (%) */
 
 /* Brake Pressure Sensor Default Calibration */
-#define BRAKE_PRESSURE_DEFAULT_MIN_MV 500      /* Default voltage at 0 bar */
-#define BRAKE_PRESSURE_DEFAULT_MAX_MV 4500     /* Default voltage at max pressure */
-#define BRAKE_PRESSURE_MIN_PHYSICAL_BAR 0.0f   /* Physical minimum: 0 bar */
-#define BRAKE_PRESSURE_MAX_PHYSICAL_BAR 200.0f /* Physical maximum: 200 bar */
-#define BRAKE_PRESSURE_THRESHOLD_BAR 5         /* Brake activation threshold */
-#define BRAKE_PRESSURE_THRESHOLD_PERCENT 2.5f  /* Brake activation threshold in percent */
+#define BRAKE_PRESSURE_DEFAULT_MIN_MV 500                   /* Default voltage at 0 bar */
+#define BRAKE_PRESSURE_DEFAULT_MAX_MV 4500                  /* Default voltage at max pressure */
+#define BRAKE_PRESSURE_MIN_PHYSICAL_BAR 0.0f                /* Physical minimum: 0 bar */
+#define BRAKE_PRESSURE_MAX_PHYSICAL_BAR 200.0f              /* Physical maximum: 200 bar */
+#define BRAKE_PRESSURE_THRESHOLD_BAR 5                      /* Brake activation threshold */
+#define BRAKE_PRESSURE_THRESHOLD_PERCENT 2.5f               /* Brake activation threshold in percent */
+#define BRAKE_PRESSURE_PLAUSIBILITY_TOLERANCE_PERCENT 20.0f /* Max disagreement between brake pressure sensors */
 
 /* Brake Input/Switch Calibration */
 #define BRAKE_INPUT_THRESHOLD_MV 1500 /* Threshold for brake switch activation */

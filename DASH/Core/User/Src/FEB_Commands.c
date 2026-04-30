@@ -22,8 +22,13 @@
  * CAN Ping/Pong Commands
  * ============================================================================ */
 
-static const char *mode_names[] = {"OFF", "PING", "PONG"};
+static const char *mode_names[] = {"OFF", "PING", "PONG", "PINGPONG"};
 static const uint32_t pingpong_frame_ids[] = {0xE0, 0xE1, 0xE2, 0xE3};
+
+static FEB_PingPong_Mode_t pong_target_mode(uint8_t channel)
+{
+  return (FEB_CAN_PingPong_GetMode(channel) == PINGPONG_MODE_PING) ? PINGPONG_MODE_PINGPONG : PINGPONG_MODE_PONG;
+}
 
 static void cmd_ping(int argc, char *argv[])
 {
@@ -85,8 +90,10 @@ static void cmd_pong(int argc, char *argv[])
     return;
   }
 
-  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PONG);
-  FEB_Console_Printf("Channel %d (0x%02X): PONG mode started\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+  FEB_PingPong_Mode_t mode = pong_target_mode((uint8_t)ch);
+  FEB_CAN_PingPong_SetMode((uint8_t)ch, mode);
+  FEB_Console_Printf("Channel %d (0x%02X): %s mode started\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1],
+                     mode_names[mode]);
 }
 
 static void cmd_pong_csv(int argc, char *argv[])
@@ -102,8 +109,9 @@ static void cmd_pong_csv(int argc, char *argv[])
     FEB_Console_CsvError("error", "pong_channel,%s", argv[1]);
     return;
   }
-  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PONG);
-  FEB_Console_CsvEmit("pong", "%d,0x%02X", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+  FEB_PingPong_Mode_t mode = pong_target_mode((uint8_t)ch);
+  FEB_CAN_PingPong_SetMode((uint8_t)ch, mode);
+  FEB_Console_CsvEmit("pong", "%d,0x%02X,%s", ch, (unsigned int)pingpong_frame_ids[ch - 1], mode_names[mode]);
 }
 
 static const FEB_Console_Cmd_t dash_cmd_pong = {

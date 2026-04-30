@@ -18,7 +18,7 @@
 #define NUM_FANS (uint32_t)5
 #define PWM_SIZE (uint32_t)40
 #define PWM_COUNTER ((uint32_t)((TIMCLOCK * PWM_SIZE) / 1000000u))
-#define PWM_START_PERCENT 1u
+#define PWM_START_PERCENT 100u
 
 #define TEMP_START_FAN 25
 #define TEMP_END_FAN 45

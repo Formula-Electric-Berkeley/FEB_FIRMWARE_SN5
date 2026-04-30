@@ -723,18 +723,20 @@ float FEB_ADBMS_GET_Therm_Raw_mV(uint8_t bank, uint16_t sensor)
 void FEB_Cell_Balance_Start()
 {
   LOG_I(TAG_BALANCE, "Starting cell balancing");
+  osMutexAcquire(ADBMSMutexHandle, osWaitForever);
   FEB_cs_high();
   ADBMS6830B_init_cfg(FEB_NUM_IC, IC_Config);
   ADBMS6830B_wrALL(FEB_NUM_IC, IC_Config);
   FEB_Cell_Balance_Process();
+  osMutexRelease(ADBMSMutexHandle);
 }
 
+// Caller must hold ADBMSMutexHandle.
 void FEB_Cell_Balance_Process()
 {
-  // Thermal safety gate. Mirrors FEB_Cell_Balancing_Status() so direct callers
-  // (e.g. FEB_Cell_Balance_Start / FEB_Task_ADBMS) cannot bypass the check.
-  // NaN fails the comparison → stops balancing when telemetry is unavailable.
-  const float gate_max_temp_dC = FEB_ADBMS_GET_ACC_MAX_Temp() * 10.0f;
+  // Thermal safety gate. NaN fails the comparison → stops balancing when
+  // telemetry is unavailable. Direct field read; caller already holds the mutex.
+  const float gate_max_temp_dC = FEB_ACC.pack_max_temp * 10.0f;
   if (!(gate_max_temp_dC < FEB_CONFIG_CELL_SOFT_MAX_TEMP_dC))
   {
     LOG_W(TAG_BALANCE, "Temp limit: pack max=%.1fC, skipping balance cycle", gate_max_temp_dC / 10.0f);
@@ -823,7 +825,7 @@ bool FEB_Cell_Balancing_Status(void)
   }
 
   float min_v = FLT_MAX;
-  float max_v = FLT_MIN;
+  float max_v = -FLT_MAX;
 
   for (size_t i = 0; i < FEB_NBANKS; ++i)
   {

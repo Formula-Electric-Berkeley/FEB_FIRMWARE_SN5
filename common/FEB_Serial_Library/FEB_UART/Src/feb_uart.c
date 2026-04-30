@@ -905,8 +905,13 @@ void FEB_UART_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
     return;
   }
 
-  /* Update head position so ProcessRx can read the received data */
-  ctx[inst].rx_head = size;
+  /* Update head position so ProcessRx can read the received data.
+   * Clamp via modulo: in circular DMA mode the TC callback fires with
+   * size == rx_buffer_size (DMA just wrapped to 0).  Without the modulo,
+   * rx_head == buffer_size causes get_rx_count() to report a phantom
+   * buffer_size bytes available, re-executing stale commands on every
+   * subsequent main-loop iteration until the next IDLE corrects it. */
+  ctx[inst].rx_head = size % ctx[inst].rx_buffer_size;
 
   /* Non-circular DMA mode: restart reception after each transfer.
    * Circular mode (F4) keeps running; non-circular mode (U5 GPDMA) stops after each transfer. */
@@ -935,7 +940,8 @@ void FEB_UART_IDLE_Callback(UART_HandleTypeDef *huart)
     if (ctx[inst].hdma_rx != NULL)
     {
       size_t dma_remaining = __HAL_DMA_GET_COUNTER(ctx[inst].hdma_rx);
-      ctx[inst].rx_head = ctx[inst].rx_buffer_size - dma_remaining;
+      size_t new_head = ctx[inst].rx_buffer_size - dma_remaining;
+      ctx[inst].rx_head = new_head % ctx[inst].rx_buffer_size;
     }
   }
 }

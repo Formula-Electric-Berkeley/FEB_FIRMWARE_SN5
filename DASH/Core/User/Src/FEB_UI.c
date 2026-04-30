@@ -2,6 +2,7 @@
 
 #include "FEB_UI.h"
 #include "cmsis_os.h"
+#include "feb_console.h"
 #include "main.h"
 #include "portmacro.h"
 #include "stm32469i_discovery.h"
@@ -81,19 +82,19 @@ void FEB_UI_Update(void)
 void StartDisplayTask(void *argument)
 {
   FEB_UI_Init();
-  uint32_t last_blink = 0;
+  // uint32_t last_blink = 0;
 
   for (;;)
   {
     FEB_UI_Update();
 
-    if (lv_tick_get() - last_blink >= 1000)
-    {
-      HAL_GPIO_TogglePin(LED4_GPIO_Port, LED4_Pin);
-      last_blink = lv_tick_get();
-    }
+    // if (lv_tick_get() - last_blink >= 1000)
+    // {
+    //   HAL_GPIO_TogglePin(LED4_GPIO_Port, LED4_Pin);
+    //   last_blink = lv_tick_get();
+    // }
 
-    osDelay(pdMS_TO_TICKS(50)); // slower delay so you can see it changing
+    osDelay(500); // slower delay so you can see it changing
   }
 }
 

@@ -244,11 +244,22 @@ typedef volatile uint8_t FEB_CAN_Semaphore_t;
     FEB_CAN_Semaphore_t tx_sem;
     volatile uint8_t tx_pending_count; /**< Messages pending in mailboxes */
 
+    /* Set from HAL_CAN_ErrorCallback when CAN_ESR.BOFF latches. With
+     * AutoBusOff=DISABLE the bxCAN core stays detached until software
+     * triggers init mode again. FEB_CAN_TX_Process picks this up at task
+     * context and runs the Stop/Start recovery sequence. */
+    volatile uint8_t bus_off_pending;
+
     /* Error counters for diagnostics */
     volatile uint32_t rx_queue_overflow_count; /**< RX messages dropped due to queue full */
     volatile uint32_t tx_queue_overflow_count; /**< TX messages dropped due to queue full */
     volatile uint32_t tx_timeout_count;        /**< TX messages dropped due to mailbox timeout */
     volatile uint32_t hal_error_count;         /**< HAL errors encountered */
+    volatile uint32_t error_callback_count;    /**< Times HAL_CAN_ErrorCallback fired */
+    volatile uint32_t bus_off_count;           /**< Times bus-off recovery ran */
+    volatile uint32_t ewg_recovery_count;      /**< Times EWG/EPV HAL state reset ran */
+    volatile uint32_t last_error_esr;          /**< ESR snapshot from most recent error IRQ */
+    volatile uint32_t last_error_code;         /**< HAL ErrorCode snapshot from most recent error IRQ */
 
     /* RX handles */
     FEB_CAN_RX_Handle_Internal_t rx_handles[FEB_CAN_MAX_RX_HANDLES];
@@ -289,6 +300,21 @@ typedef volatile uint8_t FEB_CAN_Semaphore_t;
    */
   int feb_can_tx_hal_transmit(FEB_CAN_Instance_t instance, uint32_t can_id, uint8_t id_type, const uint8_t *data,
                               uint8_t length);
+
+#if FEB_CAN_USE_FREERTOS
+  /**
+   * @brief Bus-off recovery (task context only).
+   *
+   * AutoBusOff=DISABLE in the .ioc means the controller stays in bus-off
+   * until software requests INIT mode. FEB_CAN_ErrorCallback flags this
+   * via ctx->bus_off_pending; FEB_CAN_TX_Process invokes this helper to
+   * Stop/Start the peripheral, re-arm notifications, and re-prime the
+   * mailbox semaphore so transmissions can resume after the bus heals.
+   *
+   * MUST NOT be called from ISR context.
+   */
+  void feb_can_recover_bus_off(void);
+#endif
 
 #ifdef __cplusplus
 }
