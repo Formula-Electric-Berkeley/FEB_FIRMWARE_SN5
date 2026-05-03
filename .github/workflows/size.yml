@@ -25,7 +25,9 @@ jobs:
             flash_limit: 32768
           - project: DCU
             flash_limit: 524288
-          - project: Sensor_Nodes
+          - project: Sensor_Nodes_FRONT
+            flash_limit: 524288
+          - project: Sensor_Nodes_REAR
             flash_limit: 524288
           - project: UART
             flash_limit: 524288
@@ -40,12 +42,25 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Resolve source dir
+        id: resolve
+        run: |
+          case "${{ matrix.project }}" in
+            Sensor_Nodes_FRONT|Sensor_Nodes_REAR)
+              echo "src_dir=Sensor_Nodes" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "src_dir=${{ matrix.project }}" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
       - name: Check buildability
         id: check
         run: |
-          if [ ! -f "${{ matrix.project }}/CMakeLists.txt" ] || [ ! -d "${{ matrix.project }}/Core" ]; then
+          SRC="${{ steps.resolve.outputs.src_dir }}"
+          if [ ! -f "${SRC}/CMakeLists.txt" ] || [ ! -d "${SRC}/Core" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::${{ matrix.project }} skipped -- missing CMakeLists.txt or Core/ directory."
+            echo "::warning::${{ matrix.project }} skipped -- missing ${SRC}/CMakeLists.txt or ${SRC}/Core/."
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
@@ -76,7 +91,7 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         id: size
         run: |
-          ELF_PATH="build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}.elf"
+          ELF_PATH="build/${{ matrix.project }}/${{ steps.resolve.outputs.src_dir }}/${{ matrix.project }}.elf"
 
           # Get size output
           SIZE_OUTPUT=$(arm-none-eabi-size --format=berkeley "$ELF_PATH")
@@ -122,7 +137,7 @@ jobs:
       - name: Show largest symbols
         if: steps.check.outputs.skip != 'true'
         run: |
-          ELF_PATH="build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}.elf"
+          ELF_PATH="build/${{ matrix.project }}/${{ steps.resolve.outputs.src_dir }}/${{ matrix.project }}.elf"
 
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "#### Top 10 Largest Symbols" >> "$GITHUB_STEP_SUMMARY"

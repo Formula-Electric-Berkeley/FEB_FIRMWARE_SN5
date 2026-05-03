@@ -59,11 +59,21 @@
         },
         {
             "type": "shell",
-            "label": "Build Sensor_Nodes",
+            "label": "Build Sensor_Nodes (FRONT)",
             "command": "cmake",
-            "args": ["--build", "build/Debug", "--target", "Sensor_Nodes"],
+            "args": ["--build", "build/Debug", "--target", "Sensor_Nodes_FRONT"],
             "group": "build",
-            "problemMatcher": "$gcc"
+            "problemMatcher": "$gcc",
+            "detail": "Builds build/Debug/Sensor_Nodes/Sensor_Nodes_FRONT.elf"
+        },
+        {
+            "type": "shell",
+            "label": "Build Sensor_Nodes (REAR)",
+            "command": "cmake",
+            "args": ["--build", "build/Debug", "--target", "Sensor_Nodes_REAR"],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "detail": "Builds build/Debug/Sensor_Nodes/Sensor_Nodes_REAR.elf"
         },
         {
             "type": "shell",
@@ -104,20 +114,13 @@
         {
             "type": "shell",
             "label": "CubeProg: Flash project (SWD)",
-            "command": "STM32_Programmer_CLI",
-            "args": [
-                "--connect",
-                "port=swd",
-                "--download",
-                "${workspaceFolder}/build/Debug/${input:boardName}/${input:boardName}.elf",
-                "-hardRst",
-                "-rst",
-                "--start"
-            ],
+            "command": "${workspaceFolder}/scripts/flash.sh",
+            "args": ["-b", "${input:boardName}"],
             "options": {
                 "cwd": "${workspaceFolder}"
             },
-            "problemMatcher": []
+            "problemMatcher": [],
+            "detail": "Flashes the selected board (resolves Sensor_Nodes_FRONT/REAR to the right ELF)"
         },
         {
             "type": "cmake",
@@ -181,7 +184,7 @@
             "id": "boardName",
             "type": "pickString",
             "description": "Select board to flash",
-            "options": ["BMS", "DASH", "DART", "DCU", "LVPDB", "PCU", "Sensor_Nodes", "UART", "UART_TEST"],
+            "options": ["BMS", "DASH", "DART", "DCU", "LVPDB", "PCU", "Sensor_Nodes_FRONT", "Sensor_Nodes_REAR", "UART", "UART_TEST"],
             "default": "LVPDB"
         },
         {

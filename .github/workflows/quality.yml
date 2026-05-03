@@ -30,6 +30,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Sensor_Nodes ships in two variants (FRONT, REAR) but cppcheck
+        # operates on the shared source tree. Run it once with both variants
+        # explored via -D arguments below.
         project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes, UART, UART_TEST]
 
     steps:
@@ -54,12 +57,19 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         working-directory: ${{ matrix.project }}
         run: |
+          # For Sensor_Nodes, supply the variant macros so the FEB_SN_Config.h
+          # validation #error doesn't fire on the cppcheck preprocessor pass.
+          # Other projects ignore these defines.
           cppcheck \
             --enable=warning,performance,portability \
             --suppress=missingIncludeSystem \
             --suppress=unmatchedSuppression \
             --error-exitcode=1 \
             --inline-suppr \
+            -DFEB_SN_VARIANT_FRONT=1 \
+            -DFEB_SN_VARIANT_REAR=2 \
+            -DFEB_SENSOR_NODE_VARIANT=1 \
+            -I Core/User/Inc \
             -i Drivers \
             -i Middlewares \
             Core/ \

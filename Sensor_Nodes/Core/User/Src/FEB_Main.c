@@ -8,6 +8,7 @@
 
 #include <string.h>
 #include "FEB_Main.h"
+#include "FEB_SN_Config.h"
 #include "FEB_CAN_IMU.h"
 #include "FEB_CAN_Magnetometer.h"
 #include "FEB_CAN_WSS.h"
@@ -72,11 +73,12 @@ void FEB_Init(void)
 
   SN_RegisterCommands();
 
-  FEB_Console_Printf("Sensor Node Starting\r\n");
+  FEB_Console_Printf("Sensor Node (%s) Starting\r\n", FEB_SN_VARIANT_NAME);
 
   /* Free-running 1 MHz µs counter for Fusion dt and WSS edge timestamps. */
   HAL_TIM_Base_Start(&htim5);
 
+#if FEB_SN_HAS_IMU
   if (lsm6dsox_init() != 0)
   {
     LOG_E(TAG_MAIN, "IMU init failed");
@@ -85,16 +87,30 @@ void FEB_Init(void)
   {
     FEB_Console_Printf("IMU initialized\r\n");
   }
+#else
+  FEB_Console_Printf("IMU absent on this variant\r\n");
+#endif
 
+#if FEB_SN_HAS_MAG
   lis3mdl_init();
   FEB_Console_Printf("Magnetometer initialized\r\n");
+#else
+  FEB_Console_Printf("Magnetometer absent on this variant\r\n");
+#endif
 
+#if FEB_SN_HAS_FUSION
   FEB_Fusion_Init();
   FEB_Console_Printf("Fusion orientation filter initialized\r\n");
+#endif
 
+#if FEB_SN_HAS_WSS
   FEB_WSS_Init();
   FEB_Console_Printf("WSS initialized\r\n");
+#else
+  FEB_Console_Printf("WSS absent on this variant\r\n");
+#endif
 
+#if FEB_SN_HAS_GPS
   int gps_result = FEB_GPS_Init();
   if (gps_result != 0)
   {
@@ -115,6 +131,10 @@ void FEB_Init(void)
     }
     gps_ready = true;
   }
+#else
+  FEB_Console_Printf("GPS absent on this variant\r\n");
+  gps_ready = false;
+#endif
 
   FEB_CAN_Config_t can_cfg = {
       .hcan1 = &hcan1,
@@ -124,7 +144,7 @@ void FEB_Init(void)
   FEB_CAN_Init(&can_cfg);
   FEB_Console_Printf("CAN initialized\r\n");
 
-  FEB_Console_Printf("Sensor Node Setup Complete\r\n");
+  FEB_Console_Printf("Sensor Node (%s) Setup Complete\r\n", FEB_SN_VARIANT_NAME);
 }
 
 void FEB_Main_Loop(void)
@@ -140,12 +160,16 @@ void FEB_Main_Loop(void)
 
   /* Drain UART RX every iteration so console + GPS NMEA never starve. */
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
+#if FEB_SN_HAS_GPS
   if (gps_ready)
   {
     FEB_GPS_Process();
   }
+#endif
 
-  /* 100 Hz: sample IMU+mag, run Fusion with µs-accurate dt, publish related CAN frames. */
+  /* 100 Hz: sample IMU+mag, run Fusion with µs-accurate dt, publish related CAN frames.
+   * The cadence tick still fires at 100 Hz even if individual sensors are absent —
+   * each sample/Tick is independently gated so the loop stays uniform across variants. */
   if ((uint32_t)(now_ms - t_imu_ms) >= TICK_PERIOD_IMU_MS)
   {
     const uint32_t now_us = __HAL_TIM_GET_COUNTER(&htim5);
@@ -157,10 +181,18 @@ void FEB_Main_Loop(void)
     prev_fusion_us = now_us;
     fusion_dt_primed = true;
 
+#if FEB_SN_HAS_IMU
     read_Acceleration();
     read_Angular_Rate();
+#endif
+#if FEB_SN_HAS_MAG
     read_Magnetic_Field_Data();
+#endif
+#if FEB_SN_HAS_FUSION
     FEB_Fusion_Update(dt);
+#else
+    (void)dt;
+#endif
 
     FEB_CAN_IMU_Tick();
     FEB_CAN_Magnetometer_Tick();
@@ -172,7 +204,9 @@ void FEB_Main_Loop(void)
   /* 50 Hz: recompute wheel RPM from per-edge timestamp ring, transmit. */
   if ((uint32_t)(now_ms - t_wss_ms) >= TICK_PERIOD_WSS_MS)
   {
+#if FEB_SN_HAS_WSS
     WSS_Main();
+#endif
     FEB_CAN_WSS_Tick();
     t_wss_ms = now_ms;
   }
@@ -187,8 +221,12 @@ void FEB_Main_Loop(void)
   /* 1 Hz: sensor die temperatures. */
   if ((uint32_t)(now_ms - t_temp_ms) >= TICK_PERIOD_TEMP_MS)
   {
+#if FEB_SN_HAS_IMU
     read_IMU_Temperature();
+#endif
+#if FEB_SN_HAS_MAG
     read_Mag_Temperature();
+#endif
     FEB_CAN_Temps_Tick();
     t_temp_ms = now_ms;
   }
