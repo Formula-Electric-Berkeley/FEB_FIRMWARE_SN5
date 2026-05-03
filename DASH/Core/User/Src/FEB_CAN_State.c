@@ -85,13 +85,14 @@ void FEB_CAN_State_Tick(void)
 
     IO_States_t states = FEB_IO_GetLastIOStates();
 
-    struct feb_can_dash_state_t pack_states = {.buzzer = states.buzzer_enabled,
-                                               .button1 = states.button_rtd,
-                                               .switch1 = states.switch_accumulator_fans,
-                                               .switch2 = states.switch_coolant_pump_radiator_fan,
-                                               .switch3 = states.switch_logging};
-
-    if (feb_can_dash_state_pack(tx_data, &pack_states, 2) == 2)
+    if (feb_can_dash_state_pack(tx_data,
+                                &((struct feb_can_dash_state_t){.buzzer = states.buzzer_enabled,
+                                                                .button1 = states.button_rtd,
+                                                                .switch1 = states.switch_accumulator_fans,
+                                                                .switch2 = states.switch_coolant_pump_radiator_fan,
+                                                                .switch3 = states.switch_logging,
+                                                                .ready_to_drive = FEB_State_GetLastRTD()}),
+                                2) == 2)
     {
       FEB_CAN_Status_t st = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_DASH_STATE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
                                             FEB_CAN_DASH_STATE_LENGTH);
