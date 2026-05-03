@@ -47,6 +47,14 @@ list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_S
 set(LWGPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/lwgps/src")
 list(APPEND ALL_SOURCES "${LWGPS_DIR}/lwgps/lwgps.c")
 
+# Fusion AHRS library (xioTechnologies)
+set(FUSION_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/Fusion")
+list(APPEND ALL_SOURCES
+    "${FUSION_DIR}/FusionAhrs.c"
+    "${FUSION_DIR}/FusionBias.c"
+    "${FUSION_DIR}/FusionCompass.c"
+)
+
 # ══════════════════════════════════════════════════════════════════════
 #  INCLUDE DIRECTORIES
 # ══════════════════════════════════════════════════════════════════════
@@ -73,6 +81,9 @@ list(APPEND BASE_INCLUDES
 
 # LwGPS library includes
 list(APPEND BASE_INCLUDES "${LWGPS_DIR}/include")
+
+# Fusion library includes
+list(APPEND BASE_INCLUDES "${FUSION_DIR}")
 
 # ══════════════════════════════════════════════════════════════════════
 #  EXECUTABLE TARGET

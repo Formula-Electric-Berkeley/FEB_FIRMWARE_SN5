@@ -1,128 +1,164 @@
 #include "FEB_WSS.h"
 #include "main.h"
-#include <math.h>
+#include "tim.h"
 
-extern UART_HandleTypeDef huart2;
-
-// -----------------------------------------------------------------------
+// =====================================================================
 // Configuration
-// -----------------------------------------------------------------------
-#define TICKS_PER_ROTATION (84 * 4)
-#define STALE_MS 200u
-#define RPM_TO_U8_SCALE 0.5f // LSB = 2 RPM, max = 510 RPM
+// =====================================================================
+#define WSS_PPR 84u                                       // mechanical pulses per revolution
+#define WSS_QUADRATURE_MULT 4u                            // 4x edges per pulse
+#define WSS_EDGES_PER_REV (WSS_PPR * WSS_QUADRATURE_MULT) // 336
 
-// -----------------------------------------------------------------------
-// Quadrature decode table
-// index = (last_cos << 3 | last_sin << 2 | cos_now << 1 | sin_now)
-// -----------------------------------------------------------------------
+#define WSS_RING_LEN 16u     // power of two, used as ring buffer for edge timestamps
+#define WSS_STALE_US 200000u // 200 ms without an edge -> wheel considered stopped
+#define WSS_RPM_X10_MAX 65535u
+
+// Quadrature decode table indexed by ((last_cos << 3) | (last_sin << 2) | (cos_now << 1) | sin_now).
 static const int8_t QUAD_TABLE[16] = {0, +1, -1, 0, -1, 0, 0, +1, +1, 0, 0, -1, 0, -1, +1, 0};
 
-// -----------------------------------------------------------------------
-// Encoder state
-// -----------------------------------------------------------------------
 typedef struct
 {
-  volatile int32_t count;
-  volatile int32_t last_count;
-  volatile uint32_t last_tick;
-  volatile int8_t direction;
+  volatile uint32_t ts[WSS_RING_LEN]; // TIM5 µs timestamp on each valid edge
+  volatile int8_t dir[WSS_RING_LEN];  // +/-1 from QUAD_TABLE
+  volatile uint8_t head;              // index of newest entry
+  volatile uint8_t fill;              // count of valid entries (0..WSS_RING_LEN)
   uint8_t last_cos;
   uint8_t last_sin;
-} EncoderState;
+} WheelState;
 
-volatile EncoderState enc_left = {0, 0, 0, 0, 0, 0};
-volatile EncoderState enc_right = {0, 0, 0, 0, 0, 0};
+static volatile WheelState wheel_left = {0};
+static volatile WheelState wheel_right = {0};
 
-// -----------------------------------------------------------------------
-// Return type
-// -----------------------------------------------------------------------
-uint8_t left_rpm;
-uint8_t right_rpm;
+uint16_t left_rpm_x10 = 0;
+uint16_t right_rpm_x10 = 0;
+int8_t left_dir = 0;
+int8_t right_dir = 0;
 
-// -----------------------------------------------------------------------
-// ISR callback
-// -----------------------------------------------------------------------
+static inline uint32_t tim5_us(void)
+{
+  return __HAL_TIM_GET_COUNTER(&htim5);
+}
+
+void FEB_WSS_Init(void)
+{
+  // Counter must be running for µs timestamps.  Start is idempotent.
+  HAL_TIM_Base_Start(&htim5);
+
+  // Seed the last-known phase from the actual pin levels so the first edge produces a valid delta.
+  wheel_left.last_cos = HAL_GPIO_ReadPin(WSS_COS_L_GPIO_Port, WSS_COS_L_Pin) ? 1u : 0u;
+  wheel_left.last_sin = HAL_GPIO_ReadPin(WSS_SIN_L_GPIO_Port, WSS_SIN_L_Pin) ? 1u : 0u;
+  wheel_right.last_cos = HAL_GPIO_ReadPin(WSS_COS_R_GPIO_Port, WSS_COS_R_Pin) ? 1u : 0u;
+  wheel_right.last_sin = HAL_GPIO_ReadPin(WSS_SIN_R_GPIO_Port, WSS_SIN_R_Pin) ? 1u : 0u;
+}
+
+static inline void wheel_record_edge(volatile WheelState *w, uint8_t cos_now, uint8_t sin_now)
+{
+  const uint8_t idx = (uint8_t)((w->last_cos << 3) | (w->last_sin << 2) | (cos_now << 1) | sin_now);
+  const int8_t delta = QUAD_TABLE[idx];
+  w->last_cos = cos_now;
+  w->last_sin = sin_now;
+  if (delta == 0)
+  {
+    return; // glitch / no transition
+  }
+  const uint8_t h = (uint8_t)((w->head + 1u) & (WSS_RING_LEN - 1u));
+  w->ts[h] = tim5_us();
+  w->dir[h] = delta;
+  w->head = h;
+  if (w->fill < WSS_RING_LEN)
+  {
+    w->fill++;
+  }
+}
+
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   if (GPIO_Pin == WSS_COS_L_Pin || GPIO_Pin == WSS_SIN_L_Pin)
   {
-    uint8_t cos_now = HAL_GPIO_ReadPin(WSS_COS_L_GPIO_Port, WSS_COS_L_Pin) ? 1 : 0;
-    uint8_t sin_now = HAL_GPIO_ReadPin(WSS_SIN_L_GPIO_Port, WSS_SIN_L_Pin) ? 1 : 0;
-
-    uint8_t index = (enc_left.last_cos << 3) | (enc_left.last_sin << 2) | (cos_now << 1) | sin_now;
-
-    int8_t delta = QUAD_TABLE[index];
-    if (delta != 0)
-    {
-      enc_left.count += delta;
-      enc_left.direction = delta;
-      enc_left.last_tick = HAL_GetTick();
-    }
-    enc_left.last_cos = cos_now;
-    enc_left.last_sin = sin_now;
+    const uint8_t cos_now = HAL_GPIO_ReadPin(WSS_COS_L_GPIO_Port, WSS_COS_L_Pin) ? 1u : 0u;
+    const uint8_t sin_now = HAL_GPIO_ReadPin(WSS_SIN_L_GPIO_Port, WSS_SIN_L_Pin) ? 1u : 0u;
+    wheel_record_edge(&wheel_left, cos_now, sin_now);
   }
   else if (GPIO_Pin == WSS_COS_R_Pin || GPIO_Pin == WSS_SIN_R_Pin)
   {
-    uint8_t cos_now = HAL_GPIO_ReadPin(WSS_COS_R_GPIO_Port, WSS_COS_R_Pin) ? 1 : 0;
-    uint8_t sin_now = HAL_GPIO_ReadPin(WSS_SIN_R_GPIO_Port, WSS_SIN_R_Pin) ? 1 : 0;
-
-    uint8_t index = (enc_right.last_cos << 3) | (enc_right.last_sin << 2) | (cos_now << 1) | sin_now;
-
-    int8_t delta = QUAD_TABLE[index];
-    if (delta != 0)
-    {
-      enc_right.count += delta;
-      enc_right.direction = delta;
-      enc_right.last_tick = HAL_GetTick();
-    }
-    enc_right.last_cos = cos_now;
-    enc_right.last_sin = sin_now;
+    const uint8_t cos_now = HAL_GPIO_ReadPin(WSS_COS_R_GPIO_Port, WSS_COS_R_Pin) ? 1u : 0u;
+    const uint8_t sin_now = HAL_GPIO_ReadPin(WSS_SIN_R_GPIO_Port, WSS_SIN_R_Pin) ? 1u : 0u;
+    wheel_record_edge(&wheel_right, cos_now, sin_now);
   }
 }
 
-// -----------------------------------------------------------------------
-// Velocity — can be called at any interval
-// -----------------------------------------------------------------------
-void WSS_Main(void)
+// Compute RPM from the per-edge timestamp ring.  Algorithm:
+//   - Snapshot up to WSS_RING_LEN of the most recent edges with IRQ off.
+//   - net_edges = sum(dir[]) over snapshot.  period_us = newest_ts - oldest_ts.
+//   - rpm = (|net_edges| / WSS_EDGES_PER_REV) * (60e6 / period_us).
+//   - sign = sign(net_edges); store as dir flag.
+//   - If newest edge older than WSS_STALE_US, wheel is stopped.
+static void compute_wheel_rpm(volatile WheelState *w, uint16_t *rpm_x10_out, int8_t *dir_out)
 {
-  static uint32_t prev_call_tick = 0;
-
-  uint32_t now = HAL_GetTick();
-  uint32_t elapsed = now - prev_call_tick;
-  prev_call_tick = now;
-
-  if (elapsed == 0)
-    elapsed = 1;
+  uint8_t fill;
+  uint8_t head;
+  uint32_t ts_snapshot[WSS_RING_LEN];
+  int8_t dir_snapshot[WSS_RING_LEN];
 
   __disable_irq();
-  int32_t left_count = enc_left.count;
-  int32_t left_prev = enc_left.last_count;
-  uint32_t left_tick = enc_left.last_tick;
-  enc_left.last_count = left_count;
-
-  int32_t right_count = enc_right.count;
-  int32_t right_prev = enc_right.last_count;
-  uint32_t right_tick = enc_right.last_tick;
-  enc_right.last_count = right_count;
+  fill = w->fill;
+  head = w->head;
+  for (uint8_t i = 0; i < fill; i++)
+  {
+    const uint8_t idx = (uint8_t)((head + WSS_RING_LEN - i) & (WSS_RING_LEN - 1u));
+    ts_snapshot[i] = w->ts[idx];
+    dir_snapshot[i] = w->dir[idx];
+  }
   __enable_irq();
 
-  float left_rpm_calc = 0.0f;
-  if ((now - left_tick) <= STALE_MS)
+  const uint32_t now = tim5_us();
+
+  if (fill < 2u)
   {
-    float rotations = fabsf((float)(left_count - left_prev) / TICKS_PER_ROTATION);
-    left_rpm_calc = rotations * (60000.0f / (float)elapsed);
+    *rpm_x10_out = 0;
+    *dir_out = 0;
+    return;
   }
 
-  float right_rpm_calc = 0.0f;
-  if ((now - right_tick) <= STALE_MS)
+  const uint32_t newest_ts = ts_snapshot[0];
+  const uint32_t oldest_ts = ts_snapshot[fill - 1u];
+
+  if ((uint32_t)(now - newest_ts) > WSS_STALE_US)
   {
-    float rotations = fabsf((float)(right_count - right_prev) / TICKS_PER_ROTATION);
-    right_rpm_calc = rotations * (60000.0f / (float)elapsed);
+    *rpm_x10_out = 0;
+    *dir_out = 0;
+    return;
   }
 
-  float left_scaled = left_rpm_calc * RPM_TO_U8_SCALE;
-  float right_scaled = right_rpm_calc * RPM_TO_U8_SCALE;
+  const uint32_t period_us = (uint32_t)(newest_ts - oldest_ts);
+  if (period_us == 0u)
+  {
+    *rpm_x10_out = 0;
+    *dir_out = 0;
+    return;
+  }
 
-  left_rpm = (left_scaled >= 255.0f) ? 255 : (uint8_t)left_scaled;
-  right_rpm = (right_scaled >= 255.0f) ? 255 : (uint8_t)right_scaled;
+  int32_t net_edges = 0;
+  for (uint8_t i = 0; i < fill; i++)
+  {
+    net_edges += dir_snapshot[i];
+  }
+
+  const int8_t sign = (net_edges >= 0) ? (int8_t) + 1 : (int8_t)-1;
+  const uint32_t abs_edges = (uint32_t)((net_edges >= 0) ? net_edges : -net_edges);
+
+  // rpm = abs_edges / EDGES_PER_REV * 60e6 / period_us
+  // rpm_x10 = abs_edges * 600e6 / (EDGES_PER_REV * period_us)
+  const uint64_t numer = (uint64_t)abs_edges * 600000000ull;
+  const uint64_t denom = (uint64_t)WSS_EDGES_PER_REV * (uint64_t)period_us;
+  const uint64_t rpm_x10 = (denom == 0ull) ? 0ull : (numer / denom);
+
+  *rpm_x10_out = (rpm_x10 >= WSS_RPM_X10_MAX) ? (uint16_t)WSS_RPM_X10_MAX : (uint16_t)rpm_x10;
+  *dir_out = (abs_edges == 0u) ? (int8_t)0 : sign;
+}
+
+void WSS_Main(void)
+{
+  compute_wheel_rpm(&wheel_left, &left_rpm_x10, &left_dir);
+  compute_wheel_rpm(&wheel_right, &right_rpm_x10, &right_dir);
 }
