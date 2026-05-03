@@ -15,6 +15,8 @@
 #include "FEB_CAN_Fusion.h"
 #include "FEB_CAN_Sensors.h"
 #include "FEB_Fusion.h"
+#include "FEB_Steering.h"
+#include "FEB_CAN_Steering.h"
 
 #include "feb_uart.h"
 #include "feb_log.h"
@@ -95,6 +97,11 @@ void FEB_Init(void)
   FEB_WSS_Init();
   FEB_Console_Printf("WSS initialized\r\n");
 
+  if (!FEB_Steering_Init())
+    LOG_E(TAG_MAIN, "Steering encoder init failed");
+  else
+    FEB_Console_Printf("Steering encoder initialized\r\n");
+
   int gps_result = FEB_GPS_Init();
   if (gps_result != 0)
   {
@@ -160,11 +167,13 @@ void FEB_Main_Loop(void)
     read_Acceleration();
     read_Angular_Rate();
     read_Magnetic_Field_Data();
+    FEB_Steering_Read();
     FEB_Fusion_Update(dt);
 
     FEB_CAN_IMU_Tick();
     FEB_CAN_Magnetometer_Tick();
     FEB_CAN_Fusion_Tick();
+    FEB_CAN_Steering_Tick();
 
     t_imu_ms = now_ms;
   }

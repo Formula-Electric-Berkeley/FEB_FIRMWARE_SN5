@@ -1,115 +1,118 @@
 /**
  ******************************************************************************
  * @file           : FEB_CAN_GPS.c
- * @brief          : CAN GPS Reporter Module Implementation.
+ * @brief          : CAN GPS Reporter Module Implementation
  * @author         : Formula Electric @ Berkeley
- ******************************************************************************
- *
- * Frames published per tick (CAN1):
- *   0x40 gps_pos_data       lat_e7 (i32, 1e-7 deg/LSB), lon_e7 (i32, 1e-7 deg/LSB)
- *   0x41 gps_altitude_data  altitude (i32, 0.01 m/LSB), HDOP (u16 x0.01), VDOP (u16 x0.01)
- *   0x42 gps_motion_data    speed (u16, 0.01 km/h/LSB), course (u16, 0.01 deg/LSB)
- *   0x43 gps_time_data      hours, minutes, seconds (u8, UTC)
- *   0x44 gps_date_data      day, month, year (u8, UTC)
- *   0x45 gps_status_data    fix_type, fix_mode, sats_in_use, sats_in_view,
- *                           valid, has_fix (u8 each), pdop (u16 x0.01)
  ******************************************************************************
  */
 
 #include "FEB_CAN_GPS.h"
 #include "feb_can_lib.h"
+#include <stddef.h>
+#include <string.h>
 #include "feb_can.h"
 #include "FEB_GPS.h"
-#include <stdint.h>
-
-static uint32_t can_tx_error_count = 0;
+#include "feb_console.h"
+/* ============================================================================
+ * API Implementation
+ * ============================================================================ */
 
 void FEB_CAN_GPS_Init(void) {}
 
-static inline void tx_or_count(uint32_t frame_id, uint8_t *data, uint32_t len)
-{
-  if (FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, frame_id, FEB_CAN_ID_STD, data, len) != FEB_CAN_OK)
-  {
-    can_tx_error_count++;
-  }
-}
+/**
+ * Assemble and transmit GPS latitude and longitude measurements over CAN.
+ *
+ * Packs raw GPS data into an 8-byte CAN frame with the following structure (ID: FEB_CAN_GPS_LATLON_DATA_FRAME_ID):
+ * - Latitude (ID: FEB_CAN_GPS_LATLON_DATA_FRAME_ID):
+ *   - latitude → bytes 0–1 (double)
+ *   - longitude → bytes 2–3 (double)
+ * - Speed and Course (ID: FEB_CAN_GPS_MOTION_DATA_FRAME_ID):
+ *   - speed → bytes 0–1 (double)
+ *   - course → bytes 2–3 (double)
+ * - Time (ID: FEB_CAN_GPS_TIME_DATA_FRAME_ID):
+ *   - hours → byte 0 (uint8_t)
+ *   - minutes → byte 1 (uint8_t)
+ *   - seconds → byte 2 (uint8_t)
+ * - Date (ID: FEB_CAN_GPS_DATE_DATA_FRAME_ID):
+ *   - day → byte 0 (uint8_t)
+ *   - month → byte 1 (uint8_t)
+ *   - year → byte 2 (uint8_t)
+ * @param gps_data Pointer to latest GPS data from FEB_GPS.c
+ */
+/* Error counter for throttled error reporting */
+static uint32_t can_tx_error_count = 0;
 
 void FEB_CAN_GPS_Tick(void)
 {
-  FEB_GPS_Data_t gps;
-  (void)FEB_GPS_GetLatestData(&gps);
+  FEB_GPS_Data_t gps_data;
+  bool updated = FEB_GPS_GetLatestData(&gps_data);
+  // if (!updated || !gps_data.has_fix)
+  // {
+  //   return;
+  // }
+  // FEB_Console_Printf("\r\nupdated: %d, has_fix: %d", updated, gps_data.has_fix);
 
-  /* ---------------- Position (0x40) ---------------- */
+  uint8_t tx_data[8] = {0};
+
+  /* --- POSITION: gps_latlong_data (lat, long) --- */
+
+  // uint16_t tx_data[4] = {0};
+  int16_t packed_lat = (int16_t)(0xBBBB);
+  int16_t packed_long = (int16_t)(0xAAAA);
+
+  memcpy(&tx_data[0], &packed_lat, sizeof(int16_t));
+  memcpy(&tx_data[2], &packed_long, sizeof(int16_t));
+
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_GPS_POS_DATA_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                                            FEB_CAN_GPS_POS_DATA_LENGTH);
+  if (status != FEB_CAN_OK)
   {
-    struct feb_can_gps_pos_data_t s = {
-        .latitude = feb_can_gps_pos_data_latitude_encode(gps.latitude),
-        .longitude = feb_can_gps_pos_data_longitude_encode(gps.longitude),
-    };
-    uint8_t buf[FEB_CAN_GPS_POS_DATA_LENGTH];
-    feb_can_gps_pos_data_pack(buf, &s, sizeof(buf));
-    tx_or_count(FEB_CAN_GPS_POS_DATA_FRAME_ID, buf, sizeof(buf));
+    can_tx_error_count++;
   }
 
-  /* ---------------- Altitude + HDOP/VDOP (0x41) ---------------- */
+  // /* --- MOTION: gps_motion_data (speed, course) --- */
+  memset(tx_data, 0, sizeof(tx_data));
+  int16_t packed_speed = (int16_t)(0xB0BA);
+  int16_t packed_course = (int16_t)(0xCAFE);
+
+  memcpy(&tx_data[0], &packed_speed, sizeof(int16_t));
+  memcpy(&tx_data[2], &packed_course, sizeof(int16_t));
+  // memcpy(&tx_data[4], &packed_speed, sizeof(int16_t));
+  // memcpy(&tx_data[6], &packed_course, sizeof(int16_t));
+
+  status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_GPS_MOTION_DATA_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                           4); // hetvi: hardcoded sorry
+
+  if (status != FEB_CAN_OK)
   {
-    struct feb_can_gps_altitude_data_t s = {
-        .altitude = feb_can_gps_altitude_data_altitude_encode(gps.altitude),
-        .hdop = feb_can_gps_altitude_data_hdop_encode(gps.hdop),
-        .vdop = feb_can_gps_altitude_data_vdop_encode(gps.vdop),
-    };
-    uint8_t buf[FEB_CAN_GPS_ALTITUDE_DATA_LENGTH];
-    feb_can_gps_altitude_data_pack(buf, &s, sizeof(buf));
-    tx_or_count(FEB_CAN_GPS_ALTITUDE_DATA_FRAME_ID, buf, sizeof(buf));
+    can_tx_error_count++;
   }
 
-  /* ---------------- Motion (speed + course) (0x42) ---------------- */
-  {
-    struct feb_can_gps_motion_data_t s = {
-        .speed = feb_can_gps_motion_data_speed_encode(gps.speed_kmh),
-        .course = feb_can_gps_motion_data_course_encode(gps.course),
-    };
-    uint8_t buf[FEB_CAN_GPS_MOTION_DATA_LENGTH];
-    feb_can_gps_motion_data_pack(buf, &s, sizeof(buf));
-    tx_or_count(FEB_CAN_GPS_MOTION_DATA_FRAME_ID, buf, sizeof(buf));
-  }
+  /* --- TIME: gps_time_data (hours, minutes, seconds) --- */
+  // memset(tx_data, 0, sizeof(tx_data));
+  // memcpy(&tx_data[0], &gps_data.hours, sizeof(uint8_t));
+  // memcpy(&tx_data[1], &gps_data.minutes, sizeof(uint8_t));
+  // memcpy(&tx_data[2], &gps_data.seconds, sizeof(uint8_t));
 
-  /* ---------------- Time UTC (0x43) ---------------- */
-  {
-    struct feb_can_gps_time_data_t s = {
-        .hours = feb_can_gps_time_data_hours_encode((double)gps.hours),
-        .minutes = feb_can_gps_time_data_minutes_encode((double)gps.minutes),
-        .seconds = feb_can_gps_time_data_seconds_encode((double)gps.seconds),
-    };
-    uint8_t buf[FEB_CAN_GPS_TIME_DATA_LENGTH];
-    feb_can_gps_time_data_pack(buf, &s, sizeof(buf));
-    tx_or_count(FEB_CAN_GPS_TIME_DATA_FRAME_ID, buf, sizeof(buf));
-  }
+  // status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_GPS_TIME_DATA_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+  //                           FEB_CAN_GPS_TIME_DATA_LENGTH);
 
-  /* ---------------- Date UTC (0x44) ---------------- */
-  {
-    struct feb_can_gps_date_data_t s = {
-        .day = feb_can_gps_date_data_day_encode((double)gps.day),
-        .month = feb_can_gps_date_data_month_encode((double)gps.month),
-        .year = feb_can_gps_date_data_year_encode((double)gps.year),
-    };
-    uint8_t buf[FEB_CAN_GPS_DATE_DATA_LENGTH];
-    feb_can_gps_date_data_pack(buf, &s, sizeof(buf));
-    tx_or_count(FEB_CAN_GPS_DATE_DATA_FRAME_ID, buf, sizeof(buf));
-  }
+  // if (status != FEB_CAN_OK)
+  // {
+  //   can_tx_error_count++;
+  // }
 
-  /* ---------------- Status (0x45) ---------------- */
-  {
-    struct feb_can_gps_status_data_t s = {
-        .fix_type = feb_can_gps_status_data_fix_type_encode((double)gps.fix),
-        .fix_mode = feb_can_gps_status_data_fix_mode_encode((double)gps.fix_mode),
-        .sats_in_use = feb_can_gps_status_data_sats_in_use_encode((double)gps.sats_in_use),
-        .sats_in_view = feb_can_gps_status_data_sats_in_view_encode((double)gps.sats_in_view),
-        .valid = feb_can_gps_status_data_valid_encode((double)(gps.valid ? 1 : 0)),
-        .has_fix = feb_can_gps_status_data_has_fix_encode((double)(gps.has_fix ? 1 : 0)),
-        .pdop = feb_can_gps_status_data_pdop_encode(gps.pdop),
-    };
-    uint8_t buf[FEB_CAN_GPS_STATUS_DATA_LENGTH];
-    feb_can_gps_status_data_pack(buf, &s, sizeof(buf));
-    tx_or_count(FEB_CAN_GPS_STATUS_DATA_FRAME_ID, buf, sizeof(buf));
-  }
+  /* --- DATE: gps_date_data (day, month, year) --- */
+  //   memset(tx_data, 0, sizeof(tx_data));
+  //   memcpy(&tx_data[0], &gps_data.day, sizeof(uint8_t));
+  //   memcpy(&tx_data[1], &gps_data.month, sizeof(uint8_t));
+  //   memcpy(&tx_data[2], &gps_data.year, sizeof(uint8_t));
+
+  //   status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_GPS_DATE_DATA_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+  //                             FEB_CAN_GPS_DATE_DATA_LENGTH);
+
+  //   if (status != FEB_CAN_OK)
+  //   {
+  //     can_tx_error_count++;
+  // }
 }
