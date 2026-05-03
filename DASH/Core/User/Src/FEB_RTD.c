@@ -2,6 +2,7 @@
 #include "FEB_CAN_BMS.h"
 #include "FEB_CAN_PCU.h"
 #include "FEB_IO.h"
+#include "feb_can_latest.h"
 #include "stm32f4xx_hal.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -62,7 +63,7 @@ void FEB_State_Update_RTD(void)
     rtd_timer_armed = false;
   }
 
-  if (rtd_timer_armed && HAL_GetTick() - rtd_trying_to_toggle_start_tick >= RTD_SAFETY_DURATION)
+  if (rtd_timer_armed && (HAL_GetTick() - rtd_trying_to_toggle_start_tick >= RTD_SAFETY_DURATION))
   {
     if (!rtd_toggle_complete)
     {
@@ -75,10 +76,10 @@ void FEB_State_Update_RTD(void)
     rtd_toggle_complete = false;
   }
 
-  if (bms_state != BMS_STATE_DRIVE && bms_state != BMS_STATE_ENERGIZED)
-  {
-    rtd = false; // just in case
-  }
+  // if (bms_state != BMS_STATE_DRIVE && bms_state != BMS_STATE_ENERGIZED)
+  // {
+  //   rtd = false; // just in case
+  // }
 }
 
 bool FEB_State_GetLastRTD(void)

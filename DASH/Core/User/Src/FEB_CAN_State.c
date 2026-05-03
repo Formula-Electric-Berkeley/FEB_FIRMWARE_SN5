@@ -89,7 +89,8 @@ void FEB_CAN_State_Tick(void)
                                 &((struct feb_can_dash_state_t){.buzzer = states.buzzer_enabled,
                                                                 .button1 = states.button_rtd,
                                                                 .switch1 = states.switch_accumulator_fans,
-                                                                .switch2 = states.switch_coolant_pump_radiator_fan,
+                                                                .switch2 = states.button_rtd,
+                                                                // .switch2 = states.switch_coolant_pump_radiator_fan,
                                                                 .switch3 = states.switch_logging,
                                                                 .ready_to_drive = FEB_State_GetLastRTD()}),
                                 2) == 2)
