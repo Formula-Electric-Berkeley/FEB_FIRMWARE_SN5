@@ -17,7 +17,7 @@
  * ============================================================================ */
 
 /* DWT Lock Access Register (not in all CMSIS versions) */
-#define DWT_LAR        (*(volatile uint32_t *)0xE0001FB0)
+#define DWT_LAR (*(volatile uint32_t *)0xE0001FB0)
 #define DWT_LAR_UNLOCK 0xC5ACCE55
 
 /* Queue depth for benchmark requests */
@@ -201,8 +201,8 @@ FlashBench_Status_t FlashBench_Erase(uint32_t sector_num, FlashBench_Timing_t *t
   }
 
   /* Clear any pending flags */
-  __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR |
-                         FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
+  __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR |
+                         FLASH_FLAG_PGSERR);
 
   taskEXIT_CRITICAL();
 
@@ -229,8 +229,7 @@ FlashBench_Status_t FlashBench_Erase(uint32_t sector_num, FlashBench_Timing_t *t
   return FLASH_BENCH_OK;
 }
 
-FlashBench_Status_t FlashBench_Write(uint32_t addr, const uint8_t *data, uint32_t size,
-                                     FlashBench_Timing_t *timing)
+FlashBench_Status_t FlashBench_Write(uint32_t addr, const uint8_t *data, uint32_t size, FlashBench_Timing_t *timing)
 {
   uint32_t words = size / sizeof(uint32_t);
   const uint32_t *word_data = (const uint32_t *)data;
@@ -263,8 +262,8 @@ FlashBench_Status_t FlashBench_Write(uint32_t addr, const uint8_t *data, uint32_
   }
 
   /* Clear any pending flags */
-  __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR |
-                         FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
+  __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR |
+                         FLASH_FLAG_PGSERR);
 
   taskEXIT_CRITICAL();
 

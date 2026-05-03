@@ -8,7 +8,8 @@
 
 #include "feb_can_lib.h"
 #include "feb_can_internal.h"
-#include "stm32f4xx_hal.h"
+#include "feb_log.h"
+#include "main.h"
 #include <string.h>
 
 /* ============================================================================
@@ -108,8 +109,16 @@ FEB_CAN_Status_t FEB_CAN_Filter_Configure(FEB_CAN_Instance_t instance, uint8_t f
 
   if (HAL_CAN_ConfigFilter(filter_hcan, &filter_config) != HAL_OK)
   {
+    LOG_W("[CAN-FLT]", "ConfigFilter FAILED bank=%u id=0x%lX mask=0x%lX",
+          filter_bank, (unsigned long)id, (unsigned long)mask);
     return FEB_CAN_ERROR_HAL;
   }
+
+  LOG_D("[CAN-FLT]", "bank=%u id=0x%lX mask=0x%lX %s fifo=%d FidH=0x%04X FidL=0x%04X FmaskH=0x%04X FmaskL=0x%04X",
+        filter_bank, (unsigned long)id, (unsigned long)mask,
+        (id_type == FEB_CAN_ID_STD) ? "STD" : "EXT", (int)fifo,
+        (unsigned int)filter_config.FilterIdHigh, (unsigned int)filter_config.FilterIdLow,
+        (unsigned int)filter_config.FilterMaskIdHigh, (unsigned int)filter_config.FilterMaskIdLow);
 
   /* Track filter in context */
   ctx->filters[filter_bank].id = id;
@@ -157,6 +166,7 @@ static FEB_CAN_Status_t feb_can_filter_disable(uint8_t filter_bank)
 
   if (HAL_CAN_ConfigFilter(hcan, &filter_config) != HAL_OK)
   {
+    LOG_W("[CAN-FLT]", "Disable FAILED bank=%u", filter_bank);
     return FEB_CAN_ERROR_HAL;
   }
 
@@ -284,4 +294,29 @@ FEB_CAN_Status_t FEB_CAN_Filter_UpdateFromRegistry(FEB_CAN_Instance_t instance)
   }
 
   return FEB_CAN_OK;
+}
+
+/* ============================================================================
+ * Filter Register Dump (Diagnostic)
+ * ============================================================================ */
+
+void FEB_CAN_Filter_Dump(FEB_CAN_Instance_t instance)
+{
+  (void)instance; /* On STM32F4 the filter registers live on CAN1 for both instances */
+
+  FEB_CAN_Context_t *ctx = feb_can_get_context();
+  CAN_HandleTypeDef *hcan = (CAN_HandleTypeDef *)ctx->hcan[FEB_CAN_INSTANCE_1];
+  if (hcan == NULL || hcan->Instance == NULL)
+  {
+    LOG_W("[CAN-FLT]", "Dump: hcan1 not initialized");
+    return;
+  }
+
+  CAN_TypeDef *can = hcan->Instance;
+  LOG_D("[CAN-FLT]", "REGS FA1R=0x%08lX FFA1R=0x%08lX FS1R=0x%08lX FM1R=0x%08lX",
+        (unsigned long)can->FA1R, (unsigned long)can->FFA1R,
+        (unsigned long)can->FS1R, (unsigned long)can->FM1R);
+  LOG_D("[CAN-FLT]", "BANK0 FR1=0x%08lX FR2=0x%08lX",
+        (unsigned long)can->sFilterRegister[0].FR1,
+        (unsigned long)can->sFilterRegister[0].FR2);
 }

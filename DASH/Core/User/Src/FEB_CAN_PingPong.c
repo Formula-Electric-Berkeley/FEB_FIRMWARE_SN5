@@ -10,7 +10,6 @@
 #include "feb_can_lib.h"
 #include "feb_uart.h"
 #include "feb_log.h"
-#include "stm32f4xx_hal.h"
 #include <string.h>
 
 #define TAG_PING "PING"
@@ -28,8 +27,8 @@ typedef struct
   uint32_t rx_count;
   uint32_t tx_fail_count;
   int32_t rx_handle;
-  bool pending_rx_log;
-  bool pending_tx_fail_log;
+  bool suppress_self_response;
+  int32_t self_response_counter;
 } PingPong_Channel_t;
 
 static PingPong_Channel_t channels[FEB_PINGPONG_NUM_CHANNELS];
@@ -64,10 +63,17 @@ static void pingpong_rx_callback(uint8_t channel_idx, const uint8_t *data, uint8
 
   ch->last_rx_counter = counter;
   ch->rx_count++;
-  ch->pending_rx_log = true;
+  LOG_D(TAG_PING, "RX ch%d cnt:%ld total:%lu", channel_idx + 1, (long)counter, (unsigned long)ch->rx_count);
 
-  /* If in pong mode, send response with counter+1 */
-  if (ch->mode == PINGPONG_MODE_PONG)
+  if (ch->suppress_self_response && counter == ch->self_response_counter)
+  {
+    ch->suppress_self_response = false;
+    LOG_D(TAG_PING, "RX ch%d ignored loopback response cnt:%ld", channel_idx + 1, (long)counter);
+    return;
+  }
+
+  /* If in responder mode, send response with counter+1 */
+  if (ch->mode == PINGPONG_MODE_PONG || ch->mode == PINGPONG_MODE_PINGPONG)
   {
     int32_t response = counter + 1;
     uint8_t tx_data[8] = {0};
@@ -78,16 +84,18 @@ static void pingpong_rx_callback(uint8_t channel_idx, const uint8_t *data, uint8
     tx_data[2] = (uint8_t)((response >> 16) & 0xFF);
     tx_data[3] = (uint8_t)((response >> 24) & 0xFF);
 
-    FEB_CAN_Status_t status =
-        FEB_CAN_TX_SendFromISR(FEB_CAN_INSTANCE_1, frame_ids[channel_idx], FEB_CAN_ID_STD, tx_data, 8);
+    FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, frame_ids[channel_idx], FEB_CAN_ID_STD, tx_data, 8);
     if (status == FEB_CAN_OK)
     {
       ch->tx_count++;
+      ch->self_response_counter = response;
+      ch->suppress_self_response = true;
     }
     else
     {
       ch->tx_fail_count++;
-      ch->pending_tx_fail_log = true;
+      LOG_W(TAG_PING, "PONG ch%d TX failed: %s (total fails: %lu)", channel_idx + 1, FEB_CAN_StatusToString(status),
+            (unsigned long)ch->tx_fail_count);
     }
   }
 }
@@ -164,8 +172,10 @@ void FEB_CAN_PingPong_SetMode(uint8_t channel, FEB_PingPong_Mode_t mode)
   uint8_t idx = channel - 1;
   PingPong_Channel_t *ch = &channels[idx];
 
+  FEB_PingPong_Mode_t old_mode = ch->mode;
+
   /* If mode is changing, update RX registration */
-  if (ch->mode != mode)
+  if (old_mode != mode)
   {
     /* Unregister old handler if any */
     if (ch->rx_handle >= 0)
@@ -176,7 +186,7 @@ void FEB_CAN_PingPong_SetMode(uint8_t channel, FEB_PingPong_Mode_t mode)
 
     /* Register RX handler for pong mode (to receive pings) */
     /* Also register for ping mode (to receive pong responses) */
-    if (mode == PINGPONG_MODE_PONG || mode == PINGPONG_MODE_PING)
+    if (mode == PINGPONG_MODE_PONG || mode == PINGPONG_MODE_PING || mode == PINGPONG_MODE_PINGPONG)
     {
       FEB_CAN_RX_Params_t rx_params = {
           .instance = FEB_CAN_INSTANCE_1,
@@ -188,15 +198,20 @@ void FEB_CAN_PingPong_SetMode(uint8_t channel, FEB_PingPong_Mode_t mode)
           .callback = rx_callbacks[idx],
       };
       ch->rx_handle = FEB_CAN_RX_Register(&rx_params);
+      FEB_CAN_Filter_Dump(FEB_CAN_INSTANCE_1);
     }
 
-    /* Reset counters when mode changes */
-    ch->tx_counter = 0;
-    ch->tx_count = 0;
-    ch->rx_count = 0;
-    ch->tx_fail_count = 0;
-    ch->last_rx_counter = 0;
-    ch->pending_tx_fail_log = false;
+    /* Preserve the active ping counter when adding responder behavior. */
+    if (!(old_mode == PINGPONG_MODE_PING && mode == PINGPONG_MODE_PINGPONG))
+    {
+      ch->tx_counter = 0;
+      ch->tx_count = 0;
+      ch->rx_count = 0;
+      ch->tx_fail_count = 0;
+      ch->last_rx_counter = 0;
+      ch->suppress_self_response = false;
+      ch->self_response_counter = 0;
+    }
     ch->mode = mode;
   }
 }
@@ -216,23 +231,9 @@ void FEB_CAN_PingPong_Tick(void)
   {
     PingPong_Channel_t *ch = &channels[i];
 
-    /* Deferred RX logging (safe from main loop context, not ISR) */
-    if (ch->pending_rx_log)
+    if (ch->mode == PINGPONG_MODE_PING || ch->mode == PINGPONG_MODE_PINGPONG)
     {
-      LOG_D(TAG_PING, "RX ch%d cnt:%ld total:%lu", i + 1, (long)ch->last_rx_counter, (unsigned long)ch->rx_count);
-      ch->pending_rx_log = false;
-    }
-
-    /* Deferred TX failure logging (from PONG mode in RX callback) */
-    if (ch->pending_tx_fail_log)
-    {
-      LOG_W(TAG_PING, "PONG ch%d TX failed (total fails: %lu)", i + 1, (unsigned long)ch->tx_fail_count);
-      ch->pending_tx_fail_log = false;
-    }
-
-    if (ch->mode == PINGPONG_MODE_PING)
-    {
-      /* Pack and send the counter */
+      /* Pack and send the counter (int32_t, little-endian) */
       uint8_t tx_data[8] = {0};
 
       tx_data[0] = (uint8_t)(ch->tx_counter & 0xFF);
@@ -240,8 +241,7 @@ void FEB_CAN_PingPong_Tick(void)
       tx_data[2] = (uint8_t)((ch->tx_counter >> 16) & 0xFF);
       tx_data[3] = (uint8_t)((ch->tx_counter >> 24) & 0xFF);
 
-      /* Single TX attempt from ISR - no retry loop (HAL_GetTick won't advance in ISR) */
-      FEB_CAN_Status_t status = FEB_CAN_TX_SendFromISR(FEB_CAN_INSTANCE_1, frame_ids[i], FEB_CAN_ID_STD, tx_data, 8);
+      FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, frame_ids[i], FEB_CAN_ID_STD, tx_data, 8);
 
       if (status == FEB_CAN_OK)
       {

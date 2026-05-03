@@ -27,11 +27,11 @@ extern UART_HandleTypeDef huart3;
 
 static uint32_t end_buzzer_tick = 0;
 
-static IO_State_t state = {.switch_coolant_pump_radiator_fan = false,
-                           .switch_accumulator_fans = false,
-                           .button_rtd = false,
-                           .switch_logging = false,
-                           .buzzer_enabled = false};
+static IO_States_t state = {.switch_coolant_pump_radiator_fan = false,
+                            .switch_accumulator_fans = false,
+                            .button_rtd = false,
+                            .switch_logging = false,
+                            .buzzer_enabled = false};
 
 // MARK: Initialization
 void FEB_IO_Init(void)
@@ -142,7 +142,7 @@ void FEB_IO_Update_GPIO(void)
   //   00010000 (1 << 5)
   // & 00010000 -> (bool) -> true
 
-  printf("[-] %X %X\n", received_data[0], received_data[1]);
+  // printf("[-] %X %X\n", received_data[0], received_data[1]);
 
   state.button_rtd = (bool)(received_data[0] & (1 << 1));
 
@@ -158,7 +158,7 @@ void FEB_IO_Set_Buzzer(bool new_state)
 {
   state.buzzer_enabled = new_state;
 
-  printf(state.buzzer_enabled ? "buzzing" : "silent");
+  // printf(state.buzzer_enabled ? "buzzing\r\n" : "silent\r\n");
   uint8_t send_val[2];
   send_val[0] = state.buzzer_enabled ? 0b11100000 : 0b11100001;
   send_val[1] = 0b11111111;
@@ -243,7 +243,7 @@ void FEB_IO_Play_Buzzer(uint32_t duration)
 // FEB_CAN_ICS_Transmit_Button_State(IO_state);
 // }
 
-IO_State_t FEB_IO_GetLastIOStates(void)
+IO_States_t FEB_IO_GetLastIOStates(void)
 {
   return state;
 }

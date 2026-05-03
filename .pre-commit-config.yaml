@@ -48,3 +48,13 @@ repos:
         language: script
         pass_filenames: false
         always_run: true
+
+      # Auto-increment patch version on each commit for affected boards + repo.
+      # No-ops if a VERSION file is already staged (so /version stays authoritative).
+      - id: auto-bump-patch
+        name: auto-bump-patch
+        entry: ./scripts/auto-bump-commit.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

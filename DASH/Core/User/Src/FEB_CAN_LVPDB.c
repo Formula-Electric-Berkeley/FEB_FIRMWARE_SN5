@@ -53,12 +53,13 @@ void FEB_CAN_LVPDB_Init(void)
       .can_id = FEB_CAN_LVPDB_LV_24V_BUS_AND_12V_BUS_VOLTAGES_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,
-      .mask = 0x7FF,
+      .mask = 0,
       .fifo = FEB_CAN_FIFO_0,
       .callback = rx_callback_lv_voltages,
       .user_data = NULL,
   };
-  FEB_CAN_RX_Register(&rx_params);
+
+  (void)FEB_CAN_RX_Register(&rx_params);
 }
 
 uint16_t FEB_CAN_LVPDB_GetLast24VVoltage(void)

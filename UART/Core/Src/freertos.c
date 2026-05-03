@@ -100,7 +100,7 @@ const osSemaphoreAttr_t uartTxSem_attributes = {
 /* USER CODE END FunctionPrototypes */
 
 void StartFlashTask(void *argument);
-void StartUartRxTask(void *argument);
+void StartUARTRxTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -155,7 +155,7 @@ void MX_FREERTOS_Init(void) {
   flashTaskHandle = osThreadNew(StartFlashTask, NULL, &flashTask_attributes);
 
   /* creation of uartRxTask */
-  uartRxTaskHandle = osThreadNew(StartUartRxTask, NULL, &uartRxTask_attributes);
+  uartRxTaskHandle = osThreadNew(StartUARTRxTask, NULL, &uartRxTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* Validate all RTOS object creations - fail fast on any NULL */
@@ -189,22 +189,22 @@ __weak void StartFlashTask(void *argument)
   /* USER CODE END StartFlashTask */
 }
 
-/* USER CODE BEGIN Header_StartUartRxTask */
+/* USER CODE BEGIN Header_StartUARTRxTask */
 /**
 * @brief Function implementing the uartRxTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartUartRxTask */
-__weak void StartUartRxTask(void *argument)
+/* USER CODE END Header_StartUARTRxTask */
+__weak void StartUARTRxTask(void *argument)
 {
-  /* USER CODE BEGIN StartUartRxTask */
+  /* USER CODE BEGIN StartUARTRxTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartUartRxTask */
+  /* USER CODE END StartUARTRxTask */
 }
 
 /* Private application code --------------------------------------------------*/

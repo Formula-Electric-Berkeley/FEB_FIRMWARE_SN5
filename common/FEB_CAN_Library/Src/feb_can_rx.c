@@ -8,7 +8,8 @@
 
 #include "feb_can_lib.h"
 #include "feb_can_internal.h"
-#include "stm32f4xx_hal.h"
+#include "feb_log.h"
+#include "main.h"
 #include <string.h>
 
 /* ============================================================================
@@ -19,6 +20,12 @@ void feb_can_rx_dispatch(FEB_CAN_Instance_t instance, uint32_t can_id, uint8_t i
                          uint8_t length, uint32_t timestamp)
 {
   FEB_CAN_Context_t *ctx = feb_can_get_context();
+
+  /* No per-frame LOG_D here: in loopback this runs at >100 Hz with a wildcard
+   * handler and saturates the UART, masking other diagnostic output. The
+   * registered RX callback can log if the application wants per-frame trace. */
+
+  bool dispatched_any = false;
 
   for (uint32_t i = 0; i < FEB_CAN_MAX_RX_HANDLES; i++)
   {
@@ -66,6 +73,8 @@ void feb_can_rx_dispatch(FEB_CAN_Instance_t instance, uint32_t can_id, uint8_t i
       continue;
     }
 
+    dispatched_any = true;
+
     /* Invoke callback */
     if (handle->is_extended_cb)
     {
@@ -83,6 +92,11 @@ void feb_can_rx_dispatch(FEB_CAN_Instance_t instance, uint32_t can_id, uint8_t i
         cb(instance, can_id, (FEB_CAN_ID_Type_t)id_type, data, length, handle->user_data);
       }
     }
+  }
+
+  if (!dispatched_any)
+  {
+    LOG_W("[CAN-RX]", "no handler matched id=0x%lX type=%d", (unsigned long)can_id, (int)id_type);
   }
 }
 

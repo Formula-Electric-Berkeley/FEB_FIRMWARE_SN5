@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * File Name          : freertos.c
-  * Description        : Code for freertos applications
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2025 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * File Name          : freertos.c
+ * Description        : Code for freertos applications
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2025 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
@@ -30,6 +30,7 @@
 #include "feb_console.h"
 #include "feb_can_lib.h"
 #include "feb_rtos_utils.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,7 +50,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-
+/* DASHTaskRx / DASHTaskTx stacks: set in CubeMX (DASH.ioc, FREERTOS.Tasks01). Regenerating
+ * from the .ioc overwrites osThreadAttr_t blocks above; keep those tasks at 1024 words. */
 /* USER CODE END Variables */
 /* Definitions for btnTxLoopTask */
 osThreadId_t btnTxLoopTaskHandle;
@@ -83,14 +85,14 @@ const osThreadAttr_t uartTxTask_attributes = {
 osThreadId_t DASHTaskRxHandle;
 const osThreadAttr_t DASHTaskRx_attributes = {
   .name = "DASHTaskRx",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for DASHTaskTx */
 osThreadId_t DASHTaskTxHandle;
 const osThreadAttr_t DASHTaskTx_attributes = {
   .name = "DASHTaskTx",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for canTxQueue */
@@ -164,42 +166,53 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
 void vApplicationMallocFailedHook(void);
 
 /* USER CODE BEGIN 2 */
-__weak void vApplicationIdleHook( void )
+__weak void vApplicationIdleHook(void)
 {
-   /* vApplicationIdleHook() will only be called if configUSE_IDLE_HOOK is set
-   to 1 in FreeRTOSConfig.h. It will be called on each iteration of the idle
-   task. It is essential that code added to this hook function never attempts
-   to block in any way (for example, call xQueueReceive() with a block time
-   specified, or call vTaskDelay()). If the application makes use of the
-   vTaskDelete() API function (as this demo application does) then it is also
-   important that vApplicationIdleHook() is permitted to return to its calling
-   function, because it is the responsibility of the idle task to clean up
-   memory allocated by the kernel to any task that has since been deleted. */
+  /* vApplicationIdleHook() will only be called if configUSE_IDLE_HOOK is set
+  to 1 in FreeRTOSConfig.h. It will be called on each iteration of the idle
+  task. It is essential that code added to this hook function never attempts
+  to block in any way (for example, call xQueueReceive() with a block time
+  specified, or call vTaskDelay()). If the application makes use of the
+  vTaskDelete() API function (as this demo application does) then it is also
+  important that vApplicationIdleHook() is permitted to return to its calling
+  function, because it is the responsibility of the idle task to clean up
+  memory allocated by the kernel to any task that has since been deleted. */
 }
 /* USER CODE END 2 */
 
 /* USER CODE BEGIN 4 */
-__weak void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
+extern UART_HandleTypeDef huart3;
+
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
 {
-   /* Run time stack overflow checking is performed if
-   configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
-   called if a stack overflow is detected. */
+  /* Polled-UART panic notice. Runs with the offending task's stack already
+   * trashed, so do NOT touch any FreeRTOS APIs or rely on FEB_UART/FEB_Log
+   * (their state may be corrupt). HAL_UART_Transmit pokes the peripheral
+   * directly which is the most we can safely do here. */
+  (void)xTask;
+  char buf[96];
+  int n = snprintf(buf, sizeof(buf), "\r\n!!! STACK OVERFLOW in task: %s !!!\r\n",
+                   pcTaskName ? (const char *)pcTaskName : "<unknown>");
+  if (n > 0)
+  {
+    HAL_UART_Transmit(&huart3, (uint8_t *)buf, (uint16_t)n, 100);
+  }
+  __asm volatile("bkpt #0");
+  for (;;)
+  {
+  }
 }
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN 5 */
-__weak void vApplicationMallocFailedHook(void)
+void vApplicationMallocFailedHook(void)
 {
-   /* vApplicationMallocFailedHook() will only be called if
-   configUSE_MALLOC_FAILED_HOOK is set to 1 in FreeRTOSConfig.h. It is a hook
-   function that will get called if a call to pvPortMalloc() fails.
-   pvPortMalloc() is called internally by the kernel whenever a task, queue,
-   timer or semaphore is created. It is also called by various parts of the
-   demo application. If heap_1.c or heap_2.c are used, then the size of the
-   heap available to pvPortMalloc() is defined by configTOTAL_HEAP_SIZE in
-   FreeRTOSConfig.h, and the xPortGetFreeHeapSize() API function can be used
-   to query the size of free heap space that remains (although it does not
-   provide information on how the remaining heap might be fragmented). */
+  static const char msg[] = "\r\n!!! pvPortMalloc FAILED — FreeRTOS heap exhausted !!!\r\n";
+  HAL_UART_Transmit(&huart3, (uint8_t *)msg, sizeof(msg) - 1, 100);
+  __asm volatile("bkpt #0");
+  for (;;)
+  {
+  }
 }
 /* USER CODE END 5 */
 
@@ -301,6 +314,7 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
+  FEB_Init();
   /* add events, ... */
   /* USER CODE END RTOS_EVENTS */
 
@@ -308,16 +322,16 @@ void MX_FREERTOS_Init(void) {
 
 /* USER CODE BEGIN Header_StartBtnTxLoop */
 /**
-  * @brief  Function implementing the btnTxLoopTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
+ * @brief  Function implementing the btnTxLoopTask thread.
+ * @param  argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartBtnTxLoop */
 __weak void StartBtnTxLoop(void *argument)
 {
   /* USER CODE BEGIN StartBtnTxLoop */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     osDelay(1);
   }
@@ -326,16 +340,16 @@ __weak void StartBtnTxLoop(void *argument)
 
 /* USER CODE BEGIN Header_StartDisplayTask */
 /**
-* @brief Function implementing the displayTask thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the displayTask thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartDisplayTask */
 __weak void StartDisplayTask(void *argument)
 {
   /* USER CODE BEGIN StartDisplayTask */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     osDelay(1);
   }
@@ -344,16 +358,16 @@ __weak void StartDisplayTask(void *argument)
 
 /* USER CODE BEGIN Header_StartUartRxTask */
 /**
-* @brief Function implementing the uartRxTask thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the uartRxTask thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartUartRxTask */
 __weak void StartUartRxTask(void *argument)
 {
   /* USER CODE BEGIN StartUartRxTask */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     osDelay(1);
   }
@@ -362,16 +376,16 @@ __weak void StartUartRxTask(void *argument)
 
 /* USER CODE BEGIN Header_StartUartTxTask */
 /**
-* @brief Function implementing the uartTxTask thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the uartTxTask thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartUartTxTask */
 __weak void StartUartTxTask(void *argument)
 {
   /* USER CODE BEGIN StartUartTxTask */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     osDelay(1);
   }
@@ -380,16 +394,16 @@ __weak void StartUartTxTask(void *argument)
 
 /* USER CODE BEGIN Header_StartDASHTaskRx */
 /**
-* @brief Function implementing the DASHTaskRx thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the DASHTaskRx thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartDASHTaskRx */
 __weak void StartDASHTaskRx(void *argument)
 {
   /* USER CODE BEGIN StartDASHTaskRx */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     osDelay(1);
   }
@@ -398,16 +412,16 @@ __weak void StartDASHTaskRx(void *argument)
 
 /* USER CODE BEGIN Header_StartDASHTaskTx */
 /**
-* @brief Function implementing the DASHTaskTx thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the DASHTaskTx thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartDASHTaskTx */
 __weak void StartDASHTaskTx(void *argument)
 {
   /* USER CODE BEGIN StartDASHTaskTx */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
     osDelay(1);
   }

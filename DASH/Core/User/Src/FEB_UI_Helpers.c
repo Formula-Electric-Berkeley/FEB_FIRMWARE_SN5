@@ -26,7 +26,6 @@ lv_obj_t *ui_Screen1;
 void ui_init(void)
 {
   FEB_IO_Init();
-  printf("initializing screen");
   FEB_IO_Set_Buzzer(false);
 
   // ── Screen ───────────────────────────────────────────────────────

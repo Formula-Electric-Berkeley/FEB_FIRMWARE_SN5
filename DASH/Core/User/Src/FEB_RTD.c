@@ -38,7 +38,7 @@ void FEB_State_Update_RTD(void)
 
   // MARK: Signal enter rtd code
   // Send the ready to drive message over CAN when all the conditions are met
-  IO_State_t states = FEB_IO_GetLastIOStates();
+  IO_States_t states = FEB_IO_GetLastIOStates();
   uint16_t brake_pressure = FEB_CAN_PCU_GetLastBreakPosition();
   int8_t inv_enabled = FEB_CAN_PCU_GetLastRMSEnabled();
 

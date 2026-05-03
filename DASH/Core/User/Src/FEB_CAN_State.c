@@ -8,8 +8,11 @@
 #include "FEB_RTD.h"
 #include "feb_can_lib.h"
 #include "feb_can.h"
+#include "feb_log.h"
 #include <stdbool.h>
 #include <string.h>
+
+#define TAG_STATE "[STATE]"
 
 /* CAN ready flag - prevents transmission before CAN is initialized */
 static volatile bool can_ready = false;
@@ -27,9 +30,17 @@ void FEB_CAN_State_SetReady(void)
   can_ready = true;
 }
 
+bool FEB_CAN_State_IsReady(void)
+{
+  return can_ready;
+}
+
 void FEB_CAN_State_Tick(void)
 {
-  /* Don't transmit until CAN is initialized */
+  /* Defense in depth: the TX task already gates on FEB_CAN_State_IsReady(),
+     so this branch should never be taken in practice. Stay silent here so we
+     don't spam the console at 1 kHz during the brief init window if a future
+     caller forgets to gate. */
   if (!can_ready)
   {
     return;
@@ -72,14 +83,26 @@ void FEB_CAN_State_Tick(void)
     uint8_t tx_data[2];
     memset(tx_data, 0x00, sizeof(tx_data));
 
-    IO_State_t states = FEB_IO_GetLastIOStates();
-    bool rtd = FEB_State_GetLastRTD();
+    IO_States_t states = FEB_IO_GetLastIOStates();
 
-    tx_data[0] = (states.button_rtd << 0) + (states.switch_coolant_pump_radiator_fan << 4) +
-                 (states.switch_accumulator_fans << 5) + (states.switch_logging << 6);
-    tx_data[1] = (states.buzzer_enabled << 0) + (rtd << 1);
+    struct feb_can_dash_state_t pack_states = {.buzzer = states.buzzer_enabled,
+                                               .button1 = states.button_rtd,
+                                               .switch1 = states.switch_accumulator_fans,
+                                               .switch2 = states.switch_coolant_pump_radiator_fan,
+                                               .switch3 = states.switch_logging};
 
-    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_DASH_STATE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
-                    FEB_CAN_DASH_STATE_LENGTH);
+    if (feb_can_dash_state_pack(tx_data, &pack_states, 2) == 2)
+    {
+      FEB_CAN_Status_t st = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_DASH_STATE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                                            FEB_CAN_DASH_STATE_LENGTH);
+      if (st == FEB_CAN_OK)
+      {
+        LOG_D(TAG_STATE, "Sending Dash IO State Over CAN: %02X %02X", tx_data[0], tx_data[1]);
+      }
+      else
+      {
+        LOG_W(TAG_STATE, "DASH state TX dropped: %s", FEB_CAN_StatusToString(st));
+      }
+    }
   }
 }

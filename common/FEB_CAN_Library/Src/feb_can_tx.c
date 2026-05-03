@@ -8,7 +8,8 @@
 
 #include "feb_can_lib.h"
 #include "feb_can_internal.h"
-#include "stm32f4xx_hal.h"
+#include "feb_log.h"
+#include "main.h"
 #include <string.h>
 
 /* ============================================================================
@@ -84,6 +85,9 @@ int feb_can_tx_hal_transmit(FEB_CAN_Instance_t instance, uint32_t can_id, uint8_
     }
 #endif
     ctx->hal_error_count++;
+    LOG_W("[CAN-TX]", "AddTxMessage failed id=0x%lX free_mb=%lu hal_err=%lu",
+          (unsigned long)can_id, (unsigned long)HAL_CAN_GetTxMailboxesFreeLevel(hcan),
+          (unsigned long)ctx->hal_error_count);
     return -FEB_CAN_ERROR_HAL;
   }
 
@@ -422,6 +426,16 @@ void FEB_CAN_TX_Process(void)
   if (!ctx->initialized || ctx->tx_queue == NULL)
   {
     return;
+  }
+
+  /* Run pending bus-off recovery before draining the queue. Doing it here
+   * (task context) keeps the ISR path short and lets HAL_CAN_Stop/Start
+   * settle on the peripheral without racing TX submissions. */
+  if (ctx->bus_off_pending)
+  {
+    ctx->bus_off_pending = 0U;
+    feb_can_recover_bus_off();
+    LOG_W("[CAN-BOF]", "Bus-off recovery ran (total=%lu)", (unsigned long)ctx->bus_off_count);
   }
 
   FEB_CAN_Message_t msg;

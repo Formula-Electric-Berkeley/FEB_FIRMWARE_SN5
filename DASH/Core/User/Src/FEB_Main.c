@@ -89,10 +89,7 @@ void FEB_Init(void)
   DASH_RegisterCommands();
 
   /* Initialize CAN state publisher */
-  FEB_CAN_State_Init();
-  FEB_CAN_BMS_Init();
-  FEB_CAN_PCU_Init();
-  FEB_CAN_LVPDB_Init();
+  // FEB_CAN_State_Init();
 
   /* Startup banner */
   FEB_Console_Printf("\r\n");

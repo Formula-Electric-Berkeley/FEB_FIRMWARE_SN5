@@ -2,17 +2,32 @@
 
 Shared libraries for Formula Electric @ Berkeley firmware projects. All libraries are designed for STM32 with HAL and optional FreeRTOS support.
 
+## Library Index
+
+One README per library:
+
+- [FEB_Serial_Library](FEB_Serial_Library/README.md) — UART + Log + Console + Commands + String_Utils + Version, with the `feb_io` umbrella target
+- [FEB_CAN_Library](FEB_CAN_Library/README.md) — runtime CAN dispatch (`feb_can`)
+- [FEB_CAN_Library_SN4](FEB_CAN_Library_SN4/README.md) — CAN message definitions and code generator (git submodule)
+- [FEB_TPS_Library](FEB_TPS_Library/README.md) — TPS2482 power-monitor driver (`feb_tps`)
+- [FEB_Time_Library](FEB_Time_Library/README.md) — 64-bit microsecond monotonic clock (`feb_time`)
+- [FEB_RTOS_Utils](FEB_RTOS_Utils/README.md) — RTOS fail-fast helper macros (`feb_rtos_utils`)
+
 ## Available Libraries
 
 | Library | Target | Description |
 |---------|--------|-------------|
-| `feb_io` | All I/O | Convenience target: UART + Log + Console + Commands |
-| `feb_uart` | UART only | DMA UART with line/binary modes and framing |
+| `feb_uart` | UART | DMA UART with line/binary modes and framing |
 | `feb_log` | Logging | Configurable logging with colors and timestamps |
 | `feb_console` | Console | Command-line interface with pipe-delimited args |
 | `feb_commands` | Commands | Default system commands (help, echo, etc.) |
+| `feb_string_utils` | Strings | Case-insensitive comparison and small helpers |
+| `feb_version` | Version | Build provenance types (paired with `cmake/FEB_Version.cmake`) |
+| `feb_time` | Time | 64-bit microsecond monotonic clock |
+| `feb_rtos_utils` | RTOS | `REQUIRE_RTOS_HANDLE` fail-fast macro |
 | `feb_can` | CAN | FreeRTOS-safe CAN with registration/callback pattern |
 | `feb_tps` | TPS2482 | Power monitoring IC driver |
+| `feb_io` | Umbrella | Links `feb_uart`, `feb_log`, `feb_console`, `feb_commands`, `feb_string_utils`, `feb_time`, `feb_version` |
 
 ## Quick Integration Guide
 
@@ -131,26 +146,48 @@ void FEB_Main(void) {
 
 ```text
 common/
-├── CMakeLists.txt              # Aggregates all libraries
+├── CMakeLists.txt              # Aggregates all libraries via add_subdirectory()
 ├── README.md                   # This file
 │
-├── FEB_Serial_Library/         # Unified Serial I/O stack
-│   ├── CMakeLists.txt          # feb_io convenience target
-│   ├── README.md               # Detailed I/O documentation
+├── FEB_Serial_Library/         # Unified serial I/O stack
+│   ├── CMakeLists.txt          # feb_io umbrella target
+│   ├── README.md
 │   ├── FEB_UART/               # feb_uart
 │   ├── FEB_Log/                # feb_log
 │   ├── FEB_Console/            # feb_console
-│   └── FEB_Commands/           # feb_commands
+│   ├── FEB_Commands/           # feb_commands
+│   ├── FEB_String_Utils/       # feb_string_utils
+│   └── FEB_Version/            # feb_version
 │
-├── FEB_CAN_Library/            # feb_can
+├── FEB_CAN_Library/            # feb_can (runtime dispatcher)
 │   ├── Inc/
 │   ├── Src/
-│   └── CMakeLists.txt
+│   ├── CMakeLists.txt
+│   └── README.md
 │
-└── FEB_TPS_Library/            # feb_tps
+├── FEB_CAN_Library_SN4/        # CAN message defs + generator (git submodule)
+│   ├── gen/                    # Generated feb_can.c / feb_can.h
+│   ├── msg_defs/
+│   ├── generate.py
+│   ├── generate_can.sh
+│   └── README.md
+│
+├── FEB_TPS_Library/            # feb_tps
+│   ├── Inc/
+│   ├── Src/
+│   ├── CMakeLists.txt
+│   └── README.md
+│
+├── FEB_Time_Library/           # feb_time
+│   ├── Inc/
+│   ├── Src/
+│   ├── CMakeLists.txt
+│   └── README.md
+│
+└── FEB_RTOS_Utils/             # feb_rtos_utils (header-only)
     ├── Inc/
-    ├── Src/
-    └── CMakeLists.txt
+    ├── CMakeLists.txt
+    └── README.md
 ```
 
 ## Library Documentation
