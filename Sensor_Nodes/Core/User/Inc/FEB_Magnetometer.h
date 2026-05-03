@@ -18,10 +18,14 @@ extern "C"
 
   /* Read functions */
   void read_Magnetic_Field_Data(void);
+  void read_Mag_Temperature(void);
 
   /* Data access */
   extern int16_t data_raw_magnetometer[3];
   extern float magnetic_mG[3];
+
+  extern int16_t data_raw_mag_temperature;
+  extern float mag_temp_c;
 
 #ifdef __cplusplus
 }
