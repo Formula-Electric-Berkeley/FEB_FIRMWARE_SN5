@@ -12,7 +12,7 @@
 stmdev_ctx_t lsm6dsox_ctx;
 extern I2C_HandleTypeDef hi2c3;
 #define LSM6DSOX_I2C_ADDR 0x6A
-#define I2C_TIMEOUT_MS 100
+#define I2C_TIMEOUT_MS 5
 extern UART_HandleTypeDef huart2;
 
 int16_t data_raw_acceleration[3];
@@ -20,6 +20,9 @@ float_t acceleration_mg[3];
 
 int16_t data_raw_angular_rate[3];
 float_t angular_rate_mdps[3];
+
+int16_t data_raw_imu_temperature;
+float_t imu_temp_c;
 
 // static uint8_t tx_buffer[1000];
 
@@ -153,4 +156,16 @@ void read_Angular_Rate(void)
 
   // LOG_D(TAG_IMU, "Angular Rate [mdps]: %4.2f\t%4.2f\t%4.2f", angular_rate_mdps[0], angular_rate_mdps[1],
   //       angular_rate_mdps[2]);
+}
+
+void read_IMU_Temperature(void)
+{
+  data_raw_imu_temperature = 0;
+  if (lsm6dsox_temperature_raw_get(&lsm6dsox_ctx, &data_raw_imu_temperature) != 0)
+  {
+    LOG_E(TAG_IMU, "Temp read failed");
+    imu_temp_c = 0.0f;
+    return;
+  }
+  imu_temp_c = lsm6dsox_from_lsb_to_celsius(data_raw_imu_temperature);
 }

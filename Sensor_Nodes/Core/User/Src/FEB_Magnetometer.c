@@ -13,8 +13,11 @@ stmdev_ctx_t lis3mdl_ctx;
 extern I2C_HandleTypeDef hi2c3;
 #define LIS3MDL_I2C_ADDR 0x1C
 
-static int16_t data_raw_magnetic[3];
-static float_t magnetic_mG[3];
+int16_t data_raw_magnetometer[3];
+float_t magnetic_mG[3];
+
+int16_t data_raw_mag_temperature;
+float_t mag_temp_c;
 
 // static uint8_t tx_buffer[1000];
 
@@ -54,16 +57,28 @@ void lis3mdl_init()
 void read_Magnetic_Field_Data()
 {
   /* Read and Print Magnetic Field Data */
-  memset(data_raw_magnetic, 0x00, 3 * sizeof(int16_t));
-  if (lis3mdl_magnetic_raw_get(&lis3mdl_ctx, data_raw_magnetic) != 0)
+  memset(data_raw_magnetometer, 0x00, 3 * sizeof(int16_t));
+  if (lis3mdl_magnetic_raw_get(&lis3mdl_ctx, data_raw_magnetometer) != 0)
   {
     LOG_E(TAG_MAG, "Mag read failed");
     return;
   }
 
-  magnetic_mG[0] = 1000 * lis3mdl_from_fs16_to_gauss(data_raw_magnetic[0]);
-  magnetic_mG[1] = 1000 * lis3mdl_from_fs16_to_gauss(data_raw_magnetic[1]);
-  magnetic_mG[2] = 1000 * lis3mdl_from_fs16_to_gauss(data_raw_magnetic[2]);
+  magnetic_mG[0] = 1000 * lis3mdl_from_fs16_to_gauss(data_raw_magnetometer[0]);
+  magnetic_mG[1] = 1000 * lis3mdl_from_fs16_to_gauss(data_raw_magnetometer[1]);
+  magnetic_mG[2] = 1000 * lis3mdl_from_fs16_to_gauss(data_raw_magnetometer[2]);
 
   // LOG_D(TAG_MAG, "Magnetic field [mG]: %4.2f\t%4.2f\t%4.2f", magnetic_mG[0], magnetic_mG[1], magnetic_mG[2]);
+}
+
+void read_Mag_Temperature(void)
+{
+  data_raw_mag_temperature = 0;
+  if (lis3mdl_temperature_raw_get(&lis3mdl_ctx, &data_raw_mag_temperature) != 0)
+  {
+    LOG_E(TAG_MAG, "Temp read failed");
+    mag_temp_c = 0.0f;
+    return;
+  }
+  mag_temp_c = lis3mdl_from_lsb_to_celsius(data_raw_mag_temperature);
 }
