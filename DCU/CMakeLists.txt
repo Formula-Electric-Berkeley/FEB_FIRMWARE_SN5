@@ -20,7 +20,6 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 add_compile_definitions(
     USE_HAL_DRIVER
     STM32F446xx
-    FEB_UART_USE_FREERTOS=1
     $<$<CONFIG:Debug>:DEBUG>
 )
 
@@ -41,38 +40,6 @@ list(FILTER HAL_SOURCES EXCLUDE REGEX "_template\\.c$")
 # Combine base sources
 set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES})
 
-# ── Middleware: FreeRTOS ─────────────────────────────────────────────
-if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
-    file(GLOB FREERTOS_CORE "Middlewares/Third_Party/FreeRTOS/Source/*.c")
-    file(GLOB FREERTOS_CMSIS "Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/*.c")
-    file(GLOB FREERTOS_PORT "Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/*.c")
-    file(GLOB FREERTOS_HEAP "Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c")
-    list(APPEND ALL_SOURCES ${FREERTOS_CORE} ${FREERTOS_CMSIS} ${FREERTOS_PORT} ${FREERTOS_HEAP})
-
-# ── FEB CAN Library sources ──────────────────────────────────────────
-file(GLOB CAN_LIB_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/*.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.c"
-)
-list(APPEND ALL_SOURCES ${CAN_LIB_SOURCES})
-endif()
-
-# ── Middleware: FatFS ────────────────────────────────────────────────
-if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FatFs")
-    file(GLOB FATFS_SOURCES
-        "Middlewares/Third_Party/FatFs/src/*.c"
-        "Middlewares/Third_Party/FatFs/src/option/syscall.c"
-        "FATFS/App/*.c"
-        "FATFS/Target/*.c"
-    )
-    list(APPEND ALL_SOURCES ${FATFS_SOURCES})
-endif()
-
-
-# ── User code sources ────────────────────────────────────────────────
-file(GLOB_RECURSE USER_SOURCES "Core/User/Src/*.c")
-list(APPEND ALL_SOURCES ${USER_SOURCES})
-
 # ══════════════════════════════════════════════════════════════════════
 #  INCLUDE DIRECTORIES
 # ══════════════════════════════════════════════════════════════════════
@@ -84,33 +51,6 @@ set(BASE_INCLUDES
     Drivers/CMSIS/Device/ST/STM32F4xx/Include
     Drivers/CMSIS/Include
 )
-
-# FreeRTOS includes
-if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
-    list(APPEND BASE_INCLUDES
-        Middlewares/Third_Party/FreeRTOS/Source/include
-        Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
-        Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F
-    )
-endif()
-
-# FatFS includes
-if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FatFs")
-    list(APPEND BASE_INCLUDES
-        Middlewares/Third_Party/FatFs/src
-        FATFS/App
-        FATFS/Target
-    )
-endif()
-
-
-# FEB CAN Library includes
-set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library")
-list(APPEND BASE_INCLUDES
-    "${CAN_LIB_DIR}/Inc"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen"
-)
-
 
 # Auto-discover Core/User/Inc if it exists
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
@@ -125,7 +65,7 @@ add_executable(${PROJECT_NAME} ${ALL_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_can feb_tps feb_rtos_utils feb_version)
+target_link_libraries(${PROJECT_NAME} PRIVATE m feb_version)
 
 # Embed version + build provenance (reads VERSION + git, generates feb_build_info.c)
 include(${CMAKE_SOURCE_DIR}/cmake/FEB_Version.cmake)
