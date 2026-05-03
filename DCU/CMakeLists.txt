@@ -125,7 +125,7 @@ add_executable(${PROJECT_NAME} ${ALL_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE m feb_version)
+target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_can feb_tps feb_rtos_utils feb_version)
 
 # Embed version + build provenance (reads VERSION + git, generates feb_build_info.c)
 include(${CMAKE_SOURCE_DIR}/cmake/FEB_Version.cmake)
