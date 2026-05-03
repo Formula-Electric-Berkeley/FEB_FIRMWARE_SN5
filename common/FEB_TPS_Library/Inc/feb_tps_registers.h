@@ -126,6 +126,21 @@ extern "C" {
 #define FEB_TPS_CONV_VSHUNT_MV_PER_LSB  0.0025f
 
 /* ============================================================================
+ * Sign-Magnitude Format Constants
+ * ============================================================================
+ *
+ * TPS2482 current and shunt voltage registers use sign-magnitude format:
+ *   Bit 15 = sign (1 = negative, 0 = positive)
+ *   Bits 14:0 = magnitude (absolute value)
+ */
+
+/** Sign bit mask for sign-magnitude values */
+#define FEB_TPS_SIGN_BIT                0x8000U
+
+/** Magnitude mask for sign-magnitude values (bits 14:0) */
+#define FEB_TPS_MAGNITUDE_MASK          0x7FFFU
+
+/* ============================================================================
  * Calibration Calculation Macros (Equations 20-24)
  * ============================================================================ */
 

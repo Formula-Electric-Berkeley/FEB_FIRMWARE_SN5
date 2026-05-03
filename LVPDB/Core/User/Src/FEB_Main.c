@@ -357,11 +357,22 @@ void FEB_Main_Loop(void)
     last_poll_tick = now;
 
     // Poll all TPS devices using the new library's batch operation
-    uint8_t polled =
-        FEB_TPS_PollAllRaw(tps2482_bus_voltage_raw, tps2482_current_raw, tps2482_shunt_voltage_raw, NUM_TPS2482);
+    uint8_t success_mask = 0;
+    uint8_t polled = FEB_TPS_PollAllRaw(tps2482_bus_voltage_raw, tps2482_current_raw, tps2482_shunt_voltage_raw,
+                                        NUM_TPS2482, &success_mask);
     if (polled < NUM_TPS2482)
     {
-      LOG_W(TAG_MAIN, "TPS poll: only %d/%d devices succeeded", polled, NUM_TPS2482);
+      LOG_W(TAG_MAIN, "TPS poll: only %d/%d devices succeeded (mask=0x%02X)", polled, NUM_TPS2482, success_mask);
+      // Zero out data for failed devices to prevent stale values
+      for (uint8_t i = 0; i < NUM_TPS2482; i++)
+      {
+        if ((success_mask & (1u << i)) == 0)
+        {
+          tps2482_bus_voltage_raw[i] = 0;
+          tps2482_current_raw[i] = 0;
+          tps2482_shunt_voltage_raw[i] = 0;
+        }
+      }
     }
 
     // Track consecutive complete failures and attempt I2C bus recovery

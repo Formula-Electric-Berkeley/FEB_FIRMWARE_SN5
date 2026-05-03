@@ -40,22 +40,6 @@ extern "C" {
 #endif
 
 /* ============================================================================
- * Bare-Metal Safety Mode
- * ============================================================================
- *
- * When FreeRTOS is NOT detected and FORCE_BARE_METAL is NOT set:
- *   - Mutex operations are NO-OPs (safe default for single-threaded use)
- *
- * When FORCE_BARE_METAL is explicitly set to 1:
- *   - Mutex operations use __disable_irq() / __enable_irq() critical sections
- *   - Use this for bare-metal projects that need ISR protection
- */
-
-#ifndef FEB_TPS_FORCE_BARE_METAL
-#define FEB_TPS_FORCE_BARE_METAL 0
-#endif
-
-/* ============================================================================
  * Polling Configuration (FreeRTOS Mode)
  * ============================================================================ */
 
@@ -78,6 +62,11 @@ extern "C" {
  */
 #ifndef FEB_TPS_MAX_DEVICES
 #define FEB_TPS_MAX_DEVICES 8
+#endif
+
+/* Compile-time validation: success_mask is uint8_t, limiting MAX_DEVICES to 8 */
+#if FEB_TPS_MAX_DEVICES > 8
+#error "FEB_TPS_MAX_DEVICES cannot exceed 8 (success_mask is uint8_t). Widen to uint16_t if more devices needed."
 #endif
 
 /* ============================================================================

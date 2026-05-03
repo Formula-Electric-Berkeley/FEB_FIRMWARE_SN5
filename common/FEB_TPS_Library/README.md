@@ -144,7 +144,9 @@ void loop(void) {
     // Note: current and shunt_v are now sign-corrected int16_t
     uint16_t bus_v[NUM_DEVICES];
     int16_t current[NUM_DEVICES], shunt_v[NUM_DEVICES];
-    FEB_TPS_PollAllRaw(bus_v, current, shunt_v, NUM_DEVICES);
+    uint8_t success_mask;
+    FEB_TPS_PollAllRaw(bus_v, current, shunt_v, NUM_DEVICES, &success_mask);
+    // success_mask bit N is set if device N was successfully polled
 }
 ```
 
@@ -198,7 +200,7 @@ FEB_TPS_ADDR(FEB_TPS_PIN_SCL, FEB_TPS_PIN_SDA)
 |----------|-------------|
 | `FEB_TPS_PollAll(measurements, count)` | Poll all devices (float) |
 | `FEB_TPS_PollAllScaled(scaled, count)` | Poll all devices (integer) |
-| `FEB_TPS_PollAllRaw(bus_v, current, shunt_v, count)` | Poll all devices (raw) |
+| `FEB_TPS_PollAllRaw(bus_v, current, shunt_v, count, success_mask)` | Poll all devices (raw) |
 
 ### GPIO Control
 
