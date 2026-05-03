@@ -99,20 +99,25 @@ typedef void (*FEB_TPS_LogFunc_t)(FEB_TPS_LogLevel_t level, const char *msg);
  * @brief TPS2482 device configuration
  *
  * Used when registering a new device with FEB_TPS_DeviceRegister().
+ *
+ * Register value semantics:
+ *   - config_reg: 0 means "use default" (0x4127). Cannot explicitly set CONFIG to 0.
+ *   - mask_reg: 0 means "no alerts configured" (register write skipped).
+ *   - alert_limit: 0 means "no alert limit" (register write skipped).
  */
 typedef struct {
     /* I2C Configuration (required) */
     I2C_HandleTypeDef *hi2c;    /**< I2C handle */
-    uint8_t i2c_addr;           /**< 7-bit I2C address (use FEB_TPS_ADDR macro) */
+    uint8_t i2c_addr;           /**< 7-bit I2C address (typically 0x40-0x4F for TPS2482) */
 
     /* Current Measurement Configuration (required) */
     float r_shunt_ohms;         /**< Shunt resistor value in Ohms (e.g., 0.002 for 2mOhm) */
     float i_max_amps;           /**< Maximum expected current in Amps (determines resolution) */
 
-    /* Optional: Device Configuration Register Settings */
+    /* Optional: Device Configuration Register Settings (see note above) */
     uint16_t config_reg;        /**< CONFIG register value (0 = use default 0x4127) */
-    uint16_t mask_reg;          /**< MASK register value (0 = no alerts) */
-    uint16_t alert_limit;       /**< ALERT_LIMIT register value (0 = no limit) */
+    uint16_t mask_reg;          /**< MASK register value (0 = skip write, no alerts) */
+    uint16_t alert_limit;       /**< ALERT_LIMIT register value (0 = skip write) */
 
     /* Optional: GPIO for Enable/Power-Good/Alert */
     GPIO_TypeDef *en_gpio_port;     /**< GPIO port for EN pin (NULL = not used) */
@@ -369,10 +374,14 @@ uint8_t FEB_TPS_PollAllScaled(FEB_TPS_MeasurementScaled_t *scaled, uint8_t count
  * @param current_raw Array for sign-corrected current values (can be NULL)
  * @param shunt_v_raw Array for sign-corrected shunt voltage values (can be NULL)
  * @param count Number of elements in arrays
+ * @param success_mask Output bitmask indicating which device indices succeeded
+ *                     (bit N set = device N polled successfully). Can be NULL.
+ *                     Note: Limited to 8 devices max (uint8_t type).
  * @return Number of devices successfully polled
  */
 uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
-                            int16_t *shunt_v_raw, uint8_t count);
+                            int16_t *shunt_v_raw, uint8_t count,
+                            uint8_t *success_mask);
 
 /* ============================================================================
  * GPIO Control (Enable/Power-Good/Alert)
@@ -470,10 +479,14 @@ FEB_TPS_Status_t FEB_TPS_Reconfigure(FEB_TPS_Handle_t handle,
 /**
  * @brief Attempt I2C bus recovery for all registered devices
  *
- * Resets the I2C peripheral to recover from stuck bus conditions.
- * Call this when consecutive poll failures are detected.
+ * Resets all unique I2C peripherals used by registered devices to recover
+ * from stuck bus conditions. Call this when consecutive poll failures are detected.
  *
- * @return FEB_TPS_OK on success, FEB_TPS_ERR_NOT_INIT if no devices registered
+ * @return FEB_TPS_OK if all bus recovery attempts succeeded
+ * @return FEB_TPS_ERR_NOT_INIT if the library is not initialized OR no devices
+ *         are registered with valid I2C handles. Use FEB_TPS_IsInitialized()
+ *         and FEB_TPS_DeviceGetCount() to distinguish these cases.
+ * @return FEB_TPS_ERR_I2C if one or more I2C bus recovery attempts failed
  */
 FEB_TPS_Status_t FEB_TPS_BusRecovery(void);
 
@@ -502,10 +515,10 @@ const char *FEB_TPS_GetDeviceName(FEB_TPS_Handle_t handle);
  * @return Signed 16-bit integer with sign applied (negative if input bit 15 is set).
  */
 static inline int16_t FEB_TPS_SignMagnitude(uint16_t raw) {
-    if (raw & 0x8000) {
-        return -(int16_t)(raw & 0x7FFF);
+    if (raw & FEB_TPS_SIGN_BIT) {
+        return -(int16_t)(raw & FEB_TPS_MAGNITUDE_MASK);
     }
-    return (int16_t)(raw & 0x7FFF);
+    return (int16_t)(raw & FEB_TPS_MAGNITUDE_MASK);
 }
 
 /* ============================================================================
