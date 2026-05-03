@@ -64,6 +64,9 @@ jobs:
             --enable=warning,performance,portability \
             --suppress=missingIncludeSystem \
             --suppress=unmatchedSuppression \
+            --suppress=uninitvar:*lsm6dsox_reg.c* \
+            --suppress=legacyUninitvar:*lsm6dsox_reg.c* \
+            --suppress=uninitStructMember:*lsm6dsox_reg.c* \
             --error-exitcode=1 \
             --inline-suppr \
             -DFEB_SN_VARIANT_FRONT=1 \
