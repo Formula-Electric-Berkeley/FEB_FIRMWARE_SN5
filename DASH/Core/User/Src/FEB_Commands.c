@@ -311,8 +311,8 @@ static void cmd_pcu(int argc, char *argv[])
 
   int16_t torque = FEB_CAN_PCU_GetLastTorque();
   int8_t direction = FEB_CAN_PCU_GetLastDirection();
-  int8_t enabled = FEB_CAN_PCU_GetLastRMSEnabled();
-  uint16_t brake = FEB_CAN_PCU_GetLastBreakPosition();
+  uint8_t enabled = FEB_CAN_PCU_GetLastRMSEnabled();
+  uint16_t brake = FEB_CAN_PCU_GetLastBrakePosition();
 
   FEB_Console_Printf("PCU / RMS Status:\r\n");
   FEB_Console_Printf("  Torque:         %d (raw)\r\n", (int)torque);
@@ -326,7 +326,7 @@ static void cmd_pcu_csv(int argc, char *argv[])
   (void)argc;
   (void)argv;
   FEB_Console_CsvEmit("pcu", "%d,%d,%d,%u", (int)FEB_CAN_PCU_GetLastTorque(), (int)FEB_CAN_PCU_GetLastDirection(),
-                      (int)FEB_CAN_PCU_GetLastRMSEnabled(), (unsigned int)FEB_CAN_PCU_GetLastBreakPosition());
+                      (int)FEB_CAN_PCU_GetLastRMSEnabled(), (unsigned int)FEB_CAN_PCU_GetLastBrakePosition());
 }
 
 static const FEB_Console_Cmd_t dash_cmd_pcu = {
