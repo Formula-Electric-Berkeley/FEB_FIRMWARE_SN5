@@ -84,13 +84,22 @@ static HAL_StatusTypeDef feb_tps_read_reg(I2C_HandleTypeDef *hi2c,
     uint8_t buf[2];
     HAL_StatusTypeDef status;
 
-    status = HAL_I2C_Mem_Read(hi2c, (uint16_t)(i2c_addr << 1), reg,
-                               I2C_MEMADD_SIZE_8BIT, buf, 2,
-                               feb_tps_ctx.i2c_timeout_ms);
+    /* Retry loop for transient I2C errors */
+    for (uint8_t retry = 0; retry < FEB_TPS_I2C_MAX_RETRIES; retry++) {
+        status = HAL_I2C_Mem_Read(hi2c, (uint16_t)(i2c_addr << 1), reg,
+                                   I2C_MEMADD_SIZE_8BIT, buf, 2,
+                                   feb_tps_ctx.i2c_timeout_ms);
 
-    if (status == HAL_OK) {
-        /* TPS2482 sends MSB first */
-        *value = ((uint16_t)buf[0] << 8) | buf[1];
+        if (status == HAL_OK) {
+            /* TPS2482 sends MSB first */
+            *value = ((uint16_t)buf[0] << 8) | buf[1];
+            return status;
+        }
+
+        /* Brief delay before retry (only if not last attempt) */
+        if (retry < FEB_TPS_I2C_MAX_RETRIES - 1) {
+            FEB_TPS_DELAY_MS(1);
+        }
     }
 
     return status;
@@ -110,14 +119,29 @@ static HAL_StatusTypeDef feb_tps_write_reg(I2C_HandleTypeDef *hi2c,
                                             uint8_t reg,
                                             uint16_t value) {
     uint8_t buf[2];
+    HAL_StatusTypeDef status;
 
     /* TPS2482 expects MSB first */
     buf[0] = (uint8_t)(value >> 8);
     buf[1] = (uint8_t)(value & 0xFF);
 
-    return HAL_I2C_Mem_Write(hi2c, (uint16_t)(i2c_addr << 1), reg,
-                              I2C_MEMADD_SIZE_8BIT, buf, 2,
-                              feb_tps_ctx.i2c_timeout_ms);
+    /* Retry loop for transient I2C errors */
+    for (uint8_t retry = 0; retry < FEB_TPS_I2C_MAX_RETRIES; retry++) {
+        status = HAL_I2C_Mem_Write(hi2c, (uint16_t)(i2c_addr << 1), reg,
+                                    I2C_MEMADD_SIZE_8BIT, buf, 2,
+                                    feb_tps_ctx.i2c_timeout_ms);
+
+        if (status == HAL_OK) {
+            return status;
+        }
+
+        /* Brief delay before retry (only if not last attempt) */
+        if (retry < FEB_TPS_I2C_MAX_RETRIES - 1) {
+            FEB_TPS_DELAY_MS(1);
+        }
+    }
+
+    return status;
 }
 
 /**
@@ -127,29 +151,45 @@ static HAL_StatusTypeDef feb_tps_write_reg(I2C_HandleTypeDef *hi2c,
  * This updates the device fields `current_lsb`, `power_lsb`, and `cal_reg` using the
  * device's `i_max_amps` and `r_shunt_ohms` values.
  *
- * @param dev Pointer to the device to update; `i_max_amps` and `r_shunt_ohms` must be set. 
+ * @param dev Pointer to the device to update; `i_max_amps` and `r_shunt_ohms` must be set.
  */
 static void feb_tps_compute_calibration(FEB_TPS_Device_t *dev) {
     dev->current_lsb = FEB_TPS_CALC_CURRENT_LSB(dev->i_max_amps);
     dev->power_lsb = FEB_TPS_CALC_POWER_LSB(dev->current_lsb);
-    dev->cal_reg = FEB_TPS_CALC_CAL(dev->current_lsb, dev->r_shunt_ohms);
+
+    /* Calculate calibration with range validation to prevent truncation issues */
+    float cal_float = 0.00512f / (dev->current_lsb * dev->r_shunt_ohms);
+
+    if (cal_float > 65535.0f) {
+        TPS_LOG_W("CAL overflow (%.0f > 65535) for %s, clamping to 0xFFFF",
+                  cal_float, dev->name ? dev->name : "?");
+        dev->cal_reg = 0xFFFF;
+    } else if (cal_float < 1.0f) {
+        TPS_LOG_W("CAL underflow (%.6f < 1) for %s, clamping to 0x0001",
+                  cal_float, dev->name ? dev->name : "?");
+        dev->cal_reg = 0x0001;
+    } else {
+        dev->cal_reg = (uint16_t)cal_float;
+    }
 }
 
 /**
  * Initialize the FEB TPS2482 library with an optional configuration.
  *
  * If `config` is provided, its `i2c_timeout_ms` overrides the default I2C timeout,
- * and `log_func`/`log_level` are registered for library logging. The call allocates
- * an internal I2C mutex and initializes global library state.
+ * and `log_func`/`log_level` are registered for library logging. The call initializes
+ * global library state.
  *
- * @param config Optional pointer to library configuration; may be NULL.
+ * @param config Optional pointer to library configuration; may be NULL in bare-metal mode.
  *               - If non-NULL and `i2c_timeout_ms > 0` that value is used;
  *                 otherwise the default timeout is applied.
  *               - If `log_func` is non-NULL it will be used for library logging;
  *                 `log_level` defaults to `FEB_TPS_LOG_INFO` when zero.
+ *               - In FreeRTOS mode, `data_mutex` and `i2c_mutex` must be provided
+ *                 (created externally in CubeMX/.ioc).
  *
  * @returns FEB_TPS_OK if the library is successfully initialized or was already initialized.
- * @returns FEB_TPS_ERR_NOT_INIT if initialization failed due to mutex creation failure (FreeRTOS build).
+ * @returns FEB_TPS_ERR_INVALID_ARG if required mutexes are not provided (FreeRTOS build only).
  */
 
 FEB_TPS_Status_t FEB_TPS_Init(const FEB_TPS_LibConfig_t *config) {
@@ -208,15 +248,13 @@ void FEB_TPS_DeInit(void) {
         return;
     }
 
-    /* Unregister all devices */
-    for (uint8_t i = 0; i < feb_tps_ctx.device_count; i++) {
-        feb_tps_ctx.devices[i].initialized = false;
-    }
-
     /*
      * NOTE: We do NOT delete user-provided mutexes.
      * The user created them in CubeMX/.ioc and owns their lifecycle.
      * We only clear our references.
+     *
+     * The memset below clears all device slots (including initialized and
+     * in_use flags) regardless of array sparsity, so no explicit loop is needed.
      */
 
     memset(&feb_tps_ctx, 0, sizeof(feb_tps_ctx));
@@ -265,6 +303,12 @@ FEB_TPS_Status_t FEB_TPS_DeviceRegister(const FEB_TPS_DeviceConfig_t *config,
 
     if (config->r_shunt_ohms <= 0.0f || config->i_max_amps <= 0.0f) {
         return FEB_TPS_ERR_INVALID_ARG;
+    }
+
+    /* Warn if I2C address is outside TPS2482 typical range (0x40-0x4F) */
+    if (config->i2c_addr < 0x40 || config->i2c_addr > 0x4F) {
+        TPS_LOG_W("I2C address 0x%02X outside TPS2482 range (0x40-0x4F)",
+                  config->i2c_addr);
     }
 
     /* Find first available slot (supports stable handles after unregister) */
@@ -369,9 +413,18 @@ cleanup:
 /**
  * Unregisters a previously registered TPS device.
  *
- * Removes the device identified by `handle` from the library's internal device list. If removal succeeds the device array is compacted (last device moved into the freed slot) and the device count is decremented. The call is a no-op if `handle` is NULL or the device is not found.
+ * Marks the device slot as unused and clears its data. The slot is NOT compacted
+ * (no array relocation), which ensures that other device handles remain valid.
+ * The device count is decremented. The call is a no-op if `handle` is NULL or
+ * the device is not found.
  *
  * @param handle Handle returned by FEB_TPS_DeviceRegister identifying the device to remove.
+ *
+ * @warning After unregistering, the handle becomes invalid. Using a stale handle
+ *          after unregister results in undefined behavior. If the slot is reused
+ *          by a subsequent DeviceRegister call, the old handle may incorrectly
+ *          appear to work but will reference the wrong device. Callers must
+ *          set their handle variables to NULL after unregistering.
  */
 void FEB_TPS_DeviceUnregister(FEB_TPS_Handle_t handle) {
     if (handle == NULL) {
@@ -398,12 +451,14 @@ void FEB_TPS_DeviceUnregister(FEB_TPS_Handle_t handle) {
     /* Save name for logging before clearing */
     const char *name = dev->name;
 
-    /* Mark slot as unused without relocating (preserves other handles) */
-    dev->in_use = false;
-    dev->initialized = false;
-    memset(dev, 0, sizeof(FEB_TPS_Device_t));
+    /* Lock mutex to prevent concurrent access during unregister */
+    FEB_TPS_MUTEX_LOCK(feb_tps_ctx.i2c_mutex);
 
+    /* Clear slot data (memset zeros in_use and initialized flags) */
+    memset(dev, 0, sizeof(FEB_TPS_Device_t));
     feb_tps_ctx.device_count--;
+
+    FEB_TPS_MUTEX_UNLOCK(feb_tps_ctx.i2c_mutex);
 
     TPS_LOG_I("Unregistered device '%s' at index %d", name ? name : "?", dev_index);
 }
@@ -543,10 +598,21 @@ FEB_TPS_Status_t FEB_TPS_PollScaled(FEB_TPS_Handle_t handle,
     FEB_TPS_Status_t status = FEB_TPS_Poll(handle, &meas);
 
     if (status == FEB_TPS_OK && scaled != NULL) {
-        scaled->bus_voltage_mv = (uint32_t)(meas.bus_voltage_v * 1000.0f);
+        /* Log diagnostic warning if clamping negative values */
+        if (meas.bus_voltage_v < 0.0f) {
+            TPS_LOG_W("Clamped negative bus_voltage: %.3f V", meas.bus_voltage_v);
+        }
+        if (meas.power_w < 0.0f) {
+            TPS_LOG_W("Clamped negative power: %.3f W", meas.power_w);
+        }
+
+        /* Clamp unsigned values to prevent undefined behavior from negative floats */
+        scaled->bus_voltage_mv = (meas.bus_voltage_v >= 0.0f) ?
+                                  (uint32_t)(meas.bus_voltage_v * 1000.0f) : 0;
         scaled->current_ma = (int32_t)(meas.current_a * 1000.0f);
         scaled->shunt_voltage_uv = (int32_t)(meas.shunt_voltage_mv * 1000.0f);
-        scaled->power_mw = (uint32_t)(meas.power_w * 1000.0f);
+        scaled->power_mw = (meas.power_w >= 0.0f) ?
+                           (uint32_t)(meas.power_w * 1000.0f) : 0;
     }
 
     return status;
@@ -729,6 +795,10 @@ uint8_t FEB_TPS_PollAll(FEB_TPS_Measurement_t *measurements, uint8_t count) {
 
     uint8_t actual_count = (count < feb_tps_ctx.device_count) ?
                            count : feb_tps_ctx.device_count;
+
+    /* Zero-initialize output to prevent stale data on partial failure */
+    memset(measurements, 0, actual_count * sizeof(FEB_TPS_Measurement_t));
+
     uint8_t success_count = 0;
 
     for (uint8_t i = 0; i < actual_count; i++) {
@@ -761,6 +831,10 @@ uint8_t FEB_TPS_PollAllScaled(FEB_TPS_MeasurementScaled_t *scaled, uint8_t count
 
     uint8_t actual_count = (count < feb_tps_ctx.device_count) ?
                            count : feb_tps_ctx.device_count;
+
+    /* Zero-initialize output to prevent stale data on partial failure */
+    memset(scaled, 0, actual_count * sizeof(FEB_TPS_MeasurementScaled_t));
+
     uint8_t success_count = 0;
 
     for (uint8_t i = 0; i < actual_count; i++) {
@@ -782,14 +856,17 @@ uint8_t FEB_TPS_PollAllScaled(FEB_TPS_MeasurementScaled_t *scaled, uint8_t count
  * element in the provided arrays with the raw register value. Any measurement pointer
  * may be NULL to skip that field. Devices that are not initialized are skipped.
  *
- * @param bus_v_raw  Buffer to receive BUS_VOLT raw values indexed by device; may be NULL.
- * @param current_raw Buffer to receive SIGN-MAGNITUDE CURRENT values indexed by device; may be NULL.
- * @param shunt_v_raw Buffer to receive SIGN-MAGNITUDE SHUNT_VOLT values indexed by device; may be NULL.
- * @param count      Maximum number of devices to poll (size of the provided buffers).
+ * @param bus_v_raw    Buffer to receive BUS_VOLT raw values indexed by device; may be NULL.
+ * @param current_raw  Buffer to receive SIGN-MAGNITUDE CURRENT values indexed by device; may be NULL.
+ * @param shunt_v_raw  Buffer to receive SIGN-MAGNITUDE SHUNT_VOLT values indexed by device; may be NULL.
+ * @param count        Maximum number of devices to poll (size of the provided buffers).
+ * @param success_mask Output bitmask indicating which device indices succeeded
+ *                     (bit N set = device N polled successfully). May be NULL.
  * @returns Number of devices for which all requested fields were successfully read; returns 0 if the library is not initialized.
  */
 uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
-                            int16_t *shunt_v_raw, uint8_t count) {
+                            int16_t *shunt_v_raw, uint8_t count,
+                            uint8_t *success_mask) {
     if (!feb_tps_ctx.initialized) {
         return 0;
     }
@@ -797,6 +874,11 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
     uint8_t actual_count = (count < feb_tps_ctx.device_count) ?
                            count : feb_tps_ctx.device_count;
     uint8_t success_count = 0;
+
+    /* Initialize success_mask if provided */
+    if (success_mask != NULL) {
+        *success_mask = 0;
+    }
 
     FEB_TPS_MUTEX_LOCK(feb_tps_ctx.i2c_mutex);
 
@@ -812,11 +894,16 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
         uint16_t raw;
         bool success = true;
 
+        /* Use temporary variables to avoid partial data on failure */
+        uint16_t temp_bus_v = 0;
+        int16_t temp_current = 0;
+        int16_t temp_shunt_v = 0;
+
         if (bus_v_raw != NULL) {
             hal_status = feb_tps_read_reg(dev->hi2c, dev->i2c_addr,
                                            FEB_TPS_REG_BUS_VOLT, &raw);
             if (hal_status == HAL_OK) {
-                bus_v_raw[logical_index] = raw;
+                temp_bus_v = raw;
             } else {
                 success = false;
             }
@@ -826,7 +913,7 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
             hal_status = feb_tps_read_reg(dev->hi2c, dev->i2c_addr,
                                            FEB_TPS_REG_CURRENT, &raw);
             if (hal_status == HAL_OK) {
-                current_raw[logical_index] = feb_tps_sign_magnitude(raw);
+                temp_current = feb_tps_sign_magnitude(raw);
             } else {
                 success = false;
             }
@@ -836,13 +923,30 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
             hal_status = feb_tps_read_reg(dev->hi2c, dev->i2c_addr,
                                            FEB_TPS_REG_SHUNT_VOLT, &raw);
             if (hal_status == HAL_OK) {
-                shunt_v_raw[logical_index] = feb_tps_sign_magnitude(raw);
+                temp_shunt_v = feb_tps_sign_magnitude(raw);
             } else {
                 success = false;
             }
         }
 
+        /*
+         * Always write to output arrays to maintain index alignment with
+         * FEB_TPS_DeviceGetByIndex(). Use zero values for failed devices.
+         * Callers can use success_mask to identify which indices succeeded.
+         */
+        if (bus_v_raw != NULL) {
+            bus_v_raw[logical_index] = success ? temp_bus_v : 0;
+        }
+        if (current_raw != NULL) {
+            current_raw[logical_index] = success ? temp_current : 0;
+        }
+        if (shunt_v_raw != NULL) {
+            shunt_v_raw[logical_index] = success ? temp_shunt_v : 0;
+        }
         if (success) {
+            if (success_mask != NULL) {
+                *success_mask |= (1u << logical_index);
+            }
             success_count++;
         }
         logical_index++;
@@ -865,11 +969,19 @@ uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
  */
 
 FEB_TPS_Status_t FEB_TPS_Enable(FEB_TPS_Handle_t handle, bool enable) {
+    if (!feb_tps_ctx.initialized) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
+
     if (handle == NULL) {
         return FEB_TPS_ERR_INVALID_ARG;
     }
 
     FEB_TPS_Device_t *dev = (FEB_TPS_Device_t *)handle;
+
+    if (!dev->initialized) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
 
     if (dev->en_gpio_port == NULL) {
         return FEB_TPS_ERR_INVALID_ARG;
@@ -893,11 +1005,19 @@ FEB_TPS_Status_t FEB_TPS_Enable(FEB_TPS_Handle_t handle, bool enable) {
  * @returns FEB_TPS_OK on success, FEB_TPS_ERR_INVALID_ARG if `handle` or `pg_state` is NULL or the device has no PG GPIO configured.
  */
 FEB_TPS_Status_t FEB_TPS_ReadPowerGood(FEB_TPS_Handle_t handle, bool *pg_state) {
+    if (!feb_tps_ctx.initialized) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
+
     if (handle == NULL || pg_state == NULL) {
         return FEB_TPS_ERR_INVALID_ARG;
     }
 
     FEB_TPS_Device_t *dev = (FEB_TPS_Device_t *)handle;
+
+    if (!dev->initialized) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
 
     if (dev->pg_gpio_port == NULL) {
         return FEB_TPS_ERR_INVALID_ARG;
@@ -918,11 +1038,19 @@ FEB_TPS_Status_t FEB_TPS_ReadPowerGood(FEB_TPS_Handle_t handle, bool *pg_state) 
  * @returns `FEB_TPS_OK` on success, `FEB_TPS_ERR_INVALID_ARG` if `handle` or `alert_active` is NULL or the device has no alert GPIO configured.
  */
 FEB_TPS_Status_t FEB_TPS_ReadAlert(FEB_TPS_Handle_t handle, bool *alert_active) {
+    if (!feb_tps_ctx.initialized) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
+
     if (handle == NULL || alert_active == NULL) {
         return FEB_TPS_ERR_INVALID_ARG;
     }
 
     FEB_TPS_Device_t *dev = (FEB_TPS_Device_t *)handle;
+
+    if (!dev->initialized) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
 
     if (dev->alert_gpio_port == NULL) {
         return FEB_TPS_ERR_INVALID_ARG;
@@ -941,6 +1069,10 @@ FEB_TPS_Status_t FEB_TPS_ReadAlert(FEB_TPS_Handle_t handle, bool *alert_active) 
  * @param enable `true` to set the enable pin (enable device), `false` to reset the pin (disable device).
  * @returns Number of devices whose enable GPIO pin was written. */
 uint8_t FEB_TPS_EnableAll(bool enable) {
+    if (!feb_tps_ctx.initialized) {
+        return 0;
+    }
+
     uint8_t count = 0;
 
     for (uint8_t i = 0; i < FEB_TPS_MAX_DEVICES; i++) {
@@ -969,6 +1101,10 @@ uint8_t FEB_TPS_EnableAll(bool enable) {
  * @returns         Number of devices for which a PG GPIO was present and read successfully.
  */
 uint8_t FEB_TPS_ReadAllPowerGood(bool *pg_states, uint8_t count) {
+    if (!feb_tps_ctx.initialized) {
+        return 0;
+    }
+
     if (pg_states == NULL) {
         return 0;
     }
@@ -1006,11 +1142,16 @@ uint8_t FEB_TPS_ReadAllPowerGood(bool *pg_states, uint8_t count) {
  */
 
 float FEB_TPS_GetCurrentLSB(FEB_TPS_Handle_t handle) {
-    if (handle == NULL) {
+    if (!feb_tps_ctx.initialized || handle == NULL) {
         return 0.0f;
     }
 
     FEB_TPS_Device_t *dev = (FEB_TPS_Device_t *)handle;
+
+    if (!dev->initialized || !dev->in_use) {
+        return 0.0f;
+    }
+
     return dev->current_lsb;
 }
 
@@ -1020,11 +1161,16 @@ float FEB_TPS_GetCurrentLSB(FEB_TPS_Handle_t handle) {
  * @returns The device's calibration register value (uint16_t); `0` if `handle` is NULL.
  */
 uint16_t FEB_TPS_GetCalibration(FEB_TPS_Handle_t handle) {
-    if (handle == NULL) {
+    if (!feb_tps_ctx.initialized || handle == NULL) {
         return 0;
     }
 
     FEB_TPS_Device_t *dev = (FEB_TPS_Device_t *)handle;
+
+    if (!dev->initialized || !dev->in_use) {
+        return 0;
+    }
+
     return dev->cal_reg;
 }
 
@@ -1039,6 +1185,10 @@ uint16_t FEB_TPS_GetCalibration(FEB_TPS_Handle_t handle) {
  *          FEB_TPS_ERR_I2C if an I2C transaction failed.
  */
 FEB_TPS_Status_t FEB_TPS_ReadID(FEB_TPS_Handle_t handle, uint16_t *id) {
+    if (!feb_tps_ctx.initialized) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
+
     if (handle == NULL || id == NULL) {
         return FEB_TPS_ERR_INVALID_ARG;
     }
@@ -1076,6 +1226,10 @@ FEB_TPS_Status_t FEB_TPS_ReadID(FEB_TPS_Handle_t handle, uint16_t *id) {
 FEB_TPS_Status_t FEB_TPS_Reconfigure(FEB_TPS_Handle_t handle,
                                       float r_shunt_ohms,
                                       float i_max_amps) {
+    if (!feb_tps_ctx.initialized) {
+        return FEB_TPS_ERR_NOT_INIT;
+    }
+
     if (handle == NULL) {
         return FEB_TPS_ERR_INVALID_ARG;
     }
@@ -1140,61 +1294,78 @@ const char *FEB_TPS_StatusToString(FEB_TPS_Status_t status) {
 }
 
 /**
- * Attempt to recover the I2C bus by resetting the peripheral.
+ * Attempt to recover all I2C buses used by registered TPS devices.
  *
- * This function disables and re-enables the I2C peripheral to clear any
+ * This function disables and re-enables each unique I2C peripheral to clear any
  * stuck bus conditions that may occur when I2C transactions are interrupted
  * (e.g., by timer interrupts with blocking operations).
  *
- * @returns FEB_TPS_OK if recovery was attempted successfully,
- *          FEB_TPS_ERR_NOT_INIT if the library is not initialized or no devices are registered.
+ * @returns FEB_TPS_OK if all bus recovery attempts succeeded,
+ *          FEB_TPS_ERR_NOT_INIT if the library is not initialized or no devices are registered,
+ *          FEB_TPS_ERR_I2C if one or more bus recovery attempts failed.
  */
 FEB_TPS_Status_t FEB_TPS_BusRecovery(void) {
     if (!feb_tps_ctx.initialized) {
         return FEB_TPS_ERR_NOT_INIT;
     }
 
-    /* Find the first registered device to get its I2C handle */
-    I2C_HandleTypeDef *hi2c = NULL;
+    /* Collect unique I2C handles from all registered devices */
+    I2C_HandleTypeDef *unique_hi2c[FEB_TPS_MAX_DEVICES];
+    uint8_t unique_count = 0;
+
     for (uint8_t i = 0; i < FEB_TPS_MAX_DEVICES; i++) {
-        if (feb_tps_ctx.devices[i].in_use && feb_tps_ctx.devices[i].hi2c != NULL) {
-            hi2c = feb_tps_ctx.devices[i].hi2c;
-            break;
+        if (!feb_tps_ctx.devices[i].in_use || feb_tps_ctx.devices[i].hi2c == NULL) {
+            continue;
+        }
+
+        I2C_HandleTypeDef *hi2c = feb_tps_ctx.devices[i].hi2c;
+
+        /* Check if already in unique list */
+        bool found = false;
+        for (uint8_t j = 0; j < unique_count; j++) {
+            if (unique_hi2c[j] == hi2c) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            unique_hi2c[unique_count++] = hi2c;
         }
     }
 
-    if (hi2c == NULL) {
+    if (unique_count == 0) {
         return FEB_TPS_ERR_NOT_INIT;
     }
 
     FEB_TPS_MUTEX_LOCK(feb_tps_ctx.i2c_mutex);
 
-    /* Perform a full HAL reset to properly reinitialize the I2C peripheral
-     * and its internal state machine. This is more robust than manually
-     * manipulating hi2c->State and hi2c->Mode. */
-    HAL_StatusTypeDef hal_status;
-    FEB_TPS_Status_t status = FEB_TPS_OK;
+    FEB_TPS_Status_t overall_status = FEB_TPS_OK;
 
-    hal_status = HAL_I2C_DeInit(hi2c);
-    if (hal_status != HAL_OK) {
-        TPS_LOG_E("I2C DeInit failed: %d", hal_status);
-        status = FEB_TPS_ERR_I2C;
-        goto cleanup;
+    /* Recover each unique I2C bus */
+    for (uint8_t i = 0; i < unique_count; i++) {
+        HAL_StatusTypeDef hal_status;
+
+        hal_status = HAL_I2C_DeInit(unique_hi2c[i]);
+        if (hal_status != HAL_OK) {
+            TPS_LOG_E("I2C DeInit failed for bus %d: %d", i, hal_status);
+            overall_status = FEB_TPS_ERR_I2C;
+            continue; /* Try to recover other buses */
+        }
+
+        hal_status = HAL_I2C_Init(unique_hi2c[i]);
+        if (hal_status != HAL_OK) {
+            TPS_LOG_E("I2C Init failed for bus %d: %d", i, hal_status);
+            overall_status = FEB_TPS_ERR_I2C;
+            continue;
+        }
+
+        TPS_LOG_I("I2C bus %d recovery succeeded", i);
     }
 
-    hal_status = HAL_I2C_Init(hi2c);
-    if (hal_status != HAL_OK) {
-        TPS_LOG_E("I2C Init failed: %d", hal_status);
-        status = FEB_TPS_ERR_I2C;
-        goto cleanup;
-    }
-
-    TPS_LOG_I("I2C bus recovery succeeded");
-
-cleanup:
     FEB_TPS_MUTEX_UNLOCK(feb_tps_ctx.i2c_mutex);
 
-    return status;
+    return overall_status;
 }
 
 /**

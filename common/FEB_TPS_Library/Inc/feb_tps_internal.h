@@ -53,35 +53,19 @@ typedef osMutexId_t FEB_TPS_Mutex_t;
 #define FEB_TPS_ENTER_CRITICAL()    /* Use mutex instead in FreeRTOS */
 #define FEB_TPS_EXIT_CRITICAL()
 
-#else /* Bare-metal */
+#else /* Bare-metal - NO-OP mode for single-threaded use */
 
 typedef uint32_t FEB_TPS_Mutex_t;
 
 /*
- * Bare-metal sync primitive behavior depends on FEB_TPS_FORCE_BARE_METAL:
- *
- * When FORCE_BARE_METAL == 0 (default):
- *   - Mutex operations are NO-OPs
- *   - Safe for single-threaded applications
- *
- * When FORCE_BARE_METAL == 1 (explicit):
- *   - Uses __disable_irq() / __enable_irq() for critical sections
+ * Bare-metal mode: Mutex operations are NO-OPs
+ * Safe for single-threaded applications where polling is called from main loop.
+ * NOTE: IRQs are NEVER disabled by this library.
  */
-#if FEB_TPS_FORCE_BARE_METAL
-
-#define FEB_TPS_MUTEX_CREATE()      (0U)
-#define FEB_TPS_MUTEX_DELETE(m)     ((void)0)
-#define FEB_TPS_MUTEX_LOCK(m)       do { (m) = __get_PRIMASK(); __disable_irq(); } while(0)
-#define FEB_TPS_MUTEX_UNLOCK(m)     __set_PRIMASK(m)
-
-#else /* Safe no-op defaults */
-
 #define FEB_TPS_MUTEX_CREATE()      (0U)
 #define FEB_TPS_MUTEX_DELETE(m)     ((void)0)
 #define FEB_TPS_MUTEX_LOCK(m)       ((void)0)
 #define FEB_TPS_MUTEX_UNLOCK(m)     ((void)0)
-
-#endif /* FEB_TPS_FORCE_BARE_METAL */
 
 #define FEB_TPS_IN_ISR()            ((__get_IPSR() & 0xFF) != 0)
 #define FEB_TPS_DELAY_MS(ms)        HAL_Delay(ms)
@@ -161,7 +145,7 @@ typedef struct {
     uint32_t poll_interval_ms;                       /**< Polling interval for auto-poll task */
     uint32_t (*get_tick_ms)(void);                   /**< Timestamp function */
 #else
-    FEB_TPS_Mutex_t i2c_mutex;                       /**< Bare-metal: PRIMASK storage */
+    FEB_TPS_Mutex_t i2c_mutex;                       /**< Bare-metal: unused (mutex ops are no-ops) */
 #endif
 } FEB_TPS_Context_t;
 
@@ -174,6 +158,10 @@ typedef struct {
  *
  * @param level Log level (use TPS_LOG_* macros)
  * @param fmt Printf-style format string
+ *
+ * @note Not re-entrant safe. Concurrent calls from multiple contexts (e.g., ISR
+ *       and task) may interleave callback invocations. If the user's log callback
+ *       can be called from multiple contexts, it must handle thread safety itself.
  */
 void FEB_TPS_Log(uint8_t level, const char *fmt, ...);
 
