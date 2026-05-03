@@ -22,6 +22,7 @@ static uint8_t uart_tx_buf[4096];
 static uint8_t uart_rx_buf[256];
 
 static void FEB_Variable_Conversion(void);
+static void FEB_I2C1_Bus_Recovery(void);
 
 /* ============================================================================
  * TPS Device Handles and Data
@@ -292,13 +293,19 @@ void FEB_Main_Setup(void)
     tps_init_success = FEB_TPS_Init_Devices();
     if (!tps_init_success)
     {
-      LOG_W(TAG_MAIN, "TPS init attempt %d failed, retrying...", maxiter);
+      LOG_W(TAG_MAIN, "TPS init attempt %d failed (HAL ErrorCode=0x%08lX, State=%d), retrying...", maxiter,
+            (unsigned long)hi2c1.ErrorCode, (int)hi2c1.State);
       FEB_TPS_DeInit(); /* Clean up partial state before retry */
       for (uint8_t i = 0; i < NUM_TPS2482; i++)
       {
         tps_handles[i] = NULL;
       }
-      HAL_Delay(100); /* 100ms delay to avoid I2C bus contention */
+
+      /* Free a slave that's holding SDA low after an aborted transaction;
+       * the library's per-call retry alone cannot rescue a wedged bus. */
+      FEB_I2C1_Bus_Recovery();
+
+      HAL_Delay(50); /* Let pull-ups settle before next attempt */
     }
     maxiter++;
   }
@@ -449,6 +456,41 @@ void FEB_1ms_Callback(void)
       FEB_CAN_TPS_Tick(tps2482_current_raw, tps2482_bus_voltage_raw, NUM_TPS2482);
     }
   }
+}
+
+/* ============================================================================
+ * I2C Bus Recovery
+ * ============================================================================ */
+
+/**
+ * Bit-bang up to 9 SCL pulses on PB8/PB9 to free a slave that is holding SDA
+ * low after an aborted transaction, then issue a manual STOP and re-init the
+ * I2C peripheral.
+ */
+static void FEB_I2C1_Bus_Recovery(void)
+{
+  HAL_StatusTypeDef init_st;
+  GPIO_PinState scl_entry = HAL_GPIO_ReadPin(SCL_GPIO_Port, SCL_Pin);
+  GPIO_PinState sda_entry = HAL_GPIO_ReadPin(SDA_GPIO_Port, SDA_Pin);
+
+  /* The HAL_I2C_DeInit / HAL_I2C_Init dance does not actually reset the I2C
+   * peripheral's internal logic on STM32F4 — fields like the BUSY flag in
+   * SR2 can stay latched after a TIMEOUT and corrupt every subsequent
+   * transaction. Toggling CR1.SWRST is the only thing that clears them.
+   * Sequence: PE=0 → SWRST=1 (hold) → SWRST=0 → re-init via HAL_I2C_Init. */
+
+  __HAL_I2C_DISABLE(&hi2c1);
+  hi2c1.Instance->CR1 |= I2C_CR1_SWRST;
+  /* SWRST must be held; a few NOPs is enough but HAL_Delay(1) is safe. */
+  HAL_Delay(1);
+  hi2c1.Instance->CR1 &= ~I2C_CR1_SWRST;
+
+  /* Force HAL_I2C_Init to redo the full configure path. */
+  hi2c1.State = HAL_I2C_STATE_RESET;
+  init_st = HAL_I2C_Init(&hi2c1);
+
+  LOG_I(TAG_MAIN, "BusRecovery: entry SCL=%d SDA=%d | SWRST done | Init=%d ErrCode=0x%08lX", (int)scl_entry,
+        (int)sda_entry, (int)init_st, (unsigned long)hi2c1.ErrorCode);
 }
 
 /* ============================================================================
