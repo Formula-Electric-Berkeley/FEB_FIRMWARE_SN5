@@ -1,6 +1,9 @@
 #include "FEB_WSS.h"
 #include "main.h"
 #include "tim.h"
+#include "feb_log.h"
+
+#define TAG_WSS "[WSS]"
 
 // =====================================================================
 // Configuration
@@ -22,6 +25,10 @@ typedef struct
   volatile int8_t dir[WSS_RING_LEN];  // +/-1 from QUAD_TABLE
   volatile uint8_t head;              // index of newest entry
   volatile uint8_t fill;              // count of valid entries (0..WSS_RING_LEN)
+  // Signed accumulator of quadrature edges. Incremented in EXTI by +/-1 per
+  // valid transition (336 counts = one full revolution). 32-bit aligned so
+  // the main loop can read it without disabling interrupts.
+  volatile int32_t pos_edges;
   uint8_t last_cos;
   uint8_t last_sin;
 } WheelState;
@@ -61,6 +68,7 @@ static inline void wheel_record_edge(volatile WheelState *w, uint8_t cos_now, ui
   {
     return; // glitch / no transition
   }
+  w->pos_edges += delta;
   const uint8_t h = (uint8_t)((w->head + 1u) & (WSS_RING_LEN - 1u));
   w->ts[h] = tim5_us();
   w->dir[h] = delta;
@@ -161,4 +169,7 @@ void WSS_Main(void)
 {
   compute_wheel_rpm(&wheel_left, &left_rpm_x10, &left_dir);
   compute_wheel_rpm(&wheel_right, &right_rpm_x10, &right_dir);
+
+  LOG_D(TAG_WSS, "L: pos=%ld rpm_x10=%u dir=%d | R: pos=%ld rpm_x10=%u dir=%d", (long)wheel_left.pos_edges,
+        (unsigned)left_rpm_x10, (int)left_dir, (long)wheel_right.pos_edges, (unsigned)right_rpm_x10, (int)right_dir);
 }

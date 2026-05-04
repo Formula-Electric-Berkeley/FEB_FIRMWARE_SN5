@@ -591,7 +591,7 @@ void FEB_ADC_TickAPPS(void)
 
   /* Sensor circuit faults — voltage is post-divider, in mV. */
   bool short_circuit = (voltage1 < APPS_SHORT_CIRCUIT_DETECT_MV) || (voltage2 < APPS_SHORT_CIRCUIT_DETECT_MV);
-  bool open_circuit = (voltage1 > APPS_OPEN_CIRCUIT_DETECT_MV) || (voltage2 > APPS_OPEN_CIRCUIT_DETECT_MV);
+  bool open_circuit = (voltage1 > APPS1_OPEN_CIRCUIT_DETECT_MV) || (voltage2 > APPS2_OPEN_CIRCUIT_DETECT_MV);
   apps_cache.short_circuit = short_circuit;
   apps_cache.open_circuit = open_circuit;
 

@@ -49,7 +49,7 @@ void lis3mdl_init()
 
   lis3mdl_block_data_update_set(&lis3mdl_ctx, PROPERTY_ENABLE);
   lis3mdl_temperature_meas_set(&lis3mdl_ctx, PROPERTY_ENABLE);
-  lis3mdl_data_rate_set(&lis3mdl_ctx, LIS3MDL_HP_80Hz);
+  lis3mdl_data_rate_set(&lis3mdl_ctx, LIS3MDL_UHP_155Hz);
   lis3mdl_full_scale_set(&lis3mdl_ctx, LIS3MDL_16_GAUSS);
   lis3mdl_operating_mode_set(&lis3mdl_ctx, LIS3MDL_CONTINUOUS_MODE);
 }

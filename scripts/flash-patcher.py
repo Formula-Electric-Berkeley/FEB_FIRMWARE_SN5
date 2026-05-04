@@ -14,8 +14,10 @@ Given a linked ELF that contains a .feb_flash_info section, this tool:
        - flasher_user (24 bytes)
        - flasher_host (32 bytes)
        - reserved (32 bytes, zero)
-  4. Invokes `arm-none-eabi-objcopy --update-section .feb_flash_info=<blob>`
-     to rewrite the region in-place.
+  4. Resolves the section's file offset via `arm-none-eabi-readelf -S` and
+     writes the new bytes directly into a copy of the ELF at that offset.
+     (Avoids `objcopy --update-section`, which corrupts ELFs in binutils
+     2.42.)
 
 The output is a patched ELF (default: alongside input as <name>.patched.elf)
 that flash.sh hands to STM32_Programmer_CLI.
@@ -38,6 +40,7 @@ from __future__ import annotations
 import argparse
 import datetime as _dt
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -96,6 +99,33 @@ def _read_section_bytes(elf: Path, section: str) -> bytes:
         return b""  # unreachable
     finally:
         tmp_path.unlink(missing_ok=True)
+
+
+# Matches a `readelf -S -W` row:
+#   "  [ 4] .feb_flash_info   PROGBITS   0801eb48 01fb48 000088 00   A  0   0  4"
+# Captures: section name, file offset (hex), size (hex).
+_READELF_ROW = re.compile(
+    r"^\s*\[\s*\d+\]\s+(\S+)\s+\S+\s+\S+\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)"
+)
+
+
+def _section_offset_size(elf: Path, section: str) -> tuple[int, int]:
+    """Return (sh_offset, sh_size) of <section> in <elf>."""
+    readelf = _find_tool("readelf")
+    try:
+        out = subprocess.run(
+            [readelf, "-S", "-W", str(elf)],
+            check=True, capture_output=True, text=True,
+        ).stdout
+    except subprocess.CalledProcessError as e:
+        _die(3, f"readelf failed on {elf}: {e.stderr}")
+
+    for line in out.splitlines():
+        m = _READELF_ROW.match(line)
+        if m and m.group(1) == section:
+            return int(m.group(2), 16), int(m.group(3), 16)
+    _die(3, f"section {section} not found in {elf}")
+    return (0, 0)  # unreachable
 
 
 def _encode_fixed(value: str, width: int, field_name: str) -> bytes:
@@ -187,27 +217,21 @@ def patch_elf(src_elf: Path, dst_elf: Path,
         + existing[struct_offset + STRUCT_SIZE:]
     )
 
-    # 5. Copy src -> dst and run objcopy --update-section on the copy.
+    # 5. Copy src -> dst, then patch the section in-place by direct file
+    # write. objcopy --update-section corrupts the ELF in binutils 2.42
+    # (STM32CubeCLT 13.3) when the target has multiple PROGBITS sections
+    # in one PT_LOAD segment - the file balloons into the hundreds of MB
+    # and STM32_Programmer_CLI rejects it as "segments define the same
+    # memory zone." Section size is fixed by the linker so a same-length
+    # in-place write is safe and toolchain-version-independent.
+    sh_off, sh_size = _section_offset_size(src_elf, SECTION_NAME)
+    if len(new_section) != sh_size:
+        _die(3, f"new section size {len(new_section)} != on-disk size {sh_size}")
     dst_elf.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(src_elf, dst_elf)
-
-    # Windows can't open the same path twice, so we must write via the
-    # open NamedTemporaryFile handle rather than reopening by path. fsync
-    # before handing the path to objcopy so the bytes are visible to a
-    # child process.
-    with tempfile.NamedTemporaryFile(mode="wb", suffix=".bin", delete=False) as tmp:
-        tmp.write(new_section)
-        tmp.flush()
-        os.fsync(tmp.fileno())
-        tmp_path = Path(tmp.name)
-    try:
-        objcopy = _find_tool("objcopy")
-        subprocess.run(
-            [objcopy, f"--update-section", f"{SECTION_NAME}={tmp_path}", str(dst_elf)],
-            check=True,
-        )
-    finally:
-        tmp_path.unlink(missing_ok=True)
+    with open(dst_elf, "r+b") as f:
+        f.seek(sh_off)
+        f.write(new_section)
 
     return {
         "flash_utc": flash_utc,

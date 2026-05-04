@@ -125,11 +125,45 @@ static HAL_StatusTypeDef feb_tps_write_reg(I2C_HandleTypeDef *hi2c,
     buf[0] = (uint8_t)(value >> 8);
     buf[1] = (uint8_t)(value & 0xFF);
 
+    /* DEBUG: gate diagnostic logging to first 10 write_reg calls so the
+     * 2100-attempt failure storm cannot saturate the UART. */
+    static uint32_t call_count = 0;
+    bool log_this = (call_count < 10);
+    call_count++;
+
+    if (log_this) {
+        GPIO_PinState scl = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8);
+        GPIO_PinState sda = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_9);
+        TPS_LOG_I("WR#%lu addr7=0x%02X reg=0x%02X val=0x%04X "
+                  "preState=0x%02X preErr=0x%08lX SCL=%d SDA=%d",
+                  (unsigned long)call_count, i2c_addr, reg, value,
+                  (unsigned)hi2c->State, (unsigned long)hi2c->ErrorCode,
+                  (int)scl, (int)sda);
+        HAL_StatusTypeDef rdy = HAL_I2C_IsDeviceReady(hi2c, (uint16_t)(i2c_addr << 1), 1, 50);
+        TPS_LOG_I("WR#%lu IsDeviceReady=%d (0=OK 1=ERR 2=BUSY 3=TIMEOUT) "
+                  "postRdyState=0x%02X postRdyErr=0x%08lX",
+                  (unsigned long)call_count, (int)rdy,
+                  (unsigned)hi2c->State, (unsigned long)hi2c->ErrorCode);
+    }
+
     /* Retry loop for transient I2C errors */
     for (uint8_t retry = 0; retry < FEB_TPS_I2C_MAX_RETRIES; retry++) {
         status = HAL_I2C_Mem_Write(hi2c, (uint16_t)(i2c_addr << 1), reg,
                                     I2C_MEMADD_SIZE_8BIT, buf, 2,
                                     feb_tps_ctx.i2c_timeout_ms);
+
+        if (log_this && retry == 0) {
+            TPS_LOG_E("WR#%lu post status=%d State=0x%02X ErrorCode=0x%08lX "
+                      "[BERR=%d ARLO=%d AF=%d OVR=%d TIMEOUT=%d SIZE=%d]",
+                      (unsigned long)call_count, (int)status,
+                      (unsigned)hi2c->State, (unsigned long)hi2c->ErrorCode,
+                      !!(hi2c->ErrorCode & HAL_I2C_ERROR_BERR),
+                      !!(hi2c->ErrorCode & HAL_I2C_ERROR_ARLO),
+                      !!(hi2c->ErrorCode & HAL_I2C_ERROR_AF),
+                      !!(hi2c->ErrorCode & HAL_I2C_ERROR_OVR),
+                      !!(hi2c->ErrorCode & HAL_I2C_ERROR_TIMEOUT),
+                      !!(hi2c->ErrorCode & HAL_I2C_ERROR_SIZE));
+        }
 
         if (status == HAL_OK) {
             return status;
