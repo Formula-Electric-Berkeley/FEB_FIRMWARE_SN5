@@ -108,10 +108,12 @@ int lsm6dsox_init(void)
   } while (rst);
 
   if (lsm6dsox_block_data_update_set(&lsm6dsox_ctx, PROPERTY_ENABLE) != 0 ||
-      lsm6dsox_xl_data_rate_set(&lsm6dsox_ctx, LSM6DSOX_XL_ODR_104Hz) != 0 ||
+      lsm6dsox_xl_data_rate_set(&lsm6dsox_ctx, LSM6DSOX_XL_ODR_6667Hz) != 0 ||
       lsm6dsox_xl_full_scale_set(&lsm6dsox_ctx, LSM6DSOX_2g) != 0 ||
-      lsm6dsox_gy_data_rate_set(&lsm6dsox_ctx, LSM6DSOX_GY_ODR_104Hz) != 0 ||
-      lsm6dsox_gy_full_scale_set(&lsm6dsox_ctx, LSM6DSOX_2000dps) != 0)
+      lsm6dsox_gy_data_rate_set(&lsm6dsox_ctx, LSM6DSOX_GY_ODR_6667Hz) != 0 ||
+      lsm6dsox_gy_full_scale_set(&lsm6dsox_ctx, LSM6DSOX_2000dps) != 0 ||
+      lsm6dsox_xl_power_mode_set(&lsm6dsox_ctx, LSM6DSOX_HIGH_PERFORMANCE_MD) != 0 ||
+      lsm6dsox_gy_power_mode_set(&lsm6dsox_ctx, LSM6DSOX_GY_HIGH_PERFORMANCE) != 0)
   {
     LOG_E(TAG_IMU, "Failed to configure IMU");
     return -3;

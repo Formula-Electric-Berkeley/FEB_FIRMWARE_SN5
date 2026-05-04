@@ -280,6 +280,20 @@ void FEB_Main_Setup(void)
   }
   printf("Done! \r\n\r\n");
 
+  /* The 127-address I2C scan above leaves hi2c1.ErrorCode = AF and may leave
+   * the BUSY flag stuck on STM32F4. Drain stale state before the first real
+   * transaction so HAL_I2C_Mem_Write doesn't trip on residual error state. */
+  LOG_I(TAG_MAIN, "Pre-reset I2C: State=0x%02X ErrorCode=0x%08lX SCL=%d SDA=%d", (unsigned)hi2c1.State,
+        (unsigned long)hi2c1.ErrorCode, (int)HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8),
+        (int)HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_9));
+  __HAL_I2C_CLEAR_FLAG(&hi2c1, I2C_FLAG_AF);
+  HAL_Delay(10);
+  HAL_I2C_DeInit(&hi2c1);
+  HAL_I2C_Init(&hi2c1);
+  LOG_I(TAG_MAIN, "Post-reset I2C: State=0x%02X ErrorCode=0x%08lX SCL=%d SDA=%d", (unsigned)hi2c1.State,
+        (unsigned long)hi2c1.ErrorCode, (int)HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8),
+        (int)HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_9));
+
   // Initialize TPS devices using the new library
   int maxiter = 0;
   tps_init_success = false;
