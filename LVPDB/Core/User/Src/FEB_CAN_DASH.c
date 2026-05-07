@@ -32,6 +32,8 @@ static void rx_callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID
     dash_state.switch2 = msg.switch2;
     dash_state.switch3 = msg.switch3;
     dash_state.switch4 = msg.switch4;
+    dash_state.buzzer = msg.buzzer;
+    dash_state.ready_to_drive = msg.ready_to_drive;
 
     __DMB();
     dash_state.last_rx_tick = HAL_GetTick();
@@ -58,7 +60,7 @@ void FEB_CAN_DASH_Init(void)
   (void)FEB_CAN_RX_Register(&rx_params);
 }
 
-DASH_State_t FEB_CAN_DASH_GetLastState()
+DASH_State_t FEB_CAN_DASH_GetLastState(void)
 {
   return dash_state;
 }
