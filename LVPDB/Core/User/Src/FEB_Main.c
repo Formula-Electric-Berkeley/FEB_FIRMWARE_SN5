@@ -27,7 +27,7 @@ static void FEB_Variable_Conversion(void);
 // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
 FEB_TPS_Handle_t tps_handles[NUM_TPS2482];
 
-// Device configurations (will be set up in FEB_TPS_Init_Devices)
+// Device configurations consumed by FEB_TPS_Init_Devices
 static const struct
 {
   uint8_t i2c_addr;
@@ -36,30 +36,23 @@ static const struct
   uint16_t en_pin;
   GPIO_TypeDef *pg_port;
   uint16_t pg_pin;
-  GPIO_TypeDef *alert_port;
-  uint16_t alert_pin;
   const char *name;
 } tps_device_configs[NUM_TPS2482] = {
     // LV - Low Voltage Source (no EN pin)
-    {LV_ADDR, LV_FUSE_MAX, NULL, 0, LV_PG_GPIO_Port, LV_PG_Pin, LV_Alert_GPIO_Port, LV_Alert_Pin, "LV"},
+    {LV_ADDR, LV_FUSE_MAX, NULL, 0, LV_PG_GPIO_Port, LV_PG_Pin, "LV"},
     // SH - Shutdown Source
-    {SH_ADDR, SH_FUSE_MAX, SH_EN_GPIO_Port, SH_EN_Pin, SH_PG_GPIO_Port, SH_PG_Pin, SH_Alert_GPIO_Port, SH_Alert_Pin,
-     "SH"},
+    {SH_ADDR, SH_FUSE_MAX, SH_EN_GPIO_Port, SH_EN_Pin, SH_PG_GPIO_Port, SH_PG_Pin, "SH"},
     // LT - Laptop Branch
-    {LT_ADDR, LT_FUSE_MAX, LT_EN_GPIO_Port, LT_EN_Pin, LT_PG_GPIO_Port, LT_PG_Pin, LT_Alert_GPIO_Port, LT_Alert_Pin,
-     "LT"},
+    {LT_ADDR, LT_FUSE_MAX, LT_EN_GPIO_Port, LT_EN_Pin, LT_PG_GPIO_Port, LT_PG_Pin, "LT"},
     // BM_L - Braking Servo, Lidar
-    {BM_L_ADDR, BM_L_FUSE_MAX, BM_L_EN_GPIO_Port, BM_L_EN_Pin, BM_L_PG_GPIO_Port, BM_L_PG_Pin, BM_L_Alert_GPIO_Port,
-     BM_L_Alert_Pin, "BM_L"},
+    {BM_L_ADDR, BM_L_FUSE_MAX, BM_L_EN_GPIO_Port, BM_L_EN_Pin, BM_L_PG_GPIO_Port, BM_L_PG_Pin, "BM_L"},
     // SM - Steering Motor
-    {SM_ADDR, SM_FUSE_MAX, SM_EN_GPIO_Port, SM_EN_Pin, SM_PG_GPIO_Port, SM_PG_Pin, SM_Alert_GPIO_Port, SM_Alert_Pin,
-     "SM"},
+    {SM_ADDR, SM_FUSE_MAX, SM_EN_GPIO_Port, SM_EN_Pin, SM_PG_GPIO_Port, SM_PG_Pin, "SM"},
     // AF1_AF2 - Accumulator Fans
     {AF1_AF2_ADDR, AF1_AF2_FUSE_MAX, AF1_AF2_EN_GPIO_Port, AF1_AF2_EN_Pin, AF1_AF2_PG_GPIO_Port, AF1_AF2_PG_Pin,
-     AF1_AF2_Alert_GPIO_Port, AF1_AF2_Alert_Pin, "AF1_AF2"},
+     "AF1_AF2"},
     // CP_RF - Coolant Pump + Radiator Fans
-    {CP_RF_ADDR, CP_RF_FUSE_MAX, CP_RF_EN_GPIO_Port, CP_RF_EN_Pin, CP_RF_PG_GPIO_Port, CP_RF_PG_Pin,
-     CP_RF_Alert_GPIO_Port, CP_RF_Alert_Pin, "CP_RF"},
+    {CP_RF_ADDR, CP_RF_FUSE_MAX, CP_RF_EN_GPIO_Port, CP_RF_EN_Pin, CP_RF_PG_GPIO_Port, CP_RF_PG_Pin, "CP_RF"},
 };
 
 // Raw measurement data (for backward compatibility with CAN transmission)
@@ -87,6 +80,7 @@ uint16_t tps2482_pg_pins[NUM_TPS2482];
 FEB_LVPDB_CAN_Data can_data;
 bool bus_voltage_healthy = true;
 static bool tps_init_success = false;
+static uint8_t tps_registered_count = 0;
 
 /**
  * Route TPS library log messages into the platform logging system with level mapping.
@@ -116,17 +110,15 @@ static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg)
 }
 
 /**
- * Initialize the TPS subsystem, populate exported device mappings, and register all TPS2482 devices.
+ * Initialize the TPS library and register every TPS2482 in tps_device_configs.
  *
- * This initializes the TPS library, fills public arrays used by the console (I2C addresses,
- * enable pins, and power-good pins), and registers each device into `tps_handles`.
+ * One attempt per chip; on failure log + skip and continue so the board still
+ * comes up if some chips are missing — `tps_handles[i]` stays NULL for those.
  *
- * @returns `true` if all devices were registered successfully, `false` if any registration failed.
+ * @returns true if at least one device registered, false if every chip failed.
  */
-
 static bool FEB_TPS_Init_Devices(void)
 {
-  // Initialize TPS library
   FEB_TPS_LibConfig_t lib_cfg = {
       .log_func = tps_log_callback,
       .log_level = FEB_TPS_LOG_INFO,
@@ -151,6 +143,7 @@ static bool FEB_TPS_Init_Devices(void)
     }
   }
 
+  uint8_t ok_count = 0;
   for (uint8_t i = 0; i < NUM_TPS2482; i++)
   {
     FEB_TPS_DeviceConfig_t cfg = {
@@ -159,40 +152,35 @@ static bool FEB_TPS_Init_Devices(void)
         .r_shunt_ohms = R_SHUNT,
         .i_max_amps = tps_device_configs[i].i_max_amps,
         .config_reg = FEB_TPS_CONFIG_DEFAULT,
-        .mask_reg = FEB_TPS_MASK_SOL, // Alert on shunt over-voltage
         .en_gpio_port = tps_device_configs[i].en_port,
         .en_gpio_pin = tps_device_configs[i].en_pin,
         .pg_gpio_port = tps_device_configs[i].pg_port,
         .pg_gpio_pin = tps_device_configs[i].pg_pin,
-        .alert_gpio_port = tps_device_configs[i].alert_port,
-        .alert_gpio_pin = tps_device_configs[i].alert_pin,
         .name = tps_device_configs[i].name,
     };
-
+    tps_handles[i] = NULL;
     FEB_TPS_Status_t status = FEB_TPS_DeviceRegister(&cfg, &tps_handles[i]);
-    if (status != FEB_TPS_OK)
+    if (status == FEB_TPS_OK)
     {
-      LOG_E(TAG_MAIN, "TPS init failed for %s: %s", tps_device_configs[i].name, FEB_TPS_StatusToString(status));
-      return false; // Abort immediately to prevent index misalignment
+      ok_count++;
     }
-    HAL_Delay(50); // Allow I2C bus to settle after device registration
-    LOG_D(TAG_MAIN, "TPS %s registered at 0x%02X", tps_device_configs[i].name, tps_device_configs[i].i2c_addr);
+    else
+    {
+      tps_handles[i] = NULL;
+      LOG_W(TAG_MAIN, "TPS %s register failed: %s, skipping", tps_device_configs[i].name,
+            FEB_TPS_StatusToString(status));
+    }
   }
 
-  return true;
+  tps_registered_count = ok_count;
+  LOG_I(TAG_MAIN, "TPS init: %u/%u chips OK", (unsigned)ok_count, (unsigned)NUM_TPS2482);
+  return ok_count > 0;
 }
-
-/* Note: Custom FEB_TPS_Enable_All removed - using library FEB_TPS_EnableAll instead.
- * The library function already handles NULL EN ports (skips LV automatically). */
 
 /**
  * Verify TPS devices' power-good signals and report LV failure.
  *
- * Checks the power-good state for each configured TPS device and logs a warning
- * if the LV rail (device index 0) reports not power-good.
- *
- * @returns `true` if all devices' power-good states are considered healthy,
- *          `false` otherwise (returns `false` when LV (index 0) power-good is not set).
+ * @returns true if every device's PG read succeeded and LV (index 0) is good.
  */
 static bool FEB_TPS_Check_Power_Good(void)
 {
@@ -200,18 +188,18 @@ static bool FEB_TPS_Check_Power_Good(void)
 
   for (uint8_t i = 0; i < NUM_TPS2482; i++)
   {
+    if (tps_handles[i] == NULL)
+    {
+      continue;
+    }
     bool pg_state = false;
     FEB_TPS_Status_t status = FEB_TPS_ReadPowerGood(tps_handles[i], &pg_state);
-
     if (status != FEB_TPS_OK)
     {
       LOG_W(TAG_MAIN, "ReadPowerGood failed for %s: %s", tps_device_configs[i].name, FEB_TPS_StatusToString(status));
       all_good = false;
       continue;
     }
-
-    // For LV (index 0), we expect power good
-    // For others, we expect power good to match enable state (currently disabled)
     if (i == 0 && !pg_state)
     {
       LOG_W(TAG_MAIN, "LV power not good!");
@@ -265,70 +253,42 @@ void FEB_Main_Setup(void)
   LOG_I(TAG_MAIN, "Beginning Setup");
 
   // I2C scan for debugging
-  printf("Starting I2C Scanning: \r\n");
+  FEB_Console_Printf("Starting I2C Scanning: \r\n");
   for (uint8_t i = 1; i < 128; i++)
   {
     HAL_StatusTypeDef ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i << 1), 3, 5);
     if (ret == HAL_OK)
     {
-      printf("0x%X ", i);
+      FEB_Console_Printf("0x%X ", i);
     }
     else
     {
-      printf("- ");
+      FEB_Console_Printf("- ");
     }
   }
-  printf("Done! \r\n\r\n");
+  FEB_Console_Printf("Done! \r\n\r\n");
 
-  /* The 127-address I2C scan above leaves hi2c1.ErrorCode = AF and may leave
-   * the BUSY flag stuck on STM32F4. Drain stale state before the first real
-   * transaction so HAL_I2C_Mem_Write doesn't trip on residual error state. */
-  LOG_I(TAG_MAIN, "Pre-reset I2C: State=0x%02X ErrorCode=0x%08lX SCL=%d SDA=%d", (unsigned)hi2c1.State,
-        (unsigned long)hi2c1.ErrorCode, (int)HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8),
-        (int)HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_9));
-  __HAL_I2C_CLEAR_FLAG(&hi2c1, I2C_FLAG_AF);
-  HAL_Delay(10);
-  HAL_I2C_DeInit(&hi2c1);
-  HAL_I2C_Init(&hi2c1);
-  LOG_I(TAG_MAIN, "Post-reset I2C: State=0x%02X ErrorCode=0x%08lX SCL=%d SDA=%d", (unsigned)hi2c1.State,
-        (unsigned long)hi2c1.ErrorCode, (int)HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_8),
-        (int)HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_9));
-
-  // Initialize TPS devices using the new library
-  int maxiter = 0;
-  tps_init_success = false;
-
-  while (!tps_init_success && maxiter < 100)
-  {
-    tps_init_success = FEB_TPS_Init_Devices();
-    if (!tps_init_success)
-    {
-      LOG_W(TAG_MAIN, "TPS init attempt %d failed, retrying...", maxiter);
-      FEB_TPS_DeInit(); /* Clean up partial state before retry */
-      for (uint8_t i = 0; i < NUM_TPS2482; i++)
-      {
-        tps_handles[i] = NULL;
-      }
-      HAL_Delay(100); /* 100ms delay to avoid I2C bus contention */
-    }
-    maxiter++;
-  }
-
+  // Initialize TPS devices. One attempt per chip; failures are logged and skipped.
+  tps_init_success = FEB_TPS_Init_Devices();
   if (tps_init_success)
   {
     LOG_I(TAG_MAIN, "TPS2482 I2C init complete");
 
-    // Start with all rails disabled (library skips devices without EN pin)
-    FEB_TPS_EnableAll(false);
-
-    // Check power good states
+    // Start with all rails disabled (LV has no EN pin and is skipped).
+    for (uint8_t i = 0; i < NUM_TPS2482; i++)
+    {
+      if (tps_handles[i] != NULL && tps_device_configs[i].en_port != NULL)
+      {
+        FEB_TPS_Enable(tps_handles[i], false);
+      }
+    }
     FEB_TPS_Check_Power_Good();
 
     LOG_I(TAG_MAIN, "TPS2482 power rails configured");
   }
   else
   {
-    LOG_E(TAG_MAIN, "TPS2482 init failed after %d retries - skipping power rail config", maxiter);
+    LOG_E(TAG_MAIN, "TPS2482 init failed - all chips unreachable, skipping power rail config");
   }
 
   // Initialize brake light to be off
@@ -351,70 +311,52 @@ void FEB_Main_Setup(void)
   HAL_TIM_Base_Start_IT(&htim1);
 }
 
-#define MAIN_LOOP_POLL_INTERVAL_MS 10
+#define MAIN_LOOP_POLL_INTERVAL_MS 50
 
 /**
- * Main periodic loop executed from the scheduler; performs periodic TPS sampling and UART receive processing.
- *
- * On each invocation, if at least MAIN_LOOP_POLL_INTERVAL_MS has elapsed since the last poll, triggers a batch poll of
- * all TPS devices to update raw bus/shunt/currents and then runs variable conversion to update scaled values. Always
- * processes pending UART RX for the primary UART instance.
+ * Main periodic loop. Polls each TPS via its own handle (position-aligned with
+ * tps_device_configs[] so per-rail LSBs in FEB_Variable_Conversion stay correct),
+ * runs the conversion, and processes any UART input.
  */
 void FEB_Main_Loop(void)
 {
   static uint32_t last_poll_tick = 0;
-  static uint8_t consecutive_failures = 0;
   uint32_t now = HAL_GetTick();
 
-  if (tps_init_success && (now - last_poll_tick >= MAIN_LOOP_POLL_INTERVAL_MS))
+  if (tps_init_success && (uint32_t)(now - last_poll_tick) >= MAIN_LOOP_POLL_INTERVAL_MS)
   {
     last_poll_tick = now;
 
-    // Poll all TPS devices using the new library's batch operation
-    uint8_t success_mask = 0;
-    uint8_t polled = FEB_TPS_PollAllRaw(tps2482_bus_voltage_raw, tps2482_current_raw, tps2482_shunt_voltage_raw,
-                                        NUM_TPS2482, &success_mask);
-    if (polled < NUM_TPS2482)
+    uint8_t polled = 0;
+    for (uint8_t i = 0; i < NUM_TPS2482; i++)
     {
-      LOG_W(TAG_MAIN, "TPS poll: only %d/%d devices succeeded (mask=0x%02X)", polled, NUM_TPS2482, success_mask);
-      // Zero out data for failed devices to prevent stale values
-      for (uint8_t i = 0; i < NUM_TPS2482; i++)
+      if (tps_handles[i] == NULL)
       {
-        if ((success_mask & (1u << i)) == 0)
-        {
-          tps2482_bus_voltage_raw[i] = 0;
-          tps2482_current_raw[i] = 0;
-          tps2482_shunt_voltage_raw[i] = 0;
-        }
+        tps2482_bus_voltage_raw[i] = 0;
+        tps2482_current_raw[i] = 0;
+        tps2482_shunt_voltage_raw[i] = 0;
+        continue;
+      }
+      uint16_t bv;
+      int16_t cur;
+      int16_t sv;
+      if (FEB_TPS_PollRaw(tps_handles[i], &bv, &cur, &sv) == FEB_TPS_OK)
+      {
+        tps2482_bus_voltage_raw[i] = bv;
+        tps2482_current_raw[i] = cur;
+        tps2482_shunt_voltage_raw[i] = sv;
+        polled++;
+      }
+      else
+      {
+        tps2482_bus_voltage_raw[i] = 0;
+        tps2482_current_raw[i] = 0;
+        tps2482_shunt_voltage_raw[i] = 0;
       }
     }
-
-    // Track consecutive complete failures and attempt I2C bus recovery
-    if (polled == 0)
+    if (polled < tps_registered_count)
     {
-      if (consecutive_failures < 255) // Saturate to prevent overflow
-      {
-        consecutive_failures++;
-      }
-      if (consecutive_failures >= 3)
-      {
-        // Attempt I2C bus recovery after 3 consecutive complete failures
-        FEB_TPS_Status_t recovery_status = FEB_TPS_BusRecovery();
-        if (recovery_status == FEB_TPS_OK)
-        {
-          consecutive_failures = 0;
-          LOG_I(TAG_MAIN, "I2C bus recovery succeeded");
-        }
-        else
-        {
-          LOG_E(TAG_MAIN, "I2C bus recovery failed: %s", FEB_TPS_StatusToString(recovery_status));
-          // Don't clear consecutive_failures - allows continued recovery attempts
-        }
-      }
-    }
-    else
-    {
-      consecutive_failures = 0;
+      LOG_W(TAG_MAIN, "TPS poll: %u/%u registered devices succeeded", (unsigned)polled, (unsigned)tps_registered_count);
     }
 
     FEB_Variable_Conversion();
@@ -502,14 +444,13 @@ static void FEB_Current_IIR(int16_t *data_in, int16_t *data_out, int32_t *filter
  * currents using each device's CURRENT_LSB constant, then smooths the resulting current array with an IIR filter.
  *
  * Notes:
- * - Input arrays (raw values) are expected to be sign-corrected by FEB_TPS_PollAllRaw.
+ * - Input arrays (raw values) are sign-corrected by FEB_TPS_PollRaw.
  * - The function updates tps2482_bus_voltage, tps2482_shunt_voltage, and tps2482_current in place, and advances
  *   tps2482_current_filter state via FEB_Current_IIR.
  */
 static void FEB_Variable_Conversion(void)
 {
   // Convert bus voltage and shunt voltage using library constants
-  // Note: current and shunt voltage are now sign-corrected by FEB_TPS_PollAllRaw
   for (uint8_t i = 0; i < NUM_TPS2482; i++)
   {
     tps2482_bus_voltage[i] = FLOAT_TO_UINT16_T(tps2482_bus_voltage_raw[i] * FEB_TPS_CONV_VBUS_V_PER_LSB);
@@ -517,7 +458,6 @@ static void FEB_Variable_Conversion(void)
   }
 
   // Convert current with per-device current LSB values
-  // Note: FEB_TPS_PollAllRaw now returns sign-corrected values
   tps2482_current[0] = FLOAT_TO_INT16_T(tps2482_current_raw[0] * LV_CURRENT_LSB);
   tps2482_current[1] = FLOAT_TO_INT16_T(tps2482_current_raw[1] * SH_CURRENT_LSB);
   tps2482_current[2] = FLOAT_TO_INT16_T(tps2482_current_raw[2] * LT_CURRENT_LSB);
