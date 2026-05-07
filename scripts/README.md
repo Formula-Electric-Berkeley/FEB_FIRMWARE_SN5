@@ -9,6 +9,7 @@ Everyday tooling for the FEB_FIRMWARE_SN5 repo. All scripts are POSIX `bash` and
 | [`setup.sh`](setup.sh) | First-time dev environment setup | `./scripts/setup.sh` |
 | [`build.sh`](build.sh) | Build firmware (interactive / batch / release) | `./scripts/build.sh -b BMS` |
 | [`flash.sh`](flash.sh) | Flash an ELF/bin to a board via STM32_Programmer_CLI | `./scripts/flash.sh -b BMS` |
+| [`serial.sh`](serial.sh) | Open the board's USB-VCP serial console at 115200 (tio/picocom/screen/minicom) | `./scripts/serial.sh -b BMS` |
 | [`format.sh`](format.sh) | Run `clang-format` across `Core/User/` | `./scripts/format.sh --check` |
 | [`setup-hooks.sh`](setup-hooks.sh) | Install / remove pre-commit hooks | `./scripts/setup-hooks.sh` |
 | [`cubemx.sh`](cubemx.sh) | Drive STM32CubeMX headlessly from a `.ioc` | `./scripts/cubemx.sh -g -b BMS` |
@@ -64,6 +65,23 @@ Validates toolchain, re-runs `cmake --preset Debug` if needed, and prints per-ta
 Auto-discovers `STM32_Programmer_CLI` by globbing install locations for macOS (CubeProgrammer app bundle + CubeCLT), Linux (`/opt/st/stm32cubeclt*`), and Windows Git Bash (`/c/ST/STM32CubeCLT*/...`, `/c/Program Files/STMicroelectronics/STM32CubeCLT*/...`).
 
 Internally calls [`flash-patcher.py`](flash-patcher.py) to stamp the ELF's `.feb_flash_info` section with flash timestamp and flasher identity before programming.
+
+## `serial.sh` — Serial Console Helper
+
+```bash
+./scripts/serial.sh                           # Interactive: list ports, pick one
+./scripts/serial.sh -b BMS                    # Print BMS boot expectations + interactive
+./scripts/serial.sh -p /dev/cu.usbmodem1234   # Open a specific port
+./scripts/serial.sh --baud 9600 -b DART       # Override baud (default 115200)
+./scripts/serial.sh --list                    # List candidate ports and exit
+./scripts/serial.sh -h
+```
+
+The companion to [`flash.sh`](flash.sh): after programming a board, open the ST-Link VCP (or any USB serial adapter) at 115200 8N1 to actually verify the firmware is alive — `version` / `uptime` / `help` over the feb_io console.
+
+Auto-detects ports on macOS (`/dev/cu.usbmodem*`, `/dev/cu.usbserial*`, `/dev/cu.SLAB_USBtoUART*`) and Linux (`/dev/ttyACM*`, `/dev/ttyUSB*`). Picks the first available terminal program in the order: `tio` → `picocom` → `screen` → `minicom`. Prints the appropriate detach-key hint before launching so you can escape cleanly.
+
+When invoked with `-b <BOARD>`, prints what to expect on serial for that board (banner timing, smoke-test commands, when to look at CAN instead of UART) — sourced from each board's `CLAUDE.md`.
 
 ## `format.sh` — clang-format
 

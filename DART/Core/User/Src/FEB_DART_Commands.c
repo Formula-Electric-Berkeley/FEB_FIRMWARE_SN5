@@ -452,24 +452,43 @@ static void cmd_cans_csv(int argc, char *argv[])
  * `DART|csv|<tx_id>|<name>` lookup resolves directly; bare-name text invocation
  * also works as a shorthand. Canonical text form: `DART|<sub>` via cmd_dart.
  * ============================================================================ */
-static const FEB_Console_Cmd_t dart_status_cmd = {
-    .name = "status", .help = "Mode + per-fan rows + temp", .handler = sub_status, .csv_handler = cmd_status_csv};
-static const FEB_Console_Cmd_t dart_pwm_cmd = {
-    .name = "pwm", .help = "PWM router: pwm|set|<fan>|<pct>, pwm|get|<fan>", .handler = sub_pwm, .csv_handler = NULL};
-static const FEB_Console_Cmd_t dart_pwm_get_cmd = {
-    .name = "pwm-get", .help = "Read commanded PWM duty", .handler = cmd_pwm_get, .csv_handler = cmd_pwm_get_csv};
+static const FEB_Console_Cmd_t dart_status_cmd = {.name = "status",
+                                                  .help = "Mode + per-fan rows + temp",
+                                                  .handler = sub_status,
+                                                  .csv_handler = cmd_status_csv,
+                                                  .hidden = true};
+static const FEB_Console_Cmd_t dart_pwm_cmd = {.name = "pwm",
+                                               .help = "PWM router: pwm|set|<fan>|<pct>, pwm|get|<fan>",
+                                               .handler = sub_pwm,
+                                               .csv_handler = NULL,
+                                               .hidden = true};
+static const FEB_Console_Cmd_t dart_pwm_get_cmd = {.name = "pwm-get",
+                                                   .help = "Read commanded PWM duty",
+                                                   .handler = cmd_pwm_get,
+                                                   .csv_handler = cmd_pwm_get_csv,
+                                                   .hidden = true};
 static const FEB_Console_Cmd_t dart_pwm_set_cmd = {.name = "pwm-set",
                                                    .help = "Set manual PWM: pwm-set|<1-5|all>|<0-100>",
                                                    .handler = cmd_pwm_set,
-                                                   .csv_handler = cmd_pwm_set_csv};
-static const FEB_Console_Cmd_t dart_tach_cmd = {
-    .name = "tach", .help = "Tach (Hz, RPM, %% of max)", .handler = sub_tach, .csv_handler = cmd_tach_csv};
-static const FEB_Console_Cmd_t dart_auto_cmd = {
-    .name = "auto", .help = "Return to CAN-driven mode", .handler = sub_auto, .csv_handler = cmd_auto_csv};
-static const FEB_Console_Cmd_t dart_temp_cmd = {
-    .name = "temp", .help = "BMS max cell temp + staleness", .handler = sub_temp, .csv_handler = cmd_temp_csv};
+                                                   .csv_handler = cmd_pwm_set_csv,
+                                                   .hidden = true};
+static const FEB_Console_Cmd_t dart_tach_cmd = {.name = "tach",
+                                                .help = "Tach (Hz, RPM, %% of max)",
+                                                .handler = sub_tach,
+                                                .csv_handler = cmd_tach_csv,
+                                                .hidden = true};
+static const FEB_Console_Cmd_t dart_auto_cmd = {.name = "auto",
+                                                .help = "Return to CAN-driven mode",
+                                                .handler = sub_auto,
+                                                .csv_handler = cmd_auto_csv,
+                                                .hidden = true};
+static const FEB_Console_Cmd_t dart_temp_cmd = {.name = "temp",
+                                                .help = "BMS max cell temp + staleness",
+                                                .handler = sub_temp,
+                                                .csv_handler = cmd_temp_csv,
+                                                .hidden = true};
 static const FEB_Console_Cmd_t dart_cans_cmd = {
-    .name = "cans", .help = "CAN RX/TX diagnostics", .handler = sub_cans, .csv_handler = cmd_cans_csv};
+    .name = "cans", .help = "CAN RX/TX diagnostics", .handler = sub_cans, .csv_handler = cmd_cans_csv, .hidden = true};
 
 static const FEB_Console_Cmd_t *const DART_SUBCMDS[] = {
     &dart_status_cmd, &dart_pwm_cmd,  &dart_pwm_get_cmd, &dart_pwm_set_cmd,
