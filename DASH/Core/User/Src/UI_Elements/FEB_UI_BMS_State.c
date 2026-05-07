@@ -1,5 +1,6 @@
 #include "FEB_CAN_BMS.h"
 #include "FEB_CAN_PCU.h"
+#include "FEB_CAN_LVPDB.h"
 #include "lvgl.h"
 #include "src/core/lv_obj.h"
 #include "src/core/lv_obj_style.h"
@@ -13,9 +14,12 @@
 static lv_obj_t *ui_BMS_State_String;
 static lv_obj_t *ui_BMS_Cell_Max_Temperature;
 static lv_obj_t *ui_BMS_Accumulator_Total_Voltage;
+static lv_obj_t *ui_BMS_HV_State_String;
+static lv_obj_t *ui_LVPDB_low_voltage;
 
 int16_t cell_max_temperature = 67;
 uint16_t accumulator_total_voltage = 67;
+uint16_t low_voltage = 67;
 
 char buf[16];
 
@@ -23,12 +27,17 @@ void FEB_UI_Update_BMS_State()
 {
   BMS_State_t state = FEB_CAN_BMS_GetLastState();
   lv_label_set_text(ui_BMS_State_String, to_BMS_state_string(state));
+  lv_label_set_text(ui_BMS_HV_State_String, (FEB_CAN_BMS_GetLastHVState() ? "HV_ON" : "HV_OFF"));
 
   cell_max_temperature = FEB_CAN_BMS_GetLastCellMaxTemperature();
   accumulator_total_voltage = FEB_CAN_BMS_GetLastAccumulatorTotalVoltage();
+  low_voltage = FEB_CAN_LVPDB_GetLast24VVoltage();
 
   snprintf(buf, sizeof(buf), "%d.%d °C", cell_max_temperature / 10, cell_max_temperature % 10);
   lv_label_set_text(ui_BMS_Cell_Max_Temperature, buf);
+
+  snprintf(buf, sizeof(buf), "%d.%d V", low_voltage / 10, low_voltage % 10);
+  lv_label_set_text(ui_LVPDB_low_voltage, buf);
 
   snprintf(buf, sizeof(buf), "%d.%d V", accumulator_total_voltage / 10, accumulator_total_voltage % 10);
   lv_label_set_text(ui_BMS_Accumulator_Total_Voltage, buf);
@@ -42,6 +51,12 @@ void FEB_UI_Init_BMS_State(lv_obj_t *ui_Screen)
   lv_obj_set_style_text_font(ui_BMS_State_String, &lv_font_montserrat_40, 0);
   lv_obj_set_style_text_color(ui_BMS_State_String, lv_color_hex(0xFFFFFF), 0);
 
+  ui_BMS_HV_State_String = lv_label_create(ui_Screen);
+  lv_obj_align(ui_BMS_HV_State_String, LV_ALIGN_BOTTOM_RIGHT, -15, -35);
+  lv_label_set_text(ui_BMS_HV_State_String, "---");
+  lv_obj_set_style_text_font(ui_BMS_HV_State_String, &lv_font_montserrat_40, 0);
+  lv_obj_set_style_text_color(ui_BMS_HV_State_String, lv_color_hex(0xFFFFFF), 0);
+
   ui_BMS_Cell_Max_Temperature = lv_label_create(ui_Screen);
   lv_obj_align(ui_BMS_Cell_Max_Temperature, LV_ALIGN_TOP_LEFT, 15, 60);
   lv_label_set_text(ui_BMS_Cell_Max_Temperature, "--.- °C");
@@ -53,13 +68,21 @@ void FEB_UI_Init_BMS_State(lv_obj_t *ui_Screen)
   lv_label_set_text(ui_BMS_Accumulator_Total_Voltage, "---.- V");
   lv_obj_set_style_text_font(ui_BMS_Accumulator_Total_Voltage, &lv_font_montserrat_40, 0);
   lv_obj_set_style_text_color(ui_BMS_Accumulator_Total_Voltage, lv_color_hex(0xFFFFFF), 0);
+
+  ui_LVPDB_low_voltage = lv_label_create(ui_Screen);
+  lv_obj_align(ui_LVPDB_low_voltage, LV_ALIGN_TOP_RIGHT, -15, 40);
+  lv_label_set_text(ui_LVPDB_low_voltage, "--.- V");
+  lv_obj_set_style_text_font(ui_LVPDB_low_voltage, &lv_font_montserrat_40, 0);
+  lv_obj_set_style_text_color(ui_LVPDB_low_voltage, lv_color_hex(0xFFFFFF), 0);
 }
 
 void FEB_UI_Destroy_BMS_State(void)
 {
   ui_BMS_State_String = NULL;
+  ui_BMS_HV_State_String = NULL;
   ui_BMS_Cell_Max_Temperature = NULL;
   ui_BMS_Accumulator_Total_Voltage = NULL;
+  ui_LVPDB_low_voltage = NULL;
 }
 
 char *to_BMS_state_string(BMS_State_t state)
