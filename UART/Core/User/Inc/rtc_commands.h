@@ -28,15 +28,10 @@ extern "C"
 
 #include "feb_console.h"
 
-  /* Command descriptor */
+  /* Command descriptor — registered as a hidden subcommand of `UART` via
+   * UART_RegisterCommands(). Exported so uart_commands.c can include it in
+   * the UART subcommand table. */
   extern const FEB_Console_Cmd_t rtc_cmd;
-
-  /**
-   * @brief Register RTC commands
-   *
-   * Call after FEB_Console_Init().
-   */
-  void RTC_RegisterCommands(void);
 
 #ifdef __cplusplus
 }

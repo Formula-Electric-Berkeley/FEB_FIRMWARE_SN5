@@ -126,6 +126,12 @@ extern "C"
    *   - handler != NULL, csv_handler == NULL: text-only command (CSV clients
    *     get `error,error,unsupported`)
    *   - both set: full dual mode
+   *
+   * Set `hidden = true` for subcommands that are registered top-level only so
+   * the CSV protocol can find them by name (`<board>|csv|<tx>|<sub>`), but
+   * should not appear in the human-facing `help` listing or the CSV
+   * `commands` discovery row. The board's parent dispatcher (e.g. `LVPDB`)
+   * stays visible and exposes them via `LVPDB|<sub>`.
    */
   typedef struct
   {
@@ -133,6 +139,7 @@ extern "C"
     const char *help;                  /**< Short human description; also emitted by `commands` */
     FEB_Console_Handler_t handler;     /**< Text-mode handler (may be NULL for CSV-only) */
     FEB_Console_Handler_t csv_handler; /**< CSV-mode handler (may be NULL; client gets unsupported) */
+    bool hidden;                       /**< Omit from `help` and CSV `commands` listing */
   } FEB_Console_Cmd_t;
 
   /* ============================================================================

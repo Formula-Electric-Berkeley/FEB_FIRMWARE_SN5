@@ -714,6 +714,7 @@ static const FEB_Console_Cmd_t apps_cmd = {
     .help = "APPS debug tree — `apps|raw|stream|stats|cal|filter|deadzone|mode|sim`",
     .handler = cmd_apps_top_text,
     .csv_handler = csv_apps,
+    .hidden = true,
 };
 
 static const FEB_Console_Cmd_t faults_cmd = {
@@ -721,6 +722,7 @@ static const FEB_Console_Cmd_t faults_cmd = {
     .help = "Fault status / clear / inject (drive-state gated)",
     .handler = cmd_faults_top_text,
     .csv_handler = csv_faults,
+    .hidden = true,
 };
 
 void PCU_APPS_RegisterCommands(void)
