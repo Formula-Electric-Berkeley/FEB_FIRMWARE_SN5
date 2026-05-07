@@ -1009,52 +1009,85 @@ static void cmd_canstatus_csv(int argc, char *argv[])
  * also works as a shorthand. The canonical text form remains `BMS|<sub>` via
  * the cmd_bms mega-dispatcher.
  * ============================================================================ */
-static const FEB_Console_Cmd_t bms_status_cmd = {
-    .name = "status", .help = "Status summary", .handler = subcmd_status, .csv_handler = cmd_status_csv};
-static const FEB_Console_Cmd_t bms_cells_cmd = {
-    .name = "cells", .help = "Per-cell voltages (C/S)", .handler = subcmd_cells, .csv_handler = cmd_cells_csv};
-static const FEB_Console_Cmd_t bms_temps_cmd = {
-    .name = "temps", .help = "Per-sensor temperatures", .handler = subcmd_temps, .csv_handler = cmd_temps_csv};
+static const FEB_Console_Cmd_t bms_status_cmd = {.name = "status",
+                                                 .help = "Status summary",
+                                                 .handler = subcmd_status,
+                                                 .csv_handler = cmd_status_csv,
+                                                 .hidden = true};
+static const FEB_Console_Cmd_t bms_cells_cmd = {.name = "cells",
+                                                .help = "Per-cell voltages (C/S)",
+                                                .handler = subcmd_cells,
+                                                .csv_handler = cmd_cells_csv,
+                                                .hidden = true};
+static const FEB_Console_Cmd_t bms_temps_cmd = {.name = "temps",
+                                                .help = "Per-sensor temperatures",
+                                                .handler = subcmd_temps,
+                                                .csv_handler = cmd_temps_csv,
+                                                .hidden = true};
 static const FEB_Console_Cmd_t bms_therm_raw_cmd = {.name = "therm-raw",
                                                     .help = "Raw thermistor voltages and ADC codes (42 channels)",
                                                     .handler = subcmd_therm_raw,
-                                                    .csv_handler = cmd_therm_raw_csv};
-static const FEB_Console_Cmd_t bms_state_cmd = {
-    .name = "state", .help = "Show/set BMS state", .handler = subcmd_state, .csv_handler = cmd_state_csv};
-static const FEB_Console_Cmd_t bms_balance_cmd = {
-    .name = "balance", .help = "Control cell balancing (on/off)", .handler = subcmd_balance, .csv_handler = NULL};
+                                                    .csv_handler = cmd_therm_raw_csv,
+                                                    .hidden = true};
+static const FEB_Console_Cmd_t bms_state_cmd = {.name = "state",
+                                                .help = "Show/set BMS state",
+                                                .handler = subcmd_state,
+                                                .csv_handler = cmd_state_csv,
+                                                .hidden = true};
+static const FEB_Console_Cmd_t bms_balance_cmd = {.name = "balance",
+                                                  .help = "Control cell balancing (on/off)",
+                                                  .handler = subcmd_balance,
+                                                  .csv_handler = NULL,
+                                                  .hidden = true};
 static const FEB_Console_Cmd_t bms_gpio_cmd = {
-    .name = "gpio", .help = "Hardware I/O status", .handler = subcmd_gpio, .csv_handler = cmd_gpio_csv};
+    .name = "gpio", .help = "Hardware I/O status", .handler = subcmd_gpio, .csv_handler = cmd_gpio_csv, .hidden = true};
 static const FEB_Console_Cmd_t bms_ivt_cmd = {
-    .name = "ivt", .help = "IVT sensor data", .handler = subcmd_ivt, .csv_handler = cmd_ivt_csv};
-static const FEB_Console_Cmd_t bms_tasks_cmd = {
-    .name = "tasks", .help = "FreeRTOS task stack stats", .handler = subcmd_tasks, .csv_handler = cmd_tasks_csv};
+    .name = "ivt", .help = "IVT sensor data", .handler = subcmd_ivt, .csv_handler = cmd_ivt_csv, .hidden = true};
+static const FEB_Console_Cmd_t bms_tasks_cmd = {.name = "tasks",
+                                                .help = "FreeRTOS task stack stats",
+                                                .handler = subcmd_tasks,
+                                                .csv_handler = cmd_tasks_csv,
+                                                .hidden = true};
 static const FEB_Console_Cmd_t bms_mem_cmd = {
-    .name = "mem", .help = "Heap usage", .handler = subcmd_mem, .csv_handler = cmd_mem_csv};
-static const FEB_Console_Cmd_t bms_cell_cmd = {
-    .name = "cell", .help = "Single cell details: cell|<bank>|<cell>", .handler = subcmd_cell, .csv_handler = NULL};
+    .name = "mem", .help = "Heap usage", .handler = subcmd_mem, .csv_handler = cmd_mem_csv, .hidden = true};
+static const FEB_Console_Cmd_t bms_cell_cmd = {.name = "cell",
+                                               .help = "Single cell details: cell|<bank>|<cell>",
+                                               .handler = subcmd_cell,
+                                               .csv_handler = NULL,
+                                               .hidden = true};
 static const FEB_Console_Cmd_t bms_spi_cmd = {
-    .name = "spi", .help = "isoSPI status", .handler = subcmd_spi, .csv_handler = NULL};
+    .name = "spi", .help = "isoSPI status", .handler = subcmd_spi, .csv_handler = NULL, .hidden = true};
 static const FEB_Console_Cmd_t bms_errors_cmd = {
-    .name = "errors", .help = "Error summary", .handler = subcmd_errors, .csv_handler = cmd_errors_csv};
-static const FEB_Console_Cmd_t bms_config_cmd = {
-    .name = "config", .help = "Configuration constants", .handler = subcmd_config, .csv_handler = cmd_config_csv};
+    .name = "errors", .help = "Error summary", .handler = subcmd_errors, .csv_handler = cmd_errors_csv, .hidden = true};
+static const FEB_Console_Cmd_t bms_config_cmd = {.name = "config",
+                                                 .help = "Configuration constants",
+                                                 .handler = subcmd_config,
+                                                 .csv_handler = cmd_config_csv,
+                                                 .hidden = true};
 static const FEB_Console_Cmd_t bms_ping_cmd = {
-    .name = "ping", .help = "Start CAN ping: ping|<1-4>", .handler = subcmd_ping, .csv_handler = NULL};
+    .name = "ping", .help = "Start CAN ping: ping|<1-4>", .handler = subcmd_ping, .csv_handler = NULL, .hidden = true};
 static const FEB_Console_Cmd_t bms_pong_cmd = {
-    .name = "pong", .help = "Start CAN pong: pong|<1-4>", .handler = subcmd_pong, .csv_handler = NULL};
-static const FEB_Console_Cmd_t bms_canstop_cmd = {
-    .name = "canstop", .help = "Stop CAN ch: canstop|<1-4|all>", .handler = subcmd_canstop, .csv_handler = NULL};
-static const FEB_Console_Cmd_t bms_canstatus_cmd = {
-    .name = "canstatus", .help = "CAN ping/pong status", .handler = subcmd_canstatus, .csv_handler = cmd_canstatus_csv};
+    .name = "pong", .help = "Start CAN pong: pong|<1-4>", .handler = subcmd_pong, .csv_handler = NULL, .hidden = true};
+static const FEB_Console_Cmd_t bms_canstop_cmd = {.name = "canstop",
+                                                  .help = "Stop CAN ch: canstop|<1-4|all>",
+                                                  .handler = subcmd_canstop,
+                                                  .csv_handler = NULL,
+                                                  .hidden = true};
+static const FEB_Console_Cmd_t bms_canstatus_cmd = {.name = "canstatus",
+                                                    .help = "CAN ping/pong status",
+                                                    .handler = subcmd_canstatus,
+                                                    .csv_handler = cmd_canstatus_csv,
+                                                    .hidden = true};
 static const FEB_Console_Cmd_t bms_cell_stats_cmd = {.name = "cell-stats",
                                                      .help = "Voltages + temps (per cell / per sensor)",
                                                      .handler = subcmd_cell_stats,
-                                                     .csv_handler = cmd_cell_stats_csv};
+                                                     .csv_handler = cmd_cell_stats_csv,
+                                                     .hidden = true};
 static const FEB_Console_Cmd_t bms_reg_cmd = {.name = "reg",
                                               .help = "ADBMS register access (reg|list, reg|read|<n>, reg|dump, ...)",
                                               .handler = ADBMS_RegSubcmd,
-                                              .csv_handler = NULL};
+                                              .csv_handler = NULL,
+                                              .hidden = true};
 
 /* Per-board subcommand table. cmd_bms iterates this for `BMS|<sub>` dispatch.
  * Adding a subcommand: define its FEB_Console_Cmd_t above and append a pointer

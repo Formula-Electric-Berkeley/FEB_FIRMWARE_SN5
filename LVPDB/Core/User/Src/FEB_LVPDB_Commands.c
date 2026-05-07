@@ -10,6 +10,7 @@
 #include "FEB_CAN_PingPong.h"
 #include "FEB_Main.h"
 #include "feb_console.h"
+#include "feb_log.h"
 #include "feb_string_utils.h"
 #include "feb_tps.h"
 #include <ctype.h>
@@ -28,6 +29,7 @@ extern GPIO_TypeDef *tps2482_pg_ports[NUM_TPS2482];
 extern uint16_t tps2482_pg_pins[NUM_TPS2482];
 extern uint16_t tps2482_bus_voltage[NUM_TPS2482];
 extern int16_t tps2482_current[NUM_TPS2482];
+extern int16_t tps2482_shunt_voltage_raw[NUM_TPS2482];
 
 /* ============================================================================
  * Chip Name/Index Mapping
@@ -202,23 +204,48 @@ static void cmd_status(int argc, char *argv[])
   }
 
   FEB_Console_Printf("TPS2482 Status:\r\n");
-  FEB_Console_Printf("%-3s %-8s %-4s %-3s %8s %8s\r\n", "ID", "Name", "EN", "PG", "Vbus(mV)", "I(mA)");
-  FEB_Console_Printf("--- -------- ---- --- -------- --------\r\n");
+  FEB_Console_Printf("%-3s %-8s %-4s %-3s %8s %8s %8s\r\n", "ID", "Name", "EN", "PG", "Vbus(mV)", "Vsh(uV)", "I(mA)");
+  FEB_Console_Printf("--- -------- ---- --- -------- -------- --------\r\n");
 
   for (int i = 0; i < NUM_TPS2482; i++)
   {
     const char *en_str;
+    bool en_off;
     if (i == 0)
     {
       en_str = "ON"; // LV is always on
+      en_off = false;
     }
     else
     {
-      en_str = en_states[i - 1] ? "ON" : "OFF";
+      en_off = (en_states[i - 1] != GPIO_PIN_SET);
+      en_str = en_off ? "OFF" : "ON";
     }
 
-    FEB_Console_Printf("%-3d %-8s %-4s %-3s %8u %8d\r\n", i, chip_names[i], en_str, pg_states[i] ? "OK" : "--",
-                       tps2482_bus_voltage[i], tps2482_current[i]);
+    // Shunt voltage in µV: raw is sign-corrected int16_t, LSB = 2.5 µV.
+    // Range is ±81 920 µV (saturation = ±32767 raw → ±81 918 µV). Showing
+    // this alongside scaled current makes it trivial to tell whether a wrong
+    // I(mA) comes from a saturated front-end (Vsh near ±81920) or from a bad
+    // CAL register (small Vsh but huge I).
+    int32_t vsh_uV = ((int32_t)tps2482_shunt_voltage_raw[i] * 5) / 2;
+
+    // With the FET open the shunt has no defined current path, so the TPS2482's
+    // differential front-end can saturate or drift in either direction. Blank
+    // current readings on disabled channels rather than echoing artefacts.
+    char current_buf[16];
+    const char *current_str;
+    if (en_off)
+    {
+      current_str = "--";
+    }
+    else
+    {
+      snprintf(current_buf, sizeof(current_buf), "%d", tps2482_current[i]);
+      current_str = current_buf;
+    }
+
+    FEB_Console_Printf("%-3d %-8s %-4s %-3s %8u %8ld %8s\r\n", i, chip_names[i], en_str, pg_states[i] ? "OK" : "--",
+                       tps2482_bus_voltage[i], (long)vsh_uV, current_str);
   }
 }
 
@@ -260,15 +287,18 @@ static void cmd_enable(int argc, char *argv[])
 
   HAL_GPIO_WritePin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx], GPIO_PIN_SET);
 
+  // Allow the slew-rate-limited GPIO transition to settle before sampling IDR.
+  HAL_Delay(1);
+
   // Read back to verify EN pin state
   GPIO_PinState state = HAL_GPIO_ReadPin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx]);
   if (state == GPIO_PIN_SET)
   {
-    FEB_Console_Printf("%s EN asserted\r\n", chip_names[idx]);
+    LOG_I(TAG_GPIO, "%s EN asserted", chip_names[idx]);
   }
   else
   {
-    FEB_Console_Printf("Warning: %s EN assert failed (readback LOW)\r\n", chip_names[idx]);
+    LOG_W(TAG_GPIO, "%s EN assert failed (readback LOW)", chip_names[idx]);
   }
 }
 
@@ -309,15 +339,18 @@ static void cmd_disable(int argc, char *argv[])
 
   HAL_GPIO_WritePin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx], GPIO_PIN_RESET);
 
+  // Allow the slew-rate-limited GPIO transition to settle before sampling IDR.
+  HAL_Delay(1);
+
   // Read back to verify EN pin state
   GPIO_PinState state = HAL_GPIO_ReadPin(tps2482_en_ports[en_idx], tps2482_en_pins[en_idx]);
   if (state == GPIO_PIN_RESET)
   {
-    FEB_Console_Printf("%s EN deasserted\r\n", chip_names[idx]);
+    LOG_I(TAG_GPIO, "%s EN deasserted", chip_names[idx]);
   }
   else
   {
-    FEB_Console_Printf("Warning: %s EN deassert failed (readback HIGH)\r\n", chip_names[idx]);
+    LOG_W(TAG_GPIO, "%s EN deassert failed (readback HIGH)", chip_names[idx]);
   }
 }
 
@@ -797,27 +830,47 @@ static void cmd_csv_canstatus(int argc, char *argv[])
  * `LVPDB|<sub>` via cmd_lvpdb mega-dispatcher.
  * ============================================================================ */
 static const FEB_Console_Cmd_t lvpdb_status_cmd = {
-    .name = "status", .help = "TPS rail status", .handler = cmd_status, .csv_handler = cmd_csv_status};
-static const FEB_Console_Cmd_t lvpdb_enable_cmd = {
-    .name = "enable", .help = "Enable TPS chip: enable|<chip>", .handler = cmd_enable, .csv_handler = cmd_csv_enable};
+    .name = "status", .help = "TPS rail status", .handler = cmd_status, .csv_handler = cmd_csv_status, .hidden = true};
+static const FEB_Console_Cmd_t lvpdb_enable_cmd = {.name = "enable",
+                                                   .help = "Enable TPS chip: enable|<chip>",
+                                                   .handler = cmd_enable,
+                                                   .csv_handler = cmd_csv_enable,
+                                                   .hidden = true};
 static const FEB_Console_Cmd_t lvpdb_disable_cmd = {.name = "disable",
                                                     .help = "Disable TPS chip: disable|<chip>",
                                                     .handler = cmd_disable,
-                                                    .csv_handler = cmd_csv_disable};
-static const FEB_Console_Cmd_t lvpdb_read_cmd = {
-    .name = "read", .help = "Read TPS register: read|<chip>|<reg>", .handler = cmd_read, .csv_handler = cmd_csv_read};
+                                                    .csv_handler = cmd_csv_disable,
+                                                    .hidden = true};
+static const FEB_Console_Cmd_t lvpdb_read_cmd = {.name = "read",
+                                                 .help = "Read TPS register: read|<chip>|<reg>",
+                                                 .handler = cmd_read,
+                                                 .csv_handler = cmd_csv_read,
+                                                 .hidden = true};
 static const FEB_Console_Cmd_t lvpdb_write_cmd = {.name = "write",
                                                   .help = "Write TPS register: write|<chip>|<reg>|<value>",
                                                   .handler = cmd_write,
-                                                  .csv_handler = cmd_csv_write};
-static const FEB_Console_Cmd_t lvpdb_ping_cmd = {
-    .name = "ping", .help = "Start CAN ping: ping|<1-4>", .handler = cmd_ping, .csv_handler = cmd_csv_ping};
-static const FEB_Console_Cmd_t lvpdb_pong_cmd = {
-    .name = "pong", .help = "Start CAN pong: pong|<1-4>", .handler = cmd_pong, .csv_handler = cmd_csv_pong};
-static const FEB_Console_Cmd_t lvpdb_stop_cmd = {
-    .name = "stop", .help = "Stop CAN ping/pong: stop|<1-4|all>", .handler = cmd_stop, .csv_handler = cmd_csv_stop};
-static const FEB_Console_Cmd_t lvpdb_canstatus_cmd = {
-    .name = "canstatus", .help = "CAN ping/pong status", .handler = cmd_canstatus, .csv_handler = cmd_csv_canstatus};
+                                                  .csv_handler = cmd_csv_write,
+                                                  .hidden = true};
+static const FEB_Console_Cmd_t lvpdb_ping_cmd = {.name = "ping",
+                                                 .help = "Start CAN ping: ping|<1-4>",
+                                                 .handler = cmd_ping,
+                                                 .csv_handler = cmd_csv_ping,
+                                                 .hidden = true};
+static const FEB_Console_Cmd_t lvpdb_pong_cmd = {.name = "pong",
+                                                 .help = "Start CAN pong: pong|<1-4>",
+                                                 .handler = cmd_pong,
+                                                 .csv_handler = cmd_csv_pong,
+                                                 .hidden = true};
+static const FEB_Console_Cmd_t lvpdb_stop_cmd = {.name = "stop",
+                                                 .help = "Stop CAN ping/pong: stop|<1-4|all>",
+                                                 .handler = cmd_stop,
+                                                 .csv_handler = cmd_csv_stop,
+                                                 .hidden = true};
+static const FEB_Console_Cmd_t lvpdb_canstatus_cmd = {.name = "canstatus",
+                                                      .help = "CAN ping/pong status",
+                                                      .handler = cmd_canstatus,
+                                                      .csv_handler = cmd_csv_canstatus,
+                                                      .hidden = true};
 
 static const FEB_Console_Cmd_t *const LVPDB_SUBCMDS[] = {
     &lvpdb_status_cmd, &lvpdb_enable_cmd, &lvpdb_disable_cmd, &lvpdb_read_cmd,      &lvpdb_write_cmd,

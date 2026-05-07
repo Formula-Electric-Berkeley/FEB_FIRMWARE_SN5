@@ -12,6 +12,7 @@
 #include "feb_string_utils.h"
 #include "flash_benchmark.h"
 #include "main.h"
+#include "rtc_commands.h"
 #include "cmsis_os2.h"
 #include "FreeRTOS.h"
 #include <stdlib.h>
@@ -60,6 +61,11 @@ static void cmd_flashbench_csv(int argc, char *argv[]);
 
 /* ============================================================================
  * Command Descriptors
+ *
+ * Per-subcommand descriptors are marked .hidden so the top-level `help`
+ * lists only the UART parent. They stay registered top-level so the CSV
+ * protocol's `UART|csv|<tx>|<sub>` lookup resolves directly. Canonical
+ * text form is `UART|<sub>` via cmd_uart.
  * ============================================================================ */
 
 const FEB_Console_Cmd_t uart_cmd_blink = {
@@ -67,6 +73,7 @@ const FEB_Console_Cmd_t uart_cmd_blink = {
     .help = "Blink LD2: blink [count] [period_ms] | blink|stop | blink|help",
     .handler = cmd_blink,
     .csv_handler = cmd_blink_csv,
+    .hidden = true,
 };
 
 const FEB_Console_Cmd_t uart_cmd_flashbench = {
@@ -74,16 +81,75 @@ const FEB_Console_Cmd_t uart_cmd_flashbench = {
     .help = "Flash benchmark (ERASES sector 7!): flashbench [iterations] [pattern_hex]",
     .handler = cmd_flashbench,
     .csv_handler = cmd_flashbench_csv,
+    .hidden = true,
 };
 
 /* ============================================================================
- * Registration Function
+ * Mega-dispatcher and Registration
  * ============================================================================ */
+
+static const FEB_Console_Cmd_t *const UART_SUBCMDS[] = {
+    &uart_cmd_blink,
+    &uart_cmd_flashbench,
+    &rtc_cmd,
+};
+#define UART_SUBCMDS_COUNT (sizeof(UART_SUBCMDS) / sizeof(UART_SUBCMDS[0]))
+
+static void print_uart_help(void)
+{
+  FEB_Console_Printf("UART Commands (UART|<sub>):\r\n");
+  for (size_t i = 0; i < UART_SUBCMDS_COUNT; i++)
+  {
+    FEB_Console_Printf("  UART|%-12s - %s\r\n", UART_SUBCMDS[i]->name, UART_SUBCMDS[i]->help);
+  }
+  FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
+  FEB_Console_Printf("  UART|csv|<tx_id>|<sub>  - any subcommand above also works as CSV\r\n");
+  FEB_Console_Printf("  *|csv|<tx_id>|hello     - Discover all boards (system command)\r\n");
+  FEB_Console_Printf("Each request emits: ack -> [rows] -> done\r\n");
+}
+
+static void cmd_uart(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    print_uart_help();
+    return;
+  }
+  const char *subcmd = argv[1];
+  for (size_t i = 0; i < UART_SUBCMDS_COUNT; i++)
+  {
+    if (FEB_strcasecmp(UART_SUBCMDS[i]->name, subcmd) == 0)
+    {
+      if (UART_SUBCMDS[i]->handler != NULL)
+      {
+        UART_SUBCMDS[i]->handler(argc - 1, argv + 1);
+      }
+      else
+      {
+        FEB_Console_Printf("Subcommand %s is CSV-only\r\n", subcmd);
+      }
+      return;
+    }
+  }
+  FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
+  print_uart_help();
+}
+
+static const FEB_Console_Cmd_t uart_cmd = {
+    .name = "UART",
+    .help = "UART commands (UART|<sub>) - run UART alone for full list",
+    .handler = cmd_uart,
+    .csv_handler = NULL,
+};
 
 void UART_RegisterCommands(void)
 {
-  FEB_Console_Register(&uart_cmd_blink);
-  FEB_Console_Register(&uart_cmd_flashbench);
+  FEB_Console_Register(&uart_cmd);
+  for (size_t i = 0; i < UART_SUBCMDS_COUNT; i++)
+  {
+    FEB_Console_Register(UART_SUBCMDS[i]);
+  }
 }
 
 /* ============================================================================
