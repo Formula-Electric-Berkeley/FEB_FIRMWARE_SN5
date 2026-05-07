@@ -29,6 +29,6 @@ typedef struct
 
 void FEB_CAN_DASH_Init(void);
 DASH_State_t FEB_CAN_DASH_GetLastState(void);
-bool FEB_CAN_LVPDB_IsDataFresh(uint32_t timeout_ms);
+bool FEB_CAN_DASH_IsDataFresh(uint32_t timeout_ms);
 
 #endif /* FEB_CAN_DASH_H */
