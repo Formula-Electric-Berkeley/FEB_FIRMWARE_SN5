@@ -441,18 +441,24 @@ static void cmd_bms_csv(int argc, char *argv[])
  * so `PCU|csv|<tx_id>|<sub>` resolves directly. Canonical text form:
  * `PCU|<sub>` via cmd_pcu mega-dispatcher.
  * ============================================================================ */
-static const FEB_Console_Cmd_t pcu_status_cmd = {
-    .name = "status", .help = "PCU status summary", .handler = cmd_status, .csv_handler = cmd_status_csv};
+static const FEB_Console_Cmd_t pcu_status_cmd = {.name = "status",
+                                                 .help = "PCU status summary",
+                                                 .handler = cmd_status,
+                                                 .csv_handler = cmd_status_csv,
+                                                 .hidden = true};
 static const FEB_Console_Cmd_t pcu_apps_cmd = {
-    .name = "apps", .help = "APPS sensor data", .handler = cmd_apps, .csv_handler = cmd_apps_csv};
+    .name = "apps", .help = "APPS sensor data", .handler = cmd_apps, .csv_handler = cmd_apps_csv, .hidden = true};
 static const FEB_Console_Cmd_t pcu_brake_cmd = {
-    .name = "brake", .help = "Brake sensor data", .handler = cmd_brake, .csv_handler = cmd_brake_csv};
-static const FEB_Console_Cmd_t pcu_rms_cmd = {
-    .name = "rms", .help = "RMS motor controller status", .handler = cmd_rms, .csv_handler = cmd_rms_csv};
+    .name = "brake", .help = "Brake sensor data", .handler = cmd_brake, .csv_handler = cmd_brake_csv, .hidden = true};
+static const FEB_Console_Cmd_t pcu_rms_cmd = {.name = "rms",
+                                              .help = "RMS motor controller status",
+                                              .handler = cmd_rms,
+                                              .csv_handler = cmd_rms_csv,
+                                              .hidden = true};
 static const FEB_Console_Cmd_t pcu_tps_cmd = {
-    .name = "tps", .help = "TPS power monitor", .handler = cmd_tps, .csv_handler = cmd_tps_csv};
+    .name = "tps", .help = "TPS power monitor", .handler = cmd_tps, .csv_handler = cmd_tps_csv, .hidden = true};
 static const FEB_Console_Cmd_t pcu_bms_cmd = {
-    .name = "bms", .help = "BMS-state mirror", .handler = cmd_bms, .csv_handler = cmd_bms_csv};
+    .name = "bms", .help = "BMS-state mirror", .handler = cmd_bms, .csv_handler = cmd_bms_csv, .hidden = true};
 
 static const FEB_Console_Cmd_t *const PCU_SUBCMDS[] = {
     &pcu_status_cmd, &pcu_apps_cmd, &pcu_brake_cmd, &pcu_rms_cmd, &pcu_tps_cmd, &pcu_bms_cmd,

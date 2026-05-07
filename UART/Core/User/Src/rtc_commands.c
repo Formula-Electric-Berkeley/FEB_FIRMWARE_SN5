@@ -36,16 +36,8 @@ const FEB_Console_Cmd_t rtc_cmd = {
     .help = "RTC commands: rtc|get, rtc|time, rtc|date, rtc|set|YYYY|MM|DD|HH|MM|SS, rtc|settime|HH|MM|SS, "
             "rtc|setdate|YYYY|MM|DD",
     .handler = cmd_rtc,
+    .hidden = true,
 };
-
-/* ============================================================================
- * Registration Function
- * ============================================================================ */
-
-void RTC_RegisterCommands(void)
-{
-  FEB_Console_Register(&rtc_cmd);
-}
 
 /* ============================================================================
  * Private Helper Functions

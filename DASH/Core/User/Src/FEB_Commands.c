@@ -72,6 +72,7 @@ static const FEB_Console_Cmd_t dash_cmd_ping = {
     .help = "Start CAN ping mode: ping|<1-4>",
     .handler = cmd_ping,
     .csv_handler = cmd_ping_csv,
+    .hidden = true,
 };
 
 static void cmd_pong(int argc, char *argv[])
@@ -119,6 +120,7 @@ static const FEB_Console_Cmd_t dash_cmd_pong = {
     .help = "Start CAN pong mode: pong|<1-4>",
     .handler = cmd_pong,
     .csv_handler = cmd_pong_csv,
+    .hidden = true,
 };
 
 static void cmd_canstop(int argc, char *argv[])
@@ -175,6 +177,7 @@ static const FEB_Console_Cmd_t dash_cmd_canstop = {
     .help = "Stop CAN ping/pong: canstop|<1-4|all>",
     .handler = cmd_canstop,
     .csv_handler = cmd_canstop_csv,
+    .hidden = true,
 };
 
 static void cmd_canstatus(int argc, char *argv[])
@@ -233,6 +236,7 @@ static const FEB_Console_Cmd_t dash_cmd_canstatus = {
     .help = "Show CAN ping/pong status",
     .handler = cmd_canstatus,
     .csv_handler = cmd_canstatus_csv,
+    .hidden = true,
 };
 
 /* ============================================================================
@@ -265,6 +269,7 @@ static const FEB_Console_Cmd_t dash_cmd_lvpdb = {
     .help = "Show LVPDB bus voltages",
     .handler = cmd_lvpdb,
     .csv_handler = cmd_lvpdb_csv,
+    .hidden = true,
 };
 
 /* ============================================================================
@@ -299,6 +304,7 @@ static const FEB_Console_Cmd_t dash_cmd_bms = {
     .help = "Show BMS state, max cell temperature, and pack voltage",
     .handler = cmd_bms,
     .csv_handler = cmd_bms_csv,
+    .hidden = true,
 };
 
 /* ============================================================================
@@ -334,6 +340,7 @@ static const FEB_Console_Cmd_t dash_cmd_pcu = {
     .help = "Show PCU torque, direction, RMS enable, and brake position",
     .handler = cmd_pcu,
     .csv_handler = cmd_pcu_csv,
+    .hidden = true,
 };
 
 /* ============================================================================

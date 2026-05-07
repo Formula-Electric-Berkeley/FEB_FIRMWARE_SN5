@@ -171,7 +171,7 @@ static void cmd_help(int argc, char *argv[])
   for (size_t i = 0; i < count; i++)
   {
     const FEB_Console_Cmd_t *cmd = FEB_Console_GetCommand(i);
-    if (cmd != NULL)
+    if (cmd != NULL && !cmd->hidden)
     {
       FEB_Console_Printf("  %-12s %s\r\n", cmd->name, cmd->help);
     }
@@ -193,7 +193,7 @@ static void cmd_commands(int argc, char *argv[])
   for (size_t i = 0; i < count; i++)
   {
     const FEB_Console_Cmd_t *cmd = FEB_Console_GetCommand(i);
-    if (cmd != NULL)
+    if (cmd != NULL && !cmd->hidden)
     {
       FEB_Console_Printf("%s: %s\r\n", cmd->name, cmd->help != NULL ? cmd->help : "");
     }
@@ -389,7 +389,7 @@ static void emit_command_rows(void)
   for (size_t i = 0; i < count; i++)
   {
     const FEB_Console_Cmd_t *cmd = FEB_Console_GetCommand(i);
-    if (cmd == NULL || cmd->csv_handler == NULL)
+    if (cmd == NULL || cmd->csv_handler == NULL || cmd->hidden)
     {
       continue;
     }
