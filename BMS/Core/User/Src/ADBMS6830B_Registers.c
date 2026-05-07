@@ -484,7 +484,7 @@ static void subcmd_status(int argc, char *argv[])
   FEB_Console_Printf("\r\n=== ADBMS6830B Status ===\r\n");
 
   /* Read STATA */
-  ADBMS_STATA_t stata;
+  ADBMS_STATA_t stata = {0};
   ADBMS_ReadReg(RDSTATA, 0, stata.raw);
 
   float vref2 = ADBMS_CodeToVoltage_mV(stata.values.VREF2) / 1000.0f;
@@ -496,7 +496,7 @@ static void subcmd_status(int argc, char *argv[])
   FEB_Console_Printf("VA:     %.3f V\r\n", va);
 
   /* Read STATB */
-  ADBMS_STATB_t statb;
+  ADBMS_STATB_t statb = {0};
   ADBMS_ReadReg(RDSTATB, 0, statb.raw);
 
   float vd = ADBMS_CodeToVoltage_mV(statb.bits.VD) / 1000.0f;

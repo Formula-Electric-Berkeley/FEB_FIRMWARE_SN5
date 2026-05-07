@@ -3,7 +3,7 @@ description: 'Builds a single STM32 board firmware with ARM GCC toolchain'
 
 inputs:
   board:
-    description: 'Board name (BMS, DASH, DART, DCU, LVPDB, PCU, Sensor_Nodes, UART, UART_TEST)'
+    description: 'Board / target name. Sensor_Nodes_FRONT and Sensor_Nodes_REAR are real CMake targets defined in Sensor_Nodes/CMakeLists.txt.'
     required: true
   build-type:
     description: 'Build type (Debug or Release)'
@@ -35,13 +35,30 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    # Sensor_Nodes_FRONT / Sensor_Nodes_REAR live inside the Sensor_Nodes
+    # source tree but are distinct CMake targets. Map the target name back
+    # to the source directory for buildability checks and artifact paths.
+    - name: Resolve target source dir
+      id: resolve
+      shell: bash
+      run: |
+        case "${{ inputs.board }}" in
+          Sensor_Nodes_FRONT|Sensor_Nodes_REAR)
+            echo "src_dir=Sensor_Nodes" >> "$GITHUB_OUTPUT"
+            ;;
+          *)
+            echo "src_dir=${{ inputs.board }}" >> "$GITHUB_OUTPUT"
+            ;;
+        esac
+
     - name: Check buildability
       id: check
       shell: bash
       run: |
-        if [ ! -f "${{ inputs.board }}/CMakeLists.txt" ] || [ ! -d "${{ inputs.board }}/Core" ]; then
+        SRC="${{ steps.resolve.outputs.src_dir }}"
+        if [ ! -f "${SRC}/CMakeLists.txt" ] || [ ! -d "${SRC}/Core" ]; then
           echo "skip=true" >> "$GITHUB_OUTPUT"
-          echo "::warning::${{ inputs.board }} skipped -- missing CMakeLists.txt or Core/ directory"
+          echo "::warning::${{ inputs.board }} skipped -- missing ${SRC}/CMakeLists.txt or ${SRC}/Core/"
         else
           echo "skip=false" >> "$GITHUB_OUTPUT"
         fi
@@ -76,9 +93,10 @@ runs:
       id: paths
       shell: bash
       run: |
-        echo "elf=build/${{ inputs.board }}/${{ inputs.board }}/${{ inputs.board }}.elf" >> "$GITHUB_OUTPUT"
-        echo "bin=build/${{ inputs.board }}/${{ inputs.board }}/${{ inputs.board }}.bin" >> "$GITHUB_OUTPUT"
-        echo "hex=build/${{ inputs.board }}/${{ inputs.board }}/${{ inputs.board }}.hex" >> "$GITHUB_OUTPUT"
+        BASE="build/${{ inputs.board }}/${{ steps.resolve.outputs.src_dir }}"
+        echo "elf=${BASE}/${{ inputs.board }}.elf" >> "$GITHUB_OUTPUT"
+        echo "bin=${BASE}/${{ inputs.board }}.bin" >> "$GITHUB_OUTPUT"
+        echo "hex=${BASE}/${{ inputs.board }}.hex" >> "$GITHUB_OUTPUT"
 
     - name: Upload artifacts
       if: steps.check.outputs.skip != 'true' && inputs.upload-artifacts == 'true'
@@ -86,6 +104,6 @@ runs:
       with:
         name: ${{ inputs.board }}-firmware${{ inputs.artifact-suffix }}
         path: |
-          build/${{ inputs.board }}/${{ inputs.board }}/${{ inputs.board }}.elf
-          build/${{ inputs.board }}/${{ inputs.board }}/${{ inputs.board }}.bin
-          build/${{ inputs.board }}/${{ inputs.board }}/${{ inputs.board }}.hex
+          ${{ steps.paths.outputs.elf }}
+          ${{ steps.paths.outputs.bin }}
+          ${{ steps.paths.outputs.hex }}

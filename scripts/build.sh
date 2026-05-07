@@ -17,8 +17,11 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR/.."
 
-# Available boards
-BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART" "UART_TEST")
+# Available boards. Sensor_Nodes ships in two CMake targets — Sensor_Nodes_FRONT
+# and Sensor_Nodes_REAR — each a separately-buildable executable defined in
+# Sensor_Nodes/CMakeLists.txt. Both build into the shared build/Debug tree.
+# See Sensor_Nodes/Core/User/Inc/FEB_SN_Config.h for variant configuration.
+BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes_FRONT" "Sensor_Nodes_REAR" "UART" "UART_TEST")
 
 # Colors for output
 RED='\033[0;31m'
@@ -182,10 +185,29 @@ is_valid_board() {
     return 1
 }
 
-# Get build directory based on build type
+# Get build directory based on build type. All boards (including
+# Sensor_Nodes_FRONT and Sensor_Nodes_REAR) share the same tree; variants
+# are real CMake targets, not configure-time switches.
 get_build_dir() {
     local build_type="$1"
     echo "$REPO_ROOT/build/$build_type"
+}
+
+# Get the path of the produced ELF for a board (= CMake target name).
+get_target_elf() {
+    local build_type="$1"
+    local board="$2"
+    local build_dir
+    build_dir=$(get_build_dir "$build_type")
+    case "$board" in
+        Sensor_Nodes_FRONT|Sensor_Nodes_REAR)
+            # Variant targets live under the Sensor_Nodes subdir.
+            echo "$build_dir/Sensor_Nodes/${board}.elf"
+            ;;
+        *)
+            echo "$build_dir/$board/$board.elf"
+            ;;
+    esac
 }
 
 # Configure CMake if needed
@@ -207,6 +229,8 @@ build_targets() {
     local targets=("$@")
     local build_dir
     build_dir=$(get_build_dir "$build_type")
+
+    configure_cmake "$build_type"
 
     if [ ${#targets[@]} -eq 0 ]; then
         log_info "Building all boards ($build_type)..."
@@ -244,15 +268,14 @@ get_file_time() {
 # Show board selection menu
 show_board_menu() {
     local build_type="$1"
-    local build_dir
-    build_dir=$(get_build_dir "$build_type")
 
     echo -e "${BOLD}Select board(s) to build:${NC}"
     echo ""
 
     for i in "${!BOARDS[@]}"; do
         local board="${BOARDS[$i]}"
-        local elf_path="$build_dir/$board/$board.elf"
+        local elf_path
+        elf_path=$(get_target_elf "$build_type" "$board")
 
         local status=""
         if [ -f "$elf_path" ]; then
@@ -263,12 +286,12 @@ show_board_menu() {
             status="${YELLOW}[not built]${NC}"
         fi
 
-        printf "  %d) %-15s %b\n" $((i + 1)) "$board" "$status"
+        printf "  %2d) %-22s %b\n" $((i + 1)) "$board" "$status"
     done
 
     echo ""
-    echo "  a) Build all boards"
-    echo "  q) Quit"
+    echo "   a) Build all boards"
+    echo "   q) Quit"
     echo ""
 }
 
@@ -279,7 +302,7 @@ interactive_select() {
 
     show_board_menu "$build_type"
 
-    read -p "Enter selection (1-9, a, or q): " selection
+    read -p "Enter selection (number, board name, a, or q): " selection
 
     case "$selection" in
         q|Q|quit|exit)
@@ -289,19 +312,17 @@ interactive_select() {
             if [ "$clean" = true ]; then
                 clean_build "$build_type"
             fi
-            configure_cmake "$build_type"
-            build_targets "$build_type"
-            show_summary "$build_type"
+            build_targets "$build_type" "${BOARDS[@]}"
+            show_summary "$build_type" "${BOARDS[@]}"
             return 0
             ;;
-        [1-9])
+        [0-9]|[0-9][0-9])
             local index=$((selection - 1))
             if [ $index -ge 0 ] && [ $index -lt ${#BOARDS[@]} ]; then
                 local board="${BOARDS[$index]}"
                 if [ "$clean" = true ]; then
                     clean_build "$build_type"
                 fi
-                configure_cmake "$build_type"
                 build_targets "$build_type" "$board"
                 show_summary "$build_type" "$board"
                 return 0
@@ -313,7 +334,6 @@ interactive_select() {
                 if [ "$clean" = true ]; then
                     clean_build "$build_type"
                 fi
-                configure_cmake "$build_type"
                 build_targets "$build_type" "$selection"
                 show_summary "$build_type" "$selection"
                 return 0
@@ -351,8 +371,6 @@ show_summary() {
     local build_type="$1"
     shift
     local targets=("$@")
-    local build_dir
-    build_dir=$(get_build_dir "$build_type")
 
     log_header "Build Summary"
 
@@ -361,11 +379,12 @@ show_summary() {
         boards_to_check=("${BOARDS[@]}")
     fi
 
-    printf "%-15s %-10s %-12s %-12s\n" "Board" "Status" "Flash" "RAM"
-    printf "%-15s %-10s %-12s %-12s\n" "-----" "------" "-----" "---"
+    printf "%-22s %-10s %-12s %-12s\n" "Board" "Status" "Flash" "RAM"
+    printf "%-22s %-10s %-12s %-12s\n" "-----" "------" "-----" "---"
 
     for board in "${boards_to_check[@]}"; do
-        local elf_path="$build_dir/$board/$board.elf"
+        local elf_path
+        elf_path=$(get_target_elf "$build_type" "$board")
 
         if [ -f "$elf_path" ]; then
             # Get size info
@@ -380,9 +399,9 @@ show_summary() {
             flash_kb=$(echo "scale=1; ($text + $data) / 1024" | bc)
             ram_kb=$(echo "scale=1; ($data + $bss) / 1024" | bc)
 
-            printf "%-15s ${GREEN}%-10s${NC} %-12s %-12s\n" "$board" "OK" "${flash_kb} KB" "${ram_kb} KB"
+            printf "%-22s ${GREEN}%-10s${NC} %-12s %-12s\n" "$board" "OK" "${flash_kb} KB" "${ram_kb} KB"
         else
-            printf "%-15s ${YELLOW}%-10s${NC} %-12s %-12s\n" "$board" "skipped" "-" "-"
+            printf "%-22s ${YELLOW}%-10s${NC} %-12s %-12s\n" "$board" "skipped" "-" "-"
         fi
     done
 
@@ -411,18 +430,27 @@ Options:
 
 Boards: ${BOARDS[*]}
 
+Note:
+  Sensor_Nodes_FRONT and Sensor_Nodes_REAR are real CMake targets — both build
+  into build/Debug/Sensor_Nodes/ as Sensor_Nodes_FRONT.elf and Sensor_Nodes_REAR.elf
+  in a single configure. They're also visible in the VS Code CMake Tools
+  build-target dropdown.
+
 Examples:
-  ./scripts/build.sh                     # Interactive menu
-  ./scripts/build.sh -a                  # Build all boards (Debug)
-  ./scripts/build.sh -b LVPDB            # Build LVPDB only
-  ./scripts/build.sh -b LVPDB -b PCU     # Build multiple boards
-  ./scripts/build.sh -r -a               # Build all in Release mode
-  ./scripts/build.sh -c -b LVPDB         # Clean rebuild of LVPDB
-  ./scripts/build.sh -l                  # Loop mode (build multiple)
-  ./scripts/build.sh --check             # Verify toolchain is installed
+  ./scripts/build.sh                          # Interactive menu
+  ./scripts/build.sh -a                       # Build all boards (Debug)
+  ./scripts/build.sh -b LVPDB                 # Build LVPDB only
+  ./scripts/build.sh -b Sensor_Nodes_FRONT    # Build the FRONT sensor node
+  ./scripts/build.sh -b Sensor_Nodes_REAR     # Build the REAR sensor node
+  ./scripts/build.sh -b LVPDB -b PCU          # Build multiple boards
+  ./scripts/build.sh -r -a                    # Build all in Release mode
+  ./scripts/build.sh -c -b LVPDB              # Clean rebuild of LVPDB
+  ./scripts/build.sh -l                       # Loop mode (build multiple)
+  ./scripts/build.sh --check                  # Verify toolchain is installed
 
 After building, flash with:
   ./scripts/flash.sh -b LVPDB
+  ./scripts/flash.sh -b Sensor_Nodes_FRONT
 EOF
 }
 
@@ -528,11 +556,9 @@ main() {
             clean_build "$build_type"
         fi
 
-        configure_cmake "$build_type"
-
         if [ "$build_all" = true ]; then
-            build_targets "$build_type"
-            show_summary "$build_type"
+            build_targets "$build_type" "${BOARDS[@]}"
+            show_summary "$build_type" "${BOARDS[@]}"
         else
             build_targets "$build_type" "${targets[@]}"
             show_summary "$build_type" "${targets[@]}"

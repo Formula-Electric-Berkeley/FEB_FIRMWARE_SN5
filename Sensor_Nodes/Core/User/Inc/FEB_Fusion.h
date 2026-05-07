@@ -31,6 +31,10 @@ extern FusionVector hardIron;
 
 void FEB_Fusion_Init(void);
 
+// One-time startup gyro bias capture: assumes the board is static for ~1 s.
+// Blocks the caller. Writes gyroOffset. Call after IMU init, before main loop.
+void FEB_Fusion_AutoCalibrate_Gyro(void);
+
 // dt in seconds (use TIM5 microsecond delta for precision)
 void FEB_Fusion_Update(float dt);
 
