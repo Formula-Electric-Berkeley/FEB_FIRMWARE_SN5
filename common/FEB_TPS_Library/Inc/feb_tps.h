@@ -6,17 +6,14 @@
  ******************************************************************************
  * @details
  *
- * A common library for TPS2482 power monitoring ICs. Features:
- *   - Multi-device support (up to FEB_TPS_MAX_DEVICES)
- *   - Per-device shunt resistor and current range configuration
- *   - FreeRTOS-optional thread safety with I2C mutex
- *   - Correct sign-magnitude current conversion
- *   - Optional GPIO enable/power-good/alert integration
+ * Minimal driver for TPS2482 power monitors. Each call talks directly to the
+ * chip — no caching, no retries, no peripheral resets. Optional FreeRTOS
+ * mutex serializes I2C access so multiple tasks can share a bus.
  *
  * Usage:
- *   1. Call FEB_TPS_Init() once at startup
- *   2. Call FEB_TPS_DeviceRegister() for each TPS2482 device
- *   3. Call FEB_TPS_Poll() or FEB_TPS_PollAll() to read measurements
+ *   1. FEB_TPS_Init()
+ *   2. FEB_TPS_DeviceRegister() per chip
+ *   3. FEB_TPS_Poll() / FEB_TPS_PollScaled() / FEB_TPS_PollRaw() in your loop
  *
  ******************************************************************************
  */
@@ -44,10 +41,7 @@ extern "C" {
  * ============================================================================ */
 
 /**
- * @brief Handle to a TPS2482 device instance
- *
- * This is a pointer to an internal device structure. Users should treat it
- * as an opaque handle and not dereference it directly.
+ * @brief Opaque handle to a TPS2482 device instance
  */
 typedef struct FEB_TPS_Device_s *FEB_TPS_Handle_t;
 
@@ -56,38 +50,29 @@ typedef struct FEB_TPS_Device_s *FEB_TPS_Handle_t;
  * ============================================================================ */
 
 typedef enum {
-    FEB_TPS_OK = 0,             /**< Success */
-    FEB_TPS_ERR_INVALID_ARG,    /**< Invalid argument */
-    FEB_TPS_ERR_I2C,            /**< I2C communication error */
-    FEB_TPS_ERR_NOT_INIT,       /**< Library or device not initialized */
-    FEB_TPS_ERR_CONFIG_MISMATCH,/**< Configuration readback mismatch */
-    FEB_TPS_ERR_MAX_DEVICES,    /**< Maximum device count exceeded */
-    FEB_TPS_ERR_TIMEOUT,        /**< Operation timeout */
+    FEB_TPS_OK = 0,                 /**< Success */
+    FEB_TPS_ERR_INVALID_ARG,        /**< Invalid argument */
+    FEB_TPS_ERR_I2C,                /**< I2C communication error */
+    FEB_TPS_ERR_NOT_INIT,           /**< Library or device not initialized */
+    FEB_TPS_ERR_CONFIG_MISMATCH,    /**< CONFIG/CAL readback differed from write */
+    FEB_TPS_ERR_MAX_DEVICES,        /**< Too many devices already registered */
 } FEB_TPS_Status_t;
 
 /* ============================================================================
  * Logging
  * ============================================================================ */
 
-/**
- * @brief Log levels for TPS library (values match FEB_UART for easy mapping)
- */
 typedef enum FEB_TPS_LogLevel_e {
-    FEB_TPS_LOG_NONE = 0,       /**< No logging */
-    FEB_TPS_LOG_ERROR = 1,      /**< Errors only */
-    FEB_TPS_LOG_WARN = 2,       /**< Warnings and errors */
-    FEB_TPS_LOG_INFO = 3,       /**< Informational messages */
-    FEB_TPS_LOG_DEBUG = 4,      /**< Debug messages */
+    FEB_TPS_LOG_NONE = 0,
+    FEB_TPS_LOG_ERROR = 1,
+    FEB_TPS_LOG_WARN = 2,
+    FEB_TPS_LOG_INFO = 3,
+    FEB_TPS_LOG_DEBUG = 4,
 } FEB_TPS_LogLevel_t;
 
 /**
- * @brief Logging callback function type
- *
- * The library formats messages internally and passes a pre-formatted string.
- * This makes it easy to wrap FEB_UART's LOG_* macros.
- *
- * @param level Log level of the message
- * @param msg Pre-formatted message string (no newline)
+ * Library log callback. Receives a pre-formatted, NUL-terminated string with no
+ * trailing newline. NULL = silent.
  */
 typedef void (*FEB_TPS_LogFunc_t)(FEB_TPS_LogLevel_t level, const char *msg);
 
@@ -96,43 +81,38 @@ typedef void (*FEB_TPS_LogFunc_t)(FEB_TPS_LogLevel_t level, const char *msg);
  * ============================================================================ */
 
 /**
- * @brief TPS2482 device configuration
+ * @brief Per-device configuration passed to FEB_TPS_DeviceRegister()
  *
- * Used when registering a new device with FEB_TPS_DeviceRegister().
- *
- * Register value semantics:
- *   - config_reg: 0 means "use default" (0x4127). Cannot explicitly set CONFIG to 0.
- *   - mask_reg: 0 means "no alerts configured" (register write skipped).
- *   - alert_limit: 0 means "no alert limit" (register write skipped).
+ * Register field semantics:
+ *   - config_reg: 0 → use default 0x4127; otherwise written verbatim.
+ *   - mask_reg / alert_limit: 0 → register write skipped.
  */
 typedef struct {
-    /* I2C Configuration (required) */
-    I2C_HandleTypeDef *hi2c;    /**< I2C handle */
-    uint8_t i2c_addr;           /**< 7-bit I2C address (typically 0x40-0x4F for TPS2482) */
+    /* I2C (required) */
+    I2C_HandleTypeDef *hi2c;
+    uint8_t i2c_addr;                /**< 7-bit address (typically 0x40-0x4F) */
 
-    /* Current Measurement Configuration (required) */
-    float r_shunt_ohms;         /**< Shunt resistor value in Ohms (e.g., 0.002 for 2mOhm) */
-    float i_max_amps;           /**< Maximum expected current in Amps (determines resolution) */
+    /* Calibration (required) */
+    float r_shunt_ohms;              /**< Shunt resistor in Ohms */
+    float i_max_amps;                /**< Max expected current in Amps */
 
-    /* Optional: Device Configuration Register Settings (see note above) */
-    uint16_t config_reg;        /**< CONFIG register value (0 = use default 0x4127) */
-    uint16_t mask_reg;          /**< MASK register value (0 = skip write, no alerts) */
-    uint16_t alert_limit;       /**< ALERT_LIMIT register value (0 = skip write) */
+    /* Optional CONFIG/MASK/ALERT register values */
+    uint16_t config_reg;
+    uint16_t mask_reg;
+    uint16_t alert_limit;
 
-    /* Optional: GPIO for Enable/Power-Good/Alert */
-    GPIO_TypeDef *en_gpio_port;     /**< GPIO port for EN pin (NULL = not used) */
-    uint16_t en_gpio_pin;           /**< GPIO pin for EN (ignored if port is NULL) */
-    GPIO_TypeDef *pg_gpio_port;     /**< GPIO port for Power-Good pin (NULL = not used) */
-    uint16_t pg_gpio_pin;           /**< GPIO pin for Power-Good */
-    GPIO_TypeDef *alert_gpio_port;  /**< GPIO port for Alert pin (NULL = not used) */
-    uint16_t alert_gpio_pin;        /**< GPIO pin for Alert */
+    /* Optional GPIO control (NULL port = unused) */
+    GPIO_TypeDef *en_gpio_port;
+    uint16_t en_gpio_pin;
+    GPIO_TypeDef *pg_gpio_port;
+    uint16_t pg_gpio_pin;
 
-    /* Optional: Name for debugging */
-    const char *name;           /**< Human-readable name (e.g., "LV", "BMS") */
+    /* Human-readable name for log lines */
+    const char *name;
 } FEB_TPS_DeviceConfig_t;
 
 /* ============================================================================
- * FreeRTOS Sync Primitive Types
+ * FreeRTOS sync primitive type (only meaningful when FEB_TPS_USE_FREERTOS=1)
  * ============================================================================ */
 #if FEB_TPS_USE_FREERTOS
 #include "cmsis_os2.h"
@@ -142,377 +122,154 @@ typedef void *FEB_TPS_MutexHandle_t;
 #endif
 
 /**
- * @brief Library initialization configuration
+ * @brief Library-wide configuration passed to FEB_TPS_Init()
  *
- * FreeRTOS Mode (FEB_TPS_USE_FREERTOS == 1):
- *   - data_mutex is REQUIRED - protects cached data reads
- *   - i2c_mutex is REQUIRED - protects I2C bus access
- *   - poll_interval_ms configures auto-polling rate
- *
- * Bare-Metal Mode (FEB_TPS_USE_FREERTOS == 0):
- *   - Sync primitive fields are ignored
- *   - Use FEB_TPS_Poll() directly in main loop
+ * In FreeRTOS builds the caller must provide an i2c_mutex so the library can
+ * serialize bus access across tasks. In bare-metal builds the field is unused.
  */
 typedef struct {
-    uint32_t i2c_timeout_ms;    /**< I2C timeout in ms (0 = use default) */
-    FEB_TPS_LogFunc_t log_func; /**< Logging callback (NULL = silent) */
-    FEB_TPS_LogLevel_t log_level; /**< Minimum level to log (0 = use default INFO) */
+    FEB_TPS_LogFunc_t log_func;          /**< NULL = silent */
+    FEB_TPS_LogLevel_t log_level;        /**< 0 → defaults to FEB_TPS_LOG_INFO */
 
 #if FEB_TPS_USE_FREERTOS
-    /** @brief Data mutex - REQUIRED. Protects cached measurement data. Create in CubeMX. */
-    FEB_TPS_MutexHandle_t data_mutex;
-
-    /** @brief I2C mutex - REQUIRED. Protects I2C bus access. Create in CubeMX. */
-    FEB_TPS_MutexHandle_t i2c_mutex;
-
-    /** @brief Polling interval in ms for auto-polling mode (0 = use default 100ms) */
-    uint32_t poll_interval_ms;
+    FEB_TPS_MutexHandle_t i2c_mutex;     /**< Required: serializes I2C access */
 #endif
 } FEB_TPS_LibConfig_t;
-
-/* ============================================================================
- * Cached Data Structure (FreeRTOS Mode)
- * ============================================================================ */
-
-/**
- * @brief Cached measurement data from a TPS device
- *
- * In FreeRTOS mode, the polling task updates this cache periodically.
- * User code reads from cache (fast, mutex-protected) instead of doing I2C.
- */
-typedef struct {
-    float voltage_v;        /**< Cached bus voltage in Volts */
-    float current_a;        /**< Cached current in Amps */
-    float power_w;          /**< Cached power in Watts */
-    uint32_t last_update_ms;/**< Timestamp of last successful poll */
-    bool valid;             /**< True if data has been successfully polled at least once */
-} FEB_TPS_CachedData_t;
 
 /* ============================================================================
  * Measurement Data Structures
  * ============================================================================ */
 
-/**
- * @brief Measured values from a TPS2482 device (floating point)
- */
 typedef struct {
-    float bus_voltage_v;        /**< Bus voltage in Volts */
-    float current_a;            /**< Current in Amps (signed) */
-    float shunt_voltage_mv;     /**< Shunt voltage in millivolts (signed) */
-    float power_w;              /**< Power in Watts */
+    float bus_voltage_v;
+    float current_a;
+    float shunt_voltage_mv;
+    float power_w;
 
-    /* Raw register values (for debugging/CAN transmission) */
-    uint16_t bus_voltage_raw;   /**< Raw bus voltage register */
-    int16_t current_raw;        /**< Sign-corrected current register */
-    int16_t shunt_voltage_raw;  /**< Sign-corrected shunt voltage register */
-    uint16_t power_raw;         /**< Raw power register */
+    /* Raw register values (current and shunt voltage are sign-corrected) */
+    uint16_t bus_voltage_raw;
+    int16_t current_raw;
+    int16_t shunt_voltage_raw;
+    uint16_t power_raw;
 } FEB_TPS_Measurement_t;
 
 /**
- * @brief Scaled integer values for CAN transmission
- *
- * Avoids floating point on CAN bus. Values are already scaled to common units.
- * Uses wider types to support high-power applications (e.g., 24V @ 20A = 480W).
+ * Scaled-integer measurement for CAN packing. Wider types support high-power
+ * channels (24V × 20A = 480W).
  */
 typedef struct {
-    uint32_t bus_voltage_mv;    /**< Bus voltage in millivolts */
-    int32_t current_ma;         /**< Current in milliamps */
-    int32_t shunt_voltage_uv;   /**< Shunt voltage in microvolts */
-    uint32_t power_mw;          /**< Power in milliwatts */
+    uint32_t bus_voltage_mv;
+    int32_t current_ma;
+    int32_t shunt_voltage_uv;
+    uint32_t power_mw;
 } FEB_TPS_MeasurementScaled_t;
 
 /* ============================================================================
- * Library Initialization
+ * Library Lifecycle
  * ============================================================================ */
 
 /**
- * @brief Initialize the TPS library
+ * Initialize the library. Must be called before any device registration.
  *
- * Must be called before registering any devices.
- *
- * @param config Library configuration (NULL for defaults)
- * @return FEB_TPS_OK on success
+ * @param config NULL = silent, no mutex (bare-metal default).
+ *               Non-NULL: log callback + level, plus i2c_mutex in FreeRTOS builds.
+ * @return FEB_TPS_OK if initialized (or already initialized).
+ *         FEB_TPS_ERR_INVALID_ARG if FreeRTOS build and i2c_mutex == NULL.
  */
 FEB_TPS_Status_t FEB_TPS_Init(const FEB_TPS_LibConfig_t *config);
 
-/**
- * @brief Deinitialize the TPS library and all devices
- */
-void FEB_TPS_DeInit(void);
-
-/**
- * @brief Check if library is initialized
- */
+/** Returns true if FEB_TPS_Init() has succeeded. */
 bool FEB_TPS_IsInitialized(void);
 
 /* ============================================================================
- * Device Management
+ * Device Registration
  * ============================================================================ */
 
 /**
- * @brief Register and initialize a TPS2482 device
+ * Register a TPS2482, write CONFIG + CAL, read both back, compare. If either
+ * register reads back differently from what was written, registration fails
+ * with FEB_TPS_ERR_CONFIG_MISMATCH (the bus is alive enough to ACK but the
+ * device isn't latching the config — usually wiring or address collision).
  *
- * Performs I2C communication to configure the device and verify settings.
+ * MASK / ALERT_LIMIT writes are optional (skipped when the config field is 0)
+ * and are NOT readback-verified.
  *
- * @param config Device configuration
- * @param handle Output: device handle on success
- * @return FEB_TPS_OK on success
+ * @param config Device config (must be non-NULL with valid hi2c, positive
+ *               r_shunt_ohms and i_max_amps).
+ * @param handle Output handle on success.
+ * @return FEB_TPS_OK on success;
+ *         FEB_TPS_ERR_NOT_INIT if FEB_TPS_Init() not called;
+ *         FEB_TPS_ERR_INVALID_ARG for bad arguments;
+ *         FEB_TPS_ERR_MAX_DEVICES if FEB_TPS_MAX_DEVICES already registered;
+ *         FEB_TPS_ERR_I2C on a CONFIG/CAL write failure;
+ *         FEB_TPS_ERR_CONFIG_MISMATCH on readback disagreement.
  */
 FEB_TPS_Status_t FEB_TPS_DeviceRegister(const FEB_TPS_DeviceConfig_t *config,
-                                         FEB_TPS_Handle_t *handle);
-
-/**
- * @brief Unregister a device
- *
- * @param handle Device handle
- */
-void FEB_TPS_DeviceUnregister(FEB_TPS_Handle_t handle);
-
-/**
- * @brief Get device by index (for iteration)
- *
- * @param index Device index (0 to count-1)
- * @return Device handle, or NULL if index out of range
- */
-FEB_TPS_Handle_t FEB_TPS_DeviceGetByIndex(uint8_t index);
-
-/**
- * @brief Get number of registered devices
- */
-uint8_t FEB_TPS_DeviceGetCount(void);
+                                        FEB_TPS_Handle_t *handle);
 
 /* ============================================================================
  * Measurement API
  * ============================================================================ */
 
 /**
- * @brief Poll all measurements from a single device
- *
- * Reads bus voltage, current, shunt voltage, and power registers.
- * Thread-safe when FreeRTOS is enabled.
- *
- * @param handle Device handle
- * @param measurement Output: measurement data
- * @return FEB_TPS_OK on success
+ * Read BUS_VOLT, CURRENT, SHUNT_VOLT, POWER and convert to floats. Stops at
+ * the first I2C error; fields read before the failure remain populated.
  */
 FEB_TPS_Status_t FEB_TPS_Poll(FEB_TPS_Handle_t handle,
-                               FEB_TPS_Measurement_t *measurement);
+                              FEB_TPS_Measurement_t *measurement);
 
 /**
- * @brief Poll and get scaled integer values (for CAN)
- *
- * @param handle Device handle
- * @param scaled Output: scaled measurement data
- * @return FEB_TPS_OK on success
+ * Read all four measurement registers and convert to scaled integers
+ * (mV / mA / uV / mW) suitable for CAN packing.
  */
 FEB_TPS_Status_t FEB_TPS_PollScaled(FEB_TPS_Handle_t handle,
-                                     FEB_TPS_MeasurementScaled_t *scaled);
+                                    FEB_TPS_MeasurementScaled_t *scaled);
 
 /**
- * @brief Poll only bus voltage
- *
- * @param handle Device handle
- * @param voltage_v Output: voltage in Volts
- * @return FEB_TPS_OK on success
- */
-FEB_TPS_Status_t FEB_TPS_PollBusVoltage(FEB_TPS_Handle_t handle, float *voltage_v);
-
-/**
- * @brief Poll only current
- *
- * @param handle Device handle
- * @param current_a Output: current in Amps (signed)
- * @return FEB_TPS_OK on success
- */
-FEB_TPS_Status_t FEB_TPS_PollCurrent(FEB_TPS_Handle_t handle, float *current_a);
-
-/**
- * @brief Poll raw register values (for debugging or custom processing)
- *
- * @param handle Device handle
- * @param bus_v_raw Output: raw bus voltage register (can be NULL)
- * @param current_raw Output: raw current register (sign-corrected) (can be NULL)
- * @param shunt_v_raw Output: raw shunt voltage register (sign-corrected) (can be NULL)
- * @return FEB_TPS_OK on success
+ * Read raw BUS_VOLT, CURRENT, SHUNT_VOLT registers. CURRENT and SHUNT_VOLT
+ * are sign-magnitude converted to signed values. Any output pointer may be
+ * NULL to skip that register's read.
  */
 FEB_TPS_Status_t FEB_TPS_PollRaw(FEB_TPS_Handle_t handle,
-                                  uint16_t *bus_v_raw,
-                                  int16_t *current_raw,
-                                  int16_t *shunt_v_raw);
+                                 uint16_t *bus_v_raw,
+                                 int16_t *current_raw,
+                                 int16_t *shunt_v_raw);
 
 /* ============================================================================
- * Batch Operations (for multi-device boards like LVPDB)
+ * GPIO Control
  * ============================================================================ */
 
 /**
- * @brief Poll all registered devices
- *
- * Thread-safe when FreeRTOS is enabled (single I2C transaction batch).
- *
- * @param measurements Array to store results (must be at least DeviceGetCount() elements)
- * @param count Number of elements in array
- * @return Number of devices successfully polled
- */
-uint8_t FEB_TPS_PollAll(FEB_TPS_Measurement_t *measurements, uint8_t count);
-
-/**
- * @brief Poll all registered devices (scaled values for CAN)
- *
- * @param scaled Array to store results
- * @param count Number of elements in array
- * @return Number of devices successfully polled
- */
-uint8_t FEB_TPS_PollAllScaled(FEB_TPS_MeasurementScaled_t *scaled, uint8_t count);
-
-/**
- * @brief Poll all registered devices (raw values only)
- *
- * This is the most efficient batch operation - only reads raw registers.
- * Current and shunt voltage values are sign-magnitude converted to signed.
- *
- * @param bus_v_raw Array for raw bus voltage values (can be NULL)
- * @param current_raw Array for sign-corrected current values (can be NULL)
- * @param shunt_v_raw Array for sign-corrected shunt voltage values (can be NULL)
- * @param count Number of elements in arrays
- * @param success_mask Output bitmask indicating which device indices succeeded
- *                     (bit N set = device N polled successfully). Can be NULL.
- *                     Note: Limited to 8 devices max (uint8_t type).
- * @return Number of devices successfully polled
- */
-uint8_t FEB_TPS_PollAllRaw(uint16_t *bus_v_raw, int16_t *current_raw,
-                            int16_t *shunt_v_raw, uint8_t count,
-                            uint8_t *success_mask);
-
-/* ============================================================================
- * GPIO Control (Enable/Power-Good/Alert)
- * ============================================================================ */
-
-/**
- * @brief Enable or disable a device via EN pin
- *
- * @param handle Device handle
- * @param enable true to enable, false to disable
- * @return FEB_TPS_OK on success, FEB_TPS_ERR_INVALID_ARG if no EN pin configured
+ * Drive the device's EN pin. Returns FEB_TPS_ERR_INVALID_ARG if no EN GPIO
+ * was configured at registration.
  */
 FEB_TPS_Status_t FEB_TPS_Enable(FEB_TPS_Handle_t handle, bool enable);
 
 /**
- * @brief Read power-good status
- *
- * @param handle Device handle
- * @param pg_state Output: true if power is good
- * @return FEB_TPS_OK on success
+ * Read the device's PG (power-good) pin. *pg_state is true when the pin is
+ * high. Returns FEB_TPS_ERR_INVALID_ARG if no PG GPIO was configured.
  */
 FEB_TPS_Status_t FEB_TPS_ReadPowerGood(FEB_TPS_Handle_t handle, bool *pg_state);
 
-/**
- * @brief Read alert status
- *
- * @param handle Device handle
- * @param alert_active Output: true if alert is active
- * @return FEB_TPS_OK on success
- */
-FEB_TPS_Status_t FEB_TPS_ReadAlert(FEB_TPS_Handle_t handle, bool *alert_active);
-
-/**
- * @brief Enable all registered devices that have EN pins configured
- *
- * @param enable true to enable all, false to disable all
- * @return Number of devices successfully enabled/disabled
- */
-uint8_t FEB_TPS_EnableAll(bool enable);
-
-/**
- * @brief Read power-good status for all devices
- *
- * @param pg_states Array to store results (one per device)
- * @param count Number of elements in array
- * @return Number of devices successfully read
- */
-uint8_t FEB_TPS_ReadAllPowerGood(bool *pg_states, uint8_t count);
-
 /* ============================================================================
- * Configuration/Calibration
+ * Diagnostics & Utilities
  * ============================================================================ */
 
-/**
- * @brief Get device's current LSB value (for manual conversion)
- *
- * @param handle Device handle
- * @return Current LSB in Amps/bit
- */
-float FEB_TPS_GetCurrentLSB(FEB_TPS_Handle_t handle);
-
-/**
- * @brief Get device's calibration register value
- *
- * @param handle Device handle
- * @return Calibration register value
- */
-uint16_t FEB_TPS_GetCalibration(FEB_TPS_Handle_t handle);
-
-/**
- * @brief Read device unique ID
- *
- * @param handle Device handle
- * @param id Output: 16-bit device ID
- * @return FEB_TPS_OK on success
- */
+/** Read the TPS2482 device ID register (0xFF). */
 FEB_TPS_Status_t FEB_TPS_ReadID(FEB_TPS_Handle_t handle, uint16_t *id);
 
-/**
- * @brief Reconfigure a device (change shunt/current settings at runtime)
- *
- * @param handle Device handle
- * @param r_shunt_ohms New shunt resistor value
- * @param i_max_amps New maximum current
- * @return FEB_TPS_OK on success
- */
-FEB_TPS_Status_t FEB_TPS_Reconfigure(FEB_TPS_Handle_t handle,
-                                      float r_shunt_ohms,
-                                      float i_max_amps);
+/** Get the device's computed current LSB in A/bit (i_max / 32768). */
+float FEB_TPS_GetCurrentLSB(FEB_TPS_Handle_t handle);
 
-/* ============================================================================
- * Utility Functions
- * ============================================================================ */
+/** Get the device name passed at registration, or "Unknown" if NULL. */
+const char *FEB_TPS_GetDeviceName(FEB_TPS_Handle_t handle);
 
-/**
- * @brief Attempt I2C bus recovery for all registered devices
- *
- * Resets all unique I2C peripherals used by registered devices to recover
- * from stuck bus conditions. Call this when consecutive poll failures are detected.
- *
- * @return FEB_TPS_OK if all bus recovery attempts succeeded
- * @return FEB_TPS_ERR_NOT_INIT if the library is not initialized OR no devices
- *         are registered with valid I2C handles. Use FEB_TPS_IsInitialized()
- *         and FEB_TPS_DeviceGetCount() to distinguish these cases.
- * @return FEB_TPS_ERR_I2C if one or more I2C bus recovery attempts failed
- */
-FEB_TPS_Status_t FEB_TPS_BusRecovery(void);
-
-/**
- * @brief Convert status code to string
- *
- * @param status Status code
- * @return String representation
- */
+/** Convert a status code to a static string. */
 const char *FEB_TPS_StatusToString(FEB_TPS_Status_t status);
 
 /**
- * @brief Get device name (from config)
- *
- * @param handle Device handle
- * @return Device name, or "Unknown" if not set
- */
-const char *FEB_TPS_GetDeviceName(FEB_TPS_Handle_t handle);
-
-/**
- * Convert a 16-bit sign-magnitude register value into a signed 16-bit integer.
- *
- * Interprets bit 15 as the sign (1 = negative) and bits 14:0 as the magnitude.
- *
- * @param raw Raw 16-bit sign-magnitude register value.
- * @return Signed 16-bit integer with sign applied (negative if input bit 15 is set).
+ * Convert a 16-bit sign-magnitude register value to a signed int16.
+ * Bit 15 = sign, bits 14:0 = magnitude.
  */
 static inline int16_t FEB_TPS_SignMagnitude(uint16_t raw) {
     if (raw & FEB_TPS_SIGN_BIT) {
@@ -520,101 +277,6 @@ static inline int16_t FEB_TPS_SignMagnitude(uint16_t raw) {
     }
     return (int16_t)(raw & FEB_TPS_MAGNITUDE_MASK);
 }
-
-/* ============================================================================
- * Cached Data API (FreeRTOS Mode)
- * ============================================================================
- *
- * In FreeRTOS mode, these functions read from cached data that is updated
- * by the polling task. They are thread-safe and return immediately.
- *
- * In bare-metal mode, these are not available - use FEB_TPS_Poll() directly.
- */
-
-#if FEB_TPS_USE_FREERTOS
-
-/**
- * @brief Get cached voltage from a device
- *
- * Returns immediately from cache. Thread-safe.
- *
- * @param handle Device handle
- * @return Cached voltage in Volts, or 0.0 if data not valid
- */
-float FEB_TPS_GetVoltage(FEB_TPS_Handle_t handle);
-
-/**
- * @brief Get cached current from a device
- *
- * @param handle Device handle
- * @return Cached current in Amps, or 0.0 if data not valid
- */
-float FEB_TPS_GetCurrent(FEB_TPS_Handle_t handle);
-
-/**
- * @brief Get cached power from a device
- *
- * @param handle Device handle
- * @return Cached power in Watts, or 0.0 if data not valid
- */
-float FEB_TPS_GetPower(FEB_TPS_Handle_t handle);
-
-/**
- * @brief Get timestamp of last successful poll
- *
- * @param handle Device handle
- * @return Timestamp in milliseconds, or 0 if never polled
- */
-uint32_t FEB_TPS_GetLastUpdateTime(FEB_TPS_Handle_t handle);
-
-/**
- * @brief Check if cached data is valid
- *
- * @param handle Device handle
- * @return true if data has been successfully polled at least once
- */
-bool FEB_TPS_IsCacheValid(FEB_TPS_Handle_t handle);
-
-/**
- * @brief Get full cached data structure
- *
- * @param handle Device handle
- * @param data Output: cached data (copied under mutex protection)
- * @return FEB_TPS_OK on success
- */
-FEB_TPS_Status_t FEB_TPS_GetCachedData(FEB_TPS_Handle_t handle, FEB_TPS_CachedData_t *data);
-
-/**
- * @brief Poll all devices and update cache
- *
- * Called by the polling task. Can also be called manually to force refresh.
- * Updates cached data for all registered devices.
- */
-void FEB_TPS_PollAllDevices(void);
-
-/* ============================================================================
- * Weak Task Functions (FreeRTOS Mode)
- * ============================================================================
- *
- * Default implementations that can be overridden by user code.
- * Create task in CubeMX .ioc pointing to this entry function.
- *
- * CubeMX Task Configuration:
- *   - Task name: e.g., "TPS_Poll_Task"
- *   - Entry function: FEB_TPS_PollTaskFunc
- *   - Argument: NULL (not used)
- *   - Stack size: User choice (recommend 256+ words)
- *   - Priority: Low priority recommended
- */
-
-/**
- * @brief Weak default polling task entry function
- *
- * @param argument Not used (pass NULL)
- */
-void FEB_TPS_PollTaskFunc(void *argument);
-
-#endif /* FEB_TPS_USE_FREERTOS */
 
 #ifdef __cplusplus
 }

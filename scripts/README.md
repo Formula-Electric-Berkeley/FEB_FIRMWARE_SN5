@@ -9,7 +9,7 @@ Everyday tooling for the FEB_FIRMWARE_SN5 repo. All scripts are POSIX `bash` and
 | [`setup.sh`](setup.sh) | First-time dev environment setup | `./scripts/setup.sh` |
 | [`build.sh`](build.sh) | Build firmware (interactive / batch / release) | `./scripts/build.sh -b BMS` |
 | [`flash.sh`](flash.sh) | Flash an ELF/bin to a board via STM32_Programmer_CLI | `./scripts/flash.sh -b BMS` |
-| [`serial.sh`](serial.sh) | Open the board's USB-VCP serial console at 115200 (tio/picocom/screen/minicom) | `./scripts/serial.sh -b BMS` |
+| [`serial.sh`](serial.sh) | Open the board's USB-VCP serial console at 115200 (tio wrapper; one-shot `--exec`/`--read` modes for verification) | `./scripts/serial.sh -b BMS` |
 | [`format.sh`](format.sh) | Run `clang-format` across `Core/User/` | `./scripts/format.sh --check` |
 | [`setup-hooks.sh`](setup-hooks.sh) | Install / remove pre-commit hooks | `./scripts/setup-hooks.sh` |
 | [`cubemx.sh`](cubemx.sh) | Drive STM32CubeMX headlessly from a `.ioc` | `./scripts/cubemx.sh -g -b BMS` |
@@ -69,19 +69,27 @@ Internally calls [`flash-patcher.py`](flash-patcher.py) to stamp the ELF's `.feb
 ## `serial.sh` — Serial Console Helper
 
 ```bash
-./scripts/serial.sh                           # Interactive: list ports, pick one
-./scripts/serial.sh -b BMS                    # Print BMS boot expectations + interactive
-./scripts/serial.sh -p /dev/cu.usbmodem1234   # Open a specific port
-./scripts/serial.sh --baud 9600 -b DART       # Override baud (default 115200)
-./scripts/serial.sh --list                    # List candidate ports and exit
+./scripts/serial.sh                                  # Board menu → port menu → tio
+./scripts/serial.sh -b BMS                           # Print BMS expectations, then port menu
+./scripts/serial.sh -p /dev/cu.usbmodem1234          # Open a specific port directly
+./scripts/serial.sh -b PCU --read 3                  # Capture 3s of output, print, exit
+./scripts/serial.sh -b BMS --exec "version,uptime"   # Round-trip the console, exit
+./scripts/serial.sh --baud 9600 -b DART              # Override baud (default 115200)
+./scripts/serial.sh --list                           # List candidate ports and exit
 ./scripts/serial.sh -h
 ```
 
-The companion to [`flash.sh`](flash.sh): after programming a board, open the ST-Link VCP (or any USB serial adapter) at 115200 8N1 to actually verify the firmware is alive — `version` / `uptime` / `help` over the feb_io console.
+A thin wrapper around [`tio`](https://github.com/tio/tio) — install with `brew install tio` (macOS) or `apt install tio` (Debian/Ubuntu). The script hard-fails with install instructions if `tio` is not on PATH.
 
-Auto-detects ports on macOS (`/dev/cu.usbmodem*`, `/dev/cu.usbserial*`, `/dev/cu.SLAB_USBtoUART*`) and Linux (`/dev/ttyACM*`, `/dev/ttyUSB*`). Picks the first available terminal program in the order: `tio` → `picocom` → `screen` → `minicom`. Prints the appropriate detach-key hint before launching so you can escape cleanly.
+The companion to [`flash.sh`](flash.sh): after programming a board, run this to actually verify the firmware is alive. `version` / `uptime` / `help` over the feb_io console is what proves a successful flash, not the programmer's exit code.
 
-When invoked with `-b <BOARD>`, prints what to expect on serial for that board (banner timing, smoke-test commands, when to look at CAN instead of UART) — sourced from each board's `CLAUDE.md`.
+Three modes:
+
+- **Interactive** (default) — board menu, then port menu (auto-picked when only one is connected), then `tio`. Prints per-board banner expectations and the `Ctrl-T q` detach hint before opening the line.
+- **`--read <SECONDS>`** — captures everything that comes off the port for N seconds, prints the transcript to stdout, exits. Use this from a script or from Claude to verify a boot banner.
+- **`--exec "<cmd1,cmd2,...>"`** — sends each comma-separated command followed by CR/LF, waits `--settle` seconds (default 2), prints the captured transcript to stdout, exits. Diagnostics go to stderr so `transcript=$(./scripts/serial.sh -p ... --exec "version")` captures only the device's reply. Exit `0` on bytes received, `1` on silence — branch on it to detect a dead board.
+
+Auto-detects ports on macOS (`/dev/cu.usbmodem*`, `/dev/cu.usbserial*`, `/dev/cu.SLAB_USBtoUART*`) and Linux (`/dev/ttyACM*`, `/dev/ttyUSB*`). When invoked with `-b <BOARD>`, prints what to expect on serial for that board (banner timing, smoke-test commands, when to look at CAN instead of UART) — sourced from each board's `CLAUDE.md`.
 
 ## `format.sh` — clang-format
 
