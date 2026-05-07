@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes, UART, UART_TEST]
+        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes_FRONT, Sensor_Nodes_REAR, UART, UART_TEST]
 
     name: Build ${{ matrix.project }}
 
@@ -25,12 +25,25 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Resolve source dir
+        id: resolve
+        run: |
+          case "${{ matrix.project }}" in
+            Sensor_Nodes_FRONT|Sensor_Nodes_REAR)
+              echo "src_dir=Sensor_Nodes" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "src_dir=${{ matrix.project }}" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
       - name: Check buildability
         id: check
         run: |
-          if [ ! -f "${{ matrix.project }}/CMakeLists.txt" ] || [ ! -d "${{ matrix.project }}/Core" ]; then
+          SRC="${{ steps.resolve.outputs.src_dir }}"
+          if [ ! -f "${SRC}/CMakeLists.txt" ] || [ ! -d "${SRC}/Core" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::${{ matrix.project }} skipped -- missing CMakeLists.txt or Core/ directory."
+            echo "::warning::${{ matrix.project }} skipped -- missing ${SRC}/CMakeLists.txt or ${SRC}/Core/."
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
@@ -62,7 +75,7 @@ jobs:
         run: |
           SHORT_SHA="${GITHUB_SHA:0:7}"
           TIMESTAMP=$(TZ=America/Los_Angeles date +"%m-%d-%Y_%H-%M-%S")
-          BUILD_DIR="build/${{ matrix.project }}/${{ matrix.project }}"
+          BUILD_DIR="build/${{ matrix.project }}/${{ steps.resolve.outputs.src_dir }}"
 
           cp "${BUILD_DIR}/${{ matrix.project }}.elf" "${BUILD_DIR}/${{ matrix.project }}-latest-${TIMESTAMP}-${SHORT_SHA}.elf"
           cp "${BUILD_DIR}/${{ matrix.project }}.bin" "${BUILD_DIR}/${{ matrix.project }}-latest-${TIMESTAMP}-${SHORT_SHA}.bin"
@@ -74,9 +87,9 @@ jobs:
         with:
           name: ${{ matrix.project }}-latest
           path: |
-            build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}-latest-*.elf
-            build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}-latest-*.bin
-            build/${{ matrix.project }}/${{ matrix.project }}/${{ matrix.project }}-latest-*.hex
+            build/${{ matrix.project }}/${{ steps.resolve.outputs.src_dir }}/${{ matrix.project }}-latest-*.elf
+            build/${{ matrix.project }}/${{ steps.resolve.outputs.src_dir }}/${{ matrix.project }}-latest-*.bin
+            build/${{ matrix.project }}/${{ steps.resolve.outputs.src_dir }}/${{ matrix.project }}-latest-*.hex
 
   release:
     needs: build
@@ -96,7 +109,7 @@ jobs:
       - name: Organize artifacts by board
         run: |
           mkdir -p release-package
-          for board in BMS PCU DASH LVPDB DART DCU Sensor_Nodes UART UART_TEST; do
+          for board in BMS PCU DASH LVPDB DART DCU Sensor_Nodes_FRONT Sensor_Nodes_REAR UART UART_TEST; do
             mkdir -p "release-package/$board"
             find release-artifacts -name "$board-*" -type f \( -name "*.elf" -o -name "*.bin" -o -name "*.hex" \) -exec cp {} "release-package/$board/" \; 2>/dev/null || true
           done
@@ -188,7 +201,8 @@ jobs:
           - LVPDB (Low Voltage Power Distribution)
           - DART
           - DCU (Data Control Unit)
-          - Sensor_Nodes
+          - Sensor_Nodes_FRONT (front sensor node variant)
+          - Sensor_Nodes_REAR  (rear sensor node variant)
           - UART (UART Communication Board)
           - UART_TEST (UART/Console Test Board)
 

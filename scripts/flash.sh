@@ -12,8 +12,10 @@
 #
 set -e
 
-# Available boards
-BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes" "UART" "UART_TEST")
+# Available boards. Sensor_Nodes ships in two variants (FRONT, REAR); pick
+# the right ELF for the physical node you're flashing. See
+# Sensor_Nodes/Core/User/Inc/FEB_SN_Config.h.
+BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes_FRONT" "Sensor_Nodes_REAR" "UART" "UART_TEST")
 
 # Colors for output
 RED='\033[0;31m'
@@ -161,7 +163,9 @@ get_script_dir() {
     cd "$(dirname "$0")" && pwd
 }
 
-# Get the build directory (for repo mode)
+# Get the build directory (for repo mode). Sensor_Nodes_FRONT/REAR build
+# into the same shared tree as every other board — they're real CMake
+# executable targets, not configure-time switches.
 get_build_dir() {
     echo "$(get_script_dir)/../build/Debug"
 }
@@ -169,10 +173,8 @@ get_build_dir() {
 # Check if running in standalone mode (release package, not in repo)
 is_standalone_mode() {
     local build_dir="$(get_build_dir)"
-    # If build directory doesn't exist, check for firmware files nearby
     if [ ! -d "$build_dir" ]; then
         local script_dir="$(get_script_dir)"
-        # Look for .elf files in script dir or board subdirs
         if ls "$script_dir"/*.elf >/dev/null 2>&1 || ls "$script_dir"/*/*.elf >/dev/null 2>&1; then
             return 0
         fi
@@ -180,18 +182,16 @@ is_standalone_mode() {
     return 1
 }
 
-# Discover firmware file for a board in standalone mode
+# Discover firmware file for a board in standalone mode. The board name
+# carries the variant suffix (e.g., Sensor_Nodes_FRONT) so we glob on it.
 discover_firmware() {
     local board="$1"
     local script_dir="$(get_script_dir)"
     local elf_file=""
 
-    # Check board subdirectory first (e.g., ./BMS/BMS-latest-*.elf)
     if [ -d "$script_dir/$board" ]; then
         elf_file=$(ls "$script_dir/$board"/*.elf 2>/dev/null | head -1)
     fi
-
-    # Fall back to flat structure (e.g., ./BMS-latest-*.elf)
     if [ -z "$elf_file" ]; then
         elf_file=$(ls "$script_dir/$board"-*.elf 2>/dev/null | head -1)
     fi
@@ -199,16 +199,27 @@ discover_firmware() {
     echo "$elf_file"
 }
 
-# Get the .elf file path for a board (works in both repo and standalone mode)
+# Get the .elf file path for a board (works in both repo and standalone mode).
+# Sensor_Nodes_FRONT/REAR ELFs live under the Sensor_Nodes/ subdir — they
+# share the source-level project name even though their target names differ.
 get_elf_path() {
     local board="$1"
 
     if is_standalone_mode; then
         discover_firmware "$board"
-    else
-        local build_dir="$(get_build_dir)"
-        echo "$build_dir/$board/$board.elf"
+        return
     fi
+
+    local build_dir
+    build_dir="$(get_build_dir)"
+    case "$board" in
+        Sensor_Nodes_FRONT|Sensor_Nodes_REAR)
+            echo "$build_dir/Sensor_Nodes/${board}.elf"
+            ;;
+        *)
+            echo "$build_dir/$board/$board.elf"
+            ;;
+    esac
 }
 
 # Check if a board name is valid
@@ -411,12 +422,12 @@ flash_board() {
 
             if [[ $REPLY =~ ^[Yy]$ ]]; then
                 log_info "Building $board..."
-                cmake --build "$(get_build_dir)" --target "$board"
+                "$(get_script_dir)/build.sh" -b "$board"
                 echo ""
                 elf_path=$(get_elf_path "$board")
             else
                 log_error "Cannot flash without firmware. Build first with:"
-                echo "  cmake --build build/Debug --target $board"
+                echo "  ./scripts/build.sh -b $board"
                 return 1
             fi
         fi
@@ -481,7 +492,7 @@ interactive_select() {
         q|Q|quit|exit)
             return 1
             ;;
-        [1-9])
+        [0-9]|[0-9][0-9])
             local index=$((selection - 1))
             if [ $index -ge 0 ] && [ $index -lt ${#BOARDS[@]} ]; then
                 flash_board "${BOARDS[$index]}"
@@ -536,21 +547,28 @@ show_help() {
     echo "Usage: ./scripts/flash.sh [options]"
     echo ""
     echo "Options:"
-    echo "  -b, --board <BOARD>    Flash specified board (BMS, DASH, DART, DCU, LVPDB, PCU, Sensor_Nodes, UART, UART_TEST)"
+    echo "  -b, --board <BOARD>    Flash specified board"
     echo "  -f, --file <PATH>      Flash a specific .elf/.bin/.hex file"
     echo "  -l, --loop             Loop mode: keep prompting for boards to flash"
     echo "      --list-probes      List connected SWD probes"
     echo "  -h, --help             Show this help message"
     echo ""
     echo "Examples:"
-    echo "  ./scripts/flash.sh                    # Interactive menu"
-    echo "  ./scripts/flash.sh -b LVPDB           # Flash LVPDB board"
+    echo "  ./scripts/flash.sh                              # Interactive menu"
+    echo "  ./scripts/flash.sh -b LVPDB                     # Flash LVPDB board"
+    echo "  ./scripts/flash.sh -b Sensor_Nodes_FRONT        # Flash the FRONT sensor node"
+    echo "  ./scripts/flash.sh -b Sensor_Nodes_REAR         # Flash the REAR sensor node"
     echo "  ./scripts/flash.sh -f build/Debug/LVPDB/LVPDB.elf"
-    echo "  ./scripts/flash.sh -l                 # Flash multiple boards"
-    echo "  ./scripts/flash.sh --list-probes      # Check connected programmers"
+    echo "  ./scripts/flash.sh -l                           # Flash multiple boards"
+    echo "  ./scripts/flash.sh --list-probes                # Check connected programmers"
     echo ""
     echo "Available boards:"
     echo "  ${BOARDS[*]}"
+    echo ""
+    echo "Note:"
+    echo "  Sensor_Nodes ships in two variants. ELFs land in:"
+    echo "    build/Debug/Sensor_Nodes/Sensor_Nodes_FRONT.elf"
+    echo "    build/Debug/Sensor_Nodes/Sensor_Nodes_REAR.elf"
     echo ""
     echo "Prerequisites:"
     echo "  - STM32CubeCLT (provides STM32_Programmer_CLI)"

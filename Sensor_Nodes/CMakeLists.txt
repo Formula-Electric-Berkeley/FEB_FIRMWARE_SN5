@@ -16,7 +16,21 @@ endif()
 project(${PROJ_NAME} C CXX ASM)
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-# ── Compile definitions ──────────────────────────────────────────────
+# ── Sensor Node Variants ─────────────────────────────────────────────
+# One source tree, two distinct CMake executables — Sensor_Nodes_FRONT
+# and Sensor_Nodes_REAR. Both variants run on identical hardware; they
+# differ in which CAN frame IDs they publish and (optionally) which
+# sensors are populated. Per-sensor presence flags (FEB_SN_HAS_*) live in
+# Core/User/Inc/FEB_SN_Config.h.
+#
+# Defining the variants as separate targets — instead of a single target
+# whose binary name depends on a cache var — means:
+#   * VS Code's CMake Tools build-target dropdown lists both natively.
+#   * `cmake --build <dir> --target Sensor_Nodes_FRONT` works.
+#   * Both ELFs build into the SAME build directory in a single configure;
+#     no per-variant build directory needed.
+
+# ── Compile definitions (target-agnostic) ────────────────────────────
 add_compile_definitions(
     USE_HAL_DRIVER
     STM32F446xx
@@ -85,49 +99,77 @@ list(APPEND BASE_INCLUDES "${LWGPS_DIR}/include")
 # Fusion library includes
 list(APPEND BASE_INCLUDES "${FUSION_DIR}")
 
-# ══════════════════════════════════════════════════════════════════════
-#  EXECUTABLE TARGET
-# ══════════════════════════════════════════════════════════════════════
-
-add_executable(${PROJECT_NAME} ${ALL_SOURCES})
-
-target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
-
-target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_version feb_can feb_tps)
-
-# Embed version + build provenance (reads VERSION + git, generates feb_build_info.c)
-include(${CMAKE_SOURCE_DIR}/cmake/FEB_Version.cmake)
-feb_apply_version(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR})
-
-# Enable floating-point printf/scanf for newlib-nano
-target_link_options(${PROJECT_NAME} PRIVATE
-    "LINKER:-u,_printf_float"
-    "LINKER:-u,_scanf_float"
-)
-
-# Linker script and map file (project-specific, not in shared toolchain)
+# Linker script (shared between variants)
 file(GLOB LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/STM32F4*_FLASH.ld")
 if(LINKER_SCRIPT)
     list(GET LINKER_SCRIPT 0 LINKER_SCRIPT)
-    target_link_options(${PROJECT_NAME} PRIVATE -T "${LINKER_SCRIPT}")
 endif()
-target_link_options(${PROJECT_NAME} PRIVATE
-    -Wl,-Map=$<TARGET_FILE_DIR:${PROJECT_NAME}>/${PROJECT_NAME}.map
-)
 
-# Remove wrong libob.a dependency
+# Remove wrong libob.a dependency (once, applies to both variant targets)
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
-# ── Post-build: .bin, .hex, size ─────────────────────────────────────
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${PROJECT_NAME}>
-            ${PROJECT_NAME}.bin
-    COMMAND ${CMAKE_OBJCOPY} -O ihex   $<TARGET_FILE:${PROJECT_NAME}>
-            ${PROJECT_NAME}.hex
-    COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${PROJECT_NAME}>
-    COMMENT "Generating .bin/.hex for ${PROJECT_NAME}"
-)
+# Provenance helper (loads feb_apply_version once)
+include(${CMAKE_SOURCE_DIR}/cmake/FEB_Version.cmake)
 
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    ADDITIONAL_CLEAN_FILES "${PROJECT_NAME}.map;${PROJECT_NAME}.bin;${PROJECT_NAME}.hex"
+# ══════════════════════════════════════════════════════════════════════
+#  PER-VARIANT EXECUTABLE TARGETS
+#
+#  feb_define_sensor_node_variant(<variant>) registers an executable named
+#  Sensor_Nodes_<variant> with all the per-target settings (compile def,
+#  linker, version metadata, post-build .bin/.hex/size). To add a third
+#  variant later, define a new FEB_SN_VARIANT_<name> sentinel in
+#  FEB_SN_Config.h and call this function with the new name.
+# ══════════════════════════════════════════════════════════════════════
+
+function(feb_define_sensor_node_variant VARIANT)
+    set(TARGET_NAME "${PROJECT_NAME}_${VARIANT}")
+
+    add_executable(${TARGET_NAME} ${ALL_SOURCES})
+    target_include_directories(${TARGET_NAME} PRIVATE ${BASE_INCLUDES})
+    target_link_libraries(${TARGET_NAME} PRIVATE m feb_io feb_version feb_can feb_tps)
+
+    # The single switch that selects FRONT vs REAR. Both sentinel values
+    # are defined in Core/User/Inc/FEB_SN_Config.h.
+    target_compile_definitions(${TARGET_NAME} PRIVATE
+        FEB_SENSOR_NODE_VARIANT=FEB_SN_VARIANT_${VARIANT}
+    )
+
+    # Embed version + build provenance (per-target so commit/dirty/build
+    # timestamp are stamped into both binaries independently).
+    feb_apply_version(${TARGET_NAME} ${CMAKE_CURRENT_SOURCE_DIR})
+
+    # Enable floating-point printf/scanf for newlib-nano
+    target_link_options(${TARGET_NAME} PRIVATE
+        "LINKER:-u,_printf_float"
+        "LINKER:-u,_scanf_float"
+    )
+
+    if(LINKER_SCRIPT)
+        target_link_options(${TARGET_NAME} PRIVATE -T "${LINKER_SCRIPT}")
+    endif()
+    target_link_options(${TARGET_NAME} PRIVATE
+        -Wl,-Map=$<TARGET_FILE_DIR:${TARGET_NAME}>/${TARGET_NAME}.map
+    )
+
+    # Post-build: .bin, .hex, size
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${TARGET_NAME}>
+                ${TARGET_NAME}.bin
+        COMMAND ${CMAKE_OBJCOPY} -O ihex   $<TARGET_FILE:${TARGET_NAME}>
+                ${TARGET_NAME}.hex
+        COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${TARGET_NAME}>
+        COMMENT "Generating .bin/.hex for ${TARGET_NAME}"
+    )
+
+    set_target_properties(${TARGET_NAME} PROPERTIES
+        ADDITIONAL_CLEAN_FILES "${TARGET_NAME}.map;${TARGET_NAME}.bin;${TARGET_NAME}.hex"
+    )
+endfunction()
+
+feb_define_sensor_node_variant(FRONT)
+feb_define_sensor_node_variant(REAR)
+
+# Convenience aggregate: `cmake --build . --target Sensor_Nodes` builds both.
+add_custom_target(${PROJECT_NAME}
+    DEPENDS ${PROJECT_NAME}_FRONT ${PROJECT_NAME}_REAR
 )

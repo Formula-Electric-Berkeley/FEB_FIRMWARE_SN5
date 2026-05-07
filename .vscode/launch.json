@@ -68,15 +68,26 @@
       "preLaunchTask": "Build PCU"
     },
     {
-      "name": "Debug Sensor_Nodes (ST-Link)",
+      "name": "Debug Sensor_Nodes FRONT (ST-Link)",
       "cwd": "${workspaceFolder}",
-      "executable": "${workspaceFolder}/build/Debug/Sensor_Nodes/Sensor_Nodes.elf",
+      "executable": "${workspaceFolder}/build/Debug/Sensor_Nodes/Sensor_Nodes_FRONT.elf",
       "request": "launch",
       "type": "cortex-debug",
       "servertype": "stlink",
       "device": "STM32F446RE",
       "runToEntryPoint": "main",
-      "preLaunchTask": "Build Sensor_Nodes"
+      "preLaunchTask": "Build Sensor_Nodes (FRONT)"
+    },
+    {
+      "name": "Debug Sensor_Nodes REAR (ST-Link)",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/Debug/Sensor_Nodes/Sensor_Nodes_REAR.elf",
+      "request": "launch",
+      "type": "cortex-debug",
+      "servertype": "stlink",
+      "device": "STM32F446RE",
+      "runToEntryPoint": "main",
+      "preLaunchTask": "Build Sensor_Nodes (REAR)"
     },
     {
       "name": "Debug UART_TEST (ST-Link)",
