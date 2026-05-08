@@ -370,8 +370,12 @@ void FEB_Main_Loop(void)
   DASH_State_t dash_state = FEB_CAN_DASH_GetLastState();
 
   // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
-  FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
-  FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
+  // FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
+  // FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
+
+  HAL_GPIO_WritePin(tps2482_en_ports[4], tps2482_en_pins[4], dash_state.switch1 ? GPIO_PIN_SET : GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(tps2482_en_ports[5], tps2482_en_pins[5], dash_state.switch2 ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
   // LOG_D("dash_state.switch2 (CP_RF): %u\r\n", dash_state.switch2);
 
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
