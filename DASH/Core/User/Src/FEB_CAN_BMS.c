@@ -121,6 +121,13 @@ void FEB_CAN_BMS_Init(void)
   FEB_CAN_RX_Register(&rx_params_bms_voltage);
 }
 
+bool FEB_CAN_BMS_GetLastHVState()
+{
+  return ((bms_data.state == BMS_STATE_DRIVE) || (bms_data.state == BMS_STATE_ENERGIZED) ||
+          (bms_data.state == BMS_STATE_PRECHARGE) || (bms_data.state == BMS_STATE_CHARGER_PRECHARGE) ||
+          (bms_data.state == BMS_STATE_CHARGING) || (bms_data.state == BMS_STATE_BALANCE));
+}
+
 BMS_State_t FEB_CAN_BMS_GetLastState(void)
 {
   return bms_data.state;
