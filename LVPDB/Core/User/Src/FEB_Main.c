@@ -373,8 +373,10 @@ void FEB_Main_Loop(void)
   // FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
   // FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
 
-  HAL_GPIO_WritePin(tps2482_en_ports[4], tps2482_en_pins[4], dash_state.switch2 ? GPIO_PIN_SET : GPIO_PIN_RESET); // AF1_AF2
-  HAL_GPIO_WritePin(tps2482_en_ports[5], tps2482_en_pins[5], dash_state.switch2 ? GPIO_PIN_SET : GPIO_PIN_RESET); // CP_RF
+  HAL_GPIO_WritePin(tps2482_en_ports[4], tps2482_en_pins[4],
+                    dash_state.switch2 ? GPIO_PIN_SET : GPIO_PIN_RESET); // AF1_AF2
+  HAL_GPIO_WritePin(tps2482_en_ports[5], tps2482_en_pins[5],
+                    dash_state.switch2 ? GPIO_PIN_SET : GPIO_PIN_RESET); // CP_RF
 
   // LOG_D("dash_state.switch2 (CP_RF): %u\r\n", dash_state.switch2);
 
