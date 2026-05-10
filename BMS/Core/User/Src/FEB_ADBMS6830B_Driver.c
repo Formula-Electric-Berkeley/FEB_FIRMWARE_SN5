@@ -278,126 +278,85 @@ uint8_t ADBMS6830B_rdcv(uint8_t total_ic, // The number of ICs in the system
                         cell_asic *ic     // Array of the parsed cell codes
 )
 {
-#ifdef READALL
-  uint8_t TxSize = 34;
-  uint8_t cell_data[TxSize * total_ic];
-  transmitCMDR(RDCVALL, cell_data, TxSize * total_ic);
-  for (int icn = 0; icn < total_ic; icn++)
-  {
-    for (int byte = 0; byte < 34; byte++)
-    {
-      if (byte % 2 == 0)
-      {
-        ic[icn].cells.c_codes[byte / 2] = 0;
-        ic[icn].cells.c_codes[byte / 2] |= cell_data[byte + TxSize * icn];
-      }
-      else
-      {
-        ic[icn].cells.c_codes[byte / 2] |= cell_data[byte + TxSize * icn] << 8;
-      }
-    }
-  }
-  // memcpy(&(ic[icn].cells.c_codes),cell_data+icn*TxSize,(size_t)TxSize);
-
-  int16_t c_data_pec = pec10_calc(TxSize - 2, cell_data);
-  int16_t c_rx_pec = *(uint16_t *)(cell_data + TxSize - 2);
-
-  return (c_data_pec != c_rx_pec);
-#else
   uint8_t errorCount = 0;
   uint8_t TxSize = 8;
   uint8_t cell_data[TxSize * total_ic];
   uint16_t codes[6] = {RDCVA, RDCVB, RDCVC, RDCVD, RDCVE, RDCVF};
+
   for (int REGGRP = 0; REGGRP < 6; REGGRP++)
   {
     wakeup_sleep(FEB_NUM_IC);
     transmitCMDR(codes[REGGRP], cell_data, TxSize * total_ic);
     uint8_t bytesInGroup = (REGGRP == 5) ? 2 : 6;
+
     for (int icn = 0; icn < total_ic; icn++)
     {
+      uint8_t *ic_data = cell_data + icn * TxSize;
+
       for (int byte = 0; byte < bytesInGroup; byte++)
       {
+        uint8_t code_idx = byte / 2 + 3 * REGGRP;
         if (byte % 2 == 0)
-        {
-          ic[icn].cells.c_codes[byte / 2 + 3 * REGGRP] = 0;
-          ic[icn].cells.c_codes[byte / 2 + 3 * REGGRP] |= cell_data[byte + TxSize * icn];
-        }
+          ic[icn].cells.c_codes[code_idx] = ic_data[byte];
         else
-        {
-          ic[icn].cells.c_codes[byte / 2 + 3 * REGGRP] |= cell_data[byte + TxSize * icn] << 8;
-        }
+          ic[icn].cells.c_codes[code_idx] |= (uint16_t)ic_data[byte] << 8;
       }
+
+      // Per-IC PEC: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
+      // pec_match[REGGRP] is shared with rdsv (single member per group);
+      // after rdcv+rdsv run in sequence in FEB_ADBMS6830B.c, the flag
+      // reflects rdsv's verdict and is read by the consumer at line 174.
+      uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
+      uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+      bool mismatch = (calc_pec != rx_pec);
+      ic[icn].cells.pec_match[REGGRP] = mismatch ? 1 : 0;
+      if (mismatch)
+        errorCount++;
     }
-    int16_t c_data_pec = pec10_calc(TxSize - 2, cell_data);
-    int16_t c_rx_pec = *(uint16_t *)(cell_data + TxSize - 2);
-    if (c_data_pec != c_rx_pec)
-      errorCount++;
   }
   return errorCount;
-#endif
 }
 
 uint8_t ADBMS6830B_rdsv(uint8_t total_ic, // The number of ICs in the system
                         cell_asic *ic     // Array of the parsed cell codes
 )
 {
-#ifdef READALL
-  uint8_t TxSize = 34;
-  uint8_t cell_data[TxSize * total_ic];
-  transmitCMDR(RDSALL, cell_data, TxSize * total_ic);
-  for (int icn = 0; icn < total_ic; icn++)
-  {
-    for (int byte = 0; byte < 34; byte++)
-    {
-      if (byte % 2 == 0)
-      {
-        ic[icn].cells.s_codes[byte / 2] = 0;
-        ic[icn].cells.s_codes[byte / 2] |= cell_data[byte + TxSize * icn];
-      }
-      else
-      {
-        ic[icn].cells.s_codes[byte / 2] |= cell_data[byte + TxSize * icn] << 8;
-      }
-    }
-  }
-  // memcpy(&(ic[icn].cells.s_codes),cell_data+icn*TxSize,(size_t)34);
-  uint16_t data_pec = pec10_calc(32, cell_data);
-  uint16_t rx_pec = *(uint16_t *)(cell_data + 32);
-
-  return (data_pec != rx_pec);
-#else
   uint8_t errorCount = 0;
   uint8_t TxSize = 8;
   uint8_t cell_data[TxSize * total_ic];
   uint16_t codes[6] = {RDSVA, RDSVB, RDSVC, RDSVD, RDSVE, RDSVF};
+
   for (int REGGRP = 0; REGGRP < 6; REGGRP++)
   {
     wakeup_sleep(FEB_NUM_IC);
     transmitCMDR(codes[REGGRP], cell_data, TxSize * total_ic);
-
     uint8_t bytesInGroup = (REGGRP == 5) ? 2 : 6;
+
     for (int icn = 0; icn < total_ic; icn++)
     {
+      uint8_t *ic_data = cell_data + icn * TxSize;
+
       for (int byte = 0; byte < bytesInGroup; byte++)
       {
+        uint8_t code_idx = byte / 2 + 3 * REGGRP;
         if (byte % 2 == 0)
-        {
-          ic[icn].cells.s_codes[byte / 2 + 3 * REGGRP] = 0;
-          ic[icn].cells.s_codes[byte / 2 + 3 * REGGRP] |= cell_data[byte + TxSize * icn];
-        }
+          ic[icn].cells.s_codes[code_idx] = ic_data[byte];
         else
-        {
-          ic[icn].cells.s_codes[byte / 2 + 3 * REGGRP] |= cell_data[byte + TxSize * icn] << 8;
-        }
+          ic[icn].cells.s_codes[code_idx] |= (uint16_t)ic_data[byte] << 8;
       }
+
+      // Per-IC PEC: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
+      // Note: cells.pec_match[] is shared with rdcv. Since rdsv runs after
+      // rdcv (FEB_ADBMS6830B.c:146-147), the flag reflects this read.
+      uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
+      uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+      bool mismatch = (calc_pec != rx_pec);
+      ic[icn].cells.pec_match[REGGRP] = mismatch ? 1 : 0;
+      if (mismatch)
+        errorCount++;
     }
-    int16_t c_data_pec = pec10_calc(TxSize - 2, cell_data);
-    int16_t c_rx_pec = *(uint16_t *)(cell_data + TxSize - 2);
-    if (c_data_pec != c_rx_pec)
-      errorCount++;
   }
   return errorCount;
-#endif
 }
 // ******************************** Temperature ********************************
 void ADBMS6830B_wrALL(uint8_t total_ic, // The number of ICs being written to
