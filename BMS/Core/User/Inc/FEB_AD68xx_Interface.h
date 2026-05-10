@@ -27,15 +27,6 @@ uint16_t pec15_calc(uint8_t len,  //!< The length of the data array being passed
   */
 uint16_t Pec10_calc(bool bIsRxCmd, uint8_t nLength, uint8_t *pDataBuf);
 
-/*!
- Calculates and returns the CRC10 (legacy wrapper, assumes RX command)
- @deprecated Use Pec10_calc() instead
- @returns The calculated pec10 as an unsigned int
-  */
-uint16_t pec10_calc(uint8_t len,  //!< The length of the data array being passed to the function
-                    uint8_t *data //!< The array of data that the PEC will be generated from
-);
-
 //***************** Read and Write to SPI ****************
 /*!
  Sends a command to the BMS IC. This code will calculate the PEC code for the transmitted command
