@@ -534,12 +534,20 @@ void ADBMS6830B_rdpwmga(uint8_t total_ic, // The number of ICs being written to
   cell_data = (uint8_t *)pvPortMalloc(TxSize * total_ic * sizeof(uint8_t));
   if (cell_data == NULL)
   {
-    return; // Memory allocation failed
+    for (int bank = 0; bank < total_ic; bank++)
+      ic[bank].pwm.rx_pec_match = -1;
+    return;
   }
   transmitCMDR(RDPWMA, cell_data, 8 * total_ic);
   for (int bank = 0; bank < total_ic; bank++)
   {
-    memcpy(&(ic[bank].pwm.rx_data), cell_data + bank * TxSize, (size_t)8);
+    uint8_t *ic_data = cell_data + bank * TxSize;
+    memcpy(&(ic[bank].pwm.rx_data), ic_data, (size_t)8);
+
+    // Per-IC PEC: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
+    uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
+    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    ic[bank].pwm.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
   vPortFree(cell_data);
 }
@@ -572,12 +580,20 @@ void ADBMS6830B_rdpwmgb(uint8_t total_ic, // The number of ICs being written to
   cell_data = (uint8_t *)pvPortMalloc(TxSize * total_ic * sizeof(uint8_t));
   if (cell_data == NULL)
   {
-    return; // Memory allocation failed
+    for (int bank = 0; bank < total_ic; bank++)
+      ic[bank].pwmb.rx_pec_match = -1;
+    return;
   }
   transmitCMDR(RDPWMB, cell_data, 8 * total_ic);
   for (int bank = 0; bank < total_ic; bank++)
   {
-    memcpy(&(ic[bank].pwmb.rx_data), cell_data + bank * TxSize, (size_t)8);
+    uint8_t *ic_data = cell_data + bank * TxSize;
+    memcpy(&(ic[bank].pwmb.rx_data), ic_data, (size_t)8);
+
+    // Per-IC PEC: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
+    uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
+    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    ic[bank].pwmb.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
   vPortFree(cell_data);
 }
@@ -742,16 +758,11 @@ void ADBMS6830B_check_pec(uint8_t total_ic, // Number of ICs in the system
     }
     break;
 
-  case STAT:
-    for (int current_ic = 0; current_ic < total_ic; current_ic++)
-    {
-      for (int i = 0; i < ic[0].ic_reg.num_stat_reg - 1; i++)
-      {
-        ic[current_ic].crc_count.pec_count = ic[current_ic].crc_count.pec_count + ic[current_ic].stat.pec_match[i];
-        ic[current_ic].crc_count.stat_pec[i] = ic[current_ic].crc_count.stat_pec[i] + ic[current_ic].stat.pec_match[i];
-      }
-    }
-    break;
+    /* No STAT case: there is no ADBMS6830B_rdstat() in this firmware, so
+     * stat.pec_match[] is never written. Reading it here would aggregate
+     * BSS-zero garbage. If a status read is added later, restore a STAT
+     * branch that mirrors AUX above. crc_count.stat_pec[] is still
+     * cleared by reset_crc_count() so the field stays at a sane 0. */
 
   default:
     break;
