@@ -467,9 +467,10 @@ void ADBMS6830B_rdcfga(uint8_t total_ic, // The number of ICs being written to
     memcpy(&(ic[bank].configa.rx_data), ic_data, 6);
 
     /* Calculate PEC for this IC's 6 data bytes */
-    /* PEC is big-endian: ic_data[6] is MSB, ic_data[7] is LSB */
+    /* On-wire layout: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
+     * Mask 0x03 strips the command counter so only PEC[9:0] is compared. */
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
-    uint16_t rx_pec = ((uint16_t)ic_data[6] << 8) | ic_data[7];
+    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
     ic[bank].configa.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
 
@@ -522,9 +523,10 @@ void ADBMS6830B_rdcfgb(uint8_t total_ic, // The number of ICs being written to
     memcpy(&(ic[bank].configb.rx_data), ic_data, 6);
 
     /* Calculate PEC for this IC's 6 data bytes */
-    /* PEC is big-endian: ic_data[6] is MSB, ic_data[7] is LSB */
+    /* On-wire layout: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
+     * Mask 0x03 strips the command counter so only PEC[9:0] is compared. */
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
-    uint16_t rx_pec = ((uint16_t)ic_data[6] << 8) | ic_data[7];
+    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
     ic[bank].configb.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
 
@@ -648,11 +650,12 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
     uint8_t *ic_data = cell_data + i * NUM_RX_BYT;
     memcpy(&ic[i].aux.a_codes[0], ic_data, 6);
 
-    // PEC is big-endian: ic_data[6] is MSB, ic_data[7] is LSB (same layout
-    // as rdcfga/rdcfgb/rdsid). Record per-IC match so downstream consumers
-    // like check_and_report_pec_errors() can drive redundancy failover.
+    // On-wire layout: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
+    // Mask 0x03 strips the command counter so only PEC[9:0] is compared.
+    // Record per-IC match so downstream consumers like
+    // check_and_report_pec_errors() can drive redundancy failover.
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
-    uint16_t rx_pec = ((uint16_t)ic_data[6] << 8) | ic_data[7];
+    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
     bool mismatch = (calc_pec != rx_pec);
     ic[i].aux.pec_match[0] = mismatch ? 1 : 0;
     if (mismatch)
@@ -667,7 +670,7 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
     memcpy(&ic[i].aux.a_codes[3], ic_data, 6);
 
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
-    uint16_t rx_pec = ((uint16_t)ic_data[6] << 8) | ic_data[7];
+    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
     bool mismatch = (calc_pec != rx_pec);
     ic[i].aux.pec_match[1] = mismatch ? 1 : 0;
     if (mismatch)
@@ -706,9 +709,10 @@ uint8_t ADBMS6830B_rdsid(uint8_t total_ic, // The number of ICs in the system
     memcpy(ic[i].sid, ic_data, 6);
 
     // Validate PEC for this IC (6 data bytes + 2 PEC bytes)
-    // PEC is big-endian: ic_data[6] is MSB, ic_data[7] is LSB
+    // On-wire layout: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
+    // Mask 0x03 strips the command counter so only PEC[9:0] is compared.
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
-    uint16_t rx_pec = ((uint16_t)ic_data[6] << 8) | ic_data[7];
+    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
     if (calc_pec != rx_pec)
     {
       pec_error++;
