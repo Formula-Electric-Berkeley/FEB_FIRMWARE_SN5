@@ -27,14 +27,17 @@ uint16_t pec15_calc(uint8_t len,  //!< The length of the data array being passed
   */
 uint16_t Pec10_calc(bool bIsRxCmd, uint8_t nLength, uint8_t *pDataBuf);
 
-/*!
- Calculates and returns the CRC10 (legacy wrapper, assumes RX command)
- @deprecated Use Pec10_calc() instead
- @returns The calculated pec10 as an unsigned int
-  */
-uint16_t pec10_calc(uint8_t len,  //!< The length of the data array being passed to the function
-                    uint8_t *data //!< The array of data that the PEC will be generated from
-);
+//***************** Command-counter tracking ****************
+// The chip increments its 6-bit command counter on every valid command.
+// The host mirrors it: ADBMS_CC_Advance() is called automatically by the
+// command emitters (cmd_68 / cmd_68_r / write_68); ADBMS_CC_Check(observed)
+// is called by the per-IC PEC validation blocks, with observed extracted
+// as ((rx_byte_6 >> 2) & 0x3F). Mismatches indicate dropped commands or
+// chip resets and are rate-limited via printf to avoid log spam.
+void ADBMS_CC_Advance(void);
+void ADBMS_CC_Reset(void);
+void ADBMS_CC_Check(uint8_t observed);
+uint16_t ADBMS_CC_GetMismatchCount(void);
 
 //***************** Read and Write to SPI ****************
 /*!
