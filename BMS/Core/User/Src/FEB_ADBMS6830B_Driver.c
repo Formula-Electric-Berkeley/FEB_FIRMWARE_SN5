@@ -308,6 +308,8 @@ uint8_t ADBMS6830B_rdcv(uint8_t total_ic, // The number of ICs in the system
       // reflects rdsv's verdict and is read by the consumer at line 174.
       uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
       uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+      ADBMS_CC_Check((uint8_t)((ic_data[6] >> 2) & 0x3F));
+      ADBMS_CC_Check((uint8_t)((ic_data[6] >> 2) & 0x3F));
       bool mismatch = (calc_pec != rx_pec);
       ic[icn].cells.pec_match[REGGRP] = mismatch ? 1 : 0;
       if (mismatch)
@@ -350,6 +352,8 @@ uint8_t ADBMS6830B_rdsv(uint8_t total_ic, // The number of ICs in the system
       // rdcv (FEB_ADBMS6830B.c:146-147), the flag reflects this read.
       uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
       uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+      ADBMS_CC_Check((uint8_t)((ic_data[6] >> 2) & 0x3F));
+      ADBMS_CC_Check((uint8_t)((ic_data[6] >> 2) & 0x3F));
       bool mismatch = (calc_pec != rx_pec);
       ic[icn].cells.pec_match[REGGRP] = mismatch ? 1 : 0;
       if (mismatch)
@@ -430,6 +434,7 @@ void ADBMS6830B_rdcfga(uint8_t total_ic, // The number of ICs being written to
      * Mask 0x03 strips the command counter so only PEC[9:0] is compared. */
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    ADBMS_CC_Check((uint8_t)((ic_data[6] >> 2) & 0x3F));
     ic[bank].configa.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
 
@@ -486,6 +491,7 @@ void ADBMS6830B_rdcfgb(uint8_t total_ic, // The number of ICs being written to
      * Mask 0x03 strips the command counter so only PEC[9:0] is compared. */
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    ADBMS_CC_Check((uint8_t)((ic_data[6] >> 2) & 0x3F));
     ic[bank].configb.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
 
@@ -547,6 +553,7 @@ void ADBMS6830B_rdpwmga(uint8_t total_ic, // The number of ICs being written to
     // Per-IC PEC: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    ADBMS_CC_Check((uint8_t)((ic_data[6] >> 2) & 0x3F));
     ic[bank].pwm.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
   vPortFree(cell_data);
@@ -593,6 +600,7 @@ void ADBMS6830B_rdpwmgb(uint8_t total_ic, // The number of ICs being written to
     // Per-IC PEC: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    ADBMS_CC_Check((uint8_t)((ic_data[6] >> 2) & 0x3F));
     ic[bank].pwmb.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
   vPortFree(cell_data);
@@ -631,6 +639,7 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
     // check_and_report_pec_errors() can drive redundancy failover.
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    ADBMS_CC_Check((uint8_t)((ic_data[6] >> 2) & 0x3F));
     bool mismatch = (calc_pec != rx_pec);
     ic[i].aux.pec_match[0] = mismatch ? 1 : 0;
     if (mismatch)
@@ -646,6 +655,7 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
 
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    ADBMS_CC_Check((uint8_t)((ic_data[6] >> 2) & 0x3F));
     bool mismatch = (calc_pec != rx_pec);
     ic[i].aux.pec_match[1] = mismatch ? 1 : 0;
     if (mismatch)
@@ -688,6 +698,7 @@ uint8_t ADBMS6830B_rdsid(uint8_t total_ic, // The number of ICs in the system
     // Mask 0x03 strips the command counter so only PEC[9:0] is compared.
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    ADBMS_CC_Check((uint8_t)((ic_data[6] >> 2) & 0x3F));
     if (calc_pec != rx_pec)
     {
       pec_error++;

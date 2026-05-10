@@ -3,10 +3,56 @@
 #include "FEB_AD68xx_Interface.h"
 #include "FEB_HW.h"
 #include "FEB_Const.h"
+#include "feb_log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
+
+// ************************* Command Counter (host-side) ************************
+// The ADBMS6830 chips increment a 6-bit command counter on every valid
+// command they receive. The CC is echoed in the upper 6 bits of byte 6 of
+// every register-read response. Keeping a host-side mirror lets us detect
+// dropped commands or chip resets that PEC-validation alone would miss.
+//
+// Single counter for the daisy chain: every IC sees the same commands, so
+// a per-IC counter would just be N copies of the same number.
+static uint8_t s_expected_cc = 0;
+static uint16_t s_cc_mismatch_count = 0;
+
+void ADBMS_CC_Advance(void)
+{
+  s_expected_cc = (uint8_t)((s_expected_cc + 1u) & 0x3Fu);
+}
+
+void ADBMS_CC_Reset(void)
+{
+  s_expected_cc = 0;
+  s_cc_mismatch_count = 0;
+}
+
+void ADBMS_CC_Check(uint8_t observed)
+{
+  observed &= 0x3F;
+  if (observed == s_expected_cc)
+    return;
+
+  if (s_cc_mismatch_count != 0xFFFF)
+    s_cc_mismatch_count++;
+
+  // Rate-limit logging: log on the first mismatch and then every 64th.
+  if ((s_cc_mismatch_count & 0x3F) == 1)
+  {
+    LOG_D(TAG_BMS, "CC drift: expected=%u observed=%u count=%u", (unsigned)s_expected_cc, (unsigned)observed,
+          (unsigned)s_cc_mismatch_count);
+  }
+  s_expected_cc = observed; // resync so we don't keep flagging the same drift
+}
+
+uint16_t ADBMS_CC_GetMismatchCount(void)
+{
+  return s_cc_mismatch_count;
+}
 
 // ******************************** CRC TABLES ********************************
 const uint16_t crc15Table[256] = {
@@ -117,6 +163,7 @@ void cmd_68(uint8_t tx_cmd[2])
   FEB_cs_low();
   FEB_spi_write_array(4, cmd);
   FEB_cs_high();
+  ADBMS_CC_Advance();
 }
 
 void cmd_68_r(uint8_t tx_cmd[2], uint8_t *data, uint8_t len)
@@ -133,6 +180,7 @@ void cmd_68_r(uint8_t tx_cmd[2], uint8_t *data, uint8_t len)
   FEB_cs_low();
   FEB_spi_write_read(cmd, 4, data, len);
   FEB_cs_high();
+  ADBMS_CC_Advance();
 
   // Debug: print raw received bytes (commented out to reduce log spam)
   // printf("[SPI] TX: %02X %02X, RX:", tx_cmd[0], tx_cmd[1]);
@@ -193,6 +241,7 @@ void write_68(uint8_t total_ic,  // Number of ICs to be written to
   FEB_cs_low();
   FEB_spi_write_array(CMD_LEN, cmd);
   FEB_cs_high();
+  ADBMS_CC_Advance();
   // taskEXIT_CRITICAL();
 
   vPortFree(cmd);
