@@ -34,7 +34,7 @@
         "-DCMAKE_COMMAND=cube-cmake"
     ],
     "[c]": {
-        "editor.defaultFormatter": "ms-vscode.cpptools",
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
         "editor.formatOnSave": true
     },
     "[cpp]": {

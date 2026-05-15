@@ -1,6 +1,8 @@
 #include "FEB_CAN_BMS.h"
+#include "feb_can.h"
 #include "feb_log.h"
 #include <stdbool.h>
+#include "FEB_CAN_Diagnostics.h"
 
 /* Timeout for BMS CAN communication (ms) */
 #define BMS_STATE_TIMEOUT_MS 500
@@ -126,11 +128,16 @@ static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
 
 void FEB_CAN_HEARTBEAT_Transmit(void)
 {
-  uint8_t data[8] = {0};
-  data[0] = 1;
+  APPS_DataTypeDef apps_data;
+  FEB_ADC_GetAPPSData(&apps_data);
 
-  FEB_CAN_Status_t status =
-      FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_PCU_HEARTBEAT_FRAME_ID, FEB_CAN_ID_STD, data, 1);
+  uint8_t tx_data[FEB_CAN_PCU_HEARTBEAT_LENGTH] = {0};
+  feb_can_pcu_heartbeat_pack(tx_data, &((struct feb_can_pcu_heartbeat_t){.error0 = !apps_data.plausible}),
+                             sizeof(tx_data));
+
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_PCU_HEARTBEAT_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                                            FEB_CAN_PCU_HEARTBEAT_LENGTH);
+
   if (status != FEB_CAN_OK)
   {
     LOG_E(TAG_BMS, "Failed to transmit heartbeat: %s", FEB_CAN_StatusToString(status));

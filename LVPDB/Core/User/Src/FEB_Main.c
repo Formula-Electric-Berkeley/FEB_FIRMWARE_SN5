@@ -2,8 +2,10 @@
 #include "FEB_CAN_PingPong.h"
 #include "FEB_CAN_TPS.h"
 #include "FEB_LVPDB_Commands.h"
+#include "feb_can.h"
 #include "feb_can_lib.h"
 #include "feb_console.h"
+#include "feb_log.h"
 #include "feb_tps.h"
 #include "main.h"
 #include <stdint.h>
@@ -29,6 +31,7 @@ static void FEB_Variable_Conversion(void);
 
 // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
 FEB_TPS_Handle_t tps_handles[NUM_TPS2482];
+static struct feb_can_lvpdb_heartbeat_t lvpdb_heartbeat_msg;
 
 // Device configurations consumed by FEB_TPS_Init_Devices
 static const struct
@@ -180,6 +183,7 @@ static bool FEB_TPS_Init_Devices(void)
   return ok_count > 0;
 }
 
+static bool tps_power_good[NUM_TPS2482];
 /**
  * Verify TPS devices' power-good signals and report LV failure.
  *
@@ -191,8 +195,10 @@ static bool FEB_TPS_Check_Power_Good(void)
 
   for (uint8_t i = 0; i < NUM_TPS2482; i++)
   {
+    tps_power_good[i] = true;
     if (tps_handles[i] == NULL)
     {
+      tps_power_good[i] = false;
       continue;
     }
     bool pg_state = false;
@@ -200,6 +206,7 @@ static bool FEB_TPS_Check_Power_Good(void)
     if (status != FEB_TPS_OK)
     {
       LOG_W(TAG_MAIN, "ReadPowerGood failed for %s: %s", tps_device_configs[i].name, FEB_TPS_StatusToString(status));
+      tps_power_good[i] = false;
       all_good = false;
       continue;
     }
@@ -316,6 +323,7 @@ void FEB_Main_Setup(void)
 }
 
 #define MAIN_LOOP_POLL_INTERVAL_MS 50
+static bool tps_polled_success[NUM_TPS2482];
 
 /**
  * Main periodic loop. Polls each TPS via its own handle (position-aligned with
@@ -349,6 +357,7 @@ void FEB_Main_Loop(void)
         tps2482_bus_voltage_raw[i] = bv;
         tps2482_current_raw[i] = cur;
         tps2482_shunt_voltage_raw[i] = sv;
+        tps_polled_success[i] = true;
         polled++;
       }
       else
@@ -356,28 +365,22 @@ void FEB_Main_Loop(void)
         tps2482_bus_voltage_raw[i] = 0;
         tps2482_current_raw[i] = 0;
         tps2482_shunt_voltage_raw[i] = 0;
+        tps_polled_success[i] = false;
       }
     }
     if (polled < tps_registered_count)
     {
       LOG_W(TAG_MAIN, "TPS poll: %u/%u registered devices succeeded", (unsigned)polled, (unsigned)tps_registered_count);
     }
-
-    FEB_Variable_Conversion();
   }
 
   DASH_State_t dash_state = FEB_CAN_DASH_GetLastState();
 
   // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
-  // FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
-  // FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
+  FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
+  FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
 
-  HAL_GPIO_WritePin(tps2482_en_ports[4], tps2482_en_pins[4],
-                    dash_state.switch2 ? GPIO_PIN_SET : GPIO_PIN_RESET); // AF1_AF2
-  HAL_GPIO_WritePin(tps2482_en_ports[5], tps2482_en_pins[5],
-                    dash_state.switch2 ? GPIO_PIN_SET : GPIO_PIN_RESET); // CP_RF
-
-  // LOG_D("dash_state.switch2 (CP_RF): %u\r\n", dash_state.switch2);
+  // FEB_TPS_Enable(tps_handles[3], true); // BM_L
 
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
 }
@@ -403,13 +406,49 @@ void FEB_1ms_Callback(void)
   // Process CAN TPS reading every 100ms
   static uint16_t tps_divider = 0;
   tps_divider++;
-  if (tps_divider >= 100)
+  if (tps_divider >= 99)
   {
     tps_divider = 0;
     if (tps_init_success)
     {
-      FEB_CAN_TPS_Tick(tps2482_current_raw, tps2482_bus_voltage_raw, NUM_TPS2482);
+      FEB_Variable_Conversion();
+      FEB_CAN_TPS_Tick(tps2482_current, tps2482_bus_voltage, NUM_TPS2482);
     }
+  }
+
+  static uint16_t heartbeat_divider = 0;
+  heartbeat_divider++;
+  if (heartbeat_divider >=
+      67) // not 100ms to offset message from other two statuses (ran into issue where mailbox got full)
+  {
+    heartbeat_divider = 0;
+
+    lvpdb_heartbeat_msg.tps_init_failed = !tps_init_success;
+
+    lvpdb_heartbeat_msg.tps_lv_poll_failed = !tps_polled_success[0];
+    lvpdb_heartbeat_msg.tps_sh_poll_failed = !tps_polled_success[1];
+    lvpdb_heartbeat_msg.tps_lt_poll_failed = !tps_polled_success[2];
+    lvpdb_heartbeat_msg.tps_bm_l_poll_failed = !tps_polled_success[3];
+    lvpdb_heartbeat_msg.tps_sm_poll_failed = !tps_polled_success[4];
+    lvpdb_heartbeat_msg.tps_af1_af2_poll_failed = !tps_polled_success[5];
+    lvpdb_heartbeat_msg.tps_cp_rf_poll_failed = !tps_polled_success[6];
+
+    lvpdb_heartbeat_msg.tps_lv_power_not_good = !tps_power_good[0];
+    lvpdb_heartbeat_msg.tps_sh_power_not_good = !tps_power_good[1];
+    lvpdb_heartbeat_msg.tps_lt_power_not_good = !tps_power_good[2];
+    lvpdb_heartbeat_msg.tps_bm_l_power_not_good = !tps_power_good[3];
+    lvpdb_heartbeat_msg.tps_sm_power_not_good = !tps_power_good[4];
+    lvpdb_heartbeat_msg.tps_af1_af2_power_not_good = !tps_power_good[5];
+    lvpdb_heartbeat_msg.tps_cp_rf_power_not_good = !tps_power_good[6];
+
+    lvpdb_heartbeat_msg.dash_state_stale = !FEB_CAN_DASH_IsDataFresh(250);
+
+    uint8_t tx_data[FEB_CAN_LVPDB_HEARTBEAT_LENGTH];
+    memset(tx_data, 0x00, sizeof(tx_data));
+    feb_can_lvpdb_heartbeat_pack(tx_data, &lvpdb_heartbeat_msg, sizeof(tx_data));
+
+    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_LVPDB_HEARTBEAT_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                    FEB_CAN_LVPDB_HEARTBEAT_LENGTH);
   }
 }
 

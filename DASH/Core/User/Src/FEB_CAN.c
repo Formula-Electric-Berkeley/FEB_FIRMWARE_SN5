@@ -21,11 +21,15 @@
 #include "feb_can_lib.h"
 #include "cmsis_os2.h"
 #include "FreeRTOS.h"
+#include "feb_log.h"
 #include "task.h"
 #include "feb_console.h"
 #include "main.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
+#include "FEB_CAN_LVPDB.h"
+#include "FEB_CAN_PCU.h"
+#include "FEB_CAN_BMS.h"
 
 /* ========================== External HAL handles ========================== */
 extern CAN_HandleTypeDef hcan1;
@@ -55,6 +59,7 @@ static void DASH_CAN_RxCallback(FEB_CAN_Instance_t instance, uint32_t can_id, FE
   (void)user_data;
   (void)can_id;
   (void)length;
+  // LOG_D("CAN RX", "%X %X %X %X %X %X %X %X", data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
 }
 
 /* ========================== CAN Initialization ========================== */
@@ -142,9 +147,9 @@ void StartDASHTaskRx(void *argument)
   /* CAN init MUST occur after scheduler start */
   DASH_CAN_Init();
   FEB_CAN_PingPong_Init();
-  // FEB_CAN_BMS_Init();
-  // FEB_CAN_PCU_Init();
-  // FEB_CAN_LVPDB_Init();
+  FEB_CAN_BMS_Init();
+  FEB_CAN_PCU_Init();
+  FEB_CAN_LVPDB_Init();
 
   /* Signal that CAN is ready for state publishing */
   FEB_CAN_State_SetReady();

@@ -5,7 +5,6 @@
 
 #include "FEB_UI_Helpers.h"
 #include "FEB_CAN_PCU.h"
-#include "FEB_RTD.h"
 #include "UI_Elements/FEB_UI_BMS_State.h"
 #include "lvgl.h"
 #include "src/core/lv_obj_pos.h"
@@ -48,13 +47,8 @@ void ui_update(void)
   fake_torque += 1;
 
   FEB_UI_Update_Torque(FEB_CAN_PCU_GetLastTorque());
-
-  FEB_IO_Update_GPIO();
   FEB_UI_Update_IO_States();
-
   FEB_UI_Update_BMS_State();
-
-  FEB_State_Update_RTD();
 
   lv_timer_handler();
 }

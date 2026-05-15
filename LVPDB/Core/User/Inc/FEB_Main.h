@@ -2,7 +2,6 @@
 #define INC_FEB__MAIN_H_
 
 #include "FEB_CAN.h"
-#include "FEB_CAN_Heartbeat.h"
 #include "feb_tps.h"
 #include "feb_console.h"
 #include "feb_uart.h"

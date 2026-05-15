@@ -51,7 +51,6 @@ void FEB_CAN_DASH_Init(void)
       .can_id = FEB_CAN_DASH_STATE_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,
-      .mask = 0,
       .fifo = FEB_CAN_FIFO_0,
       .callback = rx_callback,
       .user_data = NULL,
