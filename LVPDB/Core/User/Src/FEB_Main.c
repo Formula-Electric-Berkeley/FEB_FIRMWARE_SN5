@@ -372,6 +372,8 @@ void FEB_Main_Loop(void)
     {
       LOG_W(TAG_MAIN, "TPS poll: %u/%u registered devices succeeded", (unsigned)polled, (unsigned)tps_registered_count);
     }
+
+    FEB_Variable_Conversion();
   }
 
   DASH_State_t dash_state = FEB_CAN_DASH_GetLastState();
