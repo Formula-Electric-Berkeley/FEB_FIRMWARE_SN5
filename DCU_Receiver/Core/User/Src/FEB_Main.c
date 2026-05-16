@@ -43,6 +43,13 @@ static uint8_t uart_rx_buf2[256];
  * Application Entry Points
  * ============================================================================ */
 
+static int log_output_both(const char *data, size_t len)
+{
+  FEB_UART_Write(FEB_UART_INSTANCE_1, (const uint8_t *)data, len);
+  FEB_UART_Write(FEB_UART_INSTANCE_2, (const uint8_t *)data, len);
+  return (int)len;
+}
+
 void FEB_Init(void)
 {
   /* Initialize UART library with DMA */
@@ -94,7 +101,7 @@ void FEB_Init(void)
 
   /* Initialize logging system */
   FEB_Log_Config_t log_cfg = {
-      .uart_instance = FEB_UART_INSTANCE_1,
+      .custom_output = log_output_both,
       .level = FEB_LOG_DEBUG,
       .colors = true,
       .timestamps = true,
