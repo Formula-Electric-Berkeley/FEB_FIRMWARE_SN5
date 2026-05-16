@@ -14,7 +14,7 @@ static uint32_t rtd_trying_to_toggle_start_tick = 0;
 static bool rtd_toggle_complete = false;
 
 // Minimum brake pressure required for RTD activation (safety interlock)
-#define RTD_BRAKE_THRESHOLD 2000
+#define RTD_BRAKE_THRESHOLD 20
 
 // Any RTD input older than this is treated as missing — RTD will not arm on
 // stale CAN data. Matches BMS_STATE_TIMEOUT_MS.
