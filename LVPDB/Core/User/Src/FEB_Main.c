@@ -376,11 +376,14 @@ void FEB_Main_Loop(void)
     FEB_Variable_Conversion();
   }
 
-  DASH_State_t dash_state = FEB_CAN_DASH_GetLastState();
+  if (FEB_CAN_DASH_IsDataFresh(250))
+  {
+    DASH_State_t dash_state = FEB_CAN_DASH_GetLastState();
 
-  // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
-  FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
-  FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
+    // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
+    FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
+    FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
+  }
 
   // FEB_TPS_Enable(tps_handles[3], true); // BM_L
 
