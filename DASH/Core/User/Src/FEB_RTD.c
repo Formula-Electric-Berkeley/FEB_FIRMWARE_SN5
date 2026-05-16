@@ -68,6 +68,7 @@ void FEB_State_Update_RTD(void)
     if (!rtd_toggle_complete)
     {
       rtd = !rtd;
+      FEB_IO_Play_Buzzer(BUZZER_DURATION_RTD_ENTER);
       rtd_toggle_complete = true;
     }
   }
