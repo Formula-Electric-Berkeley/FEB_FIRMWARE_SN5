@@ -14,7 +14,7 @@ static uint32_t rtd_trying_to_toggle_start_tick = 0;
 static bool rtd_toggle_complete = false;
 
 // Minimum brake pressure required for RTD activation (safety interlock)
-#define RTD_BRAKE_THRESHOLD 5000
+#define RTD_BRAKE_THRESHOLD 20
 
 // Any RTD input older than this is treated as missing — RTD will not arm on
 // stale CAN data. Matches BMS_STATE_TIMEOUT_MS.
@@ -50,7 +50,7 @@ void FEB_State_Update_RTD(void)
   // RTD requires: fresh CAN inputs, button held, brake applied, inverter enabled, BMS energized
   // if (inputs_fresh && (brake_pressure >= RTD_BRAKE_THRESHOLD) && (inv_enabled == 1) &&
   //     (bms_state == BMS_STATE_ENERGIZED) && states.button_rtd)
-  if (states.button_rtd)
+  if ((brake_pressure >= RTD_BRAKE_THRESHOLD) && states.button_rtd)
   {
     if (!rtd_timer_armed)
     {
@@ -68,6 +68,7 @@ void FEB_State_Update_RTD(void)
     if (!rtd_toggle_complete)
     {
       rtd = !rtd;
+      FEB_IO_Play_Buzzer(BUZZER_DURATION_RTD_ENTER);
       rtd_toggle_complete = true;
     }
   }

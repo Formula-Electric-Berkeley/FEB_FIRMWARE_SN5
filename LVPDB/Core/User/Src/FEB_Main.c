@@ -2,8 +2,10 @@
 #include "FEB_CAN_PingPong.h"
 #include "FEB_CAN_TPS.h"
 #include "FEB_LVPDB_Commands.h"
+#include "feb_can.h"
 #include "feb_can_lib.h"
 #include "feb_console.h"
+#include "feb_log.h"
 #include "feb_tps.h"
 #include "main.h"
 #include <stdint.h>
@@ -22,7 +24,6 @@ static uint8_t uart_tx_buf[4096];
 static uint8_t uart_rx_buf[256];
 
 static void FEB_Variable_Conversion(void);
-static void FEB_I2C1_Bus_Recovery(void);
 
 /* ============================================================================
  * TPS Device Handles and Data
@@ -30,6 +31,7 @@ static void FEB_I2C1_Bus_Recovery(void);
 
 // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
 FEB_TPS_Handle_t tps_handles[NUM_TPS2482];
+static struct feb_can_lvpdb_heartbeat_t lvpdb_heartbeat_msg;
 
 // Device configurations consumed by FEB_TPS_Init_Devices
 static const struct
@@ -181,6 +183,7 @@ static bool FEB_TPS_Init_Devices(void)
   return ok_count > 0;
 }
 
+static bool tps_power_good[NUM_TPS2482];
 /**
  * Verify TPS devices' power-good signals and report LV failure.
  *
@@ -192,8 +195,10 @@ static bool FEB_TPS_Check_Power_Good(void)
 
   for (uint8_t i = 0; i < NUM_TPS2482; i++)
   {
+    tps_power_good[i] = true;
     if (tps_handles[i] == NULL)
     {
+      tps_power_good[i] = false;
       continue;
     }
     bool pg_state = false;
@@ -201,6 +206,7 @@ static bool FEB_TPS_Check_Power_Good(void)
     if (status != FEB_TPS_OK)
     {
       LOG_W(TAG_MAIN, "ReadPowerGood failed for %s: %s", tps_device_configs[i].name, FEB_TPS_StatusToString(status));
+      tps_power_good[i] = false;
       all_good = false;
       continue;
     }
@@ -317,6 +323,7 @@ void FEB_Main_Setup(void)
 }
 
 #define MAIN_LOOP_POLL_INTERVAL_MS 50
+static bool tps_polled_success[NUM_TPS2482];
 
 /**
  * Main periodic loop. Polls each TPS via its own handle (position-aligned with
@@ -350,6 +357,7 @@ void FEB_Main_Loop(void)
         tps2482_bus_voltage_raw[i] = bv;
         tps2482_current_raw[i] = cur;
         tps2482_shunt_voltage_raw[i] = sv;
+        tps_polled_success[i] = true;
         polled++;
       }
       else
@@ -357,6 +365,7 @@ void FEB_Main_Loop(void)
         tps2482_bus_voltage_raw[i] = 0;
         tps2482_current_raw[i] = 0;
         tps2482_shunt_voltage_raw[i] = 0;
+        tps_polled_success[i] = false;
       }
     }
     if (polled < tps_registered_count)
@@ -367,18 +376,16 @@ void FEB_Main_Loop(void)
     FEB_Variable_Conversion();
   }
 
-  DASH_State_t dash_state = FEB_CAN_DASH_GetLastState();
+  if (FEB_CAN_DASH_IsDataFresh(250))
+  {
+    DASH_State_t dash_state = FEB_CAN_DASH_GetLastState();
 
-  // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
-  // FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
-  // FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
+    // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
+    FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
+    FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
+  }
 
-  HAL_GPIO_WritePin(tps2482_en_ports[4], tps2482_en_pins[4],
-                    dash_state.switch2 ? GPIO_PIN_SET : GPIO_PIN_RESET); // AF1_AF2
-  HAL_GPIO_WritePin(tps2482_en_ports[5], tps2482_en_pins[5],
-                    dash_state.switch2 ? GPIO_PIN_SET : GPIO_PIN_RESET); // CP_RF
-
-  // LOG_D("dash_state.switch2 (CP_RF): %u\r\n", dash_state.switch2);
+  // FEB_TPS_Enable(tps_handles[3], true); // BM_L
 
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
 }
@@ -404,49 +411,50 @@ void FEB_1ms_Callback(void)
   // Process CAN TPS reading every 100ms
   static uint16_t tps_divider = 0;
   tps_divider++;
-  if (tps_divider >= 100)
+  if (tps_divider >= 99)
   {
     tps_divider = 0;
     if (tps_init_success)
     {
-      FEB_CAN_TPS_Tick(tps2482_current_raw, tps2482_bus_voltage_raw, NUM_TPS2482);
+      FEB_Variable_Conversion();
+      FEB_CAN_TPS_Tick(tps2482_current, tps2482_bus_voltage, NUM_TPS2482);
     }
   }
-}
 
-/* ============================================================================
- * I2C Bus Recovery
- * ============================================================================ */
+  static uint16_t heartbeat_divider = 0;
+  heartbeat_divider++;
+  if (heartbeat_divider >=
+      67) // not 100ms to offset message from other two statuses (ran into issue where mailbox got full)
+  {
+    heartbeat_divider = 0;
 
-/**
- * Bit-bang up to 9 SCL pulses on PB8/PB9 to free a slave that is holding SDA
- * low after an aborted transaction, then issue a manual STOP and re-init the
- * I2C peripheral.
- */
-static void FEB_I2C1_Bus_Recovery(void)
-{
-  HAL_StatusTypeDef init_st;
-  GPIO_PinState scl_entry = HAL_GPIO_ReadPin(SCL_GPIO_Port, SCL_Pin);
-  GPIO_PinState sda_entry = HAL_GPIO_ReadPin(SDA_GPIO_Port, SDA_Pin);
+    lvpdb_heartbeat_msg.tps_init_failed = !tps_init_success;
 
-  /* The HAL_I2C_DeInit / HAL_I2C_Init dance does not actually reset the I2C
-   * peripheral's internal logic on STM32F4 — fields like the BUSY flag in
-   * SR2 can stay latched after a TIMEOUT and corrupt every subsequent
-   * transaction. Toggling CR1.SWRST is the only thing that clears them.
-   * Sequence: PE=0 → SWRST=1 (hold) → SWRST=0 → re-init via HAL_I2C_Init. */
+    lvpdb_heartbeat_msg.tps_lv_poll_failed = !tps_polled_success[0];
+    lvpdb_heartbeat_msg.tps_sh_poll_failed = !tps_polled_success[1];
+    lvpdb_heartbeat_msg.tps_lt_poll_failed = !tps_polled_success[2];
+    lvpdb_heartbeat_msg.tps_bm_l_poll_failed = !tps_polled_success[3];
+    lvpdb_heartbeat_msg.tps_sm_poll_failed = !tps_polled_success[4];
+    lvpdb_heartbeat_msg.tps_af1_af2_poll_failed = !tps_polled_success[5];
+    lvpdb_heartbeat_msg.tps_cp_rf_poll_failed = !tps_polled_success[6];
 
-  __HAL_I2C_DISABLE(&hi2c1);
-  hi2c1.Instance->CR1 |= I2C_CR1_SWRST;
-  /* SWRST must be held; a few NOPs is enough but HAL_Delay(1) is safe. */
-  HAL_Delay(1);
-  hi2c1.Instance->CR1 &= ~I2C_CR1_SWRST;
+    lvpdb_heartbeat_msg.tps_lv_power_not_good = !tps_power_good[0];
+    lvpdb_heartbeat_msg.tps_sh_power_not_good = !tps_power_good[1];
+    lvpdb_heartbeat_msg.tps_lt_power_not_good = !tps_power_good[2];
+    lvpdb_heartbeat_msg.tps_bm_l_power_not_good = !tps_power_good[3];
+    lvpdb_heartbeat_msg.tps_sm_power_not_good = !tps_power_good[4];
+    lvpdb_heartbeat_msg.tps_af1_af2_power_not_good = !tps_power_good[5];
+    lvpdb_heartbeat_msg.tps_cp_rf_power_not_good = !tps_power_good[6];
 
-  /* Force HAL_I2C_Init to redo the full configure path. */
-  hi2c1.State = HAL_I2C_STATE_RESET;
-  init_st = HAL_I2C_Init(&hi2c1);
+    lvpdb_heartbeat_msg.dash_state_stale = !FEB_CAN_DASH_IsDataFresh(250);
 
-  LOG_I(TAG_MAIN, "BusRecovery: entry SCL=%d SDA=%d | SWRST done | Init=%d ErrCode=0x%08lX", (int)scl_entry,
-        (int)sda_entry, (int)init_st, (unsigned long)hi2c1.ErrorCode);
+    uint8_t tx_data[FEB_CAN_LVPDB_HEARTBEAT_LENGTH];
+    memset(tx_data, 0x00, sizeof(tx_data));
+    feb_can_lvpdb_heartbeat_pack(tx_data, &lvpdb_heartbeat_msg, sizeof(tx_data));
+
+    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_LVPDB_HEARTBEAT_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                    FEB_CAN_LVPDB_HEARTBEAT_LENGTH);
+  }
 }
 
 /* ============================================================================

@@ -53,11 +53,11 @@
 /* DASHTaskRx / DASHTaskTx stacks: set in CubeMX (DASH.ioc, FREERTOS.Tasks01). Regenerating
  * from the .ioc overwrites osThreadAttr_t blocks above; keep those tasks at 1024 words. */
 /* USER CODE END Variables */
-/* Definitions for btnTxLoopTask */
-osThreadId_t btnTxLoopTaskHandle;
-const osThreadAttr_t btnTxLoopTask_attributes = {
-  .name = "btnTxLoopTask",
-  .stack_size = 1024 * 4,
+/* Definitions for ioLoopTask */
+osThreadId_t ioLoopTaskHandle;
+const osThreadAttr_t ioLoopTask_attributes = {
+  .name = "ioLoopTask",
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityHigh1,
 };
 /* Definitions for displayTask */
@@ -65,7 +65,7 @@ osThreadId_t displayTaskHandle;
 const osThreadAttr_t displayTask_attributes = {
   .name = "displayTask",
   .stack_size = 1024 * 4,
-  .priority = (osPriority_t) osPriorityHigh,
+  .priority = (osPriority_t) osPriorityAboveNormal,
 };
 /* Definitions for uartRxTask */
 osThreadId_t uartRxTaskHandle;
@@ -86,14 +86,14 @@ osThreadId_t DASHTaskRxHandle;
 const osThreadAttr_t DASHTaskRx_attributes = {
   .name = "DASHTaskRx",
   .stack_size = 1024 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityHigh2,
 };
 /* Definitions for DASHTaskTx */
 osThreadId_t DASHTaskTxHandle;
 const osThreadAttr_t DASHTaskTx_attributes = {
   .name = "DASHTaskTx",
   .stack_size = 1024 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityHigh3,
 };
 /* Definitions for canTxQueue */
 osMessageQueueId_t canTxQueueHandle;
@@ -151,7 +151,7 @@ const osSemaphoreAttr_t uartTxSem_attributes = {
 
 /* USER CODE END FunctionPrototypes */
 
-void StartBtnTxLoop(void *argument);
+void StartIoLoop(void *argument);
 void StartDisplayTask(void *argument);
 void StartUartRxTask(void *argument);
 void StartUartTxTask(void *argument);
@@ -285,8 +285,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of btnTxLoopTask */
-  btnTxLoopTaskHandle = osThreadNew(StartBtnTxLoop, NULL, &btnTxLoopTask_attributes);
+  /* creation of ioLoopTask */
+  ioLoopTaskHandle = osThreadNew(StartIoLoop, NULL, &ioLoopTask_attributes);
 
   /* creation of displayTask */
   displayTaskHandle = osThreadNew(StartDisplayTask, NULL, &displayTask_attributes);
@@ -305,7 +305,7 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* Validate all thread creations - fail fast on low heap */
-  REQUIRE_RTOS_HANDLE(btnTxLoopTaskHandle);
+  REQUIRE_RTOS_HANDLE(ioLoopTaskHandle);
   REQUIRE_RTOS_HANDLE(displayTaskHandle);
   REQUIRE_RTOS_HANDLE(uartRxTaskHandle);
   REQUIRE_RTOS_HANDLE(uartTxTaskHandle);
@@ -320,22 +320,22 @@ void MX_FREERTOS_Init(void) {
 
 }
 
-/* USER CODE BEGIN Header_StartBtnTxLoop */
+/* USER CODE BEGIN Header_StartIoLoop */
 /**
- * @brief  Function implementing the btnTxLoopTask thread.
+ * @brief  Function implementing the ioLoopTask thread.
  * @param  argument: Not used
  * @retval None
  */
-/* USER CODE END Header_StartBtnTxLoop */
-__weak void StartBtnTxLoop(void *argument)
+/* USER CODE END Header_StartIoLoop */
+__weak void StartIoLoop(void *argument)
 {
-  /* USER CODE BEGIN StartBtnTxLoop */
+  /* USER CODE BEGIN StartIoLoop */
   /* Infinite loop */
   for (;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartBtnTxLoop */
+  /* USER CODE END StartIoLoop */
 }
 
 /* USER CODE BEGIN Header_StartDisplayTask */

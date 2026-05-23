@@ -30,15 +30,21 @@ typedef struct
   bool switch_coolant_pump_radiator_fan;
   bool switch_accumulator_fans;
   bool switch_logging;
+  bool switch_4;
 
   // Button states
   bool button_rtd;
+  bool button_2;
+  bool button_3;
+  bool button_4;
 
   // Buzzer state
   bool buzzer_enabled;
 } IO_States_t;
 
 IO_States_t FEB_IO_GetLastIOStates(void);
+
+bool FEB_IO_StatusOk(void);
 
 void FEB_IO_Set_Buzzer(bool new_state);
 
