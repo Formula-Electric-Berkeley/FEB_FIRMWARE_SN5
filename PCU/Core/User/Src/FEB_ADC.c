@@ -143,8 +143,8 @@ static ADC_CalibrationTypeDef apps2_calibration = {
 static ADC_CalibrationTypeDef brake_pressure1_calibration = {
     .offset = 0.0f,
     .gain = 1.0f,
-    .min_voltage = BRAKE_PRESSURE_DEFAULT_MIN_MV,    /* Voltage at 0 bar */
-    .max_voltage = BRAKE_PRESSURE_DEFAULT_MAX_MV,    /* Voltage at max pressure */
+    .min_voltage = BRAKE_PRESSURE_1_MIN_MV,          /* Sensor 1 @ 0%  brake */
+    .max_voltage = BRAKE_PRESSURE_1_MAX_MV,          /* Sensor 1 @ 100% brake */
     .min_physical = BRAKE_PRESSURE_MIN_PHYSICAL_BAR, /* Physical: 0 bar */
     .max_physical = BRAKE_PRESSURE_MAX_PHYSICAL_BAR, /* Physical: 200 bar */
     .inverted = false};
@@ -152,13 +152,14 @@ static ADC_CalibrationTypeDef brake_pressure1_calibration = {
 static ADC_CalibrationTypeDef brake_pressure2_calibration = {
     .offset = 0.0f,
     .gain = 1.0f,
-    .min_voltage = BRAKE_PRESSURE_DEFAULT_MIN_MV,    /* Voltage at 0 bar */
-    .max_voltage = BRAKE_PRESSURE_DEFAULT_MAX_MV,    /* Voltage at max pressure */
+    .min_voltage = BRAKE_PRESSURE_2_MIN_MV,          /* Sensor 2 @ 0%  brake */
+    .max_voltage = BRAKE_PRESSURE_2_MAX_MV,          /* Sensor 2 @ 100% brake */
     .min_physical = BRAKE_PRESSURE_MIN_PHYSICAL_BAR, /* Physical: 0 bar */
     .max_physical = BRAKE_PRESSURE_MAX_PHYSICAL_BAR, /* Physical: 200 bar */
     .inverted = false};
 
-#define VOLTAGE_DIVIDER_RATIO (5.0f / 3.3f) /* brake pressure, shutdown, BSPD */
+#define VOLTAGE_DIVIDER_RATIO (5.0f / 3.3f) /* shutdown, current sense, pre-timing trip */
+#define VOLTAGE_DIVIDER_RATIO_BRAKE 2.0f    /* brake pressure: 2:1 PCB divider */
 #define VOLTAGE_DIVIDER_RATIO_ACCEL1 1.168f /* APPS1: k=0.856 measured (2.16V→1.849V at ADC) */
 #define VOLTAGE_DIVIDER_RATIO_ACCEL2 1.0f   /* APPS2: direct connection, no resistor divider */
 
@@ -499,7 +500,7 @@ float FEB_ADC_GetBrakePressure1Voltage(void)
   uint16_t raw = brake_pressure1_config.filter.enabled ? FEB_ADC_GetFilteredValue(&hadc1, ADC1_BRAKE_PRESSURE_1_CHANNEL,
                                                                                   brake_pressure1_config.filter.samples)
                                                        : FEB_ADC_GetBrakePressure1Raw();
-  return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO;
+  return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO_BRAKE;
 }
 
 float FEB_ADC_GetBrakePressure2Voltage(void)
@@ -507,7 +508,7 @@ float FEB_ADC_GetBrakePressure2Voltage(void)
   uint16_t raw = brake_pressure2_config.filter.enabled ? FEB_ADC_GetFilteredValue(&hadc1, ADC1_BRAKE_PRESSURE_2_CHANNEL,
                                                                                   brake_pressure2_config.filter.samples)
                                                        : FEB_ADC_GetBrakePressure2Raw();
-  return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO;
+  return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO_BRAKE;
 }
 
 float FEB_ADC_GetCurrentSenseVoltage(void)
@@ -984,13 +985,13 @@ ADC_StatusTypeDef FEB_ADC_ResetCalibrationToDefaults(void)
   apps2_calibration.max_physical = APPS_MAX_PHYSICAL_PERCENT;
 
   /* Reset brake pressure calibrations */
-  brake_pressure1_calibration.min_voltage = BRAKE_PRESSURE_DEFAULT_MIN_MV;
-  brake_pressure1_calibration.max_voltage = BRAKE_PRESSURE_DEFAULT_MAX_MV;
+  brake_pressure1_calibration.min_voltage = BRAKE_PRESSURE_1_MIN_MV;
+  brake_pressure1_calibration.max_voltage = BRAKE_PRESSURE_1_MAX_MV;
   brake_pressure1_calibration.min_physical = BRAKE_PRESSURE_MIN_PHYSICAL_BAR;
   brake_pressure1_calibration.max_physical = BRAKE_PRESSURE_MAX_PHYSICAL_BAR;
 
-  brake_pressure2_calibration.min_voltage = BRAKE_PRESSURE_DEFAULT_MIN_MV;
-  brake_pressure2_calibration.max_voltage = BRAKE_PRESSURE_DEFAULT_MAX_MV;
+  brake_pressure2_calibration.min_voltage = BRAKE_PRESSURE_2_MIN_MV;
+  brake_pressure2_calibration.max_voltage = BRAKE_PRESSURE_2_MAX_MV;
   brake_pressure2_calibration.min_physical = BRAKE_PRESSURE_MIN_PHYSICAL_BAR;
   brake_pressure2_calibration.max_physical = BRAKE_PRESSURE_MAX_PHYSICAL_BAR;
 
