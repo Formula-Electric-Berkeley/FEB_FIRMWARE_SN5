@@ -30,6 +30,7 @@
 #include "feb_uart.h"
 #include "FEB_Main.h"
 #include "DCU_SD.h"
+#include "feb_can_lib.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -73,6 +74,20 @@ const osThreadAttr_t sdTask_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
+/* Definitions for canTaskTx */
+osThreadId_t canTaskTxHandle;
+const osThreadAttr_t canTaskTx_attributes = {
+  .name = "canTaskTx",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityHigh1,
+};
+/* Definitions for canTaskRx */
+osThreadId_t canTaskRxHandle;
+const osThreadAttr_t canTaskRx_attributes = {
+  .name = "canTaskRx",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityHigh2,
+};
 /* Definitions for rxDataQueue */
 osMessageQueueId_t rxDataQueueHandle;
 const osMessageQueueAttr_t rxDataQueue_attributes = {
@@ -87,6 +102,16 @@ const osMessageQueueAttr_t uartRxQueue_attributes = {
 osMessageQueueId_t sdRequestQueueHandle;
 const osMessageQueueAttr_t sdRequestQueue_attributes = {
   .name = "sdRequestQueue"
+};
+/* Definitions for canTxQueue */
+osMessageQueueId_t canTxQueueHandle;
+const osMessageQueueAttr_t canTxQueue_attributes = {
+  .name = "canTxQueue"
+};
+/* Definitions for canRxQueue */
+osMessageQueueId_t canRxQueueHandle;
+const osMessageQueueAttr_t canRxQueue_attributes = {
+  .name = "canRxQueue"
 };
 /* Definitions for rxTimeoutTimer */
 osTimerId_t rxTimeoutTimerHandle;
@@ -111,10 +136,25 @@ osMutexId_t logMutexHandle;
 const osMutexAttr_t logMutex_attributes = {
   .name = "logMutex"
 };
+/* Definitions for canTxMutex */
+osMutexId_t canTxMutexHandle;
+const osMutexAttr_t canTxMutex_attributes = {
+  .name = "canTxMutex"
+};
+/* Definitions for canRxMutex */
+osMutexId_t canRxMutexHandle;
+const osMutexAttr_t canRxMutex_attributes = {
+  .name = "canRxMutex"
+};
 /* Definitions for uartTxSem */
 osSemaphoreId_t uartTxSemHandle;
 const osSemaphoreAttr_t uartTxSem_attributes = {
   .name = "uartTxSem"
+};
+/* Definitions for canTxMailboxSem */
+osSemaphoreId_t canTxMailboxSemHandle;
+const osSemaphoreAttr_t canTxMailboxSem_attributes = {
+  .name = "canTxMailboxSem"
 };
 /* Definitions for radioEvents */
 osEventFlagsId_t radioEventsHandle;
@@ -130,6 +170,8 @@ const osEventFlagsAttr_t radioEvents_attributes = {
 void StartUartRxTask(void *argument);
 void RadioTask(void *argument);
 void StartSdTask(void *argument);
+void StartCanTaskTx(void *argument);
+void StartCanTaskRx(void *argument);
 void rxTimeoutCallback(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -153,6 +195,12 @@ void MX_FREERTOS_Init(void) {
   /* creation of logMutex */
   logMutexHandle = osMutexNew(&logMutex_attributes);
 
+  /* creation of canTxMutex */
+  canTxMutexHandle = osMutexNew(&canTxMutex_attributes);
+
+  /* creation of canRxMutex */
+  canRxMutexHandle = osMutexNew(&canRxMutex_attributes);
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -160,6 +208,9 @@ void MX_FREERTOS_Init(void) {
   /* Create the semaphores(s) */
   /* creation of uartTxSem */
   uartTxSemHandle = osSemaphoreNew(1, 0, &uartTxSem_attributes);
+
+  /* creation of canTxMailboxSem */
+  canTxMailboxSemHandle = osSemaphoreNew(3, 3, &canTxMailboxSem_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -183,8 +234,14 @@ void MX_FREERTOS_Init(void) {
   /* creation of sdRequestQueue */
   sdRequestQueueHandle = osMessageQueueNew (4, 4, &sdRequestQueue_attributes);
 
+  /* creation of canTxQueue */
+  canTxQueueHandle = osMessageQueueNew (16, sizeof(FEB_CAN_Message_t), &canTxQueue_attributes);
+
+  /* creation of canRxQueue */
+  canRxQueueHandle = osMessageQueueNew (16, sizeof(FEB_CAN_Message_t), &canRxQueue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -197,7 +254,18 @@ void MX_FREERTOS_Init(void) {
   /* creation of sdTask */
   sdTaskHandle = osThreadNew(StartSdTask, NULL, &sdTask_attributes);
 
+  /* creation of canTaskTx */
+  canTaskTxHandle = osThreadNew(StartCanTaskTx, NULL, &canTaskTx_attributes);
+
+  /* creation of canTaskRx */
+  canTaskRxHandle = osThreadNew(StartCanTaskRx, NULL, &canTaskRx_attributes);
+
   /* USER CODE BEGIN RTOS_THREADS */
+  REQUIRE_RTOS_HANDLE(canTxMutexHandle);
+  REQUIRE_RTOS_HANDLE(canRxMutexHandle);
+  REQUIRE_RTOS_HANDLE(canTxMailboxSemHandle);
+  REQUIRE_RTOS_HANDLE(canTaskTxHandle);
+  REQUIRE_RTOS_HANDLE(canTaskRxHandle);
   REQUIRE_RTOS_HANDLE(spiMutexHandle);
   REQUIRE_RTOS_HANDLE(uartTxMutexHandle);
   REQUIRE_RTOS_HANDLE(logMutexHandle);
@@ -268,6 +336,42 @@ __weak void StartSdTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END StartSdTask */
+}
+
+/* USER CODE BEGIN Header_StartCanTaskTx */
+/**
+* @brief Function implementing the canTaskTx thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartCanTaskTx */
+__weak void StartCanTaskTx(void *argument)
+{
+  /* USER CODE BEGIN StartCanTaskTx */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartCanTaskTx */
+}
+
+/* USER CODE BEGIN Header_StartCanTaskRx */
+/**
+* @brief Function implementing the canTaskRx thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartCanTaskRx */
+__weak void StartCanTaskRx(void *argument)
+{
+  /* USER CODE BEGIN StartCanTaskRx */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartCanTaskRx */
 }
 
 /* rxTimeoutCallback function */

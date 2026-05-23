@@ -86,10 +86,10 @@ void FEB_Init(void)
   DCU_RegisterCommands();
 
   /* Initialize CAN with accept-all filter */
-  can_init_success = DCU_CAN_Init();
+  // can_init_success = DCU_CAN_Init();
 
   /* Initialize TPS subsystem */
-  DCU_TPS_Init();
+  // DCU_TPS_Init();
 
   /* Startup banner */
   FEB_Console_Printf("\r\n");
