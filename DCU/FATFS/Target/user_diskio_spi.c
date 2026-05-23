@@ -34,7 +34,7 @@ static void set_spi_prescaler(uint32_t prescaler)
 
 /* SD spec requires 100–400 kHz for CMD0/CMD8/ACMD41; switch to full speed once initialized. */
 #define FCLK_SLOW() set_spi_prescaler(SPI_BAUDRATEPRESCALER_256)
-#define FCLK_FAST() set_spi_prescaler(SPI_BAUDRATEPRESCALER_32)
+#define FCLK_FAST() set_spi_prescaler(SPI_BAUDRATEPRESCALER_4)
 
 #define CS_HIGH() HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_SET)
 #define CS_LOW() HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_RESET)
@@ -428,8 +428,6 @@ DSTATUS USER_SPI_status(BYTE pdrv)
   {
     return STA_NOINIT;
   }
-
-  LOG_D(TAG_SD_SPI, "status: flags=0x%02X", (unsigned)sd_status_flags);
   return sd_status_flags;
 }
 

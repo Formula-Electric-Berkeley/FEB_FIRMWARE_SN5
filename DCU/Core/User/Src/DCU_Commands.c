@@ -10,6 +10,7 @@
 #include "DCU_TPS.h"
 #include "DCU_CAN.h"
 #include "DCU_CAN_Log.h"
+#include "DCU_CAN_Filter.h"
 #include "DCU_SD.h"
 #include "FEB_RFM95.h"
 #include "FEB_Task_Radio.h"
@@ -36,6 +37,9 @@ static void print_dcu_help(void)
   FEB_Console_Printf("  dcu|tps          - Show TPS power measurements\r\n");
   FEB_Console_Printf("  dcu|can          - Show CAN status and error counters\r\n");
   FEB_Console_Printf("  dcu|can|log      - Show raw-CAN CSV logger stats\r\n");
+  FEB_Console_Printf("  dcu|can|stream|[on|off|status]\r\n");
+  FEB_Console_Printf("                   - Live CAN-frame console stream (pipe form;\r\n");
+  FEB_Console_Printf("                     paired with DCU|csv|<tx>|can-stream-*)\r\n");
   FEB_Console_Printf("  dcu|radio        - Radio commands (see dcu|radio for help)\r\n");
   FEB_Console_Printf("  dcu|sd           - SD card commands (see dcu|sd for help)\r\n");
 }
@@ -79,11 +83,55 @@ static void cmd_can_log(void)
   FEB_Console_Printf("  Queue depth:    %lu\r\n", (unsigned long)DCU_CAN_Log_GetQueueDepth());
 }
 
+static void cmd_can_stream(int argc, char *argv[])
+{
+  /* dcu|can|stream             -> status read-back (no toggle, keeps the
+   *                                pipe form idempotent and matches CSV form)
+   * dcu|can|stream|on          -> begin streaming
+   * dcu|can|stream|off         -> stop streaming
+   * dcu|can|stream|status      -> same as no-arg form
+   *
+   * Shares state with the CSV-form `can-stream-on/off/status` handlers via
+   * DCU_CAN_Log_SetStream / DCU_CAN_Log_IsStreaming. */
+  const char *sub = (argc >= 4) ? argv[3] : NULL;
+
+  if (sub != NULL && FEB_strcasecmp(sub, "on") == 0)
+  {
+    /* Pipe form has no transaction id — use a fixed marker so the website
+     * (if it's sniffing the same UART) can still tell pipe-driven streams
+     * apart from CSV-driven ones. */
+    DCU_CAN_Log_SetStream(true, "pipe");
+    FEB_Console_Printf("CAN stream: on\r\n");
+    return;
+  }
+  if (sub != NULL && FEB_strcasecmp(sub, "off") == 0)
+  {
+    DCU_CAN_Log_SetStream(false, NULL);
+    FEB_Console_Printf("CAN stream: off\r\n");
+    return;
+  }
+
+  /* default / "status" */
+  if (DCU_CAN_Log_IsStreaming())
+  {
+    FEB_Console_Printf("CAN stream: on (tx_id=%s)\r\n", DCU_CAN_Log_GetStreamTxId());
+  }
+  else
+  {
+    FEB_Console_Printf("CAN stream: off\r\n");
+  }
+}
+
 static void cmd_can(int argc, char *argv[])
 {
   if (argc >= 3 && FEB_strcasecmp(argv[2], "log") == 0)
   {
     cmd_can_log();
+    return;
+  }
+  if (argc >= 3 && FEB_strcasecmp(argv[2], "stream") == 0)
+  {
+    cmd_can_stream(argc, argv);
     return;
   }
 

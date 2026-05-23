@@ -8,6 +8,7 @@
 
 #include "FEB_Main.h"
 #include "DCU_CAN.h"
+#include "DCU_CAN_Log.h"
 #include "DCU_TPS.h"
 #include "DCU_Commands.h"
 #include "main.h"
@@ -79,8 +80,15 @@ void FEB_Init(void)
 
   LOG_I(TAG_MAIN, "DCU initializing...");
 
-  /* Initialize console (registers built-in commands: echo, help, version, uptime, reboot, log) */
+  /* Initialize console (registers built-in commands: echo, help, hello, commands,
+   * version, uptime, reboot, log). The CSV-over-console protocol is handled by
+   * feb_console's parser directly — no separate init needed. */
   FEB_Console_Init(true);
+
+  /* CAN-log subsystem's CSV-form handlers. Pair with the pipe-form
+   * `dcu|can|stream|*` sub-commands wired in DCU_Commands.c — every console
+   * command on this board lives in both forms. */
+  DCU_CAN_Log_RegisterCsvHandlers();
 
   /* Register DCU-specific commands */
   DCU_RegisterCommands();

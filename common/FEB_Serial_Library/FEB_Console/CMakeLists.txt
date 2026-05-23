@@ -24,5 +24,5 @@ target_include_directories(feb_console INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/../..  # For #include "FEB_Serial_Library/FEB_Console/..."
 )
 
-# Console depends on UART for output
-target_link_libraries(feb_console INTERFACE feb_uart)
+# Console depends on UART for output and feb_time for CSV row timestamps
+target_link_libraries(feb_console INTERFACE feb_uart feb_time)

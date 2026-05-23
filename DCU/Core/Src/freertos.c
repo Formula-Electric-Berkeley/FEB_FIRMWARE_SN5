@@ -250,7 +250,7 @@ void MX_FREERTOS_Init(void) {
   canLogQueueHandle = osMessageQueueNew (256, sizeof(DCU_CAN_Frame_t), &canLogQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -279,6 +279,16 @@ void MX_FREERTOS_Init(void) {
   REQUIRE_RTOS_HANDLE(rxDataQueueHandle);
   REQUIRE_RTOS_HANDLE(uartRxTaskHandle);
   REQUIRE_RTOS_HANDLE(radioTaskHandle);
+  REQUIRE_RTOS_HANDLE(sdTaskHandle);
+  REQUIRE_RTOS_HANDLE(sdRequestQueueHandle);
+  REQUIRE_RTOS_HANDLE(canTxMutexHandle);
+  REQUIRE_RTOS_HANDLE(canRxMutexHandle);
+  REQUIRE_RTOS_HANDLE(canTxMailboxSemHandle);
+  REQUIRE_RTOS_HANDLE(canTxQueueHandle);
+  REQUIRE_RTOS_HANDLE(canRxQueueHandle);
+  REQUIRE_RTOS_HANDLE(canLogQueueHandle);
+  REQUIRE_RTOS_HANDLE(canDispatchTaskHandle);
+  REQUIRE_RTOS_HANDLE(canLogTaskHandle);
   /* USER CODE END RTOS_THREADS */
 
   /* creation of radioEvents */

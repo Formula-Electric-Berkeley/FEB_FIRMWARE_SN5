@@ -15,8 +15,7 @@
 #include <stdbool.h>
 
 /* FreeRTOS sync primitives created in freertos.c (see DCU.ioc FreeRTOS pane).
- * feb_can requires all five when FEB_CAN_USE_FREERTOS == 1 — it does not
- * create them internally. */
+ * feb_can requires all five — it does not create them internally. */
 extern osMessageQueueId_t canTxQueueHandle;
 extern osMessageQueueId_t canRxQueueHandle;
 extern osMutexId_t canTxMutexHandle;
@@ -89,6 +88,10 @@ bool DCU_CAN_IsInitialized(void)
  * In FreeRTOS mode the CAN RX ISR posts into feb_can's internal rx_queue and
  * returns immediately. Some task has to dequeue and invoke matching callbacks
  * (e.g. the wildcard handlers registered by DCU_CAN_Log). This is that task.
+ *
+ * No TX-side counterpart yet: DCU does not currently transmit CAN frames. If
+ * that changes, mirror this pattern with `FEB_CAN_TX_Process()` after adding
+ * the task in DCU.ioc.
  * ==========================================================================*/
 
 void StartCanDispatchTask(void *argument)

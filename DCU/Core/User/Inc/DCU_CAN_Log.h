@@ -77,6 +77,41 @@ extern "C"
   /** @return Active CSV filename, or "(none)" if logging has not started. */
   const char *DCU_CAN_Log_GetFilename(void);
 
+  /* ============================================================================
+   * Live console streaming (dual-form: pipe `dcu|can|stream|...` and CSV
+   * `DCU|csv|<tx>|can-stream-*`). Both forms call into these helpers so the
+   * underlying state can never diverge.
+   * ============================================================================ */
+
+  /**
+   * @brief Enable or disable the live console stream.
+   *
+   * When `on` is true, each captured CAN frame is also emitted as a `can,...`
+   * CSV-protocol response under the given `tx_id`. When `on` is false the
+   * previously-active streaming session (if any) is closed with a `done`
+   * line and `tx_id` is ignored.
+   *
+   * @param on    true to start streaming, false to stop.
+   * @param tx_id Transaction id to attach to streamed `can` rows. Required
+   *              when `on==true`, ignored otherwise. The string is copied
+   *              internally so the caller's buffer may be transient.
+   */
+  void DCU_CAN_Log_SetStream(bool on, const char *tx_id);
+
+  /** @return true while live console streaming is active. */
+  bool DCU_CAN_Log_IsStreaming(void);
+
+  /** @return Active stream tx_id (empty string when not streaming). */
+  const char *DCU_CAN_Log_GetStreamTxId(void);
+
+  /**
+   * @brief Register the CSV-protocol `can-stream-on/off/status` handlers.
+   *
+   * Must be called after `FEB_CSV_Init`. Idempotent: re-registration fails
+   * silently because the registry rejects duplicates.
+   */
+  void DCU_CAN_Log_RegisterCsvHandlers(void);
+
 #ifdef __cplusplus
 }
 #endif

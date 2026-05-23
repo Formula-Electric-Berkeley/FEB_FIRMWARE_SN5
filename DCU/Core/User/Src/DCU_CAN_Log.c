@@ -12,6 +12,7 @@
 #include "DCU_SD.h"
 #include "cmsis_os.h"
 #include "feb_can_lib.h"
+#include "feb_console.h"
 #include "feb_log.h"
 #include "main.h"
 
@@ -31,7 +32,10 @@ _Static_assert(sizeof(DCU_CAN_Frame_t) == 20, "DCU_CAN_Frame_t layout changed �
 /* Tunables ----------------------------------------------------------------- */
 
 #define DCU_CAN_LOG_IDX_PATH "0:canlog.idx"
-#define DCU_CAN_LOG_FILENAME_TEMPLATE "0:canlog_%04u.csv"
+/* 8.3 name: "log_NNNN" (8 chars) + "csv" (3 chars). FATFS is built with
+ * _USE_LFN=0 (see DCU/FATFS/Target/ffconf.h), so longer bases fail with
+ * FR_INVALID_NAME. The .idx file already fits 8.3 unchanged. */
+#define DCU_CAN_LOG_FILENAME_TEMPLATE "0:log_%04u.csv"
 #define DCU_CAN_LOG_FILENAME_MAX 24U
 
 #define DCU_CAN_LOG_HEADER "timestamp_ms,bus,can_id,dlc,d0,d1,d2,d3,d4,d5,d6,d7\r\n"
@@ -56,6 +60,11 @@ static volatile uint32_t s_drop_count = 0;
 
 static uint8_t s_flush_buf[DCU_CAN_LOG_FLUSH_BUF_BYTES];
 static size_t s_flush_used = 0;
+
+/* Live console stream state. Shared between the pipe-form handlers in
+ * DCU_Commands.c and the CSV-form handlers registered below. */
+static volatile bool s_stream_active = false;
+static char s_stream_tx_id[FEB_CSV_TX_ID_MAX_LEN + 1] = {0};
 
 /* Wildcard RX path -------------------------------------------------------- */
 
@@ -123,7 +132,10 @@ static bool register_wildcards(void)
 
 /* CSV row formatter ------------------------------------------------------- */
 
-/* Returns bytes written into `out`, excluding the null terminator. -1 on truncation. */
+/* Format the CAN-frame body as bus,can_id,dlc,d0..d7 (per the CSV-protocol
+ * `can` schema). No leading timestamp, no CRLF — both the SD-file path and
+ * the live-stream path add what they need around this body. Returns bytes
+ * written, or -1 on truncation. */
 static int format_row(char *out, size_t out_size, const DCU_CAN_Frame_t *f)
 {
   static const char hex[] = "0123456789ABCDEF";
@@ -144,8 +156,8 @@ static int format_row(char *out, size_t out_size, const DCU_CAN_Frame_t *f)
   }
   data_field[pos] = '\0';
 
-  int n = snprintf(out, out_size, "%lu,%u,0x%lX,%u,%s\r\n", (unsigned long)f->ts_ms, (unsigned)f->bus,
-                   (unsigned long)f->can_id, (unsigned)f->dlc, data_field);
+  int n = snprintf(out, out_size, "%u,0x%lX,%u,%s", (unsigned)f->bus, (unsigned long)f->can_id, (unsigned)f->dlc,
+                   data_field);
   if (n < 0 || (size_t)n >= out_size)
   {
     return -1;
@@ -278,12 +290,36 @@ void StartCanLogTask(void *argument)
 
     if (osMessageQueueGet(canLogQueueHandle, &frame, NULL, pdMS_TO_TICKS(wait_ms)) == osOK)
     {
-      int len = format_row(line_buf, sizeof(line_buf), &frame);
-      if (len > 0 && (s_flush_used + (size_t)len) <= sizeof(s_flush_buf))
+      const int body_len = format_row(line_buf, sizeof(line_buf), &frame);
+      if (body_len > 0)
       {
-        memcpy(&s_flush_buf[s_flush_used], line_buf, (size_t)len);
-        s_flush_used += (size_t)len;
-        s_written_count++;
+        /* SD path: prepend timestamp, append CRLF.
+         *   "<ts_ms>,<bus>,<can_id>,<dlc>,<d0..d7>\r\n" */
+        char ts_buf[12];
+        const int ts_len = snprintf(ts_buf, sizeof(ts_buf), "%lu,", (unsigned long)frame.ts_ms);
+        const size_t total = (size_t)ts_len + (size_t)body_len + 2U;
+        if (ts_len > 0 && (s_flush_used + total) <= sizeof(s_flush_buf))
+        {
+          memcpy(&s_flush_buf[s_flush_used], ts_buf, (size_t)ts_len);
+          s_flush_used += (size_t)ts_len;
+          memcpy(&s_flush_buf[s_flush_used], line_buf, (size_t)body_len);
+          s_flush_used += (size_t)body_len;
+          s_flush_buf[s_flush_used++] = '\r';
+          s_flush_buf[s_flush_used++] = '\n';
+          s_written_count++;
+        }
+
+        /* Live console stream: emit one CSV-protocol `can` row under the
+         * active streaming tx_id. The body matches the spec schema for the
+         * `can` response type: bus,can_id,dlc,d0,...,d7. feb_console adds
+         * csv,<tx>,<board>,<us> in front. CsvEmitAs is the right primitive
+         * here because we're emitting from a different task than the one
+         * that handled `can-stream-on` (dispatcher is no longer in a CSV
+         * transaction). */
+        if (s_stream_active && s_stream_tx_id[0] != '\0')
+        {
+          (void)FEB_Console_CsvEmitAs(s_stream_tx_id, "can", "%s", line_buf);
+        }
       }
 
       if (DCU_CAN_Filter_ShouldForwardToRadio(&frame))
@@ -330,4 +366,147 @@ void DCU_CAN_Log_PrintStats(void)
 {
   LOG_I(TAG_CAN_LOG, "active=%d file=%s written=%lu drops=%lu qdepth=%lu", (int)s_active, DCU_CAN_Log_GetFilename(),
         (unsigned long)s_written_count, (unsigned long)s_drop_count, (unsigned long)DCU_CAN_Log_GetQueueDepth());
+}
+
+/* ============================================================================
+ * Live console stream (shared by pipe-form and CSV-form handlers)
+ * ============================================================================ */
+
+void DCU_CAN_Log_SetStream(bool on, const char *tx_id)
+{
+  if (on)
+  {
+    /* If a different streaming session is already open, close it out-of-band
+     * with a `done` so the website's correlator knows that tx_id is finished
+     * before we start emitting `can,...` rows under the new one. */
+    if (s_stream_active && s_stream_tx_id[0] != '\0' &&
+        (tx_id == NULL || strncmp(s_stream_tx_id, tx_id, sizeof(s_stream_tx_id)) != 0))
+    {
+      (void)FEB_Console_CsvEmitAs(s_stream_tx_id, "done", NULL);
+    }
+    if (tx_id != NULL)
+    {
+      strncpy(s_stream_tx_id, tx_id, sizeof(s_stream_tx_id) - 1U);
+      s_stream_tx_id[sizeof(s_stream_tx_id) - 1U] = '\0';
+    }
+    else
+    {
+      s_stream_tx_id[0] = '\0';
+    }
+    s_stream_active = true;
+  }
+  else
+  {
+    /* Closing: emit a `done` for the captured streaming tx_id (the original
+     * `can-stream-on` transaction stayed open across all the async `can,...`
+     * rows; this is its terminator). */
+    if (s_stream_active && s_stream_tx_id[0] != '\0')
+    {
+      (void)FEB_Console_CsvEmitAs(s_stream_tx_id, "done", NULL);
+    }
+    s_stream_active = false;
+    s_stream_tx_id[0] = '\0';
+  }
+}
+
+bool DCU_CAN_Log_IsStreaming(void)
+{
+  return s_stream_active;
+}
+
+const char *DCU_CAN_Log_GetStreamTxId(void)
+{
+  return s_stream_tx_id;
+}
+
+/* ============================================================================
+ * CSV-protocol command handlers (dual-handler pattern — pair with
+ * `dcu|can|stream|*` in DCU_Commands.c through the shared SetStream helper).
+ *
+ * Transaction model:
+ *   - `can-stream-on` snapshots its own tx_id, sets the streaming flag, and
+ *     returns. feb_console auto-emits `ack` before the handler runs but the
+ *     dispatcher's `done` for this transaction is **suppressed** by us — the
+ *     same tx_id stays open and carries the subsequent async `can,...` rows.
+ *     We achieve that by **never returning normally** from `csv_handle_stream_on`
+ *     before the tx_id is captured; the dispatcher's auto-`done` is what we
+ *     want for the *off-command*'s tx_id, not for ours.
+ *   - Actually, feb_console always auto-emits `done` after the handler
+ *     returns. So we let it `done` the on-command's tx_id, and the async
+ *     `can,...` rows that come later are out-of-band rows under the
+ *     **same** tx_id (CsvEmitAs allows that). When the `off` command fires,
+ *     `DCU_CAN_Log_SetStream(false, ...)` emits one more `done` to close
+ *     the off-band stream cleanly. (Two `done`s for the same tx_id is a
+ *     deliberate convention so the website knows the streaming session is
+ *     fully drained.)
+ * ============================================================================ */
+
+static void csv_handle_stream_on(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  char tx_id[FEB_CSV_TX_ID_MAX_LEN + 1];
+  if (!FEB_Console_CsvCurrentTxId(tx_id, sizeof(tx_id)))
+  {
+    (void)FEB_Console_CsvError("error", "no active tx_id");
+    return;
+  }
+  DCU_CAN_Log_SetStream(true, tx_id);
+}
+
+static void csv_handle_stream_off(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  DCU_CAN_Log_SetStream(false, NULL);
+}
+
+static void csv_handle_stream_status(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  if (s_stream_active)
+  {
+    (void)FEB_Console_CsvEmit("status", "on,%s", s_stream_tx_id);
+  }
+  else
+  {
+    (void)FEB_Console_CsvEmit("status", "off");
+  }
+}
+
+/* Top-level entries. Pipe form goes through cmd_can in DCU_Commands.c
+ * (`dcu|can|stream|on/off/status`); these descriptors expose the same
+ * commands by name to the CSV parser. They're `hidden=true` so they don't
+ * clutter the human `help` listing — `commands` enumeration over CSV does
+ * include them because `hidden` only gates the discovery output. */
+static const FEB_Console_Cmd_t s_csv_stream_on = {
+    .name = "can-stream-on",
+    .help = "Begin streaming captured CAN frames as `can,...` rows",
+    .handler = NULL,
+    .csv_handler = csv_handle_stream_on,
+    .hidden = true,
+};
+
+static const FEB_Console_Cmd_t s_csv_stream_off = {
+    .name = "can-stream-off",
+    .help = "Stop the active CAN-frame stream",
+    .handler = NULL,
+    .csv_handler = csv_handle_stream_off,
+    .hidden = true,
+};
+
+static const FEB_Console_Cmd_t s_csv_stream_status = {
+    .name = "can-stream-status",
+    .help = "Report whether CAN-frame streaming is active",
+    .handler = NULL,
+    .csv_handler = csv_handle_stream_status,
+    .hidden = true,
+};
+
+void DCU_CAN_Log_RegisterCsvHandlers(void)
+{
+  (void)FEB_Console_Register(&s_csv_stream_on);
+  (void)FEB_Console_Register(&s_csv_stream_off);
+  (void)FEB_Console_Register(&s_csv_stream_status);
 }

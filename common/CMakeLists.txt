@@ -16,6 +16,9 @@
 #   feb_rtos_utils - RTOS utility macros (REQUIRE_RTOS_HANDLE, etc.)
 # ===========================================================================
 
+# Time Library - DWT-backed us clock, used by Serial/Console for CSV timestamps
+add_subdirectory(FEB_Time_Library)
+
 # Serial Library - UART, Logging, Console, Commands (unified stack)
 add_subdirectory(FEB_Serial_Library)
 
