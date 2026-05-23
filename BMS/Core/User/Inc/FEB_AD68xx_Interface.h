@@ -24,6 +24,8 @@ uint16_t pec15_calc(uint8_t len,  //!< The length of the data array being passed
  @param nLength The length of the data array
  @param pDataBuf The data array to calculate PEC from
  @returns The calculated pec10 as an unsigned int (10-bit, masked to 0x3FF)
+ @note When bIsRxCmd is true, pDataBuf must point to at least nLength+1
+       bytes — byte nLength is read as the command-counter byte.
   */
 uint16_t Pec10_calc(bool bIsRxCmd, uint8_t nLength, uint8_t *pDataBuf);
 
@@ -31,9 +33,12 @@ uint16_t Pec10_calc(bool bIsRxCmd, uint8_t nLength, uint8_t *pDataBuf);
 // The chip increments its 6-bit command counter on every valid command.
 // The host mirrors it: ADBMS_CC_Advance() is called automatically by the
 // command emitters (cmd_68 / cmd_68_r / write_68); ADBMS_CC_Check(observed)
-// is called by the per-IC PEC validation blocks, with observed extracted
-// as ((rx_byte_6 >> 2) & 0x3F). Mismatches indicate dropped commands or
-// chip resets and are rate-limited via printf to avoid log spam.
+// is called once per command by the read functions, with observed extracted
+// from the first IC's response as ((rx_byte_6 >> 2) & 0x3F). Mismatches
+// indicate dropped commands or chip resets and are rate-limited.
+//
+// Not reentrant / not thread-safe — single shared s_expected_cc state.
+// Call from one task only, or wrap in external synchronization.
 void ADBMS_CC_Advance(void);
 void ADBMS_CC_Reset(void);
 void ADBMS_CC_Check(uint8_t observed);
