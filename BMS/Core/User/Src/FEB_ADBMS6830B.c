@@ -348,16 +348,15 @@ static void compute_pack_temp_stats(void)
   float sum_C = 0.0f;
   uint16_t count = 0;
 
-  const float t_min_valid = TEMP_VALID_MIN_DC / 10.0f;
-  const float t_max_valid = TEMP_VALID_MAX_DC / 10.0f;
-
   for (uint8_t bank = 0; bank < FEB_NBANKS; bank++)
   {
     for (uint16_t s = 0; s < FEB_NUM_TEMP_SENSORS; s++)
     {
       float T = FEB_ACC.banks[bank].temp_sensor_readings_V[s];
-      // Positive-form check rejects NaN (all comparisons with NaN are false).
-      if (!(T >= t_min_valid && T <= t_max_valid))
+      // NaN sentinels (PEC failure → 0xFFFF → NaN) are rejected here;
+      // real high/low readings (including suspected-broken NTCs reading
+      // hot) are intentionally surfaced in min/max/avg.
+      if (!isfinite(T))
         continue;
       if (T < min_C)
         min_C = T;
@@ -404,8 +403,16 @@ static void validate_temps()
     {
       float temp = FEB_ACC.banks[bank].temp_sensor_readings_V[sensor] * 10;
 
-      // Check if temperature is within physically reasonable range
-      // Valid range: -40C to +85C (typical automotive operating range)
+      // Check if temperature is within physically reasonable range.
+      // Valid range: -40C to +85C (typical automotive operating range).
+      //
+      // Intentionally NOT aligned with compute_pack_temp_stats() (which now
+      // accepts any finite reading): an open/shorted NTC reads ~88C and is a
+      // *sensor* fault, not a cell over-temp event. Letting hot sentinel
+      // values through this gate would falsely increment temp_violations[]
+      // and trip ERROR_TYPE_TEMP_VIOLATION. The stats display is a *report*;
+      // this function is a *health-gate*. Different purposes, deliberately
+      // different gates.
       if (temp >= TEMP_VALID_MIN_DC && temp <= TEMP_VALID_MAX_DC)
       {
         FEB_ACC.banks[bank].tempRead += 1;

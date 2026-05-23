@@ -278,126 +278,105 @@ uint8_t ADBMS6830B_rdcv(uint8_t total_ic, // The number of ICs in the system
                         cell_asic *ic     // Array of the parsed cell codes
 )
 {
-#ifdef READALL
-  uint8_t TxSize = 34;
-  uint8_t cell_data[TxSize * total_ic];
-  transmitCMDR(RDCVALL, cell_data, TxSize * total_ic);
-  for (int icn = 0; icn < total_ic; icn++)
-  {
-    for (int byte = 0; byte < 34; byte++)
-    {
-      if (byte % 2 == 0)
-      {
-        ic[icn].cells.c_codes[byte / 2] = 0;
-        ic[icn].cells.c_codes[byte / 2] |= cell_data[byte + TxSize * icn];
-      }
-      else
-      {
-        ic[icn].cells.c_codes[byte / 2] |= cell_data[byte + TxSize * icn] << 8;
-      }
-    }
-  }
-  // memcpy(&(ic[icn].cells.c_codes),cell_data+icn*TxSize,(size_t)TxSize);
-
-  int16_t c_data_pec = pec10_calc(TxSize - 2, cell_data);
-  int16_t c_rx_pec = *(uint16_t *)(cell_data + TxSize - 2);
-
-  return (c_data_pec != c_rx_pec);
-#else
   uint8_t errorCount = 0;
   uint8_t TxSize = 8;
   uint8_t cell_data[TxSize * total_ic];
   uint16_t codes[6] = {RDCVA, RDCVB, RDCVC, RDCVD, RDCVE, RDCVF};
+
   for (int REGGRP = 0; REGGRP < 6; REGGRP++)
   {
     wakeup_sleep(FEB_NUM_IC);
     transmitCMDR(codes[REGGRP], cell_data, TxSize * total_ic);
     uint8_t bytesInGroup = (REGGRP == 5) ? 2 : 6;
+
+    // One command on the wire -> one CC tick. Check the global counter once
+    // using the first IC's CC; below we compare each IC's CC against it to
+    // surface per-IC drift without resyncing s_expected_cc N times.
+    uint8_t first_ic_cc = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+    ADBMS_CC_Check(first_ic_cc);
+
     for (int icn = 0; icn < total_ic; icn++)
     {
+      uint8_t *ic_data = cell_data + icn * TxSize;
+
       for (int byte = 0; byte < bytesInGroup; byte++)
       {
+        uint8_t code_idx = byte / 2 + 3 * REGGRP;
         if (byte % 2 == 0)
-        {
-          ic[icn].cells.c_codes[byte / 2 + 3 * REGGRP] = 0;
-          ic[icn].cells.c_codes[byte / 2 + 3 * REGGRP] |= cell_data[byte + TxSize * icn];
-        }
+          ic[icn].cells.c_codes[code_idx] = ic_data[byte];
         else
-        {
-          ic[icn].cells.c_codes[byte / 2 + 3 * REGGRP] |= cell_data[byte + TxSize * icn] << 8;
-        }
+          ic[icn].cells.c_codes[code_idx] |= (uint16_t)ic_data[byte] << 8;
       }
+
+      // Per-IC PEC: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
+      // rdcv writes pec_match[REGGRP] unconditionally; rdsv runs after
+      // (FEB_ADBMS6830B.c:146-147) and ORs in its result so the flag is
+      // worst-of-two. Consumer at FEB_ADBMS6830B.c:174 gates use of
+      // c_codes (rdcv data) on this flag.
+      uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
+      uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+      uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+      if (ic_cc != first_ic_cc)
+        LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", icn, (unsigned)ic_cc, (unsigned)first_ic_cc);
+      bool mismatch = (calc_pec != rx_pec);
+      ic[icn].cells.pec_match[REGGRP] = mismatch ? 1 : 0;
+      if (mismatch)
+        errorCount++;
     }
-    int16_t c_data_pec = pec10_calc(TxSize - 2, cell_data);
-    int16_t c_rx_pec = *(uint16_t *)(cell_data + TxSize - 2);
-    if (c_data_pec != c_rx_pec)
-      errorCount++;
   }
   return errorCount;
-#endif
 }
 
 uint8_t ADBMS6830B_rdsv(uint8_t total_ic, // The number of ICs in the system
                         cell_asic *ic     // Array of the parsed cell codes
 )
 {
-#ifdef READALL
-  uint8_t TxSize = 34;
-  uint8_t cell_data[TxSize * total_ic];
-  transmitCMDR(RDSALL, cell_data, TxSize * total_ic);
-  for (int icn = 0; icn < total_ic; icn++)
-  {
-    for (int byte = 0; byte < 34; byte++)
-    {
-      if (byte % 2 == 0)
-      {
-        ic[icn].cells.s_codes[byte / 2] = 0;
-        ic[icn].cells.s_codes[byte / 2] |= cell_data[byte + TxSize * icn];
-      }
-      else
-      {
-        ic[icn].cells.s_codes[byte / 2] |= cell_data[byte + TxSize * icn] << 8;
-      }
-    }
-  }
-  // memcpy(&(ic[icn].cells.s_codes),cell_data+icn*TxSize,(size_t)34);
-  uint16_t data_pec = pec10_calc(32, cell_data);
-  uint16_t rx_pec = *(uint16_t *)(cell_data + 32);
-
-  return (data_pec != rx_pec);
-#else
   uint8_t errorCount = 0;
   uint8_t TxSize = 8;
   uint8_t cell_data[TxSize * total_ic];
   uint16_t codes[6] = {RDSVA, RDSVB, RDSVC, RDSVD, RDSVE, RDSVF};
+
   for (int REGGRP = 0; REGGRP < 6; REGGRP++)
   {
     wakeup_sleep(FEB_NUM_IC);
     transmitCMDR(codes[REGGRP], cell_data, TxSize * total_ic);
-
     uint8_t bytesInGroup = (REGGRP == 5) ? 2 : 6;
+
+    // One command on the wire -> one CC tick. See rdcv for rationale.
+    uint8_t first_ic_cc = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+    ADBMS_CC_Check(first_ic_cc);
+
     for (int icn = 0; icn < total_ic; icn++)
     {
+      uint8_t *ic_data = cell_data + icn * TxSize;
+
       for (int byte = 0; byte < bytesInGroup; byte++)
       {
+        uint8_t code_idx = byte / 2 + 3 * REGGRP;
         if (byte % 2 == 0)
-        {
-          ic[icn].cells.s_codes[byte / 2 + 3 * REGGRP] = 0;
-          ic[icn].cells.s_codes[byte / 2 + 3 * REGGRP] |= cell_data[byte + TxSize * icn];
-        }
+          ic[icn].cells.s_codes[code_idx] = ic_data[byte];
         else
-        {
-          ic[icn].cells.s_codes[byte / 2 + 3 * REGGRP] |= cell_data[byte + TxSize * icn] << 8;
-        }
+          ic[icn].cells.s_codes[code_idx] |= (uint16_t)ic_data[byte] << 8;
       }
+
+      // Per-IC PEC: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
+      // Worst-of-two with rdcv: rdcv runs first (FEB_ADBMS6830B.c:146-147)
+      // and writes pec_match[REGGRP] unconditionally; we OR in rdsv's result
+      // so a rdcv PEC fail is not silently cleared by a rdsv pass. The
+      // consumer at FEB_ADBMS6830B.c:174 gates use of c_codes (rdcv data)
+      // on this flag.
+      uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
+      uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+      uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+      if (ic_cc != first_ic_cc)
+        LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", icn, (unsigned)ic_cc, (unsigned)first_ic_cc);
+      bool mismatch = (calc_pec != rx_pec);
+      ic[icn].cells.pec_match[REGGRP] |= mismatch ? 1 : 0;
+      if (mismatch)
+        errorCount++;
     }
-    int16_t c_data_pec = pec10_calc(TxSize - 2, cell_data);
-    int16_t c_rx_pec = *(uint16_t *)(cell_data + TxSize - 2);
-    if (c_data_pec != c_rx_pec)
-      errorCount++;
   }
   return errorCount;
-#endif
 }
 // ******************************** Temperature ********************************
 void ADBMS6830B_wrALL(uint8_t total_ic, // The number of ICs being written to
@@ -460,6 +439,10 @@ void ADBMS6830B_rdcfga(uint8_t total_ic, // The number of ICs being written to
 
   transmitCMDR(RDCFGA, cell_data, 8 * total_ic);
 
+  /* One command on the wire -> one CC tick. See rdcv for rationale. */
+  uint8_t first_ic_cc = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+  ADBMS_CC_Check(first_ic_cc);
+
   /* Parse data and validate PEC for each IC individually */
   for (int bank = 0; bank < total_ic; bank++)
   {
@@ -471,6 +454,9 @@ void ADBMS6830B_rdcfga(uint8_t total_ic, // The number of ICs being written to
      * Mask 0x03 strips the command counter so only PEC[9:0] is compared. */
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+    if (ic_cc != first_ic_cc)
+      LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", bank, (unsigned)ic_cc, (unsigned)first_ic_cc);
     ic[bank].configa.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
 
@@ -516,6 +502,10 @@ void ADBMS6830B_rdcfgb(uint8_t total_ic, // The number of ICs being written to
   }
   transmitCMDR(RDCFGB, cell_data, 8 * total_ic);
 
+  /* One command on the wire -> one CC tick. See rdcv for rationale. */
+  uint8_t first_ic_cc = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+  ADBMS_CC_Check(first_ic_cc);
+
   /* Parse data and validate PEC for each IC individually */
   for (int bank = 0; bank < total_ic; bank++)
   {
@@ -527,6 +517,9 @@ void ADBMS6830B_rdcfgb(uint8_t total_ic, // The number of ICs being written to
      * Mask 0x03 strips the command counter so only PEC[9:0] is compared. */
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+    if (ic_cc != first_ic_cc)
+      LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", bank, (unsigned)ic_cc, (unsigned)first_ic_cc);
     ic[bank].configb.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
 
@@ -575,12 +568,28 @@ void ADBMS6830B_rdpwmga(uint8_t total_ic, // The number of ICs being written to
   cell_data = (uint8_t *)pvPortMalloc(TxSize * total_ic * sizeof(uint8_t));
   if (cell_data == NULL)
   {
-    return; // Memory allocation failed
+    for (int bank = 0; bank < total_ic; bank++)
+      ic[bank].pwm.rx_pec_match = -1;
+    return;
   }
   transmitCMDR(RDPWMA, cell_data, 8 * total_ic);
+
+  // One command on the wire -> one CC tick. See rdcv for rationale.
+  uint8_t first_ic_cc = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+  ADBMS_CC_Check(first_ic_cc);
+
   for (int bank = 0; bank < total_ic; bank++)
   {
-    memcpy(&(ic[bank].pwm.rx_data), cell_data + bank * TxSize, (size_t)8);
+    uint8_t *ic_data = cell_data + bank * TxSize;
+    memcpy(&(ic[bank].pwm.rx_data), ic_data, (size_t)8);
+
+    // Per-IC PEC: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
+    uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
+    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+    if (ic_cc != first_ic_cc)
+      LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", bank, (unsigned)ic_cc, (unsigned)first_ic_cc);
+    ic[bank].pwm.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
   vPortFree(cell_data);
 }
@@ -613,12 +622,28 @@ void ADBMS6830B_rdpwmgb(uint8_t total_ic, // The number of ICs being written to
   cell_data = (uint8_t *)pvPortMalloc(TxSize * total_ic * sizeof(uint8_t));
   if (cell_data == NULL)
   {
-    return; // Memory allocation failed
+    for (int bank = 0; bank < total_ic; bank++)
+      ic[bank].pwmb.rx_pec_match = -1;
+    return;
   }
   transmitCMDR(RDPWMB, cell_data, 8 * total_ic);
+
+  // One command on the wire -> one CC tick. See rdcv for rationale.
+  uint8_t first_ic_cc = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+  ADBMS_CC_Check(first_ic_cc);
+
   for (int bank = 0; bank < total_ic; bank++)
   {
-    memcpy(&(ic[bank].pwmb.rx_data), cell_data + bank * TxSize, (size_t)8);
+    uint8_t *ic_data = cell_data + bank * TxSize;
+    memcpy(&(ic[bank].pwmb.rx_data), ic_data, (size_t)8);
+
+    // Per-IC PEC: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
+    uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
+    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+    if (ic_cc != first_ic_cc)
+      LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", bank, (unsigned)ic_cc, (unsigned)first_ic_cc);
+    ic[bank].pwmb.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
   vPortFree(cell_data);
 }
@@ -645,6 +670,11 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
 
   // RDAUXA: GPIO1-3 -> a_codes[0..2]
   transmitCMDR(RDAUXA, cell_data, NUM_RX_BYT * total_ic);
+
+  // One command on the wire -> one CC tick. See rdcv for rationale.
+  uint8_t first_ic_cc_a = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+  ADBMS_CC_Check(first_ic_cc_a);
+
   for (int i = 0; i < total_ic; i++)
   {
     uint8_t *ic_data = cell_data + i * NUM_RX_BYT;
@@ -656,6 +686,9 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
     // check_and_report_pec_errors() can drive redundancy failover.
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+    if (ic_cc != first_ic_cc_a)
+      LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", i, (unsigned)ic_cc, (unsigned)first_ic_cc_a);
     bool mismatch = (calc_pec != rx_pec);
     ic[i].aux.pec_match[0] = mismatch ? 1 : 0;
     if (mismatch)
@@ -664,6 +697,10 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
 
   // RDAUXB: GPIO4-6 -> a_codes[3..5]
   transmitCMDR(RDAUXB, cell_data, NUM_RX_BYT * total_ic);
+
+  uint8_t first_ic_cc_b = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+  ADBMS_CC_Check(first_ic_cc_b);
+
   for (int i = 0; i < total_ic; i++)
   {
     uint8_t *ic_data = cell_data + i * NUM_RX_BYT;
@@ -671,6 +708,9 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
 
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+    if (ic_cc != first_ic_cc_b)
+      LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", i, (unsigned)ic_cc, (unsigned)first_ic_cc_b);
     bool mismatch = (calc_pec != rx_pec);
     ic[i].aux.pec_match[1] = mismatch ? 1 : 0;
     if (mismatch)
@@ -701,6 +741,10 @@ uint8_t ADBMS6830B_rdsid(uint8_t total_ic, // The number of ICs in the system
   wakeup_sleep(total_ic);
   transmitCMDR(RDSID, sid_data, NUM_RX_BYT * total_ic);
 
+  // One command on the wire -> one CC tick. See rdcv for rationale.
+  uint8_t first_ic_cc = (uint8_t)((sid_data[6] >> 2) & 0x3F);
+  ADBMS_CC_Check(first_ic_cc);
+
   for (int i = 0; i < total_ic; i++)
   {
     uint8_t *ic_data = sid_data + (i * NUM_RX_BYT);
@@ -713,6 +757,9 @@ uint8_t ADBMS6830B_rdsid(uint8_t total_ic, // The number of ICs in the system
     // Mask 0x03 strips the command counter so only PEC[9:0] is compared.
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
+    uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+    if (ic_cc != first_ic_cc)
+      LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", i, (unsigned)ic_cc, (unsigned)first_ic_cc);
     if (calc_pec != rx_pec)
     {
       pec_error++;
@@ -783,16 +830,11 @@ void ADBMS6830B_check_pec(uint8_t total_ic, // Number of ICs in the system
     }
     break;
 
-  case STAT:
-    for (int current_ic = 0; current_ic < total_ic; current_ic++)
-    {
-      for (int i = 0; i < ic[0].ic_reg.num_stat_reg - 1; i++)
-      {
-        ic[current_ic].crc_count.pec_count = ic[current_ic].crc_count.pec_count + ic[current_ic].stat.pec_match[i];
-        ic[current_ic].crc_count.stat_pec[i] = ic[current_ic].crc_count.stat_pec[i] + ic[current_ic].stat.pec_match[i];
-      }
-    }
-    break;
+    /* No STAT case: there is no ADBMS6830B_rdstat() in this firmware, so
+     * stat.pec_match[] is never written. Reading it here would aggregate
+     * BSS-zero garbage. If a status read is added later, restore a STAT
+     * branch that mirrors AUX above. crc_count.stat_pec[] is still
+     * cleared by reset_crc_count() so the field stays at a sane 0. */
 
   default:
     break;
