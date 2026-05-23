@@ -126,23 +126,26 @@ uint16_t Pec10_calc(bool bIsRxCmd, uint8_t nLength, uint8_t *pDataBuf)
     }
   }
 
-  /* If array is from received buffer add command counter to crc calculation */
+  /* If array is from received buffer add command counter to crc calculation.
+   * The trailing 6-bit modulo-2 division shifts those 6 CC bits through the
+   * remainder; for TX (no CC byte appended) there are no further input bits,
+   * so the loop must stay inside this branch — running it unconditionally
+   * would XOR/shift zeros into the result and corrupt the TX PEC. */
   if (bIsRxCmd == true)
   {
     nRemainder ^= (uint16_t)(((uint16_t)pDataBuf[nLength] & (uint8_t)0xFC) << 2u);
-  }
-  /* Perform modulo-2 division, a bit at a time */
-  for (nBitIndex = 6u; nBitIndex > 0u; --nBitIndex)
-  {
-    /* Try to divide the current data bit */
-    if ((nRemainder & 0x200u) > 0u)
+
+    for (nBitIndex = 6u; nBitIndex > 0u; --nBitIndex)
     {
-      nRemainder = (uint16_t)((nRemainder << 1u));
-      nRemainder = (uint16_t)(nRemainder ^ nPolynomial);
-    }
-    else
-    {
-      nRemainder = (uint16_t)((nRemainder << 1u));
+      if ((nRemainder & 0x200u) > 0u)
+      {
+        nRemainder = (uint16_t)((nRemainder << 1u));
+        nRemainder = (uint16_t)(nRemainder ^ nPolynomial);
+      }
+      else
+      {
+        nRemainder = (uint16_t)((nRemainder << 1u));
+      }
     }
   }
   return ((uint16_t)(nRemainder & 0x3FFu));
