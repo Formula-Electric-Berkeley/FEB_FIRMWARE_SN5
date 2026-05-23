@@ -685,9 +685,10 @@ static const FEB_Console_Cmd_t dcu_cmd = {
 
 bool DCU_RegisterCommands(void)
 {
-  if (!FEB_Console_Register(&dcu_cmd))
+  int rc = FEB_Console_Register(&dcu_cmd);
+  if (rc != 0)
   {
-    LOG_E(TAG_DCU, "Failed to register dcu command");
+    LOG_E(TAG_DCU, "Failed to register dcu command (rc=%d)", rc);
     return false;
   }
   return true;

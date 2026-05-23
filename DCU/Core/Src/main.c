@@ -182,36 +182,10 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-/* CAN Callbacks - route to FEB CAN Library */
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
-{
-  FEB_CAN_RxFifo0Callback(hcan);
-}
-
-void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
-{
-  FEB_CAN_RxFifo1Callback(hcan);
-}
-
-void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-  FEB_CAN_TxMailbox0CompleteCallback(hcan);
-}
-
-void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-  FEB_CAN_TxMailbox1CompleteCallback(hcan);
-}
-
-void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-  FEB_CAN_TxMailbox2CompleteCallback(hcan);
-}
-
-void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
-{
-  FEB_CAN_ErrorCallback(hcan);
-}
+/* CAN HAL callbacks (HAL_CAN_RxFifo*MsgPendingCallback, HAL_CAN_TxMailbox*Complete,
+ * HAL_CAN_ErrorCallback) are now provided directly by the feb_can library —
+ * see common/FEB_CAN_Library/Src/feb_can.c. Bridging them here would cause
+ * multiple-definition link errors. */
 
 /* UART Callbacks - route to FEB UART Library */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)

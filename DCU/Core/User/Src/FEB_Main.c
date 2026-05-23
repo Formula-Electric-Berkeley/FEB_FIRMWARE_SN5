@@ -78,11 +78,13 @@ void FEB_Init(void)
   };
   FEB_Log_Init(&log_cfg);
 
-  LOG_I(TAG_MAIN, "DCU initializing...");
-
   /* Initialize console (registers built-in commands: echo, help, hello, commands,
    * version, uptime, reboot, log). The CSV-over-console protocol is handled by
-   * feb_console's parser directly — no separate init needed. */
+   * feb_console's parser directly — no separate init needed.
+   * NOTE: deliberately no LOG_I before this — the DMA from a pre-console LOG_I
+   *       can collide with the synchronous HAL_UART_Transmit calls inside
+   *       FEB_Console_Init's debug path and wedge the boot. BMS's FEB_Init
+   *       (on origin/main) follows the same order. */
   FEB_Console_Init(true);
 
   /* CAN-log subsystem's CSV-form handlers. Pair with the pipe-form
@@ -98,6 +100,9 @@ void FEB_Init(void)
 
   /* Initialize TPS subsystem */
   DCU_TPS_Init();
+
+  /* First LOG_I after everything is set up — same shape as BMS on main. */
+  LOG_I(TAG_MAIN, "DCU initialization complete (can_init=%d)", (int)can_init_success);
 
   /* Startup banner */
   FEB_Console_Printf("\r\n");
