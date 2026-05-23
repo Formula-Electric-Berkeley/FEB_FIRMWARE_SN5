@@ -60,7 +60,7 @@ void FEB_CAN_RMS_Init(void)
 {
   FEB_CAN_RX_Params_t rx_params = {
       .instance = FEB_CAN_INSTANCE_1,
-      .can_id = FEB_CAN_RMS_COMMAND_FRAME_ID,
+      .can_id = FEB_CAN_M192_COMMAND_MESSAGE_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,
       .mask = 0x7FF,

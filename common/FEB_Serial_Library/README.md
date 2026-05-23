@@ -6,12 +6,28 @@ Unified serial I/O stack for Formula Electric @ Berkeley firmware projects. Prov
 
 ```
 FEB_Serial_Library/
-├── FEB_UART/       # Core UART driver (DMA, line/binary modes, framing)
-├── FEB_Log/        # Logging with configurable output backend
-├── FEB_Console/    # Command-line interface
-├── FEB_Commands/   # Default system commands (help, echo, etc.)
-└── CMakeLists.txt  # Aggregates all libraries
+├── FEB_UART/         # Core UART driver (DMA, line/binary modes, framing)
+├── FEB_Log/          # Logging with configurable output backend
+├── FEB_Console/      # Command-line interface
+├── FEB_Commands/     # Default system commands (help, echo, etc.)
+├── FEB_String_Utils/ # Case-insensitive comparison and small string helpers
+├── FEB_Version/      # Build provenance types (FEB_Build_Info_t, FEB_Flash_Info_t)
+└── CMakeLists.txt    # Aggregates all libraries
 ```
+
+### CMake Targets
+
+| Target | Role |
+|---|---|
+| `feb_uart` | DMA UART driver (line + binary modes). Standalone. |
+| `feb_log` | Logging with injectable output. Depends on `feb_uart`. |
+| `feb_console` | Pipe-delimited command parser. Depends on `feb_uart`, `feb_time`. |
+| `feb_commands` | Default `help`, `echo`, `version`, `uptime`, `reboot`, `log`. Depends on `feb_console`, `feb_log`, `feb_version` (used by `version`). |
+| `feb_string_utils` | `FEB_strcasecmp()` and friends. Standalone. |
+| `feb_version` | Build provenance types; paired with `cmake/FEB_Version.cmake` which generates `feb_build_info.c` per board. |
+| `feb_io` | Umbrella: links `feb_string_utils`, [`feb_time`](../FEB_Time_Library/README.md), `feb_uart`, `feb_log`, `feb_console`, `feb_version`, `feb_commands`. |
+
+Linking `feb_io` pulls in [`feb_time`](../FEB_Time_Library/README.md) as a transitive dependency — console CSV rows and log timestamps rely on it.
 
 ## Quick Start
 

@@ -34,11 +34,15 @@
         "-DCMAKE_COMMAND=cube-cmake"
     ],
     "[c]": {
-        "editor.defaultFormatter": "ms-vscode.cpptools",
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
         "editor.formatOnSave": true
     },
     "[cpp]": {
         "editor.defaultFormatter": "ms-vscode.cpptools",
         "editor.formatOnSave": true
-    }
+    },
+    "python.defaultInterpreterPath": "${workspaceFolder}/common/FEB_CAN_Library_SN4/.venv/bin/python",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/common/FEB_CAN_Library_SN4/.venv/lib/python3.14/site-packages"
+    ]
 }

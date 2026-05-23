@@ -33,6 +33,7 @@ typedef enum
   PINGPONG_MODE_OFF = 0, /* Channel disabled */
   PINGPONG_MODE_PING,    /* TX on ID, increment counter each transmission */
   PINGPONG_MODE_PONG,    /* Listen on ID, respond with counter+1 */
+  PINGPONG_MODE_PINGPONG /* TX periodically and respond to RX frames */
 } FEB_PingPong_Mode_t;
 
 /* ============================================================================
@@ -48,7 +49,7 @@ void FEB_CAN_PingPong_Init(void);
 /**
  * @brief Set the mode for a channel
  * @param channel Channel number (1-4)
- * @param mode PINGPONG_MODE_OFF, PINGPONG_MODE_PING, or PINGPONG_MODE_PONG
+ * @param mode PINGPONG_MODE_OFF, PINGPONG_MODE_PING, PINGPONG_MODE_PONG, or PINGPONG_MODE_PINGPONG
  */
 void FEB_CAN_PingPong_SetMode(uint8_t channel, FEB_PingPong_Mode_t mode);
 

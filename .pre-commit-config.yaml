@@ -17,7 +17,7 @@ repos:
         files: (Core/User/|scripts/|\.github/)
       - id: check-added-large-files
         args: ['--maxkb=500']
-        exclude: '^.*/(?:Drivers|Middlewares)/.*$'
+        exclude: '^.*/Drivers/.*$'
       - id: check-merge-conflict
 
   # Local hooks using project scripts
@@ -35,7 +35,7 @@ repos:
       # cppcheck static analysis on user code only (skips if not installed)
       - id: cppcheck
         name: cppcheck
-        entry: bash -c 'if ! command -v cppcheck &>/dev/null; then echo "cppcheck not installed, skipping (install via brew install cppcheck)"; exit 0; fi; for board in BMS DASH DART DCU LVPDB PCU Sensor_Nodes; do if [ -d "$board/Core/User" ] && find "$board/Core/User" -name "*.c" -print -quit 2>/dev/null | grep -q .; then cppcheck --quiet --enable=warning,performance,portability --suppress=missingIncludeSystem --suppress=unmatchedSuppression --suppress=uninitvar:*lsm6dsox_reg.c* --suppress=legacyUninitvar:*lsm6dsox_reg.c* --error-exitcode=1 "$board/Core/User/"; fi; done'
+        entry: bash -c 'if ! command -v cppcheck &>/dev/null; then echo "cppcheck not installed, skipping (install via brew install cppcheck)"; exit 0; fi; for board in BMS DASH DART DCU LVPDB PCU Sensor_Nodes; do if [ -d "$board/Core/User" ] && find "$board/Core/User" -name "*.c" -print -quit 2>/dev/null | grep -q .; then cppcheck --quiet --enable=warning,performance,portability --suppress=missingIncludeSystem --suppress=unmatchedSuppression --suppress=uninitvar:*lsm6dsox_reg.c* --suppress=legacyUninitvar:*lsm6dsox_reg.c* --suppress=uninitStructMember:*lsm6dsox_reg.c* -DFEB_SN_VARIANT_FRONT=1 -DFEB_SN_VARIANT_REAR=2 -DFEB_SENSOR_NODE_VARIANT=1 -I "$board/Core/User/Inc" --error-exitcode=1 "$board/Core/User/"; fi; done'
         language: system
         types: [c]
         pass_filenames: false
@@ -48,3 +48,13 @@ repos:
         language: script
         pass_filenames: false
         always_run: true
+
+      # Auto-increment patch version on each commit for affected boards + repo.
+      # No-ops if a VERSION file is already staged (so /version stays authoritative).
+      - id: auto-bump-patch
+        name: auto-bump-patch
+        entry: ./scripts/auto-bump-commit.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

@@ -13,7 +13,6 @@
 #include "feb_console.h"
 #include "uart_commands.h"
 #include "feb_rtc.h"
-#include "rtc_commands.h"
 #include "cmsis_os2.h"
 
 /* External HAL handles from CubeMX-generated code */
@@ -84,11 +83,9 @@ void FEB_Main_Setup(void)
   /* Initialize console (registers built-in commands) */
   FEB_Console_Init(true);
 
-  /* Register UART custom commands */
+  /* Register UART custom commands (includes blink, flashbench, and rtc as
+   * hidden subcommands of the UART parent dispatcher). */
   UART_RegisterCommands();
-
-  /* Register RTC commands */
-  RTC_RegisterCommands();
 
   /* Startup banner */
   FEB_Console_Printf("\r\n");
@@ -104,7 +101,7 @@ void FEB_Main_Setup(void)
  * FreeRTOS Task Implementations - Override weak stubs in freertos.c
  * ============================================================================ */
 
-void StartUartRxTask(void *argument)
+void StartUARTRxTask(void *argument)
 {
   (void)argument;
 

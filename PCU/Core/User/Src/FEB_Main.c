@@ -1,4 +1,6 @@
 #include "FEB_Main.h"
+#include "FEB_ADC.h"
+#include "FEB_PCU_APPS_Commands.h"
 #include "main.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -159,6 +161,14 @@ void FEB_Main_Setup(void)
 void FEB_Main_Loop(void)
 {
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
+  PCU_APPS_StreamProcess();
+
+  // BMS heartbeat: flag is set by CAN RX ISR; transmit here in task context to avoid
+  // combining with ISR diagnostic TX and saturating the 3 hardware CAN mailboxes.
+  if (can_init_success)
+  {
+    FEB_CAN_BMS_ProcessHeartbeat();
+  }
 
   // TPS power monitoring (rate limited to 10Hz to prevent CAN queue overflow)
   static uint32_t last_tps_tick = 0;
@@ -193,7 +203,16 @@ void FEB_Main_Loop(void)
 void FEB_1ms_Callback(void)
 {
   static uint16_t torque_divider = 0;
-  static uint16_t diagnostics_divider = 0;
+  static uint16_t brake_divider = 0;
+  // apps_divider starts at 10 so APPS and Brake fire on alternating 10 ms slots.
+  // At the 100 ms TPS boundary, only Brake fires (not APPS), keeping ISR TX at 2
+  // frames (RMS + Brake) and leaving one mailbox free for TPS in the main loop.
+  static uint16_t apps_divider = 10;
+
+  // Refresh the APPS cache every 1 ms so the implausibility timer
+  // accumulates correctly across all consumers (FEB_RMS_Torque,
+  // FEB_CAN_Diagnostics_TransmitAPPSData, the CLI snapshot view).
+  FEB_ADC_TickAPPS();
 
   // Skip CAN-dependent operations if CAN init failed
   if (!can_init_success)
@@ -201,7 +220,8 @@ void FEB_1ms_Callback(void)
     return;
   }
 
-  FEB_CAN_BMS_ProcessHeartbeat();
+  // BMS heartbeat is processed in FEB_Main_Loop, not here, to avoid combining
+  // its TX with RMS + diagnostics and saturating all 3 hardware CAN mailboxes.
 
   torque_divider++;
   if (torque_divider >= 10)
@@ -210,11 +230,17 @@ void FEB_1ms_Callback(void)
     FEB_RMS_Torque();
   }
 
-  diagnostics_divider++;
-  if (diagnostics_divider >= 20)
+  brake_divider++;
+  if (brake_divider >= 20)
   {
-    diagnostics_divider = 0;
+    brake_divider = 0;
     FEB_CAN_Diagnostics_TransmitBrakeData();
+  }
+
+  apps_divider++;
+  if (apps_divider >= 20)
+  {
+    apps_divider = 0;
     FEB_CAN_Diagnostics_TransmitAPPSData();
   }
 }

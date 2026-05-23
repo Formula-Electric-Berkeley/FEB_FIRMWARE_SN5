@@ -30,10 +30,13 @@ void FEB_BSPD_CheckReset()
 // Sends the BSPD status over CAN
 void FEB_BSPD_CAN_Transmit()
 {
-  uint8_t data[8];
-  data[0] = BSPD.state;
+  struct feb_can_bspd_state_t msg = {0};
+  msg.bspd_state = BSPD.state;
 
-  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BSPD_STATE_FRAME_ID, FEB_CAN_ID_STD, data, 1);
+  uint8_t data[FEB_CAN_BSPD_STATE_LENGTH];
+  int packed = feb_can_bspd_state_pack(data, &msg, sizeof(data));
+  FEB_CAN_Status_t status =
+      FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BSPD_STATE_FRAME_ID, FEB_CAN_ID_STD, data, (uint8_t)packed);
   if (status != FEB_CAN_OK)
   {
     LOG_E(TAG_BSPD, "Failed to transmit BSPD status: %d", status);

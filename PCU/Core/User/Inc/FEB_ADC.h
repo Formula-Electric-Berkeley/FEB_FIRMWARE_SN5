@@ -108,10 +108,15 @@ extern "C"
     float position2;              /* APPS2 position (0-100%) */
     float acceleration;           /* Average position */
     bool plausible;               /* Plausibility check status */
-    uint32_t implausibility_time; /* Time of implausibility detection */
+    uint32_t implausibility_time; /* Elapsed ms since the persistent disagreement started (0 when plausible) */
     bool short_circuit;           /* Short circuit detected */
     bool open_circuit;            /* Open circuit detected */
   } APPS_DataTypeDef;
+
+  /* Runtime flag replacing the old SINGLE_APPS_MODE compile-time #define.
+   * Default false = dual-sensor plausibility enforced. Toggle only via
+   * FEB_ADC_SetSingleSensorMode (refused while in drive state). */
+  extern bool FEB_APPS_SingleSensorMode;
 
   /**
    * @brief Brake System Data
@@ -252,11 +257,45 @@ extern "C"
   /* ========================================================================== */
 
   /**
-   * @brief  Get normalized accelerator pedal position
+   * @brief  Update the single APPS cache. Must be called from a periodic
+   *         tick (1 ms in PCU). All APPS getters read from this cache so
+   *         the implausibility timer accumulates correctly across consumers.
+   */
+  void FEB_ADC_TickAPPS(void);
+
+  /**
+   * @brief  Copy a snapshot of the cached APPS data.
+   *
+   * The cache is filled by FEB_ADC_TickAPPS(). Existing callers (RMS torque
+   * loop, CAN diagnostics, plausibility checks) still work unchanged through
+   * this entry point.
+   *
    * @param  apps_data: Pointer to APPS data structure
    * @retval ADC_StatusTypeDef: Operation status
    */
   ADC_StatusTypeDef FEB_ADC_GetAPPSData(APPS_DataTypeDef *apps_data);
+
+  /**
+   * @brief  Read the APPS cache plus auxiliary debug fields atomically.
+   *
+   * Any of the output pointers may be NULL — only requested fields are
+   * written. Used by the PCU CLI to assemble an `apps|raw` view.
+   */
+  void FEB_ADC_GetAPPSCacheSnapshot(APPS_DataTypeDef *out, uint16_t *raw1, uint16_t *raw2, float *v1_mv, float *v2_mv,
+                                    uint32_t *fault_bitmask, uint32_t *implaus_elapsed_ms, float *latest_deviation);
+
+  /**
+   * @brief  Acknowledge an APPS implausibility latch when both pedals are
+   *         below 5%. No-op if either pedal is still above the release
+   *         threshold. Implements FSAE EV.5.5 release-and-reset semantics.
+   */
+  void FEB_ADC_AcknowledgeAPPSImplausibility(void);
+
+  /**
+   * @brief  Acknowledge a brake plausibility latch when brake position is
+   *         below 15%. No-op otherwise.
+   */
+  void FEB_ADC_AcknowledgeBrakeImplausibility(void);
 
   /**
    * @brief  Get brake system data
@@ -387,6 +426,100 @@ extern "C"
    * @retval ADC_StatusTypeDef: Operation status
    */
   ADC_StatusTypeDef FEB_ADC_ClearFaults(uint32_t fault_mask);
+
+  /**
+   * @brief  Get the current active fault bitmask (snapshot).
+   */
+  uint32_t FEB_ADC_GetActiveFaults(void);
+
+  /**
+   * @brief  Get the lifetime hit count for a single fault bit (rising-edge
+   *         counted). `fault_bit` must be one of the FAULT_* defines from
+   *         FEB_ADC.c (use FEB_ADC_FaultBitFromName to look up by name).
+   */
+  uint32_t FEB_ADC_GetFaultHitCount(uint32_t fault_bit);
+
+  /**
+   * @brief  Look up a fault bit by name string (e.g. "APPS_IMPLAUSIBILITY").
+   * @retval Bit value, or 0 if the name is not recognised.
+   */
+  uint32_t FEB_ADC_FaultBitFromName(const char *name);
+
+  /**
+   * @brief  Get the human-readable name of a single fault bit.
+   * @retval Pointer to a static string. Returns "UNKNOWN" if no match.
+   */
+  const char *FEB_ADC_FaultBitName(uint32_t fault_bit);
+
+  /**
+   * @brief  Inject a fault for bench testing. Refused while in drive state.
+   */
+  ADC_StatusTypeDef FEB_ADC_InjectFault(uint32_t fault_bit);
+
+  /**
+   * @brief  Clear a fault by name. Safety-related faults are refused while
+   *         in drive state.
+   */
+  ADC_StatusTypeDef FEB_ADC_ClearFaultsByName(const char *name);
+
+  /* ========================================================================== */
+  /*                           DEBUG / RUNTIME OVERRIDES                        */
+  /* ========================================================================== */
+
+  /**
+   * @brief  Enable/disable single-APPS mode at runtime. Refused (returns
+   *         ADC_STATUS_ERROR) while in drive state.
+   */
+  ADC_StatusTypeDef FEB_ADC_SetSingleSensorMode(bool enabled);
+
+  /**
+   * @brief  Inject a simulated APPS percentage. Active for at most 30 s, then
+   *         auto-clears. Refused while in drive state. Pass enabled=false to
+   *         clear immediately.
+   */
+  ADC_StatusTypeDef FEB_ADC_SetAPPSSimulation(bool enabled, float percent);
+
+  /**
+   * @brief  Capture the current APPS voltage as either the min (0%) or max
+   *         (100%) calibration point for one sensor.
+   * @param  sensor: 1 or 2
+   * @param  capture_max: true to capture as max, false to capture as min
+   */
+  ADC_StatusTypeDef FEB_ADC_CaptureAPPSCalibration(uint8_t sensor, bool capture_max);
+
+  /**
+   * @brief  Get the current APPS filter configuration (shared by both APPS
+   *         channels).
+   */
+  void FEB_ADC_GetAPPSFilterConfig(bool *enabled, uint8_t *samples, float *alpha);
+
+  /**
+   * @brief  Update the APPS filter configuration. samples is clamped to
+   *         [1, ADC_DMA_BUFFER_SIZE]; alpha is clamped to [0, 1].
+   */
+  ADC_StatusTypeDef FEB_ADC_SetAPPSFilter(bool enabled, uint8_t samples, float alpha);
+
+  /**
+   * @brief  Set the APPS deadzone percentage (clamped to [0, 20]).
+   */
+  ADC_StatusTypeDef FEB_ADC_SetAPPSDeadzone(float percent);
+
+  /**
+   * @brief  Get the APPS deadzone percentage.
+   */
+  float FEB_ADC_GetAPPSDeadzone(void);
+
+  /**
+   * @brief  Reset the running APPS statistics.
+   */
+  void FEB_ADC_ResetAPPSStats(void);
+
+  /**
+   * @brief  Get a snapshot of the running APPS statistics.
+   *         All output pointers may be NULL.
+   */
+  void FEB_ADC_GetAPPSStats(float *p1_min, float *p1_max, float *p2_min, float *p2_max, float *p1_avg, float *p2_avg,
+                            float *dev_max, uint32_t *samples);
 
   /* ========================================================================== */
   /*                       FILTER AND PROCESSING FUNCTIONS                     */

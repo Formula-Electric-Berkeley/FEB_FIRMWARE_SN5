@@ -85,6 +85,19 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
+  /* FEB flash-time metadata: 128-byte reserved region rewritten by
+     scripts/flash-patcher.py at programming time. KEEP() survives
+     --gc-sections; fixed size insulates offset calculations from
+     compiler/linker drift. See common/FEB_Serial_Library/FEB_Version/. */
+  .feb_flash_info :
+  {
+    . = ALIGN(16);
+    __feb_flash_info_start = .;
+    KEEP(*(.feb_flash_info))
+    . = __feb_flash_info_start + 128;
+    __feb_flash_info_end = .;
+  } >FLASH
+
   .ARM.extab   : {
     . = ALIGN(4);
     *(.ARM.extab* .gnu.linkonce.armextab.*)

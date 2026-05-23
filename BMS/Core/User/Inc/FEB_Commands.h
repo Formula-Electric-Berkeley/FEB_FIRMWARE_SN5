@@ -22,11 +22,4 @@
  */
 void BMS_RegisterCommands(void);
 
-/**
- * @brief Print CSV data (voltages and/or temperatures)
- * @param argc Argument count (2 for mode)
- * @param argv Arguments: argv[1] = "volts", "temps", or "all"
- */
-void subcmd_csv(int argc, char *argv[]);
-
 #endif /* FEB_COMMANDS_H */

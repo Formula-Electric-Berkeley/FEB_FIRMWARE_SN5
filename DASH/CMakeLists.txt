@@ -20,8 +20,10 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 add_compile_definitions(
     USE_HAL_DRIVER
     STM32F469xx
-    $<$<CONFIG:Debug>:DEBUG>
     FEB_UART_USE_FREERTOS=1
+    FEB_CAN_USE_FREERTOS=1
+    FEB_LOG_USE_FREERTOS=1
+    $<$<CONFIG:Debug>:DEBUG>
 )
 
 # ══════════════════════════════════════════════════════════════════════
@@ -47,8 +49,13 @@ file(GLOB_RECURSE LVGL_HAL_SOURCES Drivers/hal_stm_lvgl/*.c)
 # Combine base sources
 set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES} ${LVGL_SOURCES} ${LVGL_HAL_SOURCES} ${SQUARELINE_SOURCES})
 
+file(GLOB CAN_LIB_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.c"
+)
+
 # CAN library generated source (from common submodule)
-list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can.c")
+list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can.c" ${CAN_LIB_SOURCES})
 
 list(APPEND ALL_SOURCES
     Core/User/Src
@@ -175,7 +182,11 @@ add_executable(${PROJECT_NAME} ${ALL_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_rtos_utils)
+target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_version feb_rtos_utils)
+
+# Embed version + build provenance (reads VERSION + git, generates feb_build_info.c)
+include(${CMAKE_SOURCE_DIR}/cmake/FEB_Version.cmake)
+feb_apply_version(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Enable floating-point printf/scanf for newlib-nano
 target_link_options(${PROJECT_NAME} PRIVATE

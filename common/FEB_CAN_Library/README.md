@@ -2,6 +2,8 @@
 
 Runtime CAN communication library with FreeRTOS-safe TX/RX queues, registration-based message handling, and automatic periodic transmission.
 
+> **Message definitions vs. runtime:** This library is the **runtime** handler. The **message definitions** (IDs, layouts, pack/unpack generators) live in the [`FEB_CAN_Library_SN4`](../FEB_CAN_Library_SN4/README.md) submodule. Boards typically compile both: generated `gen/feb_can.c` for pack/unpack, plus `feb_can` for dispatch.
+
 ## Features
 
 - **Multi-instance support** - CAN1 and CAN2 peripherals
@@ -35,41 +37,19 @@ Configure your CAN peripheral:
 
 ### 3. HAL Callback Wiring
 
-In `stm32f4xx_it.c` or a callbacks file, route HAL callbacks to the library:
+The library provides `__weak` `HAL_CAN_*Callback` forwarders by default — no per-board wiring is required. The HAL CAN interrupts route directly into the library as soon as you link `feb_can`.
+
+If a board needs to extend a callback (e.g., toggle a status LED on RX, or augment error handling), provide a strong definition that does the extra work and then calls the library's `FEB_CAN_*Callback`:
 
 ```c
-#include "feb_can_lib.h"
-
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
-    FEB_CAN_RxFifo0Callback(hcan);
-}
-
-void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
-{
-    FEB_CAN_RxFifo1Callback(hcan);
-}
-
-void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-    FEB_CAN_TxMailbox0CompleteCallback(hcan);
-}
-
-void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-    FEB_CAN_TxMailbox1CompleteCallback(hcan);
-}
-
-void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
-{
-    FEB_CAN_TxMailbox2CompleteCallback(hcan);
-}
-
-void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
-{
-    FEB_CAN_ErrorCallback(hcan);
+    HAL_GPIO_TogglePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
+    FEB_CAN_RxFifo0Callback(hcan);  // still forward into the library
 }
 ```
+
+The strong definition shadows the library's weak default at link time.
 
 ### 4. Initialization
 
@@ -408,3 +388,16 @@ void on_rx(FEB_CAN_Instance_t inst, uint32_t id, FEB_CAN_ID_Type_t type,
 | `feb_can_rx.c` | RX implementation |
 | `feb_can_filter.c` | Filter configuration |
 | `CMakeLists.txt` | CMake integration |
+
+## Boards Using This Library
+
+- [LVPDB](../../LVPDB/README.md) — dual CAN1/CAN2
+- [PCU](../../PCU/README.md) — dual CAN1/CAN2, inverter gateway
+- [Sensor_Nodes](../../Sensor_Nodes/README.md) — dual CAN1/CAN2, sensor broadcast
+
+[BMS](../../BMS/README.md) and [DASH](../../DASH/README.md) also pull in `feb_can` sources from this directory via direct `file(GLOB)` in their CMakeLists, without linking the INTERFACE target.
+
+## See Also
+
+- [`common/README.md`](../README.md) — library index
+- [`FEB_CAN_Library_SN4/`](../FEB_CAN_Library_SN4/README.md) — message definitions and code generator

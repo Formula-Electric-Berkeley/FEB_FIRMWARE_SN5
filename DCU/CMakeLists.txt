@@ -140,6 +140,12 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_can feb_tps feb_rtos_utils stm32-hal-rfm95)
 
+# Generate per-build feb_build_info (commit hash, board version, timestamp) and
+# compile it into this target. feb_console / feb_commands_system reference it
+# for `hello`, `version`, and CSV-protocol response framing.
+include(${CMAKE_SOURCE_DIR}/cmake/FEB_Version.cmake)
+feb_apply_version(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR})
+
 # Enable floating-point printf/scanf for newlib-nano
 target_link_options(${PROJECT_NAME} PRIVATE
     "LINKER:-u,_printf_float"

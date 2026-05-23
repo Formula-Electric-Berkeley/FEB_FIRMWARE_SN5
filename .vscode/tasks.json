@@ -5,9 +5,6 @@
             "shell": {
                 "executable": "cmd.exe",
                 "args": ["/d", "/c"]
-            },
-            "env": {
-                "PATH": "${env:LOCALAPPDATA}\\stm32cube\\bundles\\cmake\\4.0.1+st.3\\bin;${env:LOCALAPPDATA}\\stm32cube\\bundles\\gnu-tools-for-stm32\\14.3.1+st.2\\bin;${env:LOCALAPPDATA}\\stm32cube\\bundles\\programmer\\2.20.0\\bin;${env:PATH}"
             }
         }
     },
@@ -46,14 +43,6 @@
         },
         {
             "type": "shell",
-            "label": "Build DCU_Receiver",
-            "command": "cmake",
-            "args": ["--build", "build/Debug", "--target", "DCU_Receiver"],
-            "group": "build",
-            "problemMatcher": "$gcc"
-        },
-        {
-            "type": "shell",
             "label": "Build LVPDB",
             "command": "cmake",
             "args": ["--build", "build/Debug", "--target", "LVPDB"],
@@ -70,11 +59,21 @@
         },
         {
             "type": "shell",
-            "label": "Build Sensor_Nodes",
+            "label": "Build Sensor_Nodes (FRONT)",
             "command": "cmake",
-            "args": ["--build", "build/Debug", "--target", "Sensor_Nodes"],
+            "args": ["--build", "build/Debug", "--target", "Sensor_Nodes_FRONT"],
             "group": "build",
-            "problemMatcher": "$gcc"
+            "problemMatcher": "$gcc",
+            "detail": "Builds build/Debug/Sensor_Nodes/Sensor_Nodes_FRONT.elf"
+        },
+        {
+            "type": "shell",
+            "label": "Build Sensor_Nodes (REAR)",
+            "command": "cmake",
+            "args": ["--build", "build/Debug", "--target", "Sensor_Nodes_REAR"],
+            "group": "build",
+            "problemMatcher": "$gcc",
+            "detail": "Builds build/Debug/Sensor_Nodes/Sensor_Nodes_REAR.elf"
         },
         {
             "type": "shell",
@@ -115,20 +114,13 @@
         {
             "type": "shell",
             "label": "CubeProg: Flash project (SWD)",
-            "command": "STM32_Programmer_CLI",
-            "args": [
-                "--connect",
-                "port=swd",
-                "--download",
-                "${workspaceFolder}/build/Debug/${input:boardName}/${input:boardName}.elf",
-                "-hardRst",
-                "-rst",
-                "--start"
-            ],
+            "command": "${workspaceFolder}/scripts/flash.sh",
+            "args": ["-b", "${input:boardName}"],
             "options": {
                 "cwd": "${workspaceFolder}"
             },
-            "problemMatcher": []
+            "problemMatcher": [],
+            "detail": "Flashes the selected board (resolves Sensor_Nodes_FRONT/REAR to the right ELF)"
         },
         {
             "type": "cmake",
@@ -149,6 +141,42 @@
                 "cwd": "${workspaceFolder}"
             },
             "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "Firmware: Bump Board Version",
+            "detail": "Bump <BOARD>/VERSION, commit, tag <BOARD>-v<X.Y.Z>, push",
+            "command": "bash",
+            "args": ["${workspaceFolder}/scripts/bump-version.sh", "${input:bumpBoard}", "${input:bumpType}"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "Firmware: Bump Repo Version",
+            "detail": "Bump top-level VERSION, commit, tag v<X.Y.Z>, push",
+            "command": "bash",
+            "args": ["${workspaceFolder}/scripts/bump-version.sh", "repo", "${input:bumpType}"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "Firmware: Bump All (Common Changed)",
+            "detail": "Bump every board + repo + common, tag each, push. Use when common/ changed.",
+            "command": "bash",
+            "args": ["${workspaceFolder}/scripts/bump-version.sh", "all", "${input:bumpType}", "--yes"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "Firmware: Bump Auto-Detect",
+            "detail": "Inspect staged/unstaged diff, bump affected boards (or all if common/ changed), push",
+            "command": "bash",
+            "args": ["${workspaceFolder}/scripts/bump-version.sh"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": []
         }
     ],
     "inputs": [
@@ -156,8 +184,22 @@
             "id": "boardName",
             "type": "pickString",
             "description": "Select board to flash",
-            "options": ["BMS", "DASH", "DART", "DCU", "DCU_Receiver", "LVPDB", "PCU", "Sensor_Nodes", "UART", "UART_TEST"],
+            "options": ["BMS", "DASH", "DART", "DCU", "LVPDB", "PCU", "Sensor_Nodes_FRONT", "Sensor_Nodes_REAR", "UART", "UART_TEST"],
             "default": "LVPDB"
+        },
+        {
+            "id": "bumpBoard",
+            "type": "pickString",
+            "description": "Which board's firmware version to bump",
+            "options": ["BMS", "DASH", "DART", "DCU", "LVPDB", "PCU", "Sensor_Nodes", "UART", "UART_TEST"],
+            "default": "BMS"
+        },
+        {
+            "id": "bumpType",
+            "type": "pickString",
+            "description": "Semantic version bump",
+            "options": ["patch", "minor", "major"],
+            "default": "patch"
         }
     ]
 }

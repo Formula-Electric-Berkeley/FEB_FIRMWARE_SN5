@@ -3,10 +3,56 @@
 #include "FEB_AD68xx_Interface.h"
 #include "FEB_HW.h"
 #include "FEB_Const.h"
+#include "feb_log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
+
+// ************************* Command Counter (host-side) ************************
+// The ADBMS6830 chips increment a 6-bit command counter on every valid
+// command they receive. The CC is echoed in the upper 6 bits of byte 6 of
+// every register-read response. Keeping a host-side mirror lets us detect
+// dropped commands or chip resets that PEC-validation alone would miss.
+//
+// Single counter for the daisy chain: every IC sees the same commands, so
+// a per-IC counter would just be N copies of the same number.
+static uint8_t s_expected_cc = 0;
+static uint16_t s_cc_mismatch_count = 0;
+
+void ADBMS_CC_Advance(void)
+{
+  s_expected_cc = (uint8_t)((s_expected_cc + 1u) & 0x3Fu);
+}
+
+void ADBMS_CC_Reset(void)
+{
+  s_expected_cc = 0;
+  s_cc_mismatch_count = 0;
+}
+
+void ADBMS_CC_Check(uint8_t observed)
+{
+  observed &= 0x3F;
+  if (observed == s_expected_cc)
+    return;
+
+  if (s_cc_mismatch_count != 0xFFFF)
+    s_cc_mismatch_count++;
+
+  // Rate-limit logging: log on the first mismatch and then every 64th.
+  if ((s_cc_mismatch_count & 0x3F) == 1)
+  {
+    LOG_D(TAG_BMS, "CC drift: expected=%u observed=%u count=%u", (unsigned)s_expected_cc, (unsigned)observed,
+          (unsigned)s_cc_mismatch_count);
+  }
+  s_expected_cc = observed; // resync so we don't keep flagging the same drift
+}
+
+uint16_t ADBMS_CC_GetMismatchCount(void)
+{
+  return s_cc_mismatch_count;
+}
 
 // ******************************** CRC TABLES ********************************
 const uint16_t crc15Table[256] = {
@@ -30,24 +76,8 @@ const uint16_t crc15Table[256] = {
     0xf5cd, 0x2630, 0xe3a9, 0xe89b, 0x2d02, 0xa76f, 0x62f6, 0x69c4, 0xac5d, 0x7fa0, 0xba39, 0xb10b, 0x7492, 0x5368,
     0x96f1, 0x9dc3, 0x585a, 0x8ba7, 0x4e3e, 0x450c, 0x8095};
 
-const uint16_t crc10Table[256] = {
-    0x0,   0x8f,  0x11e, 0x191, 0x23c, 0x2b3, 0x322, 0x3ad, 0xf7,  0x78,  0x1e9, // precomputed CRC10 Table
-    0x166, 0x2cb, 0x244, 0x3d5, 0x35a, 0x1ee, 0x161, 0xf0,  0x7f,  0x3d2, 0x35d, 0x2cc, 0x243, 0x119, 0x196, 0x7,
-    0x88,  0x325, 0x3aa, 0x23b, 0x2b4, 0x3dc, 0x353, 0x2c2, 0x24d, 0x1e0, 0x16f, 0xfe,  0x71,  0x32b, 0x3a4, 0x235,
-    0x2ba, 0x117, 0x198, 0x9,   0x86,  0x232, 0x2bd, 0x32c, 0x3a3, 0xe,   0x81,  0x110, 0x19f, 0x2c5, 0x24a, 0x3db,
-    0x354, 0xf9,  0x76,  0x1e7, 0x168, 0x337, 0x3b8, 0x229, 0x2a6, 0x10b, 0x184, 0x15,  0x9a,  0x3c0, 0x34f, 0x2de,
-    0x251, 0x1fc, 0x173, 0xe2,  0x6d,  0x2d9, 0x256, 0x3c7, 0x348, 0xe5,  0x6a,  0x1fb, 0x174, 0x22e, 0x2a1, 0x330,
-    0x3bf, 0x12,  0x9d,  0x10c, 0x183, 0xeb,  0x64,  0x1f5, 0x17a, 0x2d7, 0x258, 0x3c9, 0x346, 0x1c,  0x93,  0x102,
-    0x18d, 0x220, 0x2af, 0x33e, 0x3b1, 0x105, 0x18a, 0x1b,  0x94,  0x339, 0x3b6, 0x227, 0x2a8, 0x1f2, 0x17d, 0xec,
-    0x63,  0x3ce, 0x341, 0x2d0, 0x25f, 0x2e1, 0x26e, 0x3ff, 0x370, 0xdd,  0x52,  0x1c3, 0x14c, 0x216, 0x299, 0x308,
-    0x387, 0x2a,  0xa5,  0x134, 0x1bb, 0x30f, 0x380, 0x211, 0x29e, 0x133, 0x1bc, 0x2d,  0xa2,  0x3f8, 0x377, 0x2e6,
-    0x269, 0x1c4, 0x14b, 0xda,  0x55,  0x13d, 0x1b2, 0x23,  0xac,  0x301, 0x38e, 0x21f, 0x290, 0x1ca, 0x145, 0xd4,
-    0x5b,  0x3f6, 0x379, 0x2e8, 0x267, 0xd3,  0x5c,  0x1cd, 0x142, 0x2ef, 0x260, 0x3f1, 0x37e, 0x24,  0xab,  0x13a,
-    0x1b5, 0x218, 0x297, 0x306, 0x389, 0x1d6, 0x159, 0xc8,  0x47,  0x3ea, 0x365, 0x2f4, 0x27b, 0x121, 0x1ae, 0x3f,
-    0xb0,  0x31d, 0x392, 0x203, 0x28c, 0x38,  0xb7,  0x126, 0x1a9, 0x204, 0x28b, 0x31a, 0x395, 0xcf,  0x40,  0x1d1,
-    0x15e, 0x2f3, 0x27c, 0x3ed, 0x362, 0x20a, 0x285, 0x314, 0x39b, 0x36,  0xb9,  0x128, 0x1a7, 0x2fd, 0x272, 0x3e3,
-    0x36c, 0xc1,  0x4e,  0x1df, 0x150, 0x3e4, 0x36b, 0x2fa, 0x275, 0x1d8, 0x157, 0xc6,  0x49,  0x313, 0x39c, 0x20d,
-    0x282, 0x12f, 0x1a0, 0x31,  0xbe};
+// crc10Table[256] removed: the bit-shift implementations of Pec10_calc()
+// below don't use it, and there's no other consumer in the firmware.
 
 // ****************** Error Correction *******************
 /* Calculates and returns the CRC15 */
@@ -96,44 +126,17 @@ uint16_t Pec10_calc(bool bIsRxCmd, uint8_t nLength, uint8_t *pDataBuf)
     }
   }
 
-  /* If array is from received buffer add command counter to crc calculation */
+  /* If array is from received buffer add command counter to crc calculation.
+   * The trailing 6-bit modulo-2 division shifts those 6 CC bits through the
+   * remainder; for TX (no CC byte appended) there are no further input bits,
+   * so the loop must stay inside this branch — running it unconditionally
+   * would XOR/shift zeros into the result and corrupt the TX PEC. */
   if (bIsRxCmd == true)
   {
     nRemainder ^= (uint16_t)(((uint16_t)pDataBuf[nLength] & (uint8_t)0xFC) << 2u);
-  }
-  /* Perform modulo-2 division, a bit at a time */
-  for (nBitIndex = 6u; nBitIndex > 0u; --nBitIndex)
-  {
-    /* Try to divide the current data bit */
-    if ((nRemainder & 0x200u) > 0u)
-    {
-      nRemainder = (uint16_t)((nRemainder << 1u));
-      nRemainder = (uint16_t)(nRemainder ^ nPolynomial);
-    }
-    else
-    {
-      nRemainder = (uint16_t)((nRemainder << 1u));
-    }
-  }
-  return ((uint16_t)(nRemainder & 0x3FFu));
-}
-uint16_t pec10_calc(uint8_t nLength, uint8_t *pDataBuf)
-{
-  bool bIsRxCmd = true;
-  uint16_t nRemainder = 16u; /* PEC_SEED */
-  /* x10 + x7 + x3 + x2 + x + 1 <- the CRC10 polynomial 100 1000 1111 */
-  uint16_t nPolynomial = 0x8Fu;
-  uint8_t nByteIndex, nBitIndex;
 
-  for (nByteIndex = 0u; nByteIndex < nLength; ++nByteIndex)
-  {
-    /* Bring the next byte into the remainder. */
-    nRemainder ^= (uint16_t)((uint16_t)pDataBuf[nByteIndex] << 2u);
-
-    /* Perform modulo-2 division, a bit at a time.*/
-    for (nBitIndex = 8u; nBitIndex > 0u; --nBitIndex)
+    for (nBitIndex = 6u; nBitIndex > 0u; --nBitIndex)
     {
-      /* Try to divide the current data bit. */
       if ((nRemainder & 0x200u) > 0u)
       {
         nRemainder = (uint16_t)((nRemainder << 1u));
@@ -141,28 +144,8 @@ uint16_t pec10_calc(uint8_t nLength, uint8_t *pDataBuf)
       }
       else
       {
-        nRemainder = (uint16_t)(nRemainder << 1u);
+        nRemainder = (uint16_t)((nRemainder << 1u));
       }
-    }
-  }
-
-  /* If array is from received buffer add command counter to crc calculation */
-  if (bIsRxCmd == true)
-  {
-    nRemainder ^= (uint16_t)(((uint16_t)pDataBuf[nLength] & (uint8_t)0xFC) << 2u);
-  }
-  /* Perform modulo-2 division, a bit at a time */
-  for (nBitIndex = 6u; nBitIndex > 0u; --nBitIndex)
-  {
-    /* Try to divide the current data bit */
-    if ((nRemainder & 0x200u) > 0u)
-    {
-      nRemainder = (uint16_t)((nRemainder << 1u));
-      nRemainder = (uint16_t)(nRemainder ^ nPolynomial);
-    }
-    else
-    {
-      nRemainder = (uint16_t)((nRemainder << 1u));
     }
   }
   return ((uint16_t)(nRemainder & 0x3FFu));
@@ -183,6 +166,7 @@ void cmd_68(uint8_t tx_cmd[2])
   FEB_cs_low();
   FEB_spi_write_array(4, cmd);
   FEB_cs_high();
+  ADBMS_CC_Advance();
 }
 
 void cmd_68_r(uint8_t tx_cmd[2], uint8_t *data, uint8_t len)
@@ -199,6 +183,7 @@ void cmd_68_r(uint8_t tx_cmd[2], uint8_t *data, uint8_t len)
   FEB_cs_low();
   FEB_spi_write_read(cmd, 4, data, len);
   FEB_cs_high();
+  ADBMS_CC_Advance();
 
   // Debug: print raw received bytes (commented out to reduce log spam)
   // printf("[SPI] TX: %02X %02X, RX:", tx_cmd[0], tx_cmd[1]);
@@ -259,6 +244,7 @@ void write_68(uint8_t total_ic,  // Number of ICs to be written to
   FEB_cs_low();
   FEB_spi_write_array(CMD_LEN, cmd);
   FEB_cs_high();
+  ADBMS_CC_Advance();
   // taskEXIT_CRITICAL();
 
   vPortFree(cmd);

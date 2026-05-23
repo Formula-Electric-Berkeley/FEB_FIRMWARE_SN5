@@ -45,6 +45,12 @@ agents.md
 *.swo
 *~
 
+#AI agents
+.claude
+CLAUDE.md
+gemini.md
+agents.md
+
 # OS specific files
 .DS_Store
 .DS_Store?

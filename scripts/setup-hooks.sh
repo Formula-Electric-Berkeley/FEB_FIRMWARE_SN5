@@ -1,5 +1,5 @@
 #!/bin/bash
-#hi
+#
 # Pre-commit Hooks Setup Script
 #
 # Installs pre-commit and configures git hooks for the repository.
@@ -68,17 +68,26 @@ install_precommit() {
     fi
 
     # Try pip with --user flag (safer than system-wide)
+    local user_bin_hint
+    case "$(uname -s)" in
+        MINGW*|MSYS*|CYGWIN*)
+            user_bin_hint='~/AppData/Roaming/Python/Scripts (Git Bash: $APPDATA/Python/Scripts)'
+            ;;
+        *)
+            user_bin_hint='~/.local/bin'
+            ;;
+    esac
+
     if command -v pip3 &> /dev/null; then
         log_info "Using pip3 --user to install pre-commit..."
         if pip3 install --user pre-commit; then
-            # Add user bin to PATH hint
-            log_warn "You may need to add ~/.local/bin to your PATH"
+            log_warn "You may need to add $user_bin_hint to your PATH"
             return 0
         fi
     elif command -v pip &> /dev/null; then
         log_info "Using pip --user to install pre-commit..."
         if pip install --user pre-commit; then
-            log_warn "You may need to add ~/.local/bin to your PATH"
+            log_warn "You may need to add $user_bin_hint to your PATH"
             return 0
         fi
     fi

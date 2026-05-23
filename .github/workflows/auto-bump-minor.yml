@@ -1,0 +1,53 @@
+name: Auto-bump minor on PR merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+# Serialize back-to-back merges so two workflows don't race each other
+# when both try to commit to main.
+concurrency:
+  group: auto-bump-main
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump minor versions
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: ./scripts/auto-bump-merge.sh "$BASE_SHA" "$MERGE_SHA" "$PR_NUMBER"
+
+      - name: Push commit and tags
+        run: |
+          # Only push if the script actually made a commit. `auto-bump-merge.sh`
+          # exits 0 without committing when the PR didn't touch any board or
+          # common/ path — in that case there's nothing new on HEAD to push.
+          if [ "$(git rev-list --count origin/main..HEAD)" -gt 0 ]; then
+            # --atomic makes the branch update and tag push a single transaction:
+            # if the server rejects either, neither is applied, so we never end
+            # up with a bump commit on main without its matching tag.
+            git push --atomic origin main --tags
+          else
+            echo "No version bump commit produced; nothing to push."
+          fi

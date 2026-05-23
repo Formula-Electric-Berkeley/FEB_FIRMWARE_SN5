@@ -85,7 +85,11 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     FEB_UART_COMPILE_LOG_LEVEL=3    # INFO
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io)
+target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_version)
+
+# Embed version + build provenance (reads VERSION + git, generates feb_build_info.c)
+include(${CMAKE_SOURCE_DIR}/cmake/FEB_Version.cmake)
+feb_apply_version(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR})
 
 # ── Linker script ─────────────────────────────────────────────────────
 file(GLOB LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/STM32F0*_FLASH.ld")

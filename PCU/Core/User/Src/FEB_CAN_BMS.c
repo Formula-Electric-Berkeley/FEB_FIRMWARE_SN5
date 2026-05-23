@@ -1,6 +1,8 @@
 #include "FEB_CAN_BMS.h"
+#include "feb_can.h"
 #include "feb_log.h"
 #include <stdbool.h>
+#include "FEB_CAN_Diagnostics.h"
 
 /* Timeout for BMS CAN communication (ms) */
 #define BMS_STATE_TIMEOUT_MS 500
@@ -10,6 +12,10 @@ BMS_MESSAGE_TYPE BMS_MESSAGE;
 
 /* Flag for deferred heartbeat transmission (set in ISR, processed in main loop) */
 static volatile bool heartbeat_pending = false;
+
+/* BMS state simulation (bench testing only — refused when BMS is active on bus) */
+static bool bms_sim_active = false;
+static FEB_SM_ST_t bms_sim_state = FEB_SM_ST_BOOT;
 
 /* Forward declaration of callback with new signature */
 static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
@@ -32,6 +38,8 @@ uint8_t FEB_CAN_BMS_getDeviceSelect(void)
 
 FEB_SM_ST_t FEB_CAN_BMS_getState(void)
 {
+  if (bms_sim_active)
+    return bms_sim_state;
   return BMS_MESSAGE.state;
 }
 
@@ -120,11 +128,16 @@ static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
 
 void FEB_CAN_HEARTBEAT_Transmit(void)
 {
-  uint8_t data[8] = {0};
-  data[0] = 1;
+  APPS_DataTypeDef apps_data;
+  FEB_ADC_GetAPPSData(&apps_data);
 
-  FEB_CAN_Status_t status =
-      FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_PCU_HEARTBEAT_FRAME_ID, FEB_CAN_ID_STD, data, 1);
+  uint8_t tx_data[FEB_CAN_PCU_HEARTBEAT_LENGTH] = {0};
+  feb_can_pcu_heartbeat_pack(tx_data, &((struct feb_can_pcu_heartbeat_t){.error0 = !apps_data.plausible}),
+                             sizeof(tx_data));
+
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_PCU_HEARTBEAT_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                                            FEB_CAN_PCU_HEARTBEAT_LENGTH);
+
   if (status != FEB_CAN_OK)
   {
     LOG_E(TAG_BMS, "Failed to transmit heartbeat: %s", FEB_CAN_StatusToString(status));
@@ -137,6 +150,12 @@ void FEB_CAN_HEARTBEAT_Transmit(void)
 
 void FEB_CAN_BMS_ProcessHeartbeat(void)
 {
+  if (bms_sim_active && !FEB_CAN_BMS_IsSilent())
+  {
+    bms_sim_active = false;
+    LOG_W(TAG_BMS, "BMS sim cancelled: BMS active on CAN bus");
+  }
+
   if (heartbeat_pending)
   {
     heartbeat_pending = false;
@@ -145,18 +164,30 @@ void FEB_CAN_BMS_ProcessHeartbeat(void)
   }
 }
 
+bool FEB_CAN_BMS_IsSilent(void)
+{
+  return BMS_MESSAGE.last_rx_timestamp == 0 || (HAL_GetTick() - BMS_MESSAGE.last_rx_timestamp > BMS_STATE_TIMEOUT_MS);
+}
+
+bool FEB_CAN_BMS_SetStateSim(bool enabled, FEB_SM_ST_t state)
+{
+  if (enabled && !FEB_CAN_BMS_IsSilent())
+    return false;
+  bms_sim_active = enabled;
+  bms_sim_state = state;
+  return true;
+}
+
 bool FEB_CAN_BMS_InDriveState(void)
 {
-  // Check for recent BMS communication
+  if (bms_sim_active)
+    return bms_sim_state == FEB_SM_ST_DRIVE;
+
   if (BMS_MESSAGE.last_rx_timestamp == 0)
-  {
-    return false; // Never received BMS data
-  }
+    return false;
 
   if (HAL_GetTick() - BMS_MESSAGE.last_rx_timestamp > BMS_STATE_TIMEOUT_MS)
-  {
-    return false; // BMS communication timeout
-  }
+    return false;
 
   return BMS_MESSAGE.state == FEB_SM_ST_DRIVE;
 }

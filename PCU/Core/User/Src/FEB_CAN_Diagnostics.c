@@ -39,35 +39,21 @@ void FEB_CAN_Diagnostics_TransmitBrakeData(void)
 
 void FEB_CAN_Diagnostics_TransmitAPPSData(void)
 {
-  uint8_t data[8] = {0};
   APPS_DataTypeDef apps_data;
-
-  // Get latest APPS data
   FEB_ADC_GetAPPSData(&apps_data);
 
-  // Pack APPS1 position (0-100%) into first two bytes (0-10000 centi-percent)
-  uint16_t apps1_centi_percent = (uint16_t)(apps_data.position1 * 100.0f);
-  data[0] = (apps1_centi_percent >> 8) & 0xFF;
-  data[1] = apps1_centi_percent & 0xFF;
+  struct feb_can_pcu_raw_acc_t msg = {0};
+  msg.acc0 = (uint16_t)(apps_data.position1 * 100.0f);
+  msg.acc1 = (uint16_t)(apps_data.position2 * 100.0f);
+  msg.accel = (uint16_t)(apps_data.acceleration * 100.0f);
+  msg.plausible = apps_data.plausible ? 1u : 0u;
+  msg.short_circuit = apps_data.short_circuit ? 1u : 0u;
+  msg.open_circuit = apps_data.open_circuit ? 1u : 0u;
 
-  // Pack APPS2 position (0-100%) into next two bytes (0-10000 centi-percent)
-  uint16_t apps2_centi_percent = (uint16_t)(apps_data.position2 * 100.0f);
-  data[2] = (apps2_centi_percent >> 8) & 0xFF;
-  data[3] = apps2_centi_percent & 0xFF;
-
-  // Pack average acceleration (0-100%) into next two bytes (0-10000 centi-percent)
-  uint16_t accel_centi_percent = (uint16_t)(apps_data.acceleration * 100.0f);
-  data[4] = (accel_centi_percent >> 8) & 0xFF;
-  data[5] = accel_centi_percent & 0xFF;
-
-  // Pack status flags into last two bytes
-  data[6] = (apps_data.plausible ? 0x01 : 0x00) |     // Bit 0
-            (apps_data.short_circuit ? 0x02 : 0x00) | // Bit 1
-            (apps_data.open_circuit ? 0x04 : 0x00);   // Bit 2
-  data[7] = 0;
-
-  // Transmit CAN message
-  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_PCU_RAW_ACC_FRAME_ID, FEB_CAN_ID_STD, data, 8);
+  uint8_t data[FEB_CAN_PCU_RAW_ACC_LENGTH];
+  int packed = feb_can_pcu_raw_acc_pack(data, &msg, sizeof(data));
+  FEB_CAN_Status_t status =
+      FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_PCU_RAW_ACC_FRAME_ID, FEB_CAN_ID_STD, data, (uint8_t)packed);
   if (status != FEB_CAN_OK)
   {
     LOG_E(TAG_CAN, "Failed to transmit APPS data: %s", FEB_CAN_StatusToString(status));
