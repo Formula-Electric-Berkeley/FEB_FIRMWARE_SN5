@@ -8,9 +8,20 @@
 
 #include "DCU_CAN.h"
 #include "can.h"
+#include "cmsis_os.h"
 #include "feb_can_lib.h"
 #include "feb_log.h"
+#include "feb_rtos_utils.h"
 #include <stdbool.h>
+
+/* FreeRTOS sync primitives created in freertos.c (see DCU.ioc FreeRTOS pane).
+ * feb_can requires all five when FEB_CAN_USE_FREERTOS == 1 — it does not
+ * create them internally. */
+extern osMessageQueueId_t canTxQueueHandle;
+extern osMessageQueueId_t canRxQueueHandle;
+extern osMutexId_t canTxMutexHandle;
+extern osMutexId_t canRxMutexHandle;
+extern osSemaphoreId_t canTxMailboxSemHandle;
 
 static bool g_can_initialized = false;
 
@@ -19,11 +30,24 @@ bool DCU_CAN_Init(void)
   /* Reset flag in case of re-initialization */
   g_can_initialized = false;
 
+  /* feb_can needs these to dispatch RX, queue TX, and flow-control mailboxes.
+   * Fail fast if the .ioc and freertos.c got out of sync. */
+  REQUIRE_RTOS_HANDLE(canTxQueueHandle);
+  REQUIRE_RTOS_HANDLE(canRxQueueHandle);
+  REQUIRE_RTOS_HANDLE(canTxMutexHandle);
+  REQUIRE_RTOS_HANDLE(canRxMutexHandle);
+  REQUIRE_RTOS_HANDLE(canTxMailboxSemHandle);
+
   /* Initialize FEB CAN library */
   FEB_CAN_Config_t cfg = {
       .hcan1 = &hcan1,
       .hcan2 = &hcan2,
       .get_tick_ms = HAL_GetTick,
+      .tx_queue = canTxQueueHandle,
+      .rx_queue = canRxQueueHandle,
+      .tx_mutex = canTxMutexHandle,
+      .rx_mutex = canRxMutexHandle,
+      .tx_mailbox_sem = canTxMailboxSemHandle,
   };
 
   FEB_CAN_Status_t status = FEB_CAN_Init(&cfg);
@@ -57,4 +81,22 @@ bool DCU_CAN_Init(void)
 bool DCU_CAN_IsInitialized(void)
 {
   return g_can_initialized;
+}
+
+/* ============================================================================
+ * canDispatchTask — drains feb_can's rx_queue and fires registered callbacks.
+ *
+ * In FreeRTOS mode the CAN RX ISR posts into feb_can's internal rx_queue and
+ * returns immediately. Some task has to dequeue and invoke matching callbacks
+ * (e.g. the wildcard handlers registered by DCU_CAN_Log). This is that task.
+ * ==========================================================================*/
+
+void StartCanDispatchTask(void *argument)
+{
+  (void)argument;
+  for (;;)
+  {
+    FEB_CAN_RX_Process();
+    osDelay(1);
+  }
 }

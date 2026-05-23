@@ -9,6 +9,7 @@
 #include "DCU_Commands.h"
 #include "DCU_TPS.h"
 #include "DCU_CAN.h"
+#include "DCU_CAN_Log.h"
 #include "DCU_SD.h"
 #include "FEB_RFM95.h"
 #include "FEB_Task_Radio.h"
@@ -34,6 +35,7 @@ static void print_dcu_help(void)
   FEB_Console_Printf("  dcu              - Show this help\r\n");
   FEB_Console_Printf("  dcu|tps          - Show TPS power measurements\r\n");
   FEB_Console_Printf("  dcu|can          - Show CAN status and error counters\r\n");
+  FEB_Console_Printf("  dcu|can|log      - Show raw-CAN CSV logger stats\r\n");
   FEB_Console_Printf("  dcu|radio        - Radio commands (see dcu|radio for help)\r\n");
   FEB_Console_Printf("  dcu|sd           - SD card commands (see dcu|sd for help)\r\n");
 }
@@ -67,8 +69,24 @@ static void cmd_tps(void)
  * CAN Status Command
  * ============================================================================ */
 
-static void cmd_can(void)
+static void cmd_can_log(void)
 {
+  FEB_Console_Printf("CAN CSV Logger:\r\n");
+  FEB_Console_Printf("  Active:         %s\r\n", DCU_CAN_Log_IsActive() ? "Yes" : "No");
+  FEB_Console_Printf("  Filename:       %s\r\n", DCU_CAN_Log_GetFilename());
+  FEB_Console_Printf("  Frames written: %lu\r\n", (unsigned long)DCU_CAN_Log_GetWrittenCount());
+  FEB_Console_Printf("  Drops:          %lu\r\n", (unsigned long)DCU_CAN_Log_GetDropCount());
+  FEB_Console_Printf("  Queue depth:    %lu\r\n", (unsigned long)DCU_CAN_Log_GetQueueDepth());
+}
+
+static void cmd_can(int argc, char *argv[])
+{
+  if (argc >= 3 && FEB_strcasecmp(argv[2], "log") == 0)
+  {
+    cmd_can_log();
+    return;
+  }
+
   FEB_Console_Printf("CAN Status:\r\n");
   FEB_Console_Printf("  Initialized:   %s\r\n", DCU_CAN_IsInitialized() ? "Yes" : "No");
   FEB_Console_Printf("  TX Registered: %lu\r\n", (unsigned long)FEB_CAN_TX_GetRegisteredCount());
@@ -595,7 +613,7 @@ static void cmd_dcu(int argc, char *argv[])
   if (FEB_strcasecmp(subcmd, "tps") == 0)
     cmd_tps();
   else if (FEB_strcasecmp(subcmd, "can") == 0)
-    cmd_can();
+    cmd_can(argc, argv);
   else if (FEB_strcasecmp(subcmd, "radio") == 0)
     cmd_radio(argc, argv);
   else if (FEB_strcasecmp(subcmd, "sd") == 0)

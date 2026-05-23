@@ -28,8 +28,10 @@
 #include "FEB_Task_Radio.h"
 #include "feb_rtos_utils.h"
 #include "feb_uart.h"
+#include "feb_can_lib.h"
 #include "FEB_Main.h"
 #include "DCU_SD.h"
+#include "DCU_CAN_Log.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -73,6 +75,20 @@ const osThreadAttr_t sdTask_attributes = {
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
+/* Definitions for canDispatchTask */
+osThreadId_t canDispatchTaskHandle;
+const osThreadAttr_t canDispatchTask_attributes = {
+  .name = "canDispatchTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityAboveNormal,
+};
+/* Definitions for canLogTask */
+osThreadId_t canLogTaskHandle;
+const osThreadAttr_t canLogTask_attributes = {
+  .name = "canLogTask",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityBelowNormal,
+};
 /* Definitions for rxDataQueue */
 osMessageQueueId_t rxDataQueueHandle;
 const osMessageQueueAttr_t rxDataQueue_attributes = {
@@ -87,6 +103,21 @@ const osMessageQueueAttr_t uartRxQueue_attributes = {
 osMessageQueueId_t sdRequestQueueHandle;
 const osMessageQueueAttr_t sdRequestQueue_attributes = {
   .name = "sdRequestQueue"
+};
+/* Definitions for canTxQueue */
+osMessageQueueId_t canTxQueueHandle;
+const osMessageQueueAttr_t canTxQueue_attributes = {
+  .name = "canTxQueue"
+};
+/* Definitions for canRxQueue */
+osMessageQueueId_t canRxQueueHandle;
+const osMessageQueueAttr_t canRxQueue_attributes = {
+  .name = "canRxQueue"
+};
+/* Definitions for canLogQueue */
+osMessageQueueId_t canLogQueueHandle;
+const osMessageQueueAttr_t canLogQueue_attributes = {
+  .name = "canLogQueue"
 };
 /* Definitions for rxTimeoutTimer */
 osTimerId_t rxTimeoutTimerHandle;
@@ -111,10 +142,25 @@ osMutexId_t logMutexHandle;
 const osMutexAttr_t logMutex_attributes = {
   .name = "logMutex"
 };
+/* Definitions for canTxMutex */
+osMutexId_t canTxMutexHandle;
+const osMutexAttr_t canTxMutex_attributes = {
+  .name = "canTxMutex"
+};
+/* Definitions for canRxMutex */
+osMutexId_t canRxMutexHandle;
+const osMutexAttr_t canRxMutex_attributes = {
+  .name = "canRxMutex"
+};
 /* Definitions for uartTxSem */
 osSemaphoreId_t uartTxSemHandle;
 const osSemaphoreAttr_t uartTxSem_attributes = {
   .name = "uartTxSem"
+};
+/* Definitions for canTxMailboxSem */
+osSemaphoreId_t canTxMailboxSemHandle;
+const osSemaphoreAttr_t canTxMailboxSem_attributes = {
+  .name = "canTxMailboxSem"
 };
 /* Definitions for radioEvents */
 osEventFlagsId_t radioEventsHandle;
@@ -130,6 +176,8 @@ const osEventFlagsAttr_t radioEvents_attributes = {
 void StartUartRxTask(void *argument);
 void RadioTask(void *argument);
 void StartSdTask(void *argument);
+void StartCanDispatchTask(void *argument);
+void StartCanLogTask(void *argument);
 void rxTimeoutCallback(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -153,6 +201,12 @@ void MX_FREERTOS_Init(void) {
   /* creation of logMutex */
   logMutexHandle = osMutexNew(&logMutex_attributes);
 
+  /* creation of canTxMutex */
+  canTxMutexHandle = osMutexNew(&canTxMutex_attributes);
+
+  /* creation of canRxMutex */
+  canRxMutexHandle = osMutexNew(&canRxMutex_attributes);
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -160,6 +214,9 @@ void MX_FREERTOS_Init(void) {
   /* Create the semaphores(s) */
   /* creation of uartTxSem */
   uartTxSemHandle = osSemaphoreNew(1, 0, &uartTxSem_attributes);
+
+  /* creation of canTxMailboxSem */
+  canTxMailboxSemHandle = osSemaphoreNew(3, 3, &canTxMailboxSem_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -183,6 +240,15 @@ void MX_FREERTOS_Init(void) {
   /* creation of sdRequestQueue */
   sdRequestQueueHandle = osMessageQueueNew (4, 4, &sdRequestQueue_attributes);
 
+  /* creation of canTxQueue */
+  canTxQueueHandle = osMessageQueueNew (32, sizeof(FEB_CAN_Message_t), &canTxQueue_attributes);
+
+  /* creation of canRxQueue */
+  canRxQueueHandle = osMessageQueueNew (128, sizeof(FEB_CAN_Message_t), &canRxQueue_attributes);
+
+  /* creation of canLogQueue */
+  canLogQueueHandle = osMessageQueueNew (256, sizeof(DCU_CAN_Frame_t), &canLogQueue_attributes);
+
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
@@ -196,6 +262,12 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of sdTask */
   sdTaskHandle = osThreadNew(StartSdTask, NULL, &sdTask_attributes);
+
+  /* creation of canDispatchTask */
+  canDispatchTaskHandle = osThreadNew(StartCanDispatchTask, NULL, &canDispatchTask_attributes);
+
+  /* creation of canLogTask */
+  canLogTaskHandle = osThreadNew(StartCanLogTask, NULL, &canLogTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   REQUIRE_RTOS_HANDLE(spiMutexHandle);
@@ -268,6 +340,42 @@ __weak void StartSdTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END StartSdTask */
+}
+
+/* USER CODE BEGIN Header_StartCanDispatchTask */
+/**
+* @brief Function implementing the canDispatchTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartCanDispatchTask */
+__weak void StartCanDispatchTask(void *argument)
+{
+  /* USER CODE BEGIN StartCanDispatchTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartCanDispatchTask */
+}
+
+/* USER CODE BEGIN Header_StartCanLogTask */
+/**
+* @brief Function implementing the canLogTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartCanLogTask */
+__weak void StartCanLogTask(void *argument)
+{
+  /* USER CODE BEGIN StartCanLogTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartCanLogTask */
 }
 
 /* rxTimeoutCallback function */
