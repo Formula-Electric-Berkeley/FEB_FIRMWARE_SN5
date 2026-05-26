@@ -86,7 +86,7 @@ static bool csv_in_transaction;
 
 static int parse_args(char *line, char *argv[], int max_args);
 static const FEB_Console_Cmd_t *find_command(const char *name);
-static size_t u64_to_decimal(uint64_t v, char *out, size_t cap);
+__attribute__((unused)) static size_t u64_to_decimal(uint64_t v, char *out, size_t cap);
 static bool tx_id_is_valid(const char *s);
 static bool board_matches(const char *addr);
 static int csv_emit_v(const char *response_type, const char *fmt, va_list ap);
@@ -127,6 +127,12 @@ void FEB_Console_SetUartInstance(int uart_instance)
 int FEB_Console_GetUartInstance(void)
 {
   return console_uart_instance;
+}
+
+void FEB_Console_ProcessLineOnInstance(int uart_instance, const char *line, size_t len)
+{
+  FEB_Console_SetUartInstance(uart_instance);
+  FEB_Console_ProcessLine(line, len);
 }
 
 void FEB_Console_ProcessLine(const char *line, size_t len)
@@ -536,8 +542,9 @@ static const FEB_Console_Cmd_t *find_command(const char *name)
   return NULL;
 }
 
-/* newlib-nano printf drops %llu, so format the uint64 manually. */
-static size_t u64_to_decimal(uint64_t v, char *out, size_t cap)
+/* newlib-nano printf drops %llu, so format the uint64 manually.
+   Retained (unused) until feb_time + the CSV timestamp wiring are restored. */
+__attribute__((unused)) static size_t u64_to_decimal(uint64_t v, char *out, size_t cap)
 {
   if (cap == 0)
   {

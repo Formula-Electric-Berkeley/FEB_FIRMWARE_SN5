@@ -185,6 +185,21 @@ extern "C"
   void FEB_Console_ProcessLine(const char *line, size_t len);
 
   /**
+   * @brief Process a received command line, routing output to a UART instance
+   *
+   * Convenience wrapper for multi-UART boards: sets the console output
+   * instance (FEB_Console_SetUartInstance) then dispatches via
+   * FEB_Console_ProcessLine, so responses go back out @p uart_instance.
+   * Shares ProcessLine's single-RX-task constraint — the output instance and
+   * CSV transaction state are process-wide, so callers must serialize calls.
+   *
+   * @param uart_instance UART instance for the response (0 = FEB_UART_INSTANCE_1)
+   * @param line Null-terminated command line (without line ending)
+   * @param len  Length of line in bytes
+   */
+  void FEB_Console_ProcessLineOnInstance(int uart_instance, const char *line, size_t len);
+
+  /**
    * @brief Register a custom command
    * @return 0 on success, -1 if command table is full, -2 on duplicate name
    */

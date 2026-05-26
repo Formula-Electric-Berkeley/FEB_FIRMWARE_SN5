@@ -117,6 +117,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_rtos_utils stm32-hal-rfm95-receiver)
 
+# Embed version + build provenance (reads VERSION + git, generates feb_build_info.c)
+include(${CMAKE_SOURCE_DIR}/cmake/FEB_Version.cmake)
+feb_apply_version(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR})
+
 # Enable floating-point printf/scanf for newlib-nano
 target_link_options(${PROJECT_NAME} PRIVATE
     "LINKER:-u,_printf_float"
