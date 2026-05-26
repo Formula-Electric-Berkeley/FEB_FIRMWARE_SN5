@@ -126,26 +126,29 @@ uint16_t Pec10_calc(bool bIsRxCmd, uint8_t nLength, uint8_t *pDataBuf)
     }
   }
 
-  /* If array is from received buffer add command counter to crc calculation.
-   * The trailing 6-bit modulo-2 division shifts those 6 CC bits through the
-   * remainder; for TX (no CC byte appended) there are no further input bits,
-   * so the loop must stay inside this branch — running it unconditionally
-   * would XOR/shift zeros into the result and corrupt the TX PEC. */
+  /* On RX, fold the 6-bit command counter into the remainder before the
+   * trailing division below. On TX there is no command counter, so nothing
+   * is XOR'd here. */
   if (bIsRxCmd == true)
   {
     nRemainder ^= (uint16_t)(((uint16_t)pDataBuf[nLength] & (uint8_t)0xFC) << 2u);
+  }
 
-    for (nBitIndex = 6u; nBitIndex > 0u; --nBitIndex)
+  /* The 6-bit register-group field is always part of PEC10: it carries the
+   * command counter on RX (XOR'd above) and is implicitly zero on TX. Either
+   * way these 6 modulo-2 division steps MUST run unconditionally, or the TX
+   * write PEC will not match what the chip computes and every WRxxx command
+   * (WRCFGA/WRCFGB/WRPWM/...) is silently rejected. */
+  for (nBitIndex = 6u; nBitIndex > 0u; --nBitIndex)
+  {
+    if ((nRemainder & 0x200u) > 0u)
     {
-      if ((nRemainder & 0x200u) > 0u)
-      {
-        nRemainder = (uint16_t)((nRemainder << 1u));
-        nRemainder = (uint16_t)(nRemainder ^ nPolynomial);
-      }
-      else
-      {
-        nRemainder = (uint16_t)((nRemainder << 1u));
-      }
+      nRemainder = (uint16_t)((nRemainder << 1u));
+      nRemainder = (uint16_t)(nRemainder ^ nPolynomial);
+    }
+    else
+    {
+      nRemainder = (uint16_t)((nRemainder << 1u));
     }
   }
   return ((uint16_t)(nRemainder & 0x3FFu));
@@ -183,7 +186,11 @@ void cmd_68_r(uint8_t tx_cmd[2], uint8_t *data, uint8_t len)
   FEB_cs_low();
   FEB_spi_write_read(cmd, 4, data, len);
   FEB_cs_high();
-  ADBMS_CC_Advance();
+  // No ADBMS_CC_Advance() here: the ADBMS6830 does not increment its command
+  // counter on read/poll commands, so the host mirror must not advance on them
+  // either. Only cmd_68 (action/conversion) and write_68 (register write)
+  // commands are counted by the chip — advancing on reads over-counts and
+  // produces a constant false "CC drift" on every read.
 
   // Debug: print raw received bytes (commented out to reduce log spam)
   // printf("[SPI] TX: %02X %02X, RX:", tx_cmd[0], tx_cmd[1]);
