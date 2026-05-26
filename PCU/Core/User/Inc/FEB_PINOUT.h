@@ -135,14 +135,14 @@ extern "C"
  * drive state. */
 
 /* Accelerator Pedal Default Calibration (APPS) */
-/* Vendor-datasheet nominal values. Asymmetric slopes (APPS1: 0.5–3.057 V,
- * APPS2: 0.5–0.922 V) are intentional for FSAE EV.5.3 transfer-function
+/* Post-divider ADC-pin voltages. Asymmetric slopes (APPS1: 1.16–2.06 V,
+ * APPS2: 0.40–1.03 V) are intentional for FSAE EV.5.3 transfer-function
  * diversity. Each car must run PCU|apps|cal|capture per-install to lock in
  * the actual values for that pedal assembly. */
-#define APPS1_DEFAULT_MIN_VOLTAGE_MV 500  /* APPS1 at 0% — vendor nominal, recapture per-car */
-#define APPS1_DEFAULT_MAX_VOLTAGE_MV 3057 /* APPS1 at 100% — vendor nominal, recapture per-car */
-#define APPS2_DEFAULT_MIN_VOLTAGE_MV 500  /* APPS2 at 0% — vendor nominal, recapture per-car */
-#define APPS2_DEFAULT_MAX_VOLTAGE_MV 922  /* APPS2 at 100% — vendor nominal, recapture per-car */
+#define APPS1_DEFAULT_MIN_VOLTAGE_MV 1160 /* APPS1 at 0% — vendor nominal, recapture per-car */
+#define APPS1_DEFAULT_MAX_VOLTAGE_MV 2060 /* APPS1 at 100% — vendor nominal, recapture per-car */
+#define APPS2_DEFAULT_MIN_VOLTAGE_MV 400  /* APPS2 at 0% — vendor nominal, recapture per-car */
+#define APPS2_DEFAULT_MAX_VOLTAGE_MV 1030 /* APPS2 at 100% — vendor nominal, recapture per-car */
 #define APPS_MIN_PHYSICAL_PERCENT 0.0f    /* Physical minimum: 0% throttle */
 #define APPS_MAX_PHYSICAL_PERCENT 100.0f  /* Physical maximum: 100% throttle */
 #define APPS_DEADZONE_PERCENT 5           /* Deadzone at pedal extremes (%) */
@@ -183,7 +183,7 @@ extern "C"
 #define BRAKE_PLAUSIBILITY_TIME_MS 100   /* Time before brake plausibility fault */
 #define APPS_SHORT_CIRCUIT_DETECT_MV 100 /* Voltage below this indicates short (both sensors) */
 /* Per-sensor open-circuit thresholds: each must sit above the sensor's valid
- * max (3057 mV for APPS1, 922 mV for APPS2) and below the post-divider ADC
+ * max (2060 mV for APPS1, 1030 mV for APPS2) and below the post-divider ADC
  * ceiling (~3854 mV for APPS1, ~3300 mV for APPS2 with no divider). */
 #define APPS1_OPEN_CIRCUIT_DETECT_MV 3500 /* APPS1 above this indicates open */
 #define APPS2_OPEN_CIRCUIT_DETECT_MV 1500 /* APPS2 above this indicates open */
