@@ -80,11 +80,7 @@ void FEB_Init(void)
 
   /* Initialize console (registers built-in commands: echo, help, hello, commands,
    * version, uptime, reboot, log). The CSV-over-console protocol is handled by
-   * feb_console's parser directly — no separate init needed.
-   * NOTE: deliberately no LOG_I before this — the DMA from a pre-console LOG_I
-   *       can collide with the synchronous HAL_UART_Transmit calls inside
-   *       FEB_Console_Init's debug path and wedge the boot. BMS's FEB_Init
-   *       (on origin/main) follows the same order. */
+   * feb_console's parser directly — no separate init needed. */
   FEB_Console_Init(true);
 
   /* CAN-log subsystem's CSV-form handlers. Pair with the pipe-form

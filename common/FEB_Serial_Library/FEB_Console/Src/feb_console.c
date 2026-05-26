@@ -111,7 +111,7 @@ void FEB_Console_Init(bool register_default_commands)
   }
 #endif
 
-  FEB_Time_Init();
+  // FEB_Time_Init();
 
   if (register_default_commands)
   {
@@ -405,14 +405,14 @@ int FEB_Console_CsvEmitAs(const char *tx_id, const char *response_type, const ch
     response_type = "";
   }
 
-  uint64_t us = FEB_Time_Us();
-  char us_str[24];
-  u64_to_decimal(us, us_str, sizeof(us_str));
+  // uint64_t us = FEB_Time_Us();
+  // char us_str[24];
+  // u64_to_decimal(us, us_str, sizeof(us_str));
 
   const char *board_name = (feb_build_info.board_name != NULL) ? feb_build_info.board_name : "?";
 
   char buf[FEB_CONSOLE_PRINTF_BUFFER_SIZE];
-  int pre = snprintf(buf, sizeof(buf), "csv,%s,%s,%s,%s", tx_id, board_name, us_str, response_type);
+  int pre = snprintf(buf, sizeof(buf), "csv,%s,%s,%s,%s", tx_id, board_name, ".", response_type);
   if (pre < 0)
   {
     return pre;
@@ -614,14 +614,14 @@ static int csv_emit_v(const char *response_type, const char *fmt, va_list ap)
     response_type = "";
   }
 
-  uint64_t us = FEB_Time_Us();
-  char us_str[24];
-  u64_to_decimal(us, us_str, sizeof(us_str));
+  // uint64_t us = FEB_Time_Us();
+  // char us_str[24];
+  // u64_to_decimal(us, us_str, sizeof(us_str));
 
   const char *board_name = (feb_build_info.board_name != NULL) ? feb_build_info.board_name : "?";
 
   char buf[FEB_CONSOLE_PRINTF_BUFFER_SIZE];
-  int pre = snprintf(buf, sizeof(buf), "csv,%s,%s,%s,%s", csv_current_tx_id, board_name, us_str, response_type);
+  int pre = snprintf(buf, sizeof(buf), "csv,%s,%s,%s,%s", csv_current_tx_id, board_name, ".", response_type);
   if (pre < 0)
   {
     return pre;

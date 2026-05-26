@@ -1108,7 +1108,13 @@ static int feb_uart_write_internal(int inst, const uint8_t *data, size_t len)
   /* Block until sufficient space available (with timeout) */
   /* Note: Caller already holds critical section, so we exit/enter to allow DMA ISR */
   uint32_t start = ctx[inst].get_tick_ms ? ctx[inst].get_tick_ms() : 0;
-  const uint32_t timeout_ms = 1000; /* 1 second timeout */
+  const uint32_t timeout_ms = 1000; /* 1 second wall-clock timeout (best-effort) */
+  /* Fail-safe iteration cap: ensures the loop always terminates even if the
+   * tick source is stuck at 0 (e.g. pre-scheduler before TIM14 starts ticking,
+   * or during HAL_SuspendTick).  Without this, get_tick_ms()-based timeout
+   * never trips and a stalled DMA chain becomes an infinite hang. */
+  const uint32_t max_iterations = 1000000U;
+  uint32_t iterations = 0;
 
   while (feb_uart_ring_space(&ctx[inst].tx_ring) < len)
   {
@@ -1122,6 +1128,11 @@ static int feb_uart_write_internal(int inst, const uint8_t *data, size_t len)
     if (ctx[inst].get_tick_ms && (ctx[inst].get_tick_ms() - start) > timeout_ms)
     {
       break; /* Timeout - proceed with truncated write */
+    }
+
+    if (++iterations >= max_iterations)
+    {
+      break; /* Fail-safe cap reached - proceed with truncated write */
     }
 
     /* Release critical section to allow DMA completion interrupt to run */
