@@ -1000,6 +1000,44 @@ static void cmd_canstatus_csv(int argc, char *argv[])
 }
 
 /* ============================================================================
+ * Subcommand: volts - ADBMS6830 supply/reference voltages (VREF2/VA/VD/ITMP)
+ *
+ * Triggers an ADSTAT-all conversion, briefly waits, then reads STATA + STATB
+ * for every IC in the daisy chain and prints a per-IC table.
+ * ============================================================================ */
+static void subcmd_volts(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  /* Trigger ADSTAT-all (CH=0). The ADBMS6830 datasheet opcode for a status
+   * conversion of all channels is 0x0468. Sent directly because the repo's
+   * `#define ADSTAT 0x0570` in FEB_CMDCODES.h is a pre-existing mistake — it
+   * collides with CMD_START_AUX_ADC and is unused (ADBMS6830B_adax builds
+   * its own bytes). Wait ~1 ms for the conversion to settle. */
+  ADBMS_SendCmd(0x0468);
+  osDelay(pdMS_TO_TICKS(1));
+
+  FEB_Console_Printf("\r\n=== ADBMS6830 Supply Voltages ===\r\n");
+  FEB_Console_Printf("IC   VREF2(V)  VA(V)    VD(V)    ITMP(C)\r\n");
+
+  for (uint8_t ic = 0; ic < FEB_NUM_IC; ic++)
+  {
+    ADBMS_STATA_t a = {0};
+    ADBMS_STATB_t b = {0};
+    ADBMS_ReadReg(RDSTATA, ic, a.raw);
+    ADBMS_ReadReg(RDSTATB, ic, b.raw);
+
+    float vref2 = ADBMS_CodeToVoltage_mV(a.values.VREF2) / 1000.0f;
+    float va = ADBMS_CodeToVoltage_mV(a.values.VA) / 1000.0f;
+    float vd = ADBMS_CodeToVoltage_mV(b.bits.VD) / 1000.0f;
+    float itmp = ADBMS_CodeToTemp_C(a.values.ITMP);
+
+    FEB_Console_Printf("%-2u   %7.3f   %7.3f  %7.3f  %6.1f\r\n", (unsigned)ic, vref2, va, vd, itmp);
+  }
+}
+
+/* ============================================================================
  * Command Descriptors
  *
  * One unified FEB_Console_Cmd_t per subcommand: .handler is the human text
@@ -1088,15 +1126,20 @@ static const FEB_Console_Cmd_t bms_reg_cmd = {.name = "reg",
                                               .handler = ADBMS_RegSubcmd,
                                               .csv_handler = NULL,
                                               .hidden = true};
+static const FEB_Console_Cmd_t bms_volts_cmd = {.name = "volts",
+                                                .help = "ADBMS supply/reference voltages (VREF2/VA/VD/ITMP per IC)",
+                                                .handler = subcmd_volts,
+                                                .csv_handler = NULL,
+                                                .hidden = true};
 
 /* Per-board subcommand table. cmd_bms iterates this for `BMS|<sub>` dispatch.
  * Adding a subcommand: define its FEB_Console_Cmd_t above and append a pointer
  * here. Registration auto-picks it up. */
 static const FEB_Console_Cmd_t *const BMS_SUBCMDS[] = {
-    &bms_status_cmd,  &bms_cells_cmd,   &bms_temps_cmd,     &bms_therm_raw_cmd,  &bms_state_cmd,
-    &bms_balance_cmd, &bms_gpio_cmd,    &bms_ivt_cmd,       &bms_tasks_cmd,      &bms_mem_cmd,
-    &bms_cell_cmd,    &bms_spi_cmd,     &bms_errors_cmd,    &bms_config_cmd,     &bms_ping_cmd,
-    &bms_pong_cmd,    &bms_canstop_cmd, &bms_canstatus_cmd, &bms_cell_stats_cmd, &bms_reg_cmd,
+    &bms_status_cmd,     &bms_cells_cmd,  &bms_temps_cmd, &bms_therm_raw_cmd, &bms_state_cmd,   &bms_balance_cmd,
+    &bms_gpio_cmd,       &bms_ivt_cmd,    &bms_tasks_cmd, &bms_mem_cmd,       &bms_cell_cmd,    &bms_spi_cmd,
+    &bms_errors_cmd,     &bms_config_cmd, &bms_ping_cmd,  &bms_pong_cmd,      &bms_canstop_cmd, &bms_canstatus_cmd,
+    &bms_cell_stats_cmd, &bms_reg_cmd,    &bms_volts_cmd,
 };
 #define BMS_SUBCMDS_COUNT (sizeof(BMS_SUBCMDS) / sizeof(BMS_SUBCMDS[0]))
 
