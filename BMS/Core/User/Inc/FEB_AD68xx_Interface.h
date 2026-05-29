@@ -30,12 +30,18 @@ uint16_t pec15_calc(uint8_t len,  //!< The length of the data array being passed
 uint16_t Pec10_calc(bool bIsRxCmd, uint8_t nLength, uint8_t *pDataBuf);
 
 //***************** Command-counter tracking ****************
-// The chip increments its 6-bit command counter on every valid command.
-// The host mirrors it: ADBMS_CC_Advance() is called automatically by the
-// command emitters (cmd_68 / cmd_68_r / write_68); ADBMS_CC_Check(observed)
-// is called once per command by the read functions, with observed extracted
-// from the first IC's response as ((rx_byte_6 >> 2) & 0x3F). Mismatches
-// indicate dropped commands or chip resets and are rate-limited.
+// The ADBMS6830 increments its 6-bit command counter on action/conversion and
+// register-write commands, but NOT on read or poll commands. The host mirrors
+// it: ADBMS_CC_Advance() is called automatically by cmd_68 (actions) and
+// write_68 (writes) — NOT by cmd_68_r (reads/polls). ADBMS_CC_Check(observed)
+// is called once per read by the read functions, with observed extracted from
+// the first IC's response as ((rx_byte_6 >> 2) & 0x3F). Mismatches indicate
+// dropped commands or chip resets and are rate-limited.
+//
+// Caveat: ADBMS6830B_pollAdc() issues the ADSV *action* via transmitCMDR (the
+// read path), so that one action goes uncounted by the mirror. It is not used
+// in the main measurement loop (osDelay is used instead), so it does not
+// perturb steady-state tracking.
 //
 // Not reentrant / not thread-safe — single shared s_expected_cc state.
 // Call from one task only, or wrap in external synchronization.

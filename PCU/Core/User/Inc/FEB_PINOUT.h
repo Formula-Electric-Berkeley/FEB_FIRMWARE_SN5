@@ -134,15 +134,17 @@ extern "C"
  * Toggle for bench testing only via PCU|apps|mode|single|<on|off> while not in
  * drive state. */
 
-/* Accelerator Pedal Default Calibration (APPS) */
-/* Post-divider ADC-pin voltages. Asymmetric slopes (APPS1: 1.16–2.06 V,
- * APPS2: 0.40–1.03 V) are intentional for FSAE EV.5.3 transfer-function
- * diversity. Each car must run PCU|apps|cal|capture per-install to lock in
- * the actual values for that pedal assembly. */
-#define APPS1_DEFAULT_MIN_VOLTAGE_MV 1160 /* APPS1 at 0% — vendor nominal, recapture per-car */
-#define APPS1_DEFAULT_MAX_VOLTAGE_MV 2060 /* APPS1 at 100% — vendor nominal, recapture per-car */
-#define APPS2_DEFAULT_MIN_VOLTAGE_MV 400  /* APPS2 at 0% — vendor nominal, recapture per-car */
-#define APPS2_DEFAULT_MAX_VOLTAGE_MV 1030 /* APPS2 at 100% — vendor nominal, recapture per-car */
+/* Accelerator Pedal Calibration (APPS) - per-car values, post-divider
+ * (sensor-side) mV: the domain FEB_ADC maps against (APPS1 = ADC pin x1.168,
+ * APPS2 = pin x1.0; see VOLTAGE_DIVIDER_RATIO_ACCEL* in FEB_ADC.c).
+ * Bench estimate 2026-05-28 from a pedal sweep (APPS1 pin 1.16-2.06V,
+ * APPS2 pin 0.40-1.03V); CONFIRM on-car via PCU|apps|raw / PCU|apps|cal|capture
+ * before driving. Asymmetric APPS1 vs APPS2 ranges are expected and preserve
+ * FSAE EV.5.3 transfer-function diversity. */
+#define APPS1_DEFAULT_MIN_VOLTAGE_MV 1355 /* APPS1 0% throttle (est.; verify per-car) */
+#define APPS1_DEFAULT_MAX_VOLTAGE_MV 2406 /* APPS1 100% throttle (est.; verify per-car) */
+#define APPS2_DEFAULT_MIN_VOLTAGE_MV 400  /* APPS2 0% throttle (est.; verify per-car) */
+#define APPS2_DEFAULT_MAX_VOLTAGE_MV 1030 /* APPS2 100% throttle (est.; verify per-car) */
 #define APPS_MIN_PHYSICAL_PERCENT 0.0f    /* Physical minimum: 0% throttle */
 #define APPS_MAX_PHYSICAL_PERCENT 100.0f  /* Physical maximum: 100% throttle */
 #define APPS_DEADZONE_PERCENT 5           /* Deadzone at pedal extremes (%) */
@@ -151,10 +153,10 @@ extern "C"
 /* Brake Pressure Sensor Default Calibration — per-sensor, sensor-side mV
  * (i.e. before the 2:1 PCB divider; FEB_ADC_GetBrakePressureNVoltage()
  * already multiplies by VOLTAGE_DIVIDER_RATIO_BRAKE to give sensor-side V). */
-#define BRAKE_PRESSURE_1_MIN_MV 438                         /* Sensor 1 @ 0%  brake */
-#define BRAKE_PRESSURE_1_MAX_MV 1730                        /* Sensor 1 @ 100% brake */
-#define BRAKE_PRESSURE_2_MIN_MV 558                         /* Sensor 2 @ 0%  brake */
-#define BRAKE_PRESSURE_2_MAX_MV 2362                        /* Sensor 2 @ 100% brake */
+#define BRAKE_PRESSURE_1_MIN_MV 716                         /* Sensor 1 @ 0% brake (est. zero; verify per-car) */
+#define BRAKE_PRESSURE_1_MAX_MV 2008                        /* Sensor 1 @ 100% brake (zero + rated span 1292) */
+#define BRAKE_PRESSURE_2_MIN_MV 585                         /* Sensor 2 @ 0% brake (est. zero; verify per-car) */
+#define BRAKE_PRESSURE_2_MAX_MV 2389                        /* Sensor 2 @ 100% brake (zero + rated span 1804) */
 #define BRAKE_PRESSURE_MIN_PHYSICAL_BAR 0.0f                /* Physical minimum: 0 bar */
 #define BRAKE_PRESSURE_MAX_PHYSICAL_BAR 200.0f              /* Physical maximum: 200 bar */
 #define BRAKE_PRESSURE_THRESHOLD_BAR 5                      /* Brake activation threshold */
@@ -183,7 +185,7 @@ extern "C"
 #define BRAKE_PLAUSIBILITY_TIME_MS 100   /* Time before brake plausibility fault */
 #define APPS_SHORT_CIRCUIT_DETECT_MV 100 /* Voltage below this indicates short (both sensors) */
 /* Per-sensor open-circuit thresholds: each must sit above the sensor's valid
- * max (2060 mV for APPS1, 1030 mV for APPS2) and below the post-divider ADC
+ * max (2406 mV for APPS1, 1030 mV for APPS2) and below the post-divider ADC
  * ceiling (~3854 mV for APPS1, ~3300 mV for APPS2 with no divider). */
 #define APPS1_OPEN_CIRCUIT_DETECT_MV 3500 /* APPS1 above this indicates open */
 #define APPS2_OPEN_CIRCUIT_DETECT_MV 1500 /* APPS2 above this indicates open */
