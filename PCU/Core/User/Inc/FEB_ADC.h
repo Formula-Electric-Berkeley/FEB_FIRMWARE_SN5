@@ -521,6 +521,12 @@ extern "C"
   void FEB_ADC_GetAPPSStats(float *p1_min, float *p1_max, float *p2_min, float *p2_max, float *p1_avg, float *p2_avg,
                             float *dev_max, uint32_t *samples);
 
+  /**
+   * @brief  Latest RAW pin-domain separation |raw1-raw2| as a percentage of ADC
+   *         full scale. Drives the FSAE T.4.2.3 line-to-line short detection.
+   */
+  float FEB_ADC_GetAPPSRawSeparation(void);
+
   /* ========================================================================== */
   /*                       FILTER AND PROCESSING FUNCTIONS                     */
   /* ========================================================================== */

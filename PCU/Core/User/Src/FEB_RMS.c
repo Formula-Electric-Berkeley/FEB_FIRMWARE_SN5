@@ -215,7 +215,9 @@ void FEB_RMS_Torque(void)
     }
     if (!Brake_Data.plausible)
     {
-      LOG_E(TAG_RMS, "Brake sensor implausible, cutting torque");
+      LOG_E(TAG_RMS, "Brake sensor implausible, cutting torque (P1=%.1f%%/%.0fmV P2=%.1f%%/%.0fmV in=%.0fmV)",
+            Brake_Data.pressure1_percent, FEB_ADC_GetBrakePressure1Voltage() * 1000.0f, Brake_Data.pressure2_percent,
+            FEB_ADC_GetBrakePressure2Voltage() * 1000.0f, FEB_ADC_GetBrakeInputVoltage() * 1000.0f);
     }
   }
 

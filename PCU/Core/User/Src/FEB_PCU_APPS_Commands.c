@@ -124,6 +124,8 @@ static void apps_print_raw(void)
   FEB_Console_Printf("  raw2=%u  voltage2=%.0fmV  position2=%.2f%%\r\n", r2, (double)v2, (double)apps.position2);
   FEB_Console_Printf("  acceleration=%.2f%%  deviation=%.2f%%\r\n", (double)apps.acceleration, (double)dev);
   FEB_Console_Printf("  plausible=%d  short=%d  open=%d\r\n", apps.plausible, apps.short_circuit, apps.open_circuit);
+  FEB_Console_Printf("  raw_separation=%.2f%% (min %d%% above %d%% pedal)\r\n", (double)FEB_ADC_GetAPPSRawSeparation(),
+                     APPS_MIN_SEPARATION_PERCENT, APPS_SEPARATION_PEDAL_GATE_PERCENT);
   FEB_Console_Printf("  implaus_elapsed=%lums  faults=0x%08lX\r\n", (unsigned long)elapsed, (unsigned long)faults);
 }
 
@@ -134,20 +136,21 @@ static void apps_emit_raw_csv(const char *tx_id_or_null)
   float v1, v2, dev;
   uint32_t faults, elapsed;
   FEB_ADC_GetAPPSCacheSnapshot(&apps, &r1, &r2, &v1, &v2, &faults, &elapsed, &dev);
-  /* fields: raw1,v1_mv,p1,raw2,v2_mv,p2,accel,dev,plausible,short,open,implaus_ms,faults */
+  /* fields: raw1,v1_mv,p1,raw2,v2_mv,p2,accel,dev,plausible,short,open,implaus_ms,faults,raw_sep */
   if (tx_id_or_null)
   {
-    FEB_Console_CsvEmitAs(tx_id_or_null, "apps_raw", "%u,%.0f,%.2f,%u,%.0f,%.2f,%.2f,%.2f,%d,%d,%d,%lu,0x%08lX", r1,
-                          (double)v1, (double)apps.position1, r2, (double)v2, (double)apps.position2,
+    FEB_Console_CsvEmitAs(tx_id_or_null, "apps_raw", "%u,%.0f,%.2f,%u,%.0f,%.2f,%.2f,%.2f,%d,%d,%d,%lu,0x%08lX,%.2f",
+                          r1, (double)v1, (double)apps.position1, r2, (double)v2, (double)apps.position2,
                           (double)apps.acceleration, (double)dev, apps.plausible ? 1 : 0, apps.short_circuit ? 1 : 0,
-                          apps.open_circuit ? 1 : 0, (unsigned long)elapsed, (unsigned long)faults);
+                          apps.open_circuit ? 1 : 0, (unsigned long)elapsed, (unsigned long)faults,
+                          (double)FEB_ADC_GetAPPSRawSeparation());
   }
   else
   {
-    FEB_Console_CsvEmit("apps_raw", "%u,%.0f,%.2f,%u,%.0f,%.2f,%.2f,%.2f,%d,%d,%d,%lu,0x%08lX", r1, (double)v1,
+    FEB_Console_CsvEmit("apps_raw", "%u,%.0f,%.2f,%u,%.0f,%.2f,%.2f,%.2f,%d,%d,%d,%lu,0x%08lX,%.2f", r1, (double)v1,
                         (double)apps.position1, r2, (double)v2, (double)apps.position2, (double)apps.acceleration,
                         (double)dev, apps.plausible ? 1 : 0, apps.short_circuit ? 1 : 0, apps.open_circuit ? 1 : 0,
-                        (unsigned long)elapsed, (unsigned long)faults);
+                        (unsigned long)elapsed, (unsigned long)faults, (double)FEB_ADC_GetAPPSRawSeparation());
   }
 }
 
@@ -467,7 +470,7 @@ static void faults_print(void)
   uint32_t active = FEB_ADC_GetActiveFaults();
   FEB_Console_Printf("Active faults: 0x%08lX\r\n", (unsigned long)active);
   static const uint32_t bits[] = {
-      (1u << 0), (1u << 1), (1u << 2), (1u << 3), (1u << 4), (1u << 5), (1u << 6), (1u << 7),
+      (1u << 0), (1u << 1), (1u << 2), (1u << 3), (1u << 4), (1u << 5), (1u << 6), (1u << 7), (1u << 8),
   };
   for (size_t i = 0; i < sizeof(bits) / sizeof(bits[0]); i++)
   {
@@ -609,7 +612,7 @@ static void csv_faults(int argc, char *argv[])
   {
     uint32_t active = FEB_ADC_GetActiveFaults();
     static const uint32_t bits[] = {
-        (1u << 0), (1u << 1), (1u << 2), (1u << 3), (1u << 4), (1u << 5), (1u << 6), (1u << 7),
+        (1u << 0), (1u << 1), (1u << 2), (1u << 3), (1u << 4), (1u << 5), (1u << 6), (1u << 7), (1u << 8),
     };
     for (size_t i = 0; i < sizeof(bits) / sizeof(bits[0]); i++)
     {

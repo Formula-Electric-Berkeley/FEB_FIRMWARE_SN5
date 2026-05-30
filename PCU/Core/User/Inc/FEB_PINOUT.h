@@ -149,6 +149,14 @@ extern "C"
 #define APPS_MAX_PHYSICAL_PERCENT 100.0f  /* Physical maximum: 100% throttle */
 #define APPS_DEADZONE_PERCENT 5           /* Deadzone at pedal extremes (%) */
 #define APPS_PLAUSIBILITY_TOLERANCE 10    /* Maximum deviation between sensors (%) */
+/* FSAE T.4.2.3: the two APPS use different transfer functions, so their RAW
+ * pin-domain outputs (raw/ADC_MAX_VALUE*100) stay >=~23% apart across the pedal
+ * range on SN5. If the two signal lines short together that designed separation
+ * collapses -> treat as implausibility (an "other failure defined in T.4.2").
+ * Reference is ADC full scale (4095 cnt = 3300 mV at the pin); 10 here = 10
+ * percentage points of full scale. Keep at 10 — larger needs ETC justification. */
+#define APPS_MIN_SEPARATION_PERCENT 10        /* Min raw pin-domain separation, % of ADC FS */
+#define APPS_SEPARATION_PEDAL_GATE_PERCENT 10 /* Arm the separation check above this pedal % */
 
 /* Brake Pressure Sensor Default Calibration — per-sensor, sensor-side mV
  * (i.e. before the 5V->3.3V PCB divider; FEB_ADC_GetBrakePressureNVoltage()

@@ -39,12 +39,13 @@ typedef struct
 #define FAULT_BRAKE_SENSOR_FAULT (1 << 5)
 #define FAULT_CURRENT_SENSOR_FAULT (1 << 6)
 #define FAULT_ADC_TIMEOUT (1 << 7)
-#define FAULT_BIT_COUNT 8
+#define FAULT_APPS_SIGNAL_SHORT (1 << 8) /* Line-to-line APPS signal short (FSAE T.4.2.3) */
+#define FAULT_BIT_COUNT 9
 
 /* Faults that must NOT be clearable via the CLI while the car is in drive. */
 #define FAULT_DRIVE_LOCKED_MASK                                                                                        \
-  (FAULT_APPS_IMPLAUSIBILITY | FAULT_APPS_SHORT_CIRCUIT | FAULT_APPS_OPEN_CIRCUIT | FAULT_BRAKE_PLAUSIBILITY |         \
-   FAULT_BOTS_ACTIVE | FAULT_BRAKE_SENSOR_FAULT)
+  (FAULT_APPS_IMPLAUSIBILITY | FAULT_APPS_SHORT_CIRCUIT | FAULT_APPS_OPEN_CIRCUIT | FAULT_APPS_SIGNAL_SHORT |          \
+   FAULT_BRAKE_PLAUSIBILITY | FAULT_BOTS_ACTIVE | FAULT_BRAKE_SENSOR_FAULT)
 
 #define APPS_SIM_DURATION_MS 30000u
 #define APPS_LOG_RATE_LIMIT_MS 500u
@@ -67,6 +68,7 @@ static uint32_t fault_hit_counts[FAULT_BIT_COUNT] = {0};
 static APPS_DataTypeDef apps_cache = {0};
 static uint32_t apps_implaus_start_tick = 0;
 static float apps_latest_deviation = 0.0f;
+static float apps_latest_raw_separation = 0.0f; /* RAW pin-domain |raw1-raw2| %, for T.4.2.3 short detect */
 static uint32_t apps_v1_mv_cached = 0;
 static uint32_t apps_v2_mv_cached = 0;
 static uint16_t apps_raw1_cached = 0;
@@ -245,6 +247,7 @@ ADC_StatusTypeDef FEB_ADC_Init(void)
   apps_cache.plausible = true;
   apps_implaus_start_tick = 0;
   apps_latest_deviation = 0.0f;
+  apps_latest_raw_separation = 0.0f;
   apps_v1_mv_cached = 0;
   apps_v2_mv_cached = 0;
   apps_raw1_cached = 0;
@@ -584,6 +587,7 @@ void FEB_ADC_TickAPPS(void)
       apps_cache.implausibility_time = 0;
       apps_implaus_start_tick = 0;
       apps_latest_deviation = 0.0f;
+      apps_latest_raw_separation = 0.0f;
       ADC_StatsAccumulate(apps_sim_percent, apps_sim_percent, 0.0f);
       ADC_UpdateFaultEdges(active_faults);
       return;
@@ -637,10 +641,35 @@ void FEB_ADC_TickAPPS(void)
   {
     apps_cache.acceleration = (position1 + position2) / 2.0f;
 
-    /* FSAE EV.5.3: implausible = persistent disagreement >10% for >100 ms. */
-    bool in_disagreement = (deviation > (float)APPS_PLAUSIBILITY_TOLERANCE);
+    /* FSAE T.4.2.3 minimum-separation check (line-to-line short detection).
+     * The two APPS use different transfer functions, so their RAW pin-domain
+     * outputs (raw/ADC_MAX_VALUE*100) are designed to stay well apart (>=~23%
+     * of ADC FS on SN5) across the pedal range. If the two signal lines short
+     * together, both ADC inputs collapse to ~the same value and that designed
+     * separation disappears -> an "other failure defined in T.4.2" =
+     * implausibility.
+     *
+     * Use RAW counts (pre-calibration, pre-clamp, pre-deadzone): the clamp and
+     * deadzone can flatten both positions to 0/100 and mask a short. Both APPS
+     * share the ADC reference, so a short forces raw1 ~= raw2 wherever on the
+     * harness it occurs. The one weak corner — a harness short driven up to
+     * APPS1's ceiling — is independently caught by the APPS2 open-circuit
+     * detector above. Gate on the MAX of the two positions so either sensor
+     * reporting real travel arms the check (the rule applies above 10% pedal). */
+    float raw1_pct = ((float)apps_raw1_cached / (float)ADC_MAX_VALUE) * 100.0f;
+    float raw2_pct = ((float)apps_raw2_cached / (float)ADC_MAX_VALUE) * 100.0f;
+    float raw_separation = fabsf(raw1_pct - raw2_pct);
+    apps_latest_raw_separation = raw_separation;
 
-    if (in_disagreement)
+    bool above_gate = (fmaxf(position1, position2) > (float)APPS_SEPARATION_PEDAL_GATE_PERCENT);
+    bool too_close = above_gate && (raw_separation < (float)APPS_MIN_SEPARATION_PERCENT);
+
+    /* FSAE EV.5.3 / T.4.2.3: implausible = persistent >10% disagreement OR a
+     * collapsed raw separation, sustained for >100 ms. */
+    bool in_disagreement = (deviation > (float)APPS_PLAUSIBILITY_TOLERANCE);
+    bool implausible_now = in_disagreement || too_close;
+
+    if (implausible_now)
     {
       if (apps_implaus_start_tick == 0)
       {
@@ -658,9 +687,12 @@ void FEB_ADC_TickAPPS(void)
       {
         if ((active_faults & FAULT_APPS_IMPLAUSIBILITY) == 0)
         {
-          LOG_E(TAG_ADC, "APPS implausibility latched (%.1fms, dev=%.1f%%)", (double)elapsed, (double)deviation);
+          LOG_E(TAG_ADC, "APPS implausibility latched (%.1fms, dev=%.1f%%, rawsep=%.1f%%, gate=%d)", (double)elapsed,
+                (double)deviation, (double)raw_separation, above_gate);
         }
         active_faults |= FAULT_APPS_IMPLAUSIBILITY;
+        if (too_close)
+          active_faults |= FAULT_APPS_SIGNAL_SHORT; /* sub-cause: distinguish a wiring short in logs/faults */
         apps_cache.plausible = false;
       }
       else if ((active_faults & FAULT_APPS_IMPLAUSIBILITY) == 0)
@@ -742,7 +774,7 @@ void FEB_ADC_AcknowledgeAPPSImplausibility(void)
     {
       LOG_I(TAG_ADC, "APPS plausibility cleared on release");
     }
-    active_faults &= ~FAULT_APPS_IMPLAUSIBILITY;
+    active_faults &= ~(FAULT_APPS_IMPLAUSIBILITY | FAULT_APPS_SIGNAL_SHORT);
     apps_implaus_start_tick = 0;
     apps_cache.plausible = true;
     apps_cache.implausibility_time = 0;
@@ -1120,6 +1152,7 @@ ADC_StatusTypeDef FEB_ADC_ClearFaults(uint32_t fault_mask)
   /* Reset associated timers */
   if (fault_mask & FAULT_APPS_IMPLAUSIBILITY)
   {
+    active_faults &= ~FAULT_APPS_SIGNAL_SHORT; /* sub-cause tracks the implausibility latch */
     adc_runtime.apps_implausibility_timer = 0;
     apps_implaus_start_tick = 0;
     apps_cache.plausible = true;
@@ -1163,6 +1196,8 @@ static int fault_bit_to_index(uint32_t fault_bit)
     return 6;
   case FAULT_ADC_TIMEOUT:
     return 7;
+  case FAULT_APPS_SIGNAL_SHORT:
+    return 8;
   default:
     return -1;
   }
@@ -1189,6 +1224,7 @@ static const struct
     {"BRAKE_SENSOR_FAULT", FAULT_BRAKE_SENSOR_FAULT},
     {"CURRENT_SENSOR_FAULT", FAULT_CURRENT_SENSOR_FAULT},
     {"ADC_TIMEOUT", FAULT_ADC_TIMEOUT},
+    {"APPS_SIGNAL_SHORT", FAULT_APPS_SIGNAL_SHORT},
 };
 #define FAULT_NAME_COUNT (sizeof(fault_name_table) / sizeof(fault_name_table[0]))
 
@@ -1394,6 +1430,11 @@ void FEB_ADC_GetAPPSStats(float *p1_min, float *p1_max, float *p2_min, float *p2
     *dev_max = apps_stats.dev_max;
   if (samples)
     *samples = n;
+}
+
+float FEB_ADC_GetAPPSRawSeparation(void)
+{
+  return apps_latest_raw_separation;
 }
 
 /* Filter and Processing Functions -------------------------------------------*/
