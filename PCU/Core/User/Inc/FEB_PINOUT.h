@@ -153,14 +153,14 @@ extern "C"
 /* Brake Pressure Sensor Default Calibration — per-sensor, sensor-side mV
  * (i.e. before the 2:1 PCB divider; FEB_ADC_GetBrakePressureNVoltage()
  * already multiplies by VOLTAGE_DIVIDER_RATIO_BRAKE to give sensor-side V). */
-#define BRAKE_PRESSURE_1_MIN_MV 438            /* Sensor 1 @ 0% brake: 0.438 V sensor output */
-#define BRAKE_PRESSURE_1_MAX_MV 1730           /* Sensor 1 @ 100% brake: 1.730 V (zero + rated span 1292) */
-#define BRAKE_PRESSURE_2_MIN_MV 558            /* Sensor 2 @ 0% brake: 0.558 V sensor output */
-#define BRAKE_PRESSURE_2_MAX_MV 2362           /* Sensor 2 @ 100% brake: 2.362 V (zero + rated span 1804) */
-#define BRAKE_PRESSURE_MIN_PHYSICAL_BAR 0.0f   /* Physical minimum: 0 bar */
-#define BRAKE_PRESSURE_MAX_PHYSICAL_BAR 200.0f /* Physical maximum: 200 bar */
-#define BRAKE_PRESSURE_THRESHOLD_BAR 5         /* Brake activation threshold */
-#define BRAKE_PRESSURE_THRESHOLD_PERCENT 2.5f  /* Brake activation threshold in percent */
+#define BRAKE_PRESSURE_1_MIN_MV 720                         /* Sensor 1 @ 0% brake: 0.720 V (measured 2026-05-30) */
+#define BRAKE_PRESSURE_1_MAX_MV 1473                        /* Sensor 1 @ 100% brake: 1.473 V (measured 2026-05-30) */
+#define BRAKE_PRESSURE_2_MIN_MV 633                         /* Sensor 2 @ 0% brake: 0.633 V (measured 2026-05-30) */
+#define BRAKE_PRESSURE_2_MAX_MV 1165                        /* Sensor 2 @ 100% brake: 1.165 V (measured 2026-05-30) */
+#define BRAKE_PRESSURE_MIN_PHYSICAL_BAR 0.0f                /* Physical minimum: 0 bar */
+#define BRAKE_PRESSURE_MAX_PHYSICAL_BAR 200.0f              /* Physical maximum: 200 bar */
+#define BRAKE_PRESSURE_THRESHOLD_BAR 5                      /* Brake activation threshold */
+#define BRAKE_PRESSURE_THRESHOLD_PERCENT 2.5f               /* Brake activation threshold in percent */
 #define BRAKE_PRESSURE_PLAUSIBILITY_TOLERANCE_PERCENT 20.0f /* Max disagreement between brake pressure sensors */
 
 /* Brake Input/Switch Calibration */
