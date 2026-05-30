@@ -158,10 +158,10 @@ static ADC_CalibrationTypeDef brake_pressure2_calibration = {
     .max_physical = BRAKE_PRESSURE_MAX_PHYSICAL_BAR, /* Physical: 200 bar */
     .inverted = false};
 
-#define VOLTAGE_DIVIDER_RATIO (5.0f / 3.3f) /* shutdown, current sense, pre-timing trip */
-#define VOLTAGE_DIVIDER_RATIO_BRAKE 2.0f    /* brake pressure: 2:1 PCB divider */
-#define VOLTAGE_DIVIDER_RATIO_ACCEL1 1.168f /* APPS1: k=0.856 measured (2.16V→1.849V at ADC) */
-#define VOLTAGE_DIVIDER_RATIO_ACCEL2 1.0f   /* APPS2: direct connection, no resistor divider */
+#define VOLTAGE_DIVIDER_RATIO (5.0f / 3.3f)       /* shutdown, current sense, pre-timing trip */
+#define VOLTAGE_DIVIDER_RATIO_BRAKE (5.0f / 3.3f) /* brake: 5V->3.3V PCB divider */
+#define VOLTAGE_DIVIDER_RATIO_ACCEL1 1.168f       /* APPS1: k=0.856 measured (2.16V→1.849V at ADC) */
+#define VOLTAGE_DIVIDER_RATIO_ACCEL2 1.0f         /* APPS2: direct connection, no resistor divider */
 
 /* Private function prototypes -----------------------------------------------*/
 static uint16_t GetAveragedADCValue(ADC_HandleTypeDef *hadc, uint32_t channel, uint8_t samples);
