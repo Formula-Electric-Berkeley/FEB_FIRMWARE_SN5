@@ -154,9 +154,9 @@ extern "C"
  * (i.e. before the 5V->3.3V PCB divider; FEB_ADC_GetBrakePressureNVoltage()
  * already multiplies by VOLTAGE_DIVIDER_RATIO_BRAKE to give sensor-side V). */
 #define BRAKE_PRESSURE_1_MIN_MV 545            /* Sensor 1 @ 0% brake: 0.545 V sensor-side (5/3.3 divider) */
-#define BRAKE_PRESSURE_1_MAX_MV 1116           /* Sensor 1 @ 100% brake: 1.116 V sensor-side (5/3.3 divider) */
+#define BRAKE_PRESSURE_1_MAX_MV 2363           /* Sensor 1 @ 100% brake: 2.363 V sensor-side (5/3.3 divider) */
 #define BRAKE_PRESSURE_2_MIN_MV 480            /* Sensor 2 @ 0% brake: 0.480 V sensor-side (5/3.3 divider) */
-#define BRAKE_PRESSURE_2_MAX_MV 883            /* Sensor 2 @ 100% brake: 0.883 V sensor-side (5/3.3 divider) */
+#define BRAKE_PRESSURE_2_MAX_MV 1844           /* Sensor 2 @ 100% brake: 1.844 V sensor-side (5/3.3 divider) */
 #define BRAKE_PRESSURE_MIN_PHYSICAL_BAR 0.0f   /* Physical minimum: 0 bar */
 #define BRAKE_PRESSURE_MAX_PHYSICAL_BAR 200.0f /* Physical maximum: 200 bar */
 #define BRAKE_PRESSURE_THRESHOLD_BAR 5         /* Brake activation threshold */
