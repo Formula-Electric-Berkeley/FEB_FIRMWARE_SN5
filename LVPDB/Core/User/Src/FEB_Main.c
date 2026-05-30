@@ -10,6 +10,7 @@
 #include "main.h"
 #include <stdint.h>
 #include <stdio.h>
+#include "FEB_CAN_BRAKE.h"
 #include "FEB_CAN_DASH.h"
 
 extern CAN_HandleTypeDef hcan1;
@@ -315,6 +316,7 @@ void FEB_Main_Setup(void)
   // Initialize ping/pong module
   FEB_CAN_PingPong_Init();
   FEB_CAN_DASH_Init();
+  FEB_CAN_BRAKE_Init();
 
   LOG_I(TAG_MAIN, "LVPDB Setup Complete");
   LOG_I(TAG_MAIN, "Type 'help' for available commands");
@@ -386,6 +388,9 @@ void FEB_Main_Loop(void)
   }
 
   // FEB_TPS_Enable(tps_handles[3], true); // BM_L
+
+  bool brake_on = FEB_CAN_BRAKE_IsDataFresh(250) && (FEB_CAN_BRAKE_GetPercent() > 10);
+  HAL_GPIO_WritePin(BL_Switch_GPIO_Port, BL_Switch_Pin, brake_on ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
 }

@@ -114,7 +114,7 @@ FEB_CAN_Status_t FEB_CAN_Filter_Configure(FEB_CAN_Instance_t instance, uint8_t f
     return FEB_CAN_ERROR_HAL;
   }
 
-  LOG_D("[CAN-FLT]", "bank=%u id=0x%lX mask=0x%lX %s fifo=%d FidH=0x%04X FidL=0x%04X FmaskH=0x%04X FmaskL=0x%04X",
+  LOG_T("[CAN-FLT]", "bank=%u id=0x%lX mask=0x%lX %s fifo=%d FidH=0x%04X FidL=0x%04X FmaskH=0x%04X FmaskL=0x%04X",
         filter_bank, (unsigned long)id, (unsigned long)mask,
         (id_type == FEB_CAN_ID_STD) ? "STD" : "EXT", (int)fifo,
         (unsigned int)filter_config.FilterIdHigh, (unsigned int)filter_config.FilterIdLow,

@@ -297,6 +297,16 @@ static void read_aux_voltages()
   check_and_report_pec_errors();
 }
 
+// True for thermistor inputs physically unconnected on the SN5 BMS harness;
+// treated like a PEC failure (NaN / 0xFFFF sentinel, never aggregated).
+// Args are store_cell_temps() loop coords: mux 0..5 (mux+1 = MUX1..MUX6),
+// channel 0..6 (the value driven onto SEL1..SEL3).
+//   MUX6 input 5 (1-indexed) = mux==5, channel==4 (SEL3 only) -> sensor 39.
+static inline bool feb_temp_sensor_ignored(uint8_t mux, uint8_t channel)
+{
+  return (mux == 5 && channel == 4);
+}
+
 static void store_cell_temps(uint8_t channel)
 {
   DEBUG_TEMP_PRINT("Storing cell temperatures for channel %d", channel);
@@ -315,6 +325,16 @@ static void store_cell_temps(uint8_t channel)
         // RDAUXA covers a_codes[0..2] (pec_match[0]), RDAUXB covers a_codes[3..5] (pec_match[1]).
         uint8_t reg_idx = a_idx / 3;
         uint16_t sensor_idx = icn * FEB_NUM_TEMP_SENSE_PER_IC + mux * 7 + channel;
+
+        if (feb_temp_sensor_ignored(mux, channel))
+        {
+          FEB_ACC.banks[bank].temp_sensor_readings_V[sensor_idx] = NAN;
+          FEB_ACC.banks[bank].therm_raw_voltages_mV[sensor_idx] = NAN;
+          FEB_ACC.banks[bank].therm_raw_codes[sensor_idx] = 0xFFFF;
+          DEBUG_TEMP_PRINT("Ignored (unconnected): Bank %d IC %d MUX%d ch%d -> idx=%d (NaN)", bank, icn, mux + 1,
+                           channel, sensor_idx);
+          continue;
+        }
 
         if (IC_Config[ic_idx].aux.pec_match[reg_idx] != 0)
         {

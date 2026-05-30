@@ -48,9 +48,8 @@ void FEB_State_Update_RTD(void)
                       FEB_CAN_BMS_IsDataFresh(RTD_INPUT_FRESHNESS_MS);
 
   // RTD requires: fresh CAN inputs, button held, brake applied, inverter enabled, BMS energized
-  // if (inputs_fresh && (brake_pressure >= RTD_BRAKE_THRESHOLD) && (inv_enabled == 1) &&
-  //     (bms_state == BMS_STATE_ENERGIZED) && states.button_rtd)
-  if ((brake_pressure >= RTD_BRAKE_THRESHOLD) && states.button_rtd)
+  if (inputs_fresh && (brake_pressure >= RTD_BRAKE_THRESHOLD) && (inv_enabled == 1) &&
+      (bms_state == BMS_STATE_ENERGIZED) && states.button_rtd)
   {
     if (!rtd_timer_armed)
     {

@@ -185,7 +185,7 @@ extern "C"
 #define BRAKE_PLAUSIBILITY_TIME_MS 100   /* Time before brake plausibility fault */
 #define APPS_SHORT_CIRCUIT_DETECT_MV 100 /* Voltage below this indicates short (both sensors) */
 /* Per-sensor open-circuit thresholds: each must sit above the sensor's valid
- * max (3057 mV for APPS1, 922 mV for APPS2) and below the post-divider ADC
+ * max (2406 mV for APPS1, 1030 mV for APPS2) and below the post-divider ADC
  * ceiling (~3854 mV for APPS1, ~3300 mV for APPS2 with no divider). */
 #define APPS1_OPEN_CIRCUIT_DETECT_MV 3500 /* APPS1 above this indicates open */
 #define APPS2_OPEN_CIRCUIT_DETECT_MV 1500 /* APPS2 above this indicates open */
