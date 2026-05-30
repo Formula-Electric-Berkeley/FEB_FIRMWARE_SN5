@@ -342,7 +342,7 @@ DSTATUS USER_SPI_initialize(BYTE pdrv)
               (unsigned)r41,
               (int)spi_timer_active());
 
-        if (spi_timer_active())
+        if (r41 == 0U)
         {
           BYTE r58 = send_cmd(CMD58, 0U);
           if (r58 == 0U)
@@ -556,6 +556,11 @@ DRESULT USER_SPI_ioctl(BYTE pdrv, BYTE cmd, void *buff)
     break;
 
   case GET_SECTOR_COUNT:
+    if (buff == NULL)
+    {
+      result = RES_PARERR;
+      break;
+    }
     if (send_cmd(CMD9, 0U) == 0U && rcvr_datablock(csd, 16U))
     {
       DWORD csize = 0U;
@@ -575,6 +580,11 @@ DRESULT USER_SPI_ioctl(BYTE pdrv, BYTE cmd, void *buff)
     break;
 
   case GET_BLOCK_SIZE:
+    if (buff == NULL)
+    {
+      result = RES_PARERR;
+      break;
+    }
     if ((card_type & CT_SD2) != 0U)
     {
       if (send_cmd(ACMD13, 0U) == 0U)

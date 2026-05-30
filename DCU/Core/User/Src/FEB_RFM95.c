@@ -202,16 +202,25 @@ FEB_RFM95_Status_t FEB_RFM95_Receive(uint8_t *buffer, uint8_t *length, uint32_t 
 
 void FEB_RFM95_StartReceive(void)
 {
+  if (!s_initialized)
+    return;
+
   rfm95_start_receive(&s_rfm95);
 }
 
 void FEB_RFM95_Standby(void)
 {
+  if (!s_initialized)
+    return;
+
   rfm95_standby(&s_rfm95);
 }
 
 void FEB_RFM95_Sleep(void)
 {
+  if (!s_initialized)
+    return;
+
   rfm95_sleep(&s_rfm95);
 }
 
@@ -221,6 +230,9 @@ void FEB_RFM95_Sleep(void)
 
 void FEB_RFM95_OnDIO0(void)
 {
+  if (!s_initialized)
+    return;
+
   rfm95_on_interrupt(&s_rfm95, RFM95_INTERRUPT_DIO0);
 
   /* Signal FreeRTOS events if available */
@@ -243,6 +255,9 @@ void FEB_RFM95_OnDIO0(void)
 
 void FEB_RFM95_OnDIO1(void)
 {
+  if (!s_initialized)
+    return;
+
   rfm95_on_interrupt(&s_rfm95, RFM95_INTERRUPT_DIO1);
 
   if (radioEventsHandle != NULL)
