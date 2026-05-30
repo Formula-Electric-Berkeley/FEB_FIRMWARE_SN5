@@ -162,6 +162,7 @@ extern "C"
 #define BRAKE_PRESSURE_THRESHOLD_BAR 5         /* Brake activation threshold */
 #define BRAKE_PRESSURE_THRESHOLD_PERCENT 2.5f  /* Brake activation threshold in percent */
 #define BRAKE_PRESSURE_PLAUSIBILITY_TOLERANCE_PERCENT 20.0f /* Max disagreement between brake pressure sensors */
+#define BRAKE_PRESSED_POSITION_PERCENT 10.0f                /* Brake "pressed" when combined position exceeds this */
 
 /* Brake Input/Switch Calibration */
 #define BRAKE_INPUT_THRESHOLD_MV 1500 /* Threshold for brake switch activation */

@@ -803,12 +803,12 @@ ADC_StatusTypeDef FEB_ADC_GetBrakeData(Brake_DataTypeDef *brake_data)
   brake_data->pressure1_percent = FEB_ADC_Constrain(brake_data->pressure1_percent, 0.0f, 100.0f);
   brake_data->pressure2_percent = FEB_ADC_Constrain(brake_data->pressure2_percent, 0.0f, 100.0f);
 
-  /* Get brake switch status */
-  brake_data->brake_pressed = (brake_input_mv > BRAKE_INPUT_THRESHOLD_MV);
-
-  /* Calculate brake position based on pressure */
-  // float avg_pressure = (brake_data->pressure1_percent + brake_data->pressure2_percent) / 2.0f;
+  /* Calculate brake position based on pressure (the selected sensor). */
   brake_data->brake_position = brake_data->brake_switch ? brake_data->pressure2_percent : brake_data->pressure1_percent;
+
+  /* Brake is "pressed" when the combined position exceeds the threshold — derived
+   * from the pressure sensors, not the separate PC4 brake-input line. */
+  brake_data->brake_pressed = (brake_data->brake_position > BRAKE_PRESSED_POSITION_PERCENT);
 
   /* Check plausibility between pressure sensors. Both inputs are
    * percentages, so the threshold must be a percentage too. */
