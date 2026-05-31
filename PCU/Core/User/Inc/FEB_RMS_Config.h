@@ -109,6 +109,19 @@ extern "C"
  */
 #define APPS_RESET_THRESHOLD 5.0f
 
+/* ========================================================================== */
+/*                            BENCH TEST MODE                                 */
+/* ========================================================================== */
+
+/**
+ * @brief Bench-test override: command the inverter without the BMS in DRIVE.
+ * @warning SAFETY: keep 0 for ALL on-vehicle builds. When 1, the PCU enables
+ *          the inverter and commands torque from APPS/brake alone, ignoring
+ *          BMS drive state. Bench use only, HV isolated.
+ * @note    APPS and brake plausibility checks REMAIN active.
+ */
+#define PCU_BENCH_TEST 0
+
 #ifdef __cplusplus
 }
 #endif

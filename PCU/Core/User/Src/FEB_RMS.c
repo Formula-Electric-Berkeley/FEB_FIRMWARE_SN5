@@ -7,12 +7,16 @@
 #include "FEB_Regen.h"
 #include "main.h"
 
+#if PCU_BENCH_TEST
+#warning "PCU_BENCH_TEST=1: BMS drive gating bypassed. DO NOT FLASH TO VEHICLE."
+#endif
+
 /* Safe min macro with proper parentheses */
 #define min(x1, x2) (((x1) < (x2)) ? (x1) : (x2))
 
 /* Regen brake position threshold (from FEB_Regen.h) */
 #ifndef REGEN_BRAKE_POS_THRESH
-#define REGEN_BRAKE_POS_THRESH 0.20f /* 20% brake position to activate regen */
+#define REGEN_BRAKE_POS_THRESH 20.0f /* 20% brake position to activate regen */
 #endif
 
 /* Global RMS control data */
@@ -23,17 +27,27 @@ bool DRIVE_STATE;
 
 static uint32_t last_rms_implaus_log_tick = 0;
 
+/* Drive gate for inverter commanding. PCU_BENCH_TEST forces this true so the
+ * inverter can be exercised on the bench without a BMS in DRIVE. */
+static inline bool FEB_RMS_DriveAllowed(void)
+{
+  return FEB_CAN_BMS_InDriveState() || PCU_BENCH_TEST;
+}
+
 void FEB_RMS_Setup(void)
 {
   RMS_CONTROL_MESSAGE.enabled = 0;
   RMS_CONTROL_MESSAGE.torque = 0.0;
   LOG_I(TAG_RMS, "RMS control initialized");
+#if PCU_BENCH_TEST
+  LOG_W(TAG_RMS, "BENCH TEST: BMS drive gating bypassed (not for vehicle use)");
+#endif
 }
 
 void FEB_RMS_Process(void)
 {
   // Require BMS to be in drive state before enabling inverter
-  if (!FEB_CAN_BMS_InDriveState())
+  if (!FEB_RMS_DriveAllowed())
   {
     LOG_W(TAG_RMS, "Cannot enable RMS: BMS not in drive state (state=%d)", BMS_MESSAGE.state);
     return;
@@ -178,13 +192,13 @@ float FEB_RMS_GetMaxTorque(void)
 void FEB_RMS_Torque(void)
 {
   // Try to enable RMS if BMS enters drive state
-  if (!DRIVE_STATE && FEB_CAN_BMS_InDriveState())
+  if (!DRIVE_STATE && FEB_RMS_DriveAllowed())
   {
     FEB_RMS_Process();
   }
 
   // Auto-disable RMS if BMS leaves drive state or communication is lost
-  if (DRIVE_STATE && !FEB_CAN_BMS_InDriveState())
+  if (DRIVE_STATE && !FEB_RMS_DriveAllowed())
   {
     LOG_W(TAG_RMS, "BMS left drive state or timeout, disabling RMS");
     FEB_RMS_Disable();
@@ -199,7 +213,7 @@ void FEB_RMS_Torque(void)
   FEB_ADC_CheckBrakePlausibility();
 
   // Check plausibility and safety conditions (require BMS in drive state)
-  bool bms_in_drive = FEB_CAN_BMS_InDriveState();
+  bool bms_in_drive = FEB_RMS_DriveAllowed();
   bool sensors_plausible = bms_in_drive && DRIVE_STATE && APPS_Data.plausible && Brake_Data.plausible;
 
   // Log any safety violations
