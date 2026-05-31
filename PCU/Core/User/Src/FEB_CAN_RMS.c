@@ -1,6 +1,11 @@
 #include "FEB_CAN_RMS.h"
 #include "feb_log.h"
 
+/* Number of inverter-disabled (0x0C0, enable=0) command frames sent at startup,
+ * 10 ms apart, so the RMS sees a clean inverter_enable 0->1 edge later and comes
+ * out of Inverter Enable Lockout before anything can command enable. */
+#define RMS_STARTUP_DISABLE_FRAMES 10
+
 extern CAN_HandleTypeDef hcan1;
 
 /* Global RMS message data */
@@ -94,6 +99,18 @@ void FEB_CAN_RMS_Init(void)
 
   // Select CAN msg to broadcast
   FEB_CAN_RMS_Transmit_ParamBroadcast();
+
+  // Command the inverter DISABLED before anything can enable it. The RMS powers
+  // up in Inverter Enable Lockout and must see the command message with
+  // inverter_enable = 0, then a clean 0->1 edge, to come out of lockout. This
+  // also guarantees enable=1 is never the first 0x0C0 frame on the bus.
+  LOG_I(TAG_CAN, "Commanding inverter DISABLED (lockout-safe startup)");
+  for (int i = 0; i < RMS_STARTUP_DISABLE_FRAMES; i++)
+  {
+    FEB_CAN_RMS_Transmit_UpdateTorque(0, 0);
+    HAL_Delay(10);
+  }
+
   LOG_I(TAG_CAN, "RMS CAN initialization complete");
 }
 

@@ -7,10 +7,6 @@
 #include "FEB_Regen.h"
 #include "main.h"
 
-#if PCU_BENCH_TEST
-#warning "PCU_BENCH_TEST=1: BMS + brake gating bypassed (accelerator-only). DO NOT FLASH TO VEHICLE."
-#endif
-
 /* Safe min macro with proper parentheses */
 #define min(x1, x2) (((x1) < (x2)) ? (x1) : (x2))
 
@@ -27,21 +23,37 @@ bool DRIVE_STATE;
 
 static uint32_t last_rms_implaus_log_tick = 0;
 
-/* Drive gate for inverter commanding. PCU_BENCH_TEST forces this true so the
- * inverter can be exercised on the bench without a BMS in DRIVE. */
+/* Bench brake bypass (runtime): treat the brake as released+plausible and skip
+ * the BSPD check. Bus-guarded — refused/auto-cancelled when a real BMS is on
+ * the bus (see FEB_RMS_SetBrakeBypass and the auto-cancel in FEB_RMS_Torque). */
+static bool brake_bypass_active = false;
+
+/* Sticky manual inverter-off latch set by `PCU|rms|disable`. While set, the
+ * auto state machine will not re-arm the inverter; only `PCU|rms|enable`
+ * (FEB_RMS_CommandEnable) clears it. */
+static bool rms_force_disable = false;
+
+/* Drive gate for inverter commanding. Bench use is covered at runtime by the
+ * BMS-state sim (`PCU|bms|state|drive`), which makes FEB_CAN_BMS_InDriveState()
+ * return true — there is no compile-time override. */
 static inline bool FEB_RMS_DriveAllowed(void)
 {
-  return FEB_CAN_BMS_InDriveState() || PCU_BENCH_TEST;
+  return FEB_CAN_BMS_InDriveState();
 }
 
-void FEB_RMS_Setup(void)
+bool FEB_RMS_SetBrakeBypass(bool enabled)
 {
-  RMS_CONTROL_MESSAGE.enabled = 0;
-  RMS_CONTROL_MESSAGE.torque = 0.0;
-  LOG_I(TAG_RMS, "RMS control initialized");
-#if PCU_BENCH_TEST
-  LOG_W(TAG_RMS, "BENCH TEST: BMS + brake gating bypassed, accelerator-only (not for vehicle use)");
-#endif
+  /* Mirror the BMS-state sim guard: refuse to engage while a real BMS is
+   * broadcasting, so the bypass can never be on in a real vehicle. */
+  if (enabled && !FEB_CAN_BMS_IsSilent())
+    return false;
+  brake_bypass_active = enabled;
+  return true;
+}
+
+bool FEB_RMS_GetBrakeBypass(void)
+{
+  return brake_bypass_active;
 }
 
 void FEB_RMS_Process(void)
@@ -68,6 +80,28 @@ void FEB_RMS_Disable(void)
   LOG_W(TAG_RMS, "RMS disabled");
 
   DRIVE_STATE = false;
+}
+
+/* Manual console control of the inverter enable line. Disable is a sticky,
+ * always-allowed fail-safe; enable clears the latch and re-runs the normal
+ * drive-gated enable path (so it still requires BMS drive / the sim). */
+void FEB_RMS_CommandDisable(void)
+{
+  rms_force_disable = true;
+  LOG_W(TAG_RMS, "Inverter force-disabled by console");
+  FEB_RMS_Disable();
+}
+
+bool FEB_RMS_CommandEnable(void)
+{
+  rms_force_disable = false;
+  FEB_RMS_Process();
+  return RMS_CONTROL_MESSAGE.enabled != 0;
+}
+
+bool FEB_RMS_IsForceDisabled(void)
+{
+  return rms_force_disable;
 }
 
 /**
@@ -191,8 +225,8 @@ float FEB_RMS_GetMaxTorque(void)
  */
 void FEB_RMS_Torque(void)
 {
-  // Try to enable RMS if BMS enters drive state
-  if (!DRIVE_STATE && FEB_RMS_DriveAllowed())
+  // Try to enable RMS if BMS enters drive state (unless a manual disable is latched)
+  if (!DRIVE_STATE && FEB_RMS_DriveAllowed() && !rms_force_disable)
   {
     FEB_RMS_Process();
   }
@@ -210,19 +244,30 @@ void FEB_RMS_Torque(void)
   FEB_ADC_GetAPPSData(&APPS_Data);
   FEB_ADC_GetBrakeData(&Brake_Data);
 
-  // Effective brake state used for gating and mode select below. In bench-test
-  // mode the brake is assumed disconnected: treat it as released and plausible
-  // so the accelerator alone commands torque (no regen/coast diversion), and
-  // skip the BSPD check so a floating brake input can't latch a fault.
+  // Bench brake bypass auto-cancels the instant a real BMS appears on the bus,
+  // so it can never stay engaged on a vehicle (mirrors the BMS-state sim guard).
+  if (brake_bypass_active && !FEB_CAN_BMS_IsSilent())
+  {
+    brake_bypass_active = false;
+    LOG_W(TAG_RMS, "Brake bypass cancelled: BMS active on CAN bus");
+  }
+
+  // Effective brake state used for gating and mode select below. With the bench
+  // brake bypass on, the brake is assumed disconnected: treat it as released and
+  // plausible so the accelerator alone commands torque (no regen/coast
+  // diversion), and skip the BSPD check so a floating brake input can't latch a
+  // fault. Otherwise run the BSPD/brake-plausibility check so faults latch.
   bool brake_plausible = Brake_Data.plausible;
   float brake_position = Brake_Data.brake_position;
-#if PCU_BENCH_TEST
-  brake_plausible = true;
-  brake_position = 0.0f;
-#else
-  // Run BSPD/brake-plausibility check so the fault latches when applicable.
-  FEB_ADC_CheckBrakePlausibility();
-#endif
+  if (brake_bypass_active)
+  {
+    brake_plausible = true;
+    brake_position = 0.0f;
+  }
+  else
+  {
+    FEB_ADC_CheckBrakePlausibility();
+  }
 
   // Check plausibility and safety conditions (require BMS in drive state)
   bool bms_in_drive = FEB_RMS_DriveAllowed();

@@ -111,8 +111,9 @@ void FEB_Main_Setup(void)
     LOG_I(TAG_MAIN, "[5/8] RMS initialized");
     HAL_Delay(50);
 
-    // Clear RMS lockout (2-second blocking sequence - runs once at startup)
-    FEB_RMS_Process();
+    // NOTE: FEB_CAN_RMS_Init() already commanded the inverter DISABLED (lockout-
+    // safe). The inverter stays disabled until FEB_RMS_Torque() enables it on a
+    // clean 0->1 edge once BMS drive state is reached.
 
     FEB_CAN_BMS_Init();
 

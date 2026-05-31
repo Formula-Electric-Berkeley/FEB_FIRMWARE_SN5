@@ -30,7 +30,9 @@ static void print_pcu_help(void)
   FEB_Console_Printf("  PCU|status   - Show overall PCU status\r\n");
   FEB_Console_Printf("  PCU|apps     - APPS summary (use PCU|apps alone for sub-commands)\r\n");
   FEB_Console_Printf("  PCU|brake    - Show brake sensor values and status\r\n");
+  FEB_Console_Printf("  PCU|brake|bypass|<on|off>  - Bench brake/BSPD bypass (refused if BMS on bus)\r\n");
   FEB_Console_Printf("  PCU|rms      - Show RMS motor controller status\r\n");
+  FEB_Console_Printf("  PCU|rms|<enable|disable>   - Manually enable/disable inverter (bench)\r\n");
   FEB_Console_Printf("  PCU|tps      - Show TPS2482 voltage/current monitoring\r\n");
   FEB_Console_Printf("  PCU|bms      - Show BMS state information\r\n");
   FEB_Console_Printf("  PCU|bms|state|<drive|0-13|off>  - Sim BMS state (bench only, refused if BMS on bus)\r\n");
@@ -152,10 +154,50 @@ static void cmd_apps(int argc, char *argv[])
   FEB_Console_Printf("  Plausibility: %s\r\n", apps_data.plausible ? "OK" : "FAILED");
 }
 
+static void cmd_brake_bypass(int argc, char *argv[])
+{
+  /* PCU|brake|bypass|<on|off> — bench-only brake/BSPD bypass. */
+  if (argc < 2)
+  {
+    FEB_Console_Printf("Usage: PCU|brake|bypass|<on|off>\r\n");
+    FEB_Console_Printf("  Treats brake as released+plausible and skips the BSPD check.\r\n");
+    FEB_Console_Printf("  Refused if BMS is actively sending messages.\r\n");
+    FEB_Console_Printf("  Current: %s\r\n", FEB_RMS_GetBrakeBypass() ? "ON" : "OFF");
+    return;
+  }
+
+  const char *val = argv[1];
+  bool enable;
+  if (FEB_strcasecmp(val, "on") == 0)
+  {
+    enable = true;
+  }
+  else if (FEB_strcasecmp(val, "off") == 0)
+  {
+    enable = false;
+  }
+  else
+  {
+    FEB_Console_Printf("Error: invalid arg '%s' (use 'on' or 'off')\r\n", val);
+    return;
+  }
+
+  if (!FEB_RMS_SetBrakeBypass(enable))
+  {
+    FEB_Console_Printf("Error: refused — BMS is active on CAN bus\r\n");
+    return;
+  }
+  FEB_Console_Printf("Brake bypass %s\r\n", enable ? "ON" : "OFF");
+}
+
 static void cmd_brake(int argc, char *argv[])
 {
-  (void)argc;
-  (void)argv;
+  if (argc >= 2 && FEB_strcasecmp(argv[1], "bypass") == 0)
+  {
+    cmd_brake_bypass(argc - 1, argv + 1);
+    return;
+  }
+
   Brake_DataTypeDef brake_data;
   FEB_ADC_GetBrakeData(&brake_data);
 
@@ -177,15 +219,35 @@ static void cmd_brake(int argc, char *argv[])
   FEB_Console_Printf("Combined:\r\n");
   FEB_Console_Printf("  Position: %.1f%%\r\n", brake_data.brake_position);
   FEB_Console_Printf("  Pressed:  %s\r\n", brake_data.brake_pressed ? "YES" : "NO");
+  FEB_Console_Printf("  Bypass:   %s\r\n", FEB_RMS_GetBrakeBypass() ? "ON (bench)" : "OFF");
 }
 
 static void cmd_rms(int argc, char *argv[])
 {
-  (void)argc;
-  (void)argv;
+  if (argc >= 2 && FEB_strcasecmp(argv[1], "enable") == 0)
+  {
+    if (FEB_RMS_CommandEnable())
+      FEB_Console_Printf("Inverter ENABLED\r\n");
+    else
+      FEB_Console_Printf("Inverter enable refused — BMS not in drive (use PCU|bms|state|drive on the bench)\r\n");
+    return;
+  }
+  if (argc >= 2 && FEB_strcasecmp(argv[1], "disable") == 0)
+  {
+    FEB_RMS_CommandDisable();
+    FEB_Console_Printf("Inverter DISABLED (forced off until PCU|rms|enable)\r\n");
+    return;
+  }
+
   FEB_Console_Printf("=== RMS Motor Controller Status ===\r\n");
   FEB_Console_Printf("\r\n");
 
+  const char *inv_state;
+  if (FEB_RMS_IsForceDisabled())
+    inv_state = "FORCED-OFF";
+  else
+    inv_state = RMS_CONTROL_MESSAGE.enabled ? "ENABLED" : "DISABLED";
+  FEB_Console_Printf("Inverter:        %s\r\n", inv_state);
   // Get RMS data (these functions may need to be added to FEB_CAN_RMS.h)
   FEB_Console_Printf("DC Bus Voltage:  %.1f V\r\n", FEB_CAN_RMS_getDCBusVoltage());
   FEB_Console_Printf("Motor Speed:     %d RPM\r\n", FEB_CAN_RMS_getMotorSpeed());

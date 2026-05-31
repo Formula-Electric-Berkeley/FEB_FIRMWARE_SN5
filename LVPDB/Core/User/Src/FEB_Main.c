@@ -263,47 +263,47 @@ void FEB_Main_Setup(void)
 
   LOG_I(TAG_MAIN, "Beginning Setup");
 
-  // // I2C scan for debugging
-  // FEB_Console_Printf("Starting I2C Scanning: \r\n");
-  // for (uint8_t i = 1; i < 128; i++)
-  // {
-  //   HAL_StatusTypeDef ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i << 1), 3, 5);
-  //   if (ret == HAL_OK)
-  //   {
-  //     FEB_Console_Printf("0x%X ", i);
-  //   }
-  //   else
-  //   {
-  //     FEB_Console_Printf("- ");
-  //   }
-  // }
-  // FEB_Console_Printf("Done! \r\n\r\n");
+  // I2C scan for debugging
+  FEB_Console_Printf("Starting I2C Scanning: \r\n");
+  for (uint8_t i = 1; i < 128; i++)
+  {
+    HAL_StatusTypeDef ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i << 1), 3, 5);
+    if (ret == HAL_OK)
+    {
+      FEB_Console_Printf("0x%X ", i);
+    }
+    else
+    {
+      FEB_Console_Printf("- ");
+    }
+  }
+  FEB_Console_Printf("Done! \r\n\r\n");
 
-  // // Initialize TPS devices. One attempt per chip; failures are logged and skipped.
-  // tps_init_success = FEB_TPS_Init_Devices();
-  // if (tps_init_success)
-  // {
-  //   LOG_I(TAG_MAIN, "TPS2482 I2C init complete");
+  // Initialize TPS devices. One attempt per chip; failures are logged and skipped.
+  tps_init_success = FEB_TPS_Init_Devices();
+  if (tps_init_success)
+  {
+    LOG_I(TAG_MAIN, "TPS2482 I2C init complete");
 
-  //   // Start with all rails disabled (LV has no EN pin and is skipped).
-  //   for (uint8_t i = 0; i < NUM_TPS2482; i++)
-  //   {
-  //     if (tps_handles[i] != NULL && tps_device_configs[i].en_port != NULL)
-  //     {
-  //       FEB_TPS_Enable(tps_handles[i], false);
-  //     }
-  //   }
-  //   FEB_TPS_Check_Power_Good();
+    // Start with all rails disabled (LV has no EN pin and is skipped).
+    for (uint8_t i = 0; i < NUM_TPS2482; i++)
+    {
+      if (tps_handles[i] != NULL && tps_device_configs[i].en_port != NULL)
+      {
+        FEB_TPS_Enable(tps_handles[i], false);
+      }
+    }
+    FEB_TPS_Check_Power_Good();
 
-  //   LOG_I(TAG_MAIN, "TPS2482 power rails configured");
-  // }
-  // else
-  // {
-  //   LOG_E(TAG_MAIN, "TPS2482 init failed - all chips unreachable, skipping power rail config");
-  // }
+    LOG_I(TAG_MAIN, "TPS2482 power rails configured");
+  }
+  else
+  {
+    LOG_E(TAG_MAIN, "TPS2482 init failed - all chips unreachable, skipping power rail config");
+  }
 
-  // // Initialize brake light to be off
-  // HAL_GPIO_WritePin(BL_Switch_GPIO_Port, BL_Switch_Pin, GPIO_PIN_RESET);
+  // Initialize brake light to be off
+  HAL_GPIO_WritePin(BL_Switch_GPIO_Port, BL_Switch_Pin, GPIO_PIN_RESET);
 
   // Initialize CAN library
   FEB_CAN_Config_t can_cfg = {
@@ -337,61 +337,60 @@ void FEB_Main_Loop(void)
   static uint32_t last_poll_tick = 0;
   uint32_t now = HAL_GetTick();
 
-  // if (tps_init_success && (uint32_t)(now - last_poll_tick) >= MAIN_LOOP_POLL_INTERVAL_MS)
-  // {
-  //   last_poll_tick = now;
+  if (tps_init_success && (uint32_t)(now - last_poll_tick) >= MAIN_LOOP_POLL_INTERVAL_MS)
+  {
+    last_poll_tick = now;
 
-  //   uint8_t polled = 0;
-  //   for (uint8_t i = 0; i < NUM_TPS2482; i++)
-  //   {
-  //     if (tps_handles[i] == NULL)
-  //     {
-  //       tps2482_bus_voltage_raw[i] = 0;
-  //       tps2482_current_raw[i] = 0;
-  //       tps2482_shunt_voltage_raw[i] = 0;
-  //       continue;
-  //     }
-  //     uint16_t bv;
-  //     int16_t cur;
-  //     int16_t sv;
-  //     if (FEB_TPS_PollRaw(tps_handles[i], &bv, &cur, &sv) == FEB_TPS_OK)
-  //     {
-  //       tps2482_bus_voltage_raw[i] = bv;
-  //       tps2482_current_raw[i] = cur;
-  //       tps2482_shunt_voltage_raw[i] = sv;
-  //       tps_polled_success[i] = true;
-  //       polled++;
-  //     }
-  //     else
-  //     {
-  //       tps2482_bus_voltage_raw[i] = 0;
-  //       tps2482_current_raw[i] = 0;
-  //       tps2482_shunt_voltage_raw[i] = 0;
-  //       tps_polled_success[i] = false;
-  //     }
-  //   }
-  //   if (polled < tps_registered_count)
-  //   {
-  //     LOG_W(TAG_MAIN, "TPS poll: %u/%u registered devices succeeded", (unsigned)polled,
-  //     (unsigned)tps_registered_count);
-  //   }
+    uint8_t polled = 0;
+    for (uint8_t i = 0; i < NUM_TPS2482; i++)
+    {
+      if (tps_handles[i] == NULL)
+      {
+        tps2482_bus_voltage_raw[i] = 0;
+        tps2482_current_raw[i] = 0;
+        tps2482_shunt_voltage_raw[i] = 0;
+        continue;
+      }
+      uint16_t bv;
+      int16_t cur;
+      int16_t sv;
+      if (FEB_TPS_PollRaw(tps_handles[i], &bv, &cur, &sv) == FEB_TPS_OK)
+      {
+        tps2482_bus_voltage_raw[i] = bv;
+        tps2482_current_raw[i] = cur;
+        tps2482_shunt_voltage_raw[i] = sv;
+        tps_polled_success[i] = true;
+        polled++;
+      }
+      else
+      {
+        tps2482_bus_voltage_raw[i] = 0;
+        tps2482_current_raw[i] = 0;
+        tps2482_shunt_voltage_raw[i] = 0;
+        tps_polled_success[i] = false;
+      }
+    }
+    if (polled < tps_registered_count)
+    {
+      LOG_W(TAG_MAIN, "TPS poll: %u/%u registered devices succeeded", (unsigned)polled, (unsigned)tps_registered_count);
+    }
 
-  //   FEB_Variable_Conversion();
-  // }
+    FEB_Variable_Conversion();
+  }
 
-  // if (FEB_CAN_DASH_IsDataFresh(250))
-  // {
-  //   DASH_State_t dash_state = FEB_CAN_DASH_GetLastState();
+  if (FEB_CAN_DASH_IsDataFresh(250))
+  {
+    DASH_State_t dash_state = FEB_CAN_DASH_GetLastState();
 
-  //   // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
-  //   FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
-  //   FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
-  // }
+    // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
+    FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
+    FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
+  }
 
-  // // FEB_TPS_Enable(tps_handles[3], true); // BM_L
+  // FEB_TPS_Enable(tps_handles[3], true); // BM_L
 
-  // bool brake_on = FEB_CAN_BRAKE_IsDataFresh(250) && (FEB_CAN_BRAKE_GetPercent() > 10);
-  // HAL_GPIO_WritePin(BL_Switch_GPIO_Port, BL_Switch_Pin, brake_on ? GPIO_PIN_SET : GPIO_PIN_RESET);
+  bool brake_on = FEB_CAN_BRAKE_IsDataFresh(250) && (FEB_CAN_BRAKE_GetPercent() > 10);
+  HAL_GPIO_WritePin(BL_Switch_GPIO_Port, BL_Switch_Pin, brake_on ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
 }
@@ -414,53 +413,53 @@ void FEB_1ms_Callback(void)
     FEB_CAN_PingPong_Tick();
   }
 
-  // // Process CAN TPS reading every 100ms
-  // static uint16_t tps_divider = 0;
-  // tps_divider++;
-  // if (tps_divider >= 99)
-  // {
-  //   tps_divider = 0;
-  //   if (tps_init_success)
-  //   {
-  //     FEB_Variable_Conversion();
-  //     FEB_CAN_TPS_Tick(tps2482_current, tps2482_bus_voltage, NUM_TPS2482);
-  //   }
-  // }
+  // Process CAN TPS reading every 100ms
+  static uint16_t tps_divider = 0;
+  tps_divider++;
+  if (tps_divider >= 99)
+  {
+    tps_divider = 0;
+    if (tps_init_success)
+    {
+      FEB_Variable_Conversion();
+      FEB_CAN_TPS_Tick(tps2482_current, tps2482_bus_voltage, NUM_TPS2482);
+    }
+  }
 
-  // static uint16_t heartbeat_divider = 0;
-  // heartbeat_divider++;
-  // if (heartbeat_divider >=
-  //     67) // not 100ms to offset message from other two statuses (ran into issue where mailbox got full)
-  // {
-  //   heartbeat_divider = 0;
+  static uint16_t heartbeat_divider = 0;
+  heartbeat_divider++;
+  if (heartbeat_divider >=
+      67) // not 100ms to offset message from other two statuses (ran into issue where mailbox got full)
+  {
+    heartbeat_divider = 0;
 
-  //   lvpdb_heartbeat_msg.tps_init_failed = !tps_init_success;
+    lvpdb_heartbeat_msg.tps_init_failed = !tps_init_success;
 
-  //   lvpdb_heartbeat_msg.tps_lv_poll_failed = !tps_polled_success[0];
-  //   lvpdb_heartbeat_msg.tps_sh_poll_failed = !tps_polled_success[1];
-  //   lvpdb_heartbeat_msg.tps_lt_poll_failed = !tps_polled_success[2];
-  //   lvpdb_heartbeat_msg.tps_bm_l_poll_failed = !tps_polled_success[3];
-  //   lvpdb_heartbeat_msg.tps_sm_poll_failed = !tps_polled_success[4];
-  //   lvpdb_heartbeat_msg.tps_af1_af2_poll_failed = !tps_polled_success[5];
-  //   lvpdb_heartbeat_msg.tps_cp_rf_poll_failed = !tps_polled_success[6];
+    lvpdb_heartbeat_msg.tps_lv_poll_failed = !tps_polled_success[0];
+    lvpdb_heartbeat_msg.tps_sh_poll_failed = !tps_polled_success[1];
+    lvpdb_heartbeat_msg.tps_lt_poll_failed = !tps_polled_success[2];
+    lvpdb_heartbeat_msg.tps_bm_l_poll_failed = !tps_polled_success[3];
+    lvpdb_heartbeat_msg.tps_sm_poll_failed = !tps_polled_success[4];
+    lvpdb_heartbeat_msg.tps_af1_af2_poll_failed = !tps_polled_success[5];
+    lvpdb_heartbeat_msg.tps_cp_rf_poll_failed = !tps_polled_success[6];
 
-  //   lvpdb_heartbeat_msg.tps_lv_power_not_good = !tps_power_good[0];
-  //   lvpdb_heartbeat_msg.tps_sh_power_not_good = !tps_power_good[1];
-  //   lvpdb_heartbeat_msg.tps_lt_power_not_good = !tps_power_good[2];
-  //   lvpdb_heartbeat_msg.tps_bm_l_power_not_good = !tps_power_good[3];
-  //   lvpdb_heartbeat_msg.tps_sm_power_not_good = !tps_power_good[4];
-  //   lvpdb_heartbeat_msg.tps_af1_af2_power_not_good = !tps_power_good[5];
-  //   lvpdb_heartbeat_msg.tps_cp_rf_power_not_good = !tps_power_good[6];
+    lvpdb_heartbeat_msg.tps_lv_power_not_good = !tps_power_good[0];
+    lvpdb_heartbeat_msg.tps_sh_power_not_good = !tps_power_good[1];
+    lvpdb_heartbeat_msg.tps_lt_power_not_good = !tps_power_good[2];
+    lvpdb_heartbeat_msg.tps_bm_l_power_not_good = !tps_power_good[3];
+    lvpdb_heartbeat_msg.tps_sm_power_not_good = !tps_power_good[4];
+    lvpdb_heartbeat_msg.tps_af1_af2_power_not_good = !tps_power_good[5];
+    lvpdb_heartbeat_msg.tps_cp_rf_power_not_good = !tps_power_good[6];
 
-  //   lvpdb_heartbeat_msg.dash_state_stale = !FEB_CAN_DASH_IsDataFresh(250);
+    lvpdb_heartbeat_msg.dash_state_stale = !FEB_CAN_DASH_IsDataFresh(250);
 
-  //   uint8_t tx_data[FEB_CAN_LVPDB_HEARTBEAT_LENGTH];
-  //   memset(tx_data, 0x00, sizeof(tx_data));
-  //   feb_can_lvpdb_heartbeat_pack(tx_data, &lvpdb_heartbeat_msg, sizeof(tx_data));
+    uint8_t tx_data[FEB_CAN_LVPDB_HEARTBEAT_LENGTH];
+    memset(tx_data, 0x00, sizeof(tx_data));
+    feb_can_lvpdb_heartbeat_pack(tx_data, &lvpdb_heartbeat_msg, sizeof(tx_data));
 
-  //   FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_LVPDB_HEARTBEAT_FRAME_ID, FEB_CAN_ID_STD, tx_data,
-  //                   FEB_CAN_LVPDB_HEARTBEAT_LENGTH);
-  // }
+    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_LVPDB_HEARTBEAT_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                    FEB_CAN_LVPDB_HEARTBEAT_LENGTH);
+  }
 }
 
 /* ============================================================================
