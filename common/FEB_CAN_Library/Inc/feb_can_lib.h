@@ -683,6 +683,34 @@ extern "C"
   uint32_t FEB_CAN_GetEwgRecoveryCount(void);
 
   /**
+   * @brief Get the number of times HAL_CAN_ErrorCallback has fired
+   *
+   * Counts every CAN error interrupt (TERR/ALST, EWG, EPV, BOF, …). A steadily
+   * climbing value while frames still flow usually means missing ACKs/NACKs on
+   * the bus; pair it with FEB_CAN_GetLastErrorEsr() to see TEC/REC/LEC.
+   *
+   * @return Number of error-callback invocations
+   */
+  uint32_t FEB_CAN_GetErrorCallbackCount(void);
+
+  /**
+   * @brief Get the CAN_ESR snapshot from the most recent error interrupt
+   *
+   * Raw bxCAN Error Status Register: bit0 EWGF, bit1 EPVF, bit2 BOFF,
+   * bits6:4 LEC (last error code), bits23:16 TEC, bits31:24 REC.
+   *
+   * @return Last captured ESR value (0 if no error has occurred)
+   */
+  uint32_t FEB_CAN_GetLastErrorEsr(void);
+
+  /**
+   * @brief Get the HAL ErrorCode snapshot from the most recent error interrupt
+   *
+   * @return Last captured HAL_CAN ErrorCode bitmask
+   */
+  uint32_t FEB_CAN_GetLastErrorCode(void);
+
+  /**
    * @brief Reset all error counters to zero
    */
   void FEB_CAN_ResetErrorCounters(void);

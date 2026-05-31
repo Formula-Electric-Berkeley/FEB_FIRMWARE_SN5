@@ -235,10 +235,12 @@ bool FEB_CAN_IsInitialized(void)
  * is already in INRQ from bus-off), force State→READY, then call Start which
  * clears INRQ, resets ErrorCode, and returns to LISTENING.
  *
- * Called from FEB_CAN_TX_Process (task context). NEVER call from ISR.
+ * Called from FEB_CAN_TX_Process (task / main-loop context). NEVER call from
+ * ISR. Available in both runtime modes; the semaphore re-prime at the end is
+ * FreeRTOS-only (bare-metal has no mailbox semaphore — it reads the hardware
+ * TME bits directly).
  * ============================================================================ */
 
-#if FEB_CAN_USE_FREERTOS
 static void feb_can_recover_instance(CAN_HandleTypeDef *hcan)
 {
   if (hcan == NULL)
@@ -275,6 +277,7 @@ void feb_can_recover_bus_off(void)
 
   feb_can_ctx.bus_off_count++;
 
+#if FEB_CAN_USE_FREERTOS
   /* Mailboxes are empty after recovery. Re-sync bookkeeping: any frames we
    * thought were in flight are gone, and tx_sem must reflect three free
    * mailboxes regardless of whatever drift happened before. */
@@ -290,8 +293,8 @@ void feb_can_recover_bus_off(void)
   {
     FEB_CAN_SEM_GIVE(feb_can_ctx.tx_sem);
   }
-}
 #endif
+}
 
 /* ============================================================================
  * HAL Callback Routing - RX
@@ -365,14 +368,13 @@ void FEB_CAN_RxFifo1Callback(FEB_CAN_Handle_t hcan)
 
 static void feb_can_tx_complete_callback(FEB_CAN_Handle_t hcan)
 {
-  (void)hcan;
-
   if (!feb_can_ctx.initialized)
   {
     return;
   }
 
 #if FEB_CAN_USE_FREERTOS
+  (void)hcan;
   /* One ISR notification ↔ one successful HAL_CAN_AddTxMessage (tx_pending_count++).
    * Only release the counting semaphore when we had a matching pending TX.
    * Spurious TX-mailbox-empty edges during bring-up or errata can otherwise
@@ -382,6 +384,11 @@ static void feb_can_tx_complete_callback(FEB_CAN_Handle_t hcan)
     feb_can_ctx.tx_pending_count--;
     FEB_CAN_SEM_GIVE_ISR(feb_can_ctx.tx_sem);
   }
+#else
+  /* Bare-metal: a hardware mailbox just freed up — load the next queued frame
+   * for this instance so the software TX FIFO keeps draining without waiting
+   * for the main-loop FEB_CAN_TX_Process(). */
+  feb_can_tx_pump(feb_can_get_instance_from_handle((CAN_HandleTypeDef *)hcan));
 #endif
 }
 
@@ -434,10 +441,13 @@ void FEB_CAN_ErrorCallback(FEB_CAN_Handle_t hcan)
 
   /* Snapshot the ESR + HAL ErrorCode for later inspection. We deliberately
    * do not LOG_*() here — same MSP-stack reasoning as feb_can_rx_fifo_callback.
-   * Use FEB_CAN_GetLastErrorSnapshot() / a periodic task-context log to view. */
+   * Use FEB_CAN_GetLastErrorEsr() / FEB_CAN_GetLastErrorCode() (or a periodic
+   * task-context log) to view. */
   feb_can_ctx.last_error_esr = h->Instance->ESR;
   feb_can_ctx.last_error_code = h->ErrorCode;
   feb_can_ctx.error_callback_count++;
+
+  uint32_t err = h->ErrorCode;
 
 #if FEB_CAN_USE_FREERTOS
   /* ----------------------------------------------------------------------
@@ -466,7 +476,6 @@ void FEB_CAN_ErrorCallback(FEB_CAN_Handle_t hcan)
    * enough to land us in this path on every frame, which is why this matters
    * so much for DASH at boot before the rest of the bus is awake.
    * ---------------------------------------------------------------------- */
-  uint32_t err = h->ErrorCode;
   uint32_t handled = 0;
 
   static const uint32_t TX_FAIL_BITS[3] = {
@@ -497,9 +506,13 @@ void FEB_CAN_ErrorCallback(FEB_CAN_Handle_t hcan)
      * later while ErrorCode still has a stale TERR bit). */
     h->ErrorCode &= ~handled;
   }
+#endif /* FEB_CAN_USE_FREERTOS */
 
   /* ----------------------------------------------------------------------
-   * EWG / EPV: HAL state machine trap.
+   * EWG / EPV: HAL state machine trap. Runs in BOTH runtime modes — the HAL
+   * refuses HAL_CAN_AddTxMessage while State==ERROR, so without this reset the
+   * bare-metal software TX FIFO would back up after the first TEC spike just
+   * like the FreeRTOS queue would.
    *
    * HAL_CAN_IRQHandler() sets hcan->State = HAL_CAN_STATE_ERROR for EWG
    * (TEC ≥ 96) and EPV (TEC ≥ 128) even though bxCAN hardware can still
@@ -528,7 +541,6 @@ void FEB_CAN_ErrorCallback(FEB_CAN_Handle_t hcan)
   {
     feb_can_ctx.bus_off_pending = 1U;
   }
-#endif /* FEB_CAN_USE_FREERTOS */
 }
 
 /* ============================================================================
@@ -678,6 +690,21 @@ uint32_t FEB_CAN_GetBusOffCount(void)
 uint32_t FEB_CAN_GetEwgRecoveryCount(void)
 {
   return feb_can_ctx.ewg_recovery_count;
+}
+
+uint32_t FEB_CAN_GetErrorCallbackCount(void)
+{
+  return feb_can_ctx.error_callback_count;
+}
+
+uint32_t FEB_CAN_GetLastErrorEsr(void)
+{
+  return feb_can_ctx.last_error_esr;
+}
+
+uint32_t FEB_CAN_GetLastErrorCode(void)
+{
+  return feb_can_ctx.last_error_code;
 }
 
 void FEB_CAN_ResetErrorCounters(void)

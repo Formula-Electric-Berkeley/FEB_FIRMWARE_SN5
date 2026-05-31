@@ -250,6 +250,24 @@ typedef volatile uint8_t FEB_CAN_Semaphore_t;
      * context and runs the Stop/Start recovery sequence. */
     volatile uint8_t bus_off_pending;
 
+#if !FEB_CAN_USE_FREERTOS
+    /* Bare-metal software TX FIFO, one ring per CAN instance.
+     *
+     * FreeRTOS builds buffer TX in the osMessageQueue referenced by tx_queue;
+     * bare-metal builds have no such queue, so without this the TX path went
+     * straight to the 3 hardware mailboxes and dropped frames whenever all
+     * three were busy. Producers (FEB_CAN_TX_Send) enqueue here; the ring is
+     * drained into free mailboxes by feb_can_tx_pump() — called immediately on
+     * enqueue, from the TX-complete ISR, and from FEB_CAN_TX_Process(). Per
+     * instance (not shared) so a full CAN2 cannot head-of-line-block CAN1.
+     * head/tail/count are guarded by a PRIMASK critical section, never a
+     * mutex/semaphore. */
+    FEB_CAN_Message_t tx_ring[FEB_CAN_NUM_INSTANCES][FEB_CAN_TX_QUEUE_SIZE];
+    volatile uint16_t tx_ring_head[FEB_CAN_NUM_INSTANCES];
+    volatile uint16_t tx_ring_tail[FEB_CAN_NUM_INSTANCES];
+    volatile uint16_t tx_ring_count[FEB_CAN_NUM_INSTANCES];
+#endif
+
     /* Error counters for diagnostics */
     volatile uint32_t rx_queue_overflow_count; /**< RX messages dropped due to queue full */
     volatile uint32_t tx_queue_overflow_count; /**< TX messages dropped due to queue full */
@@ -301,19 +319,39 @@ typedef volatile uint8_t FEB_CAN_Semaphore_t;
   int feb_can_tx_hal_transmit(FEB_CAN_Instance_t instance, uint32_t can_id, uint8_t id_type, const uint8_t *data,
                               uint8_t length);
 
-#if FEB_CAN_USE_FREERTOS
   /**
-   * @brief Bus-off recovery (task context only).
+   * @brief Bus-off recovery (task / main-loop context only).
    *
    * AutoBusOff=DISABLE in the .ioc means the controller stays in bus-off
    * until software requests INIT mode. FEB_CAN_ErrorCallback flags this
    * via ctx->bus_off_pending; FEB_CAN_TX_Process invokes this helper to
-   * Stop/Start the peripheral, re-arm notifications, and re-prime the
-   * mailbox semaphore so transmissions can resume after the bus heals.
+   * Stop/Start the peripheral and re-arm notifications (and, in FreeRTOS
+   * mode, re-prime the mailbox semaphore) so transmissions can resume after
+   * the bus heals. Available in both runtime modes.
    *
    * MUST NOT be called from ISR context.
    */
   void feb_can_recover_bus_off(void);
+
+#if !FEB_CAN_USE_FREERTOS
+  /**
+   * @brief Enqueue a message into the bare-metal per-instance software TX FIFO.
+   *
+   * ISR- and main-loop-safe (PRIMASK critical section). On a full ring the
+   * frame is dropped and ctx->tx_queue_overflow_count is incremented.
+   *
+   * @return true if queued, false if the instance's ring was full.
+   */
+  bool feb_can_tx_enqueue(FEB_CAN_Instance_t instance, const FEB_CAN_Message_t *msg);
+
+  /**
+   * @brief Drain queued frames for an instance into free hardware mailboxes.
+   *
+   * ISR- and main-loop-safe. Stops at the first frame that cannot be loaded
+   * (mailboxes full, or peripheral in HAL ERROR state pending recovery),
+   * leaving the remainder queued for the next pump.
+   */
+  void feb_can_tx_pump(FEB_CAN_Instance_t instance);
 #endif
 
 #ifdef __cplusplus

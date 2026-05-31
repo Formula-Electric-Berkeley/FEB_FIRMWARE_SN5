@@ -13,6 +13,7 @@
 #include "FEB_CAN_TPS.h"
 #include "FEB_PCU_APPS_Commands.h"
 #include "FEB_RMS.h"
+#include "feb_can_lib.h"
 #include "feb_console.h"
 #include "feb_string_utils.h"
 #include <ctype.h>
@@ -33,6 +34,7 @@ static void print_pcu_help(void)
   FEB_Console_Printf("  PCU|tps      - Show TPS2482 voltage/current monitoring\r\n");
   FEB_Console_Printf("  PCU|bms      - Show BMS state information\r\n");
   FEB_Console_Printf("  PCU|bms|state|<drive|0-13|off>  - Sim BMS state (bench only, refused if BMS on bus)\r\n");
+  FEB_Console_Printf("  PCU|can      - CAN TX/error diagnostics (PCU|can|reset to clear)\r\n");
   FEB_Console_Printf("  PCU|faults   - Show active faults / faults|clear / faults|inject\r\n");
   FEB_Console_Printf("\r\nDeep dives:\r\n");
   FEB_Console_Printf("  PCU|apps|raw|stream|stats|cal|filter|deadzone|mode|sim\r\n");
@@ -433,6 +435,50 @@ static void cmd_bms_csv(int argc, char *argv[])
                       FEB_CAN_BMS_getAccumulatorVoltage(), FEB_CAN_BMS_getMaxTemperature());
 }
 
+/* CAN TX/error diagnostics. `can` prints a summary; `can|reset` clears the
+ * counters. Use this to confirm the bare-metal TX FIFO is absorbing bursts:
+ * tx_queue_overflow should stay at 0 under load, and free mailboxes should
+ * recover toward 3. The ESR decode (TEC/REC/LEC + EWGF/EPVF/BOFF) shows
+ * whether the bus is healthy. */
+static void cmd_can(int argc, char *argv[])
+{
+  if (argc >= 2 && FEB_strcasecmp(argv[1], "reset") == 0)
+  {
+    FEB_CAN_ResetErrorCounters();
+    FEB_Console_Printf("CAN error counters reset\r\n");
+    return;
+  }
+
+  uint32_t esr = FEB_CAN_GetLastErrorEsr();
+  FEB_Console_Printf("=== CAN diagnostics ===\r\n");
+  FEB_Console_Printf("  free mailboxes:    CAN1=%lu  CAN2=%lu\r\n",
+                     (unsigned long)FEB_CAN_TX_GetFreeMailboxes(FEB_CAN_INSTANCE_1),
+                     (unsigned long)FEB_CAN_TX_GetFreeMailboxes(FEB_CAN_INSTANCE_2));
+  FEB_Console_Printf("  tx_queue_overflow: %lu  (frames dropped: software FIFO full)\r\n",
+                     (unsigned long)FEB_CAN_GetTxQueueOverflowCount());
+  FEB_Console_Printf("  hal_errors:        %lu\r\n", (unsigned long)FEB_CAN_GetHalErrorCount());
+  FEB_Console_Printf("  error_callbacks:   %lu\r\n", (unsigned long)FEB_CAN_GetErrorCallbackCount());
+  FEB_Console_Printf("  ewg/epv recover:   %lu\r\n", (unsigned long)FEB_CAN_GetEwgRecoveryCount());
+  FEB_Console_Printf("  bus_off recover:   %lu\r\n", (unsigned long)FEB_CAN_GetBusOffCount());
+  FEB_Console_Printf("  last ESR: 0x%08lX  TEC=%lu REC=%lu LEC=%lu%s%s%s\r\n", (unsigned long)esr,
+                     (unsigned long)((esr >> 16) & 0xFFu), (unsigned long)((esr >> 24) & 0xFFu),
+                     (unsigned long)((esr >> 4) & 0x7u), (esr & 0x1u) ? " EWGF" : "", (esr & 0x2u) ? " EPVF" : "",
+                     (esr & 0x4u) ? " BOFF" : "");
+}
+
+static void cmd_can_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  /* fields: mb_free1,mb_free2,tx_overflow,hal_err,err_cb,ewg_recover,bus_off,esr */
+  FEB_Console_CsvEmit("can", "%lu,%lu,%lu,%lu,%lu,%lu,%lu,0x%08lX",
+                      (unsigned long)FEB_CAN_TX_GetFreeMailboxes(FEB_CAN_INSTANCE_1),
+                      (unsigned long)FEB_CAN_TX_GetFreeMailboxes(FEB_CAN_INSTANCE_2),
+                      (unsigned long)FEB_CAN_GetTxQueueOverflowCount(), (unsigned long)FEB_CAN_GetHalErrorCount(),
+                      (unsigned long)FEB_CAN_GetErrorCallbackCount(), (unsigned long)FEB_CAN_GetEwgRecoveryCount(),
+                      (unsigned long)FEB_CAN_GetBusOffCount(), (unsigned long)FEB_CAN_GetLastErrorEsr());
+}
+
 /* ============================================================================
  * Command Descriptors
  *
@@ -459,9 +505,14 @@ static const FEB_Console_Cmd_t pcu_tps_cmd = {
     .name = "tps", .help = "TPS power monitor", .handler = cmd_tps, .csv_handler = cmd_tps_csv, .hidden = true};
 static const FEB_Console_Cmd_t pcu_bms_cmd = {
     .name = "bms", .help = "BMS-state mirror", .handler = cmd_bms, .csv_handler = cmd_bms_csv, .hidden = true};
+static const FEB_Console_Cmd_t pcu_can_cmd = {.name = "can",
+                                              .help = "CAN TX/error diagnostics; `can|reset` clears counters",
+                                              .handler = cmd_can,
+                                              .csv_handler = cmd_can_csv,
+                                              .hidden = true};
 
 static const FEB_Console_Cmd_t *const PCU_SUBCMDS[] = {
-    &pcu_status_cmd, &pcu_apps_cmd, &pcu_brake_cmd, &pcu_rms_cmd, &pcu_tps_cmd, &pcu_bms_cmd,
+    &pcu_status_cmd, &pcu_apps_cmd, &pcu_brake_cmd, &pcu_rms_cmd, &pcu_tps_cmd, &pcu_bms_cmd, &pcu_can_cmd,
 };
 #define PCU_SUBCMDS_COUNT (sizeof(PCU_SUBCMDS) / sizeof(PCU_SUBCMDS[0]))
 

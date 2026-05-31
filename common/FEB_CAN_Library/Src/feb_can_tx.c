@@ -94,6 +94,96 @@ int feb_can_tx_hal_transmit(FEB_CAN_Instance_t instance, uint32_t can_id, uint8_
   return FEB_CAN_OK;
 }
 
+#if !FEB_CAN_USE_FREERTOS
+/* ============================================================================
+ * Bare-Metal Software TX FIFO
+ * ============================================================================
+ *
+ * Bare-metal boards (PCU, LVPDB, Sensor_Nodes, DART) have no osMessageQueue, so
+ * FEB_CAN_TX_Send historically went straight to the 3 hardware mailboxes and
+ * returned FEB_CAN_ERROR_FULL (dropping the frame) whenever all three were
+ * busy. Under the PCU's periodic load — RMS torque @ 100 Hz plus brake/APPS
+ * diagnostics, the BMS heartbeat, and TPS — short bursts routinely exceed three
+ * in-flight frames, so frames were silently lost.
+ *
+ * This per-instance ring buffer absorbs the bursts. Producers enqueue and the
+ * ring drains into free mailboxes both immediately (low latency) and from the
+ * TX-complete ISR. head/tail/count are touched from ISR context (the 1 ms timer
+ * callback's sends, the TX-complete ISR) AND main-loop context (TPS/heartbeat
+ * sends, FEB_CAN_TX_Process), so every access is wrapped in a nest-safe PRIMASK
+ * save/restore critical section. We deliberately do NOT use
+ * FEB_CAN_ENTER_CRITICAL() — its bare __enable_irq() is not nest-safe and would
+ * prematurely re-enable interrupts when pump runs inside an already-masked
+ * context.
+ * ============================================================================ */
+
+bool feb_can_tx_enqueue(FEB_CAN_Instance_t instance, const FEB_CAN_Message_t *msg)
+{
+  FEB_CAN_Context_t *ctx = feb_can_get_context();
+
+  if (instance >= FEB_CAN_INSTANCE_COUNT || msg == NULL)
+  {
+    return false;
+  }
+
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+
+  bool queued = false;
+  if (ctx->tx_ring_count[instance] < FEB_CAN_TX_QUEUE_SIZE)
+  {
+    ctx->tx_ring[instance][ctx->tx_ring_head[instance]] = *msg;
+    ctx->tx_ring_head[instance] = (uint16_t)((ctx->tx_ring_head[instance] + 1u) % FEB_CAN_TX_QUEUE_SIZE);
+    ctx->tx_ring_count[instance]++;
+    queued = true;
+  }
+  else
+  {
+    ctx->tx_queue_overflow_count++;
+  }
+
+  __set_PRIMASK(primask);
+  return queued;
+}
+
+void feb_can_tx_pump(FEB_CAN_Instance_t instance)
+{
+  FEB_CAN_Context_t *ctx = feb_can_get_context();
+
+  if (instance >= FEB_CAN_INSTANCE_COUNT)
+  {
+    return;
+  }
+
+  CAN_HandleTypeDef *hcan = (CAN_HandleTypeDef *)ctx->hcan[instance];
+  if (hcan == NULL)
+  {
+    return;
+  }
+
+  uint32_t primask = __get_PRIMASK();
+  __disable_irq();
+
+  while (ctx->tx_ring_count[instance] > 0 && HAL_CAN_GetTxMailboxesFreeLevel(hcan) > 0)
+  {
+    const FEB_CAN_Message_t *m = &ctx->tx_ring[instance][ctx->tx_ring_tail[instance]];
+    int result = feb_can_tx_hal_transmit(instance, m->can_id, m->id_type, m->data, m->length);
+    if (result < 0)
+    {
+      /* Could not load: either we lost a race for the last mailbox, or the HAL
+       * is in ERROR state (EWG/EPV/BOF) and rejecting submissions until
+       * recovery runs. Leave the frame queued; the next pump (TX-complete ISR,
+       * FEB_CAN_TX_Process, or post-recovery) will retry it. */
+      break;
+    }
+    ctx->tx_ring_tail[instance] = (uint16_t)((ctx->tx_ring_tail[instance] + 1u) % FEB_CAN_TX_QUEUE_SIZE);
+    ctx->tx_ring_count[instance]--;
+  }
+
+  __set_PRIMASK(primask);
+}
+#endif /* !FEB_CAN_USE_FREERTOS */
+
 /* ============================================================================
  * TX Registration API
  * ============================================================================ */
@@ -280,9 +370,32 @@ FEB_CAN_Status_t FEB_CAN_TX_Send(FEB_CAN_Instance_t instance, uint32_t can_id, F
 
   return FEB_CAN_OK;
 #else
-  /* Direct transmit in bare-metal mode */
-  int result = feb_can_tx_hal_transmit(instance, can_id, id_type, data, length);
-  return (result >= 0) ? FEB_CAN_OK : (FEB_CAN_Status_t)(-result);
+  /* Bare-metal: enqueue into the per-instance software FIFO, then pump
+   * immediately so a free mailbox transmits without waiting for the main loop.
+   * Bursts that exceed the 3 hardware mailboxes are buffered rather than
+   * dropped; only a full software ring returns FEB_CAN_ERROR_FULL. */
+  FEB_CAN_Message_t msg;
+  msg.can_id = can_id;
+  msg.id_type = (uint8_t)id_type;
+  msg.instance = (uint8_t)instance;
+  msg.length = length;
+  msg.reserved = 0;
+  msg.timestamp = ctx->get_tick_ms();
+  if (data != NULL && length > 0)
+  {
+    memcpy(msg.data, data, length);
+  }
+  else
+  {
+    memset(msg.data, 0, sizeof(msg.data));
+  }
+
+  if (!feb_can_tx_enqueue(instance, &msg))
+  {
+    return FEB_CAN_ERROR_FULL;
+  }
+  feb_can_tx_pump(instance);
+  return FEB_CAN_OK;
 #endif
 }
 
@@ -408,9 +521,9 @@ FEB_CAN_Status_t FEB_CAN_TX_SendFromISR(FEB_CAN_Instance_t instance, uint32_t ca
 
   return FEB_CAN_OK;
 #else
-  /* Direct transmit in bare-metal mode */
-  int result = feb_can_tx_hal_transmit(instance, can_id, id_type, data, length);
-  return (result >= 0) ? FEB_CAN_OK : (FEB_CAN_Status_t)(-result);
+  /* Bare-metal: the FEB_CAN_TX_Send FIFO path is already ISR-safe (PRIMASK-
+   * guarded enqueue + pump), so defer to it rather than duplicating the logic. */
+  return FEB_CAN_TX_Send(instance, can_id, id_type, data, length);
 #endif
 }
 
@@ -463,7 +576,26 @@ void FEB_CAN_TX_Process(void)
     }
   }
 #else
-  /* In bare-metal mode, TX is immediate */
+  /* Bare-metal: run any pending bus-off recovery here (main-loop context, never
+   * ISR — it Stop/Starts the peripheral), then drain the software TX FIFO into
+   * free mailboxes. This is the forward-progress safety net for frames that
+   * couldn't load at enqueue time because all mailboxes were momentarily busy. */
+  FEB_CAN_Context_t *ctx = feb_can_get_context();
+  if (!ctx->initialized)
+  {
+    return;
+  }
+
+  if (ctx->bus_off_pending)
+  {
+    ctx->bus_off_pending = 0U;
+    feb_can_recover_bus_off();
+  }
+
+  for (uint32_t i = 0; i < FEB_CAN_INSTANCE_COUNT; i++)
+  {
+    feb_can_tx_pump((FEB_CAN_Instance_t)i);
+  }
 #endif
 }
 
