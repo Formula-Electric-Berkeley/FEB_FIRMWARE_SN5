@@ -170,10 +170,10 @@ void FEB_Main_Loop(void)
     FEB_CAN_BMS_ProcessHeartbeat();
   }
 
-  // TPS power monitoring (rate limited to 10Hz to prevent CAN queue overflow)
+  // TPS power monitoring (rate limited to 4 Hz to keep CAN traffic low)
   static uint32_t last_tps_tick = 0;
   uint32_t now = HAL_GetTick();
-  if (now - last_tps_tick >= 100)
+  if (now - last_tps_tick >= 250)
   {
     last_tps_tick = now;
     FEB_CAN_TPS_Update(&hi2c1, &tps_i2c_address, 1);
@@ -204,10 +204,10 @@ void FEB_1ms_Callback(void)
 {
   static uint16_t torque_divider = 0;
   static uint16_t brake_divider = 0;
-  // apps_divider starts at 10 so APPS and Brake fire on alternating 10 ms slots.
-  // At the 100 ms TPS boundary, only Brake fires (not APPS), keeping ISR TX at 2
-  // frames (RMS + Brake) and leaving one mailbox free for TPS in the main loop.
-  static uint16_t apps_divider = 10;
+  // Diagnostics are throttled hard (brake/APPS @ 10 Hz) to keep CAN traffic low;
+  // apps_divider is offset 50 ms so APPS and brake never fire in the same tick.
+  // The software TX FIFO in feb_can absorbs any residual bursting.
+  static uint16_t apps_divider = 50;
 
   // Refresh the APPS cache every 1 ms so the implausibility timer
   // accumulates correctly across all consumers (FEB_RMS_Torque,
@@ -223,22 +223,25 @@ void FEB_1ms_Callback(void)
   // BMS heartbeat is processed in FEB_Main_Loop, not here, to avoid combining
   // its TX with RMS + diagnostics and saturating all 3 hardware CAN mailboxes.
 
+  // Torque command to the RMS — control signal, kept relatively fast (50 Hz).
+  // Well within the inverter command timeout; drop to >= 10 (100 Hz) if needed.
   torque_divider++;
-  if (torque_divider >= 10)
+  if (torque_divider >= 20)
   {
     torque_divider = 0;
     FEB_RMS_Torque();
   }
 
+  // Brake + APPS diagnostics — telemetry only, 10 Hz is plenty.
   brake_divider++;
-  if (brake_divider >= 20)
+  if (brake_divider >= 100)
   {
     brake_divider = 0;
     FEB_CAN_Diagnostics_TransmitBrakeData();
   }
 
   apps_divider++;
-  if (apps_divider >= 20)
+  if (apps_divider >= 100)
   {
     apps_divider = 0;
     FEB_CAN_Diagnostics_TransmitAPPSData();
