@@ -114,11 +114,13 @@ extern "C"
 /* ========================================================================== */
 
 /**
- * @brief Bench-test override: command the inverter without the BMS in DRIVE.
+ * @brief Bench-test override: command the inverter with only the accelerator
+ *        connected (no BMS, no brake).
  * @warning SAFETY: keep 0 for ALL on-vehicle builds. When 1, the PCU enables
- *          the inverter and commands torque from APPS/brake alone, ignoring
- *          BMS drive state. Bench use only, HV isolated.
- * @note    APPS and brake plausibility checks REMAIN active.
+ *          the inverter ignoring BMS drive state, treats the brake as released
+ *          and plausible, and skips the BSPD/brake-plausibility check — torque
+ *          is commanded from the accelerator alone. Bench use only, HV isolated.
+ * @note    APPS plausibility (dual-sensor, short/open) REMAINS active.
  */
 #define PCU_BENCH_TEST 0
 

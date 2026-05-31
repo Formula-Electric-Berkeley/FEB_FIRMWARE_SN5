@@ -8,7 +8,7 @@
 #include "main.h"
 
 #if PCU_BENCH_TEST
-#warning "PCU_BENCH_TEST=1: BMS drive gating bypassed. DO NOT FLASH TO VEHICLE."
+#warning "PCU_BENCH_TEST=1: BMS + brake gating bypassed (accelerator-only). DO NOT FLASH TO VEHICLE."
 #endif
 
 /* Safe min macro with proper parentheses */
@@ -40,7 +40,7 @@ void FEB_RMS_Setup(void)
   RMS_CONTROL_MESSAGE.torque = 0.0;
   LOG_I(TAG_RMS, "RMS control initialized");
 #if PCU_BENCH_TEST
-  LOG_W(TAG_RMS, "BENCH TEST: BMS drive gating bypassed (not for vehicle use)");
+  LOG_W(TAG_RMS, "BENCH TEST: BMS + brake gating bypassed, accelerator-only (not for vehicle use)");
 #endif
 }
 
@@ -209,12 +209,24 @@ void FEB_RMS_Torque(void)
   // this consumer must not write back into the cached structs.
   FEB_ADC_GetAPPSData(&APPS_Data);
   FEB_ADC_GetBrakeData(&Brake_Data);
+
+  // Effective brake state used for gating and mode select below. In bench-test
+  // mode the brake is assumed disconnected: treat it as released and plausible
+  // so the accelerator alone commands torque (no regen/coast diversion), and
+  // skip the BSPD check so a floating brake input can't latch a fault.
+  bool brake_plausible = Brake_Data.plausible;
+  float brake_position = Brake_Data.brake_position;
+#if PCU_BENCH_TEST
+  brake_plausible = true;
+  brake_position = 0.0f;
+#else
   // Run BSPD/brake-plausibility check so the fault latches when applicable.
   FEB_ADC_CheckBrakePlausibility();
+#endif
 
   // Check plausibility and safety conditions (require BMS in drive state)
   bool bms_in_drive = FEB_RMS_DriveAllowed();
-  bool sensors_plausible = bms_in_drive && DRIVE_STATE && APPS_Data.plausible && Brake_Data.plausible;
+  bool sensors_plausible = bms_in_drive && DRIVE_STATE && APPS_Data.plausible && brake_plausible;
 
   // Log any safety violations
   if (!sensors_plausible)
@@ -227,7 +239,7 @@ void FEB_RMS_Torque(void)
       FEB_ADC_GetAPPSCacheSnapshot(NULL, NULL, NULL, &v1_mv, &v2_mv, NULL, NULL, NULL);
       LOG_E(TAG_RMS, "APPS implausible, cutting torque (V1=%.0fmV V2=%.0fmV)", v1_mv, v2_mv);
     }
-    if (!Brake_Data.plausible)
+    if (!brake_plausible)
     {
       LOG_E(TAG_RMS, "Brake sensor implausible, cutting torque (P1=%.1f%%/%.0fmV P2=%.1f%%/%.0fmV in=%.0fmV)",
             Brake_Data.pressure1_percent, FEB_ADC_GetBrakePressure1Voltage() * 1000.0f, Brake_Data.pressure2_percent,
@@ -241,16 +253,16 @@ void FEB_RMS_Torque(void)
   FEB_ADC_AcknowledgeBrakeImplausibility();
 
   // Determine operating mode: regen braking vs acceleration
-  if (Brake_Data.brake_position > REGEN_BRAKE_POS_THRESH && sensors_plausible)
+  if (brake_position > REGEN_BRAKE_POS_THRESH && sensors_plausible)
   {
     // REGEN MODE: Brake is pressed and sensors are plausible
     float filtered_regen = FEB_Regen_GetFilteredTorque();
 
     // Apply brake position scaling and negative sign (SN3 style)
     // torque_command = -1 * 10 * brake% * filtered_regen / 100
-    RMS_CONTROL_MESSAGE.torque = (int16_t)(-10.0f * Brake_Data.brake_position * filtered_regen / 100.0f);
+    RMS_CONTROL_MESSAGE.torque = (int16_t)(-10.0f * brake_position * filtered_regen / 100.0f);
   }
-  else if (Brake_Data.brake_position < BRAKE_POSITION_THRESHOLD && sensors_plausible)
+  else if (brake_position < BRAKE_POSITION_THRESHOLD && sensors_plausible)
   {
     // ACCELERATION MODE: No brake and sensors are plausible
     // Calculate commanded torque: acceleration (0-100%) * max_torque
