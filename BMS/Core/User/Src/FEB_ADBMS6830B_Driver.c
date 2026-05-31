@@ -316,8 +316,7 @@ uint8_t ADBMS6830B_rdcv(uint8_t total_ic, // The number of ICs in the system
       uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
       uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
       uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
-      if (ic_cc != first_ic_cc)
-        LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", icn, (unsigned)ic_cc, (unsigned)first_ic_cc);
+      ADBMS_CC_CheckIC(icn, ic_cc, first_ic_cc);
       bool mismatch = (calc_pec != rx_pec);
       ic[icn].cells.pec_match[REGGRP] = mismatch ? 1 : 0;
       if (mismatch)
@@ -368,8 +367,7 @@ uint8_t ADBMS6830B_rdsv(uint8_t total_ic, // The number of ICs in the system
       uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
       uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
       uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
-      if (ic_cc != first_ic_cc)
-        LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", icn, (unsigned)ic_cc, (unsigned)first_ic_cc);
+      ADBMS_CC_CheckIC(icn, ic_cc, first_ic_cc);
       bool mismatch = (calc_pec != rx_pec);
       ic[icn].cells.pec_match[REGGRP] |= mismatch ? 1 : 0;
       if (mismatch)
@@ -455,8 +453,7 @@ void ADBMS6830B_rdcfga(uint8_t total_ic, // The number of ICs being written to
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
     uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
-    if (ic_cc != first_ic_cc)
-      LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", bank, (unsigned)ic_cc, (unsigned)first_ic_cc);
+    ADBMS_CC_CheckIC(bank, ic_cc, first_ic_cc);
     ic[bank].configa.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
 
@@ -518,8 +515,7 @@ void ADBMS6830B_rdcfgb(uint8_t total_ic, // The number of ICs being written to
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
     uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
-    if (ic_cc != first_ic_cc)
-      LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", bank, (unsigned)ic_cc, (unsigned)first_ic_cc);
+    ADBMS_CC_CheckIC(bank, ic_cc, first_ic_cc);
     ic[bank].configb.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
 
@@ -587,8 +583,7 @@ void ADBMS6830B_rdpwmga(uint8_t total_ic, // The number of ICs being written to
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
     uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
-    if (ic_cc != first_ic_cc)
-      LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", bank, (unsigned)ic_cc, (unsigned)first_ic_cc);
+    ADBMS_CC_CheckIC(bank, ic_cc, first_ic_cc);
     ic[bank].pwm.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
   vPortFree(cell_data);
@@ -641,8 +636,7 @@ void ADBMS6830B_rdpwmgb(uint8_t total_ic, // The number of ICs being written to
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
     uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
-    if (ic_cc != first_ic_cc)
-      LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", bank, (unsigned)ic_cc, (unsigned)first_ic_cc);
+    ADBMS_CC_CheckIC(bank, ic_cc, first_ic_cc);
     ic[bank].pwmb.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
   vPortFree(cell_data);
@@ -687,8 +681,7 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
     uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
-    if (ic_cc != first_ic_cc_a)
-      LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", i, (unsigned)ic_cc, (unsigned)first_ic_cc_a);
+    ADBMS_CC_CheckIC(i, ic_cc, first_ic_cc_a);
     bool mismatch = (calc_pec != rx_pec);
     ic[i].aux.pec_match[0] = mismatch ? 1 : 0;
     if (mismatch)
@@ -709,8 +702,7 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
     uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
-    if (ic_cc != first_ic_cc_b)
-      LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", i, (unsigned)ic_cc, (unsigned)first_ic_cc_b);
+    ADBMS_CC_CheckIC(i, ic_cc, first_ic_cc_b);
     bool mismatch = (calc_pec != rx_pec);
     ic[i].aux.pec_match[1] = mismatch ? 1 : 0;
     if (mismatch)
@@ -758,8 +750,7 @@ uint8_t ADBMS6830B_rdsid(uint8_t total_ic, // The number of ICs in the system
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
     uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
     uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
-    if (ic_cc != first_ic_cc)
-      LOG_D(TAG_BMS, "CC drift IC%d: cc=%u (first=%u)", i, (unsigned)ic_cc, (unsigned)first_ic_cc);
+    ADBMS_CC_CheckIC(i, ic_cc, first_ic_cc);
     if (calc_pec != rx_pec)
     {
       pec_error++;

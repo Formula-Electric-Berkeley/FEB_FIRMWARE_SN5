@@ -48,6 +48,9 @@ uint16_t Pec10_calc(bool bIsRxCmd, uint8_t nLength, uint8_t *pDataBuf);
 void ADBMS_CC_Advance(void);
 void ADBMS_CC_Reset(void);
 void ADBMS_CC_Check(uint8_t observed);
+// Per-IC variant: compares one IC's CC against the chain reference (first IC),
+// edge-triggered + rate-limited so a stable offset doesn't flood the log.
+void ADBMS_CC_CheckIC(uint8_t icn, uint8_t ic_cc, uint8_t ref_cc);
 uint16_t ADBMS_CC_GetMismatchCount(void);
 
 //***************** Read and Write to SPI ****************

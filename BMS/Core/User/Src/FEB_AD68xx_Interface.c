@@ -20,6 +20,11 @@
 static uint8_t s_expected_cc = 0;
 static uint16_t s_cc_mismatch_count = 0;
 
+// Per-IC drift tracking, edge-triggered so a stable offset logs once instead of
+// on every read. Sized to the chain length; indexed by the read loop's IC index.
+static uint8_t s_per_ic_offset[FEB_NUM_IC]; // last logged (ref - cc) & 0x3F
+static bool s_per_ic_drifting[FEB_NUM_IC];  // was this IC drifting at last check?
+
 void ADBMS_CC_Advance(void)
 {
   s_expected_cc = (uint8_t)((s_expected_cc + 1u) & 0x3Fu);
@@ -29,6 +34,8 @@ void ADBMS_CC_Reset(void)
 {
   s_expected_cc = 0;
   s_cc_mismatch_count = 0;
+  memset(s_per_ic_drifting, 0, sizeof(s_per_ic_drifting));
+  memset(s_per_ic_offset, 0, sizeof(s_per_ic_offset));
 }
 
 void ADBMS_CC_Check(uint8_t observed)
@@ -47,6 +54,35 @@ void ADBMS_CC_Check(uint8_t observed)
           (unsigned)s_cc_mismatch_count);
   }
   s_expected_cc = observed; // resync so we don't keep flagging the same drift
+}
+
+void ADBMS_CC_CheckIC(uint8_t icn, uint8_t ic_cc, uint8_t ref_cc)
+{
+  if (icn >= FEB_NUM_IC)
+    return; // defensive; callers pass FEB_NUM_IC as the loop bound
+  ic_cc &= 0x3F;
+  ref_cc &= 0x3F;
+
+  if (ic_cc == ref_cc)
+  {
+    // Back in sync — log the recovery edge once, then stay quiet.
+    if (s_per_ic_drifting[icn])
+    {
+      LOG_D(TAG_BMS, "CC drift IC%u cleared (cc=%u)", (unsigned)icn, (unsigned)ic_cc);
+      s_per_ic_drifting[icn] = false;
+    }
+    return;
+  }
+
+  // Drifting: log only on a new drift or when the offset changes, so a stable
+  // offset (the common case) prints a single line instead of flooding at 10 Hz.
+  uint8_t offset = (uint8_t)((ref_cc - ic_cc) & 0x3F);
+  if (!s_per_ic_drifting[icn] || offset != s_per_ic_offset[icn])
+  {
+    LOG_D(TAG_BMS, "CC drift IC%u: cc=%u (first=%u)", (unsigned)icn, (unsigned)ic_cc, (unsigned)ref_cc);
+    s_per_ic_drifting[icn] = true;
+    s_per_ic_offset[icn] = offset;
+  }
 }
 
 uint16_t ADBMS_CC_GetMismatchCount(void)
