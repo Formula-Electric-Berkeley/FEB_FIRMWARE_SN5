@@ -4,7 +4,7 @@
   "boards": {
     "BMS": {
       "ioc_checksum": "08670b75875f2feedea3280eecc4821f36b742ccf7680976ae6f87bc3937ebfc",
-      "generated_at": "2026-05-25T04:41:50Z",
+      "generated_at": "2026-05-31T22:00:42Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "363755b7a21dd5a790f0bafbfd68f00abe141fd8691720b3604bc84b7dbaa81b",
         "Core/Inc/adc.h": "0ac97025a4065f07b7b65a906bd0c45ea800215434ed43c287c1685507f3f612",
@@ -75,7 +75,7 @@
     },
     "DASH": {
       "ioc_checksum": "919253252bb89abb628b9105693f93510957783991dc2f4608e8da228a4235ea",
-      "generated_at": "2026-05-25T04:41:52Z",
+      "generated_at": "2026-05-31T22:00:44Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "692168cbc9c915133ce3f329cec850c5372c1759ec0412ced61fc14741de14be",
         "Core/Inc/can.h": "d9c82c8382c196a76d472a6b82a292a0384a086536ca280ce701ebbba9f5c682",
@@ -177,7 +177,7 @@
     },
     "DART": {
       "ioc_checksum": "5e40a62867a13bf2ccbc21a8343b896b2979b658d024cb6721e46e05b32b5a45",
-      "generated_at": "2026-05-25T04:41:52Z",
+      "generated_at": "2026-05-31T22:00:44Z",
       "files": {
         "Core/Inc/can.h": "8bb6621564cd436d9b9697bc86bc4c6f6ae0492b84673344dfa5a3a2d0ee06cb",
         "Core/Inc/dma.h": "7cf6f7450a29d26303cbba5a3ca8c6cb24a02635d6a5ba4d05141fdfc75c4c49",
@@ -203,7 +203,7 @@
     },
     "DCU": {
       "ioc_checksum": "1897fddbae0d70adffbb05afce5d5d2ae8f76fef77b684b121ff3e8f6f6dc2ea",
-      "generated_at": "2026-05-25T04:41:54Z",
+      "generated_at": "2026-05-31T22:00:46Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "86f1fd7d3548ad19ef6466838128e59d8e2359bdee26eeb29f7fa19514b9e91d",
         "Core/Inc/can.h": "98925d7f4010f054e17d240116244377377c15248a5413a09ff811cdc23084e5",
@@ -289,7 +289,7 @@
     },
     "LVPDB": {
       "ioc_checksum": "aad83d2888e50c4498ca882150e6cc94c6266554b55da81220b3a142c5b5e4b2",
-      "generated_at": "2026-05-25T04:41:54Z",
+      "generated_at": "2026-05-31T22:00:47Z",
       "files": {
         "Core/Inc/can.h": "17611aeff90b90e352bc2ace2749644663492ecb10c71539567ef9b1441fd5d9",
         "Core/Inc/dma.h": "7cf6f7450a29d26303cbba5a3ca8c6cb24a02635d6a5ba4d05141fdfc75c4c49",
@@ -316,8 +316,8 @@
       }
     },
     "PCU": {
-      "ioc_checksum": "dce88e9916056d652c3fdf3d09dd8a7ad066bc7c7b6af576218e9be7277811b8",
-      "generated_at": "2026-05-25T04:41:55Z",
+      "ioc_checksum": "3eaf91e0bfa3eca7f8f45868c51a0ac1dcb92b96efaedca982684c948468503b",
+      "generated_at": "2026-05-31T22:00:47Z",
       "files": {
         "Core/Inc/adc.h": "e36acfe1b822eff1de7e9f93073b8da32c94dd5b09484b716e190c6aa63eb3d0",
         "Core/Inc/can.h": "98925d7f4010f054e17d240116244377377c15248a5413a09ff811cdc23084e5",
@@ -325,7 +325,7 @@
         "Core/Inc/gpio.h": "e2d62f964a0b7f238384ed6a20a181d09df9647240a268dc547acf5b35099f74",
         "Core/Inc/i2c.h": "61d9641a97b80c573f09879c391c8de322408051b8dca6ddd4af752653b0aef8",
         "Core/Inc/main.h": "1e5e83d6ee574cae27d091a3e515b90cca5185b2518e7dbe839ee4d702bb40ca",
-        "Core/Inc/stm32f4xx_hal_conf.h": "73d247d57dfb67fbdd50432f98f71c6fe9c18d23a705828178ca7a3589f9e709",
+        "Core/Inc/stm32f4xx_hal_conf.h": "f96b5d882a8a0fca29cc10422776fc4f7851618256fe229ff90e1320f60f0506",
         "Core/Inc/stm32f4xx_it.h": "26be41af93f9af1ac88028969b1c6bc18f8a85f149df95524da46b2ab1ef1cca",
         "Core/Inc/tim.h": "687f0a84fa12c3709bfe8f4bce41218f258938819a7cc807bdfb6c3a5d565439",
         "Core/Inc/usart.h": "26823ced4880fd013f32903a94a3885807851197162d298114dd1983abaea040",
@@ -334,7 +334,7 @@
         "Core/Src/dma.c": "877c03069de3530b0bb3c75bcfa52dafeccd8ef28609172bce18808117ebb9d6",
         "Core/Src/gpio.c": "9c4b67e0b98a39eee912a46a6dbb41fa5879fa2ceb9975dac6f08e998efac88a",
         "Core/Src/i2c.c": "a611efe996c6cc1a558959c90dc397242b2e7b8ae2f8b09299c4642a039cf486",
-        "Core/Src/main.c": "bc9f3adf9fb1598e40b87df59d3630e93b523127c10d6dfd6b5b9ee534148371",
+        "Core/Src/main.c": "8a2a1d97047570dc0d2a03f7abc51505e07d91921c4faa57649aff30afbed2c2",
         "Core/Src/stm32f4xx_hal_msp.c": "3217d99dc7006dc46ac384717641fe84386f05fc71db0a3340fa0eae810bc1b7",
         "Core/Src/stm32f4xx_it.c": "7cd4d7ed825b1d59e26813fc7df6795237cc9210e92c7e9d63525cd0447c21b5",
         "Core/Src/syscalls.c": "7aa2184cc74315f855bc7a8fdab2d9fdd796d7c036d4c86d22e450322c7a9617",
@@ -347,7 +347,7 @@
     },
     "Sensor_Nodes": {
       "ioc_checksum": "be12ff3a8379f17c1b0a08bbdaf4953fb8f1c19bc8888a1df18d8395bb5a58f1",
-      "generated_at": "2026-05-25T04:41:55Z",
+      "generated_at": "2026-05-31T22:00:48Z",
       "files": {
         "Core/Inc/adc.h": "0ac97025a4065f07b7b65a906bd0c45ea800215434ed43c287c1685507f3f612",
         "Core/Inc/can.h": "98925d7f4010f054e17d240116244377377c15248a5413a09ff811cdc23084e5",
@@ -377,7 +377,7 @@
     },
     "UART": {
       "ioc_checksum": "9ff281c674a516d9870dbee5d60587351e97884ecd27127e2d1464987bf16a17",
-      "generated_at": "2026-05-25T04:41:57Z",
+      "generated_at": "2026-05-31T22:00:49Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "2a0e6022391d5ec198a77021ec3bf284583e245f9ce20c420fb7608f638330d6",
         "Core/Inc/dma.h": "7cf6f7450a29d26303cbba5a3ca8c6cb24a02635d6a5ba4d05141fdfc75c4c49",
@@ -437,7 +437,7 @@
     },
     "UART_TEST": {
       "ioc_checksum": "06c9618835096e44e3f73cd158bbc2e3fcf76e65dc9a29db68fe607180843efd",
-      "generated_at": "2026-05-25T04:41:58Z",
+      "generated_at": "2026-05-31T22:00:50Z",
       "files": {
         "Core/Inc/FreeRTOSConfig.h": "773dad076864ff18d5d85603d348d4931d29dde9925486e58f95a97ac98b8404",
         "Core/Inc/app_freertos.h": "6229601c2ebf192d40ceef377f3c1785571eaf6407f10bc87be5b06357dd3515",
