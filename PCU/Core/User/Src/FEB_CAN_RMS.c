@@ -44,6 +44,74 @@ float FEB_CAN_RMS_getTorqueFeedback(void)
   return RMS_MESSAGE.Torque_Feedback / 10.0f;
 }
 
+/* Inverter Internal States (M170) accessors */
+bool FEB_CAN_RMS_StatesSeen(void)
+{
+  return RMS_MESSAGE.states_rx_timestamp != 0;
+}
+
+uint8_t FEB_CAN_RMS_getVsmState(void)
+{
+  return RMS_MESSAGE.vsm_state;
+}
+
+uint8_t FEB_CAN_RMS_getInverterState(void)
+{
+  return RMS_MESSAGE.inverter_state;
+}
+
+bool FEB_CAN_RMS_getEnableState(void)
+{
+  return RMS_MESSAGE.enable_state != 0;
+}
+
+bool FEB_CAN_RMS_getEnableLockout(void)
+{
+  return RMS_MESSAGE.enable_lockout != 0;
+}
+
+bool FEB_CAN_RMS_getCommandModeVsm(void)
+{
+  return RMS_MESSAGE.command_mode != 0;
+}
+
+uint8_t FEB_CAN_RMS_getEchoRollingCounter(void)
+{
+  return RMS_MESSAGE.echo_rolling_counter;
+}
+
+/* Fault codes (M171) accessors */
+bool FEB_CAN_RMS_FaultsSeen(void)
+{
+  return RMS_MESSAGE.faults_rx_timestamp != 0;
+}
+
+bool FEB_CAN_RMS_HasActiveFault(void)
+{
+  return (RMS_MESSAGE.post_fault_lo | RMS_MESSAGE.post_fault_hi | RMS_MESSAGE.run_fault_lo |
+          RMS_MESSAGE.run_fault_hi) != 0;
+}
+
+uint16_t FEB_CAN_RMS_getPostFaultLo(void)
+{
+  return RMS_MESSAGE.post_fault_lo;
+}
+
+uint16_t FEB_CAN_RMS_getPostFaultHi(void)
+{
+  return RMS_MESSAGE.post_fault_hi;
+}
+
+uint16_t FEB_CAN_RMS_getRunFaultLo(void)
+{
+  return RMS_MESSAGE.run_fault_lo;
+}
+
+uint16_t FEB_CAN_RMS_getRunFaultHi(void)
+{
+  return RMS_MESSAGE.run_fault_hi;
+}
+
 void FEB_CAN_RMS_Init(void)
 {
   LOG_I(TAG_CAN, "Initializing RMS CAN communication");
@@ -64,8 +132,15 @@ void FEB_CAN_RMS_Init(void)
   params.can_id = FEB_CAN_ID_RMS_MOTOR;
   FEB_CAN_RX_Register(&params);
 
-  LOG_I(TAG_CAN, "Registered RMS CAN callbacks (Voltage: 0x%03X, Motor: 0x%03X)", (unsigned)FEB_CAN_ID_RMS_VOLTAGE,
-        (unsigned)FEB_CAN_ID_RMS_MOTOR);
+  params.can_id = FEB_CAN_ID_RMS_STATES;
+  FEB_CAN_RX_Register(&params);
+
+  params.can_id = FEB_CAN_ID_RMS_FAULTS;
+  FEB_CAN_RX_Register(&params);
+
+  LOG_I(TAG_CAN, "Registered RMS CAN callbacks (Voltage: 0x%03X, Motor: 0x%03X, States: 0x%03X, Faults: 0x%03X)",
+        (unsigned)FEB_CAN_ID_RMS_VOLTAGE, (unsigned)FEB_CAN_ID_RMS_MOTOR, (unsigned)FEB_CAN_ID_RMS_STATES,
+        (unsigned)FEB_CAN_ID_RMS_FAULTS);
 
   RMS_MESSAGE.HV_Bus_Voltage = 0;
   RMS_MESSAGE.Motor_Speed = 0;
@@ -74,6 +149,18 @@ void FEB_CAN_RMS_Init(void)
   RMS_MESSAGE.Torque_Feedback = 0;
   RMS_MESSAGE.DC_Bus_Voltage_V = 0.0f;
   RMS_MESSAGE.last_rx_timestamp = 0;
+  RMS_MESSAGE.vsm_state = 0;
+  RMS_MESSAGE.inverter_state = 0;
+  RMS_MESSAGE.enable_state = 0;
+  RMS_MESSAGE.enable_lockout = 0;
+  RMS_MESSAGE.command_mode = 0;
+  RMS_MESSAGE.echo_rolling_counter = 0;
+  RMS_MESSAGE.states_rx_timestamp = 0;
+  RMS_MESSAGE.post_fault_lo = 0;
+  RMS_MESSAGE.post_fault_hi = 0;
+  RMS_MESSAGE.run_fault_lo = 0;
+  RMS_MESSAGE.run_fault_hi = 0;
+  RMS_MESSAGE.faults_rx_timestamp = 0;
 
   LOG_I(TAG_CAN, "Sending RMS parameter safety commands");
   for (int i = 0; i < 10; i++)
@@ -127,16 +214,41 @@ static void FEB_CAN_RMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
 
   if (can_id == FEB_CAN_ID_RMS_VOLTAGE)
   {
-    struct feb_can_m160_temperature_set_1_t m160;
-    feb_can_m160_temperature_set_1_unpack(&m160, data, length);
-    RMS_MESSAGE.HV_Bus_Voltage = m160.inv_module_a;
-    RMS_MESSAGE.DC_Bus_Voltage_V = (m160.inv_module_a - 50.0f) / 10.0f;
+    /* M167 Voltage Info: INV_DC_Bus_Voltage is signed, scale 0.1 V, no offset. */
+    struct feb_can_m167_voltage_info_t m167;
+    feb_can_m167_voltage_info_unpack(&m167, data, length);
+    RMS_MESSAGE.HV_Bus_Voltage = m167.inv_dc_bus_voltage;
+    RMS_MESSAGE.DC_Bus_Voltage_V = m167.inv_dc_bus_voltage / 10.0f;
   }
   else if (can_id == FEB_CAN_ID_RMS_MOTOR)
   {
     struct feb_can_m165_motor_position_info_t m165;
     feb_can_m165_motor_position_info_unpack(&m165, data, length);
     RMS_MESSAGE.Motor_Speed = m165.inv_motor_speed;
+  }
+  else if (can_id == FEB_CAN_ID_RMS_STATES)
+  {
+    /* M170 Internal States: the "why won't it enable" frame. */
+    struct feb_can_m170_internal_states_t m170;
+    feb_can_m170_internal_states_unpack(&m170, data, length);
+    RMS_MESSAGE.vsm_state = m170.inv_vsm_state;
+    RMS_MESSAGE.inverter_state = m170.inv_inverter_state;
+    RMS_MESSAGE.enable_state = m170.inv_inverter_enable_state;
+    RMS_MESSAGE.enable_lockout = m170.inv_inverter_enable_lockout;
+    RMS_MESSAGE.command_mode = m170.inv_inverter_command_mode;
+    RMS_MESSAGE.echo_rolling_counter = m170.inv_rolling_counter;
+    RMS_MESSAGE.states_rx_timestamp = RMS_MESSAGE.last_rx_timestamp;
+  }
+  else if (can_id == FEB_CAN_ID_RMS_FAULTS)
+  {
+    /* M171 Fault Codes: POST/Run fault bitfields (see PM100 manual). */
+    struct feb_can_m171_fault_codes_t m171;
+    feb_can_m171_fault_codes_unpack(&m171, data, length);
+    RMS_MESSAGE.post_fault_lo = m171.inv_post_fault_lo;
+    RMS_MESSAGE.post_fault_hi = m171.inv_post_fault_hi;
+    RMS_MESSAGE.run_fault_lo = m171.inv_run_fault_lo;
+    RMS_MESSAGE.run_fault_hi = m171.inv_run_fault_hi;
+    RMS_MESSAGE.faults_rx_timestamp = RMS_MESSAGE.last_rx_timestamp;
   }
 }
 
@@ -168,10 +280,17 @@ void FEB_CAN_RMS_Transmit_UpdateTorque(int16_t torque, uint8_t enabled)
 
   RMS_MESSAGE.Torque_Command = torque;
 
+  /* The RMS' CAN message-validity check requires a rolling counter that changes
+   * every command frame; a counter stuck at 0 makes it reject every frame as
+   * stale and refuse to enable. Increment 0..15 (field range) on every TX. */
+  static uint8_t rolling_counter = 0;
+
   struct feb_can_m192_command_message_t msg = {0};
   msg.vcu_inv_torque_command = torque;
   msg.vcu_inv_direction_command = 1u;
   msg.vcu_inv_inverter_enable = enabled;
+  msg.vcu_inv_rolling_counter = rolling_counter;
+  rolling_counter = (uint8_t)((rolling_counter + 1u) & 0x0Fu);
 
   uint8_t data[FEB_CAN_M192_COMMAND_MESSAGE_LENGTH];
   int packed = feb_can_m192_command_message_pack(data, &msg, sizeof(data));

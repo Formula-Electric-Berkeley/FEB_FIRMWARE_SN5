@@ -14,7 +14,7 @@
 
 typedef struct
 {
-  volatile uint8_t brake_percent;
+  volatile uint16_t brake_position; /* centi-percent (0-10000) */
   volatile uint32_t last_rx_tick;
 } BRAKE_State_t;
 

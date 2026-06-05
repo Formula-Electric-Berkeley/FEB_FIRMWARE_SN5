@@ -65,11 +65,13 @@ static void rx_callback_torque(FEB_CAN_Instance_t instance, uint32_t can_id, FEB
 static void rx_callback_brake_position(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                        const uint8_t *data, uint8_t length, void *user_data)
 {
-  uint16_t position;
-  memcpy(&position, &data[0], sizeof(uint16_t));
-  brake_state.brake_position = position;
-  __DMB();
-  brake_state.last_rx_tick = HAL_GetTick();
+  struct feb_can_brake_t msg;
+  if (feb_can_brake_unpack(&msg, data, length) == 0)
+  {
+    brake_state.brake_position = msg.brake_position; /* centi-percent; endianness handled by codegen */
+    __DMB();
+    brake_state.last_rx_tick = HAL_GetTick();
+  }
 }
 
 /* ============================================================================

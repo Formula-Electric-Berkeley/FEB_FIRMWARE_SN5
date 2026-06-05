@@ -24,7 +24,7 @@ static void rx_callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID
   struct feb_can_brake_t msg;
   if (feb_can_brake_unpack(&msg, data, length) == 0)
   {
-    brake_state.brake_percent = msg.brake_percent;
+    brake_state.brake_position = msg.brake_position;
 
     __DMB();
     brake_state.last_rx_tick = HAL_GetTick();
@@ -52,7 +52,8 @@ void FEB_CAN_BRAKE_Init(void)
 
 uint8_t FEB_CAN_BRAKE_GetPercent(void)
 {
-  return brake_state.brake_percent;
+  /* brake_position is centi-percent (0-10000); return whole percent (0-100). */
+  return (uint8_t)(brake_state.brake_position / 100u);
 }
 
 bool FEB_CAN_BRAKE_IsDataFresh(uint32_t timeout_ms)

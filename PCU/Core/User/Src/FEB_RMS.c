@@ -131,9 +131,8 @@ float FEB_Get_Peak_Current_Delimiter()
     return 1.0f; // Don't limit torque without real data
   }
 
-  // Convert RMS voltage format: decivolts with 50V offset
-  // Formula: actual_voltage = (HV_Bus_Voltage - 50) / 10
-  float accumulator_voltage = (RMS_MESSAGE.HV_Bus_Voltage - 50.0f) / 10.0f;
+  // Real DC bus voltage, decoded from the M167 Voltage Info broadcast.
+  float accumulator_voltage = RMS_MESSAGE.DC_Bus_Voltage_V;
 
   // Start derating when voltage = MIN_PACK_VOLTAGE_V + expected_drop_at_peak_current
   // With R_acc = 1Ω and PEAK_CURRENT = 60A: start_derating = 400V + 60V = 460V

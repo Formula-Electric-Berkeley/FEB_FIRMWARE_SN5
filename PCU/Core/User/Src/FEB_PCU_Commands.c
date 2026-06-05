@@ -222,6 +222,36 @@ static void cmd_brake(int argc, char *argv[])
   FEB_Console_Printf("  Bypass:   %s\r\n", FEB_RMS_GetBrakeBypass() ? "ON (bench)" : "OFF");
 }
 
+/* Decode the M170 INV_VSM_State enum to a human name. */
+static const char *vsm_state_name(uint8_t s)
+{
+  switch (s)
+  {
+  case 0:
+    return "VSM_START";
+  case 1:
+    return "PRECHARGE_INIT";
+  case 2:
+    return "PRECHARGE_ACTIVE";
+  case 3:
+    return "PRECHARGE_COMPLETE";
+  case 4:
+    return "VSM_WAIT";
+  case 5:
+    return "VSM_READY";
+  case 6:
+    return "MOTOR_RUNNING";
+  case 7:
+    return "BLINK_FAULT_CODE";
+  case 14:
+    return "SHUTDOWN";
+  case 15:
+    return "RESET";
+  default:
+    return "?";
+  }
+}
+
 static void cmd_rms(int argc, char *argv[])
 {
   if (argc >= 2 && FEB_strcasecmp(argv[1], "enable") == 0)
@@ -239,21 +269,72 @@ static void cmd_rms(int argc, char *argv[])
     return;
   }
 
-  FEB_Console_Printf("=== RMS Motor Controller Status ===\r\n");
-  FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("=== RMS Inverter Status ===\r\n\r\n");
 
+  /* What the PCU is commanding (PCU -> INV, M192). */
   const char *inv_state;
   if (FEB_RMS_IsForceDisabled())
     inv_state = "FORCED-OFF";
   else
     inv_state = RMS_CONTROL_MESSAGE.enabled ? "ENABLED" : "DISABLED";
-  FEB_Console_Printf("Inverter:        %s\r\n", inv_state);
-  // Get RMS data (these functions may need to be added to FEB_CAN_RMS.h)
-  FEB_Console_Printf("DC Bus Voltage:  %.1f V\r\n", FEB_CAN_RMS_getDCBusVoltage());
-  FEB_Console_Printf("Motor Speed:     %d RPM\r\n", FEB_CAN_RMS_getMotorSpeed());
-  FEB_Console_Printf("Motor Angle:     %d deg\r\n", FEB_CAN_RMS_getMotorAngle());
-  FEB_Console_Printf("Commanded Torque: %.1f Nm\r\n", FEB_CAN_RMS_getTorqueCommand());
-  FEB_Console_Printf("Feedback Torque:  %.1f Nm\r\n", FEB_CAN_RMS_getTorqueFeedback());
+  FEB_Console_Printf("Command (PCU->INV):\r\n");
+  FEB_Console_Printf("  Inverter enable: %s\r\n", inv_state);
+  FEB_Console_Printf("  Cmd Torque:      %.1f Nm\r\n", FEB_CAN_RMS_getTorqueCommand());
+  FEB_Console_Printf("\r\n");
+
+  /* What the inverter reports back (M170 Internal States). */
+  FEB_Console_Printf("Inverter state (M170):\r\n");
+  if (!FEB_CAN_RMS_StatesSeen())
+  {
+    FEB_Console_Printf("  (no M170 broadcast — inverter silent on bus)\r\n");
+  }
+  else
+  {
+    uint8_t vsm = FEB_CAN_RMS_getVsmState();
+    FEB_Console_Printf("  VSM State:       %u (%s)\r\n", vsm, vsm_state_name(vsm));
+    FEB_Console_Printf("  Inverter State:  %u\r\n", FEB_CAN_RMS_getInverterState());
+    FEB_Console_Printf("  Enable State:    %s\r\n", FEB_CAN_RMS_getEnableState() ? "ENABLED" : "DISABLED");
+    FEB_Console_Printf("  Enable Lockout:  %s\r\n", FEB_CAN_RMS_getEnableLockout() ? "LOCKED" : "clear");
+    FEB_Console_Printf("  Command Mode:    %s\r\n", FEB_CAN_RMS_getCommandModeVsm() ? "VSM" : "CAN");
+    FEB_Console_Printf("  Echoed Counter:  %u\r\n", FEB_CAN_RMS_getEchoRollingCounter());
+  }
+  FEB_Console_Printf("\r\n");
+
+  /* Fault codes (M171). Bitfields — see PM100 manual for decode. */
+  FEB_Console_Printf("Faults (M171):\r\n");
+  if (!FEB_CAN_RMS_FaultsSeen())
+  {
+    FEB_Console_Printf("  (no M171 broadcast)\r\n");
+  }
+  else
+  {
+    FEB_Console_Printf("  POST lo=0x%04X hi=0x%04X  RUN lo=0x%04X hi=0x%04X  -> %s\r\n",
+                       (unsigned)FEB_CAN_RMS_getPostFaultLo(), (unsigned)FEB_CAN_RMS_getPostFaultHi(),
+                       (unsigned)FEB_CAN_RMS_getRunFaultLo(), (unsigned)FEB_CAN_RMS_getRunFaultHi(),
+                       FEB_CAN_RMS_HasActiveFault() ? "ACTIVE" : "NONE");
+  }
+  FEB_Console_Printf("\r\n");
+
+  /* Measured analog (M167 DC bus, M165 speed/angle). */
+  FEB_Console_Printf("Measured:\r\n");
+  FEB_Console_Printf("  DC Bus Voltage:  %.1f V\r\n", FEB_CAN_RMS_getDCBusVoltage());
+  FEB_Console_Printf("  Motor Speed:     %d RPM\r\n", FEB_CAN_RMS_getMotorSpeed());
+  FEB_Console_Printf("  Motor Angle:     %d deg\r\n", FEB_CAN_RMS_getMotorAngle());
+  FEB_Console_Printf("  Feedback Torque: %.1f Nm\r\n", FEB_CAN_RMS_getTorqueFeedback());
+  FEB_Console_Printf("\r\n");
+
+  /* One-line "why won't it enable" hint. */
+  FEB_Console_Printf("Diagnosis: ");
+  if (!FEB_CAN_RMS_StatesSeen())
+    FEB_Console_Printf("no inverter broadcast seen — check bus wiring / inverter power\r\n");
+  else if (FEB_CAN_RMS_getEnableLockout())
+    FEB_Console_Printf("ENABLE LOCKOUT — toggle PCU|rms|disable then PCU|rms|enable\r\n");
+  else if (FEB_CAN_RMS_HasActiveFault())
+    FEB_Console_Printf("ACTIVE FAULT — check HV present, then clear faults\r\n");
+  else if (RMS_CONTROL_MESSAGE.enabled && !FEB_CAN_RMS_getEnableState())
+    FEB_Console_Printf("commanding enable but inverter not enabled yet — check HV / faults\r\n");
+  else
+    FEB_Console_Printf("Ready.\r\n");
 }
 
 static void cmd_tps(int argc, char *argv[])
@@ -474,8 +555,12 @@ static void cmd_rms_csv(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-  FEB_Console_CsvEmit("rms", "%.1f,%d,%d,%.1f,%.1f", FEB_CAN_RMS_getDCBusVoltage(), FEB_CAN_RMS_getMotorSpeed(),
-                      FEB_CAN_RMS_getMotorAngle(), FEB_CAN_RMS_getTorqueCommand(), FEB_CAN_RMS_getTorqueFeedback());
+  /* fields: dc_v,speed,angle,cmd_nm,fb_nm,vsm_state,enable_lockout,fault_active,enable_state */
+  FEB_Console_CsvEmit("rms", "%.1f,%d,%d,%.1f,%.1f,%u,%d,%d,%d", FEB_CAN_RMS_getDCBusVoltage(),
+                      FEB_CAN_RMS_getMotorSpeed(), FEB_CAN_RMS_getMotorAngle(), FEB_CAN_RMS_getTorqueCommand(),
+                      FEB_CAN_RMS_getTorqueFeedback(), FEB_CAN_RMS_getVsmState(),
+                      FEB_CAN_RMS_getEnableLockout() ? 1 : 0, FEB_CAN_RMS_HasActiveFault() ? 1 : 0,
+                      FEB_CAN_RMS_getEnableState() ? 1 : 0);
 }
 
 static void cmd_tps_csv(int argc, char *argv[])
