@@ -4,6 +4,7 @@
 #include "src/core/lv_obj_style.h"
 #include "src/draw/lv_draw_rect.h"
 #include <math.h>
+#include <stdint.h>
 #include "UI_Elements/FEB_UI_Torque.h"
 
 #define SCREEN_WIDTH 800
@@ -17,11 +18,15 @@ static lv_obj_t *ui_TorqueCircles[UI_DOT_COUNT];
 
 static lv_style_t style_TorqueCircles;
 
-void FEB_UI_Update_Torque(int16_t torque)
+static int16_t torque = 0;
+
+void FEB_UI_Update_Torque()
 {
   // char buf[16];
   // snprintf(buf, sizeof(buf), "%d", torque);
   // lv_label_set_text(ui_TorqueValue, buf);
+
+  torque = FEB_CAN_PCU_GetLastTorque() * 1;
 
   if (torque < 0)
   {

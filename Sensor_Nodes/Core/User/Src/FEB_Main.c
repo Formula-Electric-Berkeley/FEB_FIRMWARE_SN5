@@ -26,11 +26,18 @@
 
 /* Tick periods. IMU tick is microsecond-based (TIM5 @ 1 MHz) so it can run at
  * 1 kHz without HAL_GetTick's 1 ms quantization. Other ticks stay millisecond. */
-#define TICK_PERIOD_IMU_US 1000u    /* 1 kHz: IMU + mag sample + Fusion + fusion CAN frames */
-#define TICK_PERIOD_WSS_MS 20u      /* 50  Hz: WSS computation + CAN */
-#define TICK_PERIOD_RAW_IMU_MS 100u /* 10  Hz: raw IMU + mag CAN frames (debug visibility) */
-#define TICK_PERIOD_GPS_MS 200u     /* 5   Hz: GPS frames (six per tick) */
-#define TICK_PERIOD_TEMP_MS 1000u   /* 1   Hz: temperatures */
+#define TICK_PERIOD_IMU_US 250000u
+#define TICK_PERIOD_WSS_MS 100u     /* 50  Hz: WSS computation + CAN */
+#define TICK_PERIOD_RAW_IMU_MS 250u /* 10  Hz: raw IMU + mag CAN frames (debug visibility) */
+#define TICK_PERIOD_GPS_MS 250u     /* 5   Hz: GPS frames (six per tick) */
+#define TICK_PERIOD_TEMP_MS 250u
+// /* Tick periods. IMU tick is microsecond-based (TIM5 @ 1 MHz) so it can run at
+//  * 1 kHz without HAL_GetTick's 1 ms quantization. Other ticks stay millisecond. */
+// #define TICK_PERIOD_IMU_US 1000u    /* 1 kHz: IMU + mag sample + Fusion + fusion CAN frames */
+// #define TICK_PERIOD_WSS_MS 20u      /* 50  Hz: WSS computation + CAN */
+// #define TICK_PERIOD_RAW_IMU_MS 100u /* 10  Hz: raw IMU + mag CAN frames (debug visibility) */
+// #define TICK_PERIOD_GPS_MS 200u     /* 5   Hz: GPS frames (six per tick) */
+// #define TICK_PERIOD_TEMP_MS 1000u   /* 1   Hz: temperatures */
 
 static bool gps_ready = false;
 

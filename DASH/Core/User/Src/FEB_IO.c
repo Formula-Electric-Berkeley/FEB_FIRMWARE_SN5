@@ -156,10 +156,10 @@ void FEB_IO_Update_GPIO(void)
   state.button_3 = (bool)(received_data[0] & (1 << 3));
   state.button_4 = (bool)(received_data[0] & (1 << 4));
 
-  state.switch_logging = !(bool)(received_data[1] & (1 << 1));
-  state.switch_accumulator_fans = !(bool)(received_data[1] & (1 << 2));
-  state.switch_coolant_pump_radiator_fan = !(bool)(received_data[1] & (1 << 3));
-  state.switch_4 = !(bool)(received_data[1] & (1 << 0));
+  state.switch_accumulator_fans = !(bool)(received_data[1] & (1 << 3));          // switch 1
+  state.switch_coolant_pump_radiator_fan = !(bool)(received_data[1] & (1 << 2)); // switch 2
+  state.switch_logging = !(bool)(received_data[1] & (1 << 1));                   // // switch 3
+  state.switch_4 = !(bool)(received_data[1] & (1 << 0));                         // switch 4
 
   FEB_IO_Update_Buzzer();
 }
