@@ -27,7 +27,7 @@ static void rx_callback_rear_wss(FEB_CAN_Instance_t instance, uint32_t can_id, F
   struct feb_can_wss_rear_data_t msg;
   if (feb_can_wss_rear_data_unpack(&msg, data, length) == 0)
   {
-    rear_wheel_speed = msg.wss_right_rear;
+    rear_wheel_speed = (msg.wss_right_rear + msg.wss_left_rear) / 2;
     __DMB();
     last_rx_tick = HAL_GetTick();
   }
