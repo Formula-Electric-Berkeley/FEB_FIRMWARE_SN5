@@ -33,7 +33,6 @@ static LVPDB_State_t lvpdb_state = {.lv_24v_voltage = 0, .lv_12v_voltage = 0, .l
 static void rx_callback_lv_voltages(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                     const uint8_t *data, uint8_t length, void *user_data)
 {
-  LOG_I("CAN RX", "Received can message %X %X", data[0], data[1]);
   struct feb_can_lvpdb_lv_24v_bus_and_12v_bus_voltages_t msg;
   if (feb_can_lvpdb_lv_24v_bus_and_12v_bus_voltages_unpack(&msg, data, length) == 0)
   {

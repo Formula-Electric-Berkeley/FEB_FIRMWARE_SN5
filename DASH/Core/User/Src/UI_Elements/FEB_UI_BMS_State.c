@@ -22,7 +22,7 @@ int16_t cell_max_temperature = 67;
 uint16_t accumulator_total_voltage = 67;
 uint16_t low_voltage = 67;
 
-char buf[16];
+static char buf[16];
 
 void FEB_UI_Update_BMS_State()
 {

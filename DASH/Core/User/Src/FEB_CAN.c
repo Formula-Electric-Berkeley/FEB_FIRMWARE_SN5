@@ -30,6 +30,7 @@
 #include "FEB_CAN_LVPDB.h"
 #include "FEB_CAN_PCU.h"
 #include "FEB_CAN_BMS.h"
+#include "FEB_CAN_SensorNodes.h"
 
 /* ========================== External HAL handles ========================== */
 extern CAN_HandleTypeDef hcan1;
@@ -150,6 +151,7 @@ void StartDASHTaskRx(void *argument)
   FEB_CAN_BMS_Init();
   FEB_CAN_PCU_Init();
   FEB_CAN_LVPDB_Init();
+  FEB_CAN_SensorNodes_Init();
 
   /* Signal that CAN is ready for state publishing */
   FEB_CAN_State_SetReady();
