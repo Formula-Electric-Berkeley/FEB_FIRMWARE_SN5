@@ -86,7 +86,7 @@ static bool csv_in_transaction;
 
 static int parse_args(char *line, char *argv[], int max_args);
 static const FEB_Console_Cmd_t *find_command(const char *name);
-__attribute__((unused)) static size_t u64_to_decimal(uint64_t v, char *out, size_t cap);
+static size_t u64_to_decimal(uint64_t v, char *out, size_t cap);
 static bool tx_id_is_valid(const char *s);
 static bool board_matches(const char *addr);
 static int csv_emit_v(const char *response_type, const char *fmt, va_list ap);
@@ -111,7 +111,7 @@ void FEB_Console_Init(bool register_default_commands)
   }
 #endif
 
-  // FEB_Time_Init();
+  FEB_Time_Init();
 
   if (register_default_commands)
   {
@@ -411,14 +411,14 @@ int FEB_Console_CsvEmitAs(const char *tx_id, const char *response_type, const ch
     response_type = "";
   }
 
-  // uint64_t us = FEB_Time_Us();
-  // char us_str[24];
-  // u64_to_decimal(us, us_str, sizeof(us_str));
+  uint64_t us = FEB_Time_Us();
+  char us_str[24];
+  u64_to_decimal(us, us_str, sizeof(us_str));
 
   const char *board_name = (feb_build_info.board_name != NULL) ? feb_build_info.board_name : "?";
 
   char buf[FEB_CONSOLE_PRINTF_BUFFER_SIZE];
-  int pre = snprintf(buf, sizeof(buf), "csv,%s,%s,%s,%s", tx_id, board_name, ".", response_type);
+  int pre = snprintf(buf, sizeof(buf), "csv,%s,%s,%s,%s", tx_id, board_name, us_str, response_type);
   if (pre < 0)
   {
     return pre;
@@ -542,9 +542,9 @@ static const FEB_Console_Cmd_t *find_command(const char *name)
   return NULL;
 }
 
-/* newlib-nano printf drops %llu, so format the uint64 manually.
-   Retained (unused) until feb_time + the CSV timestamp wiring are restored. */
-__attribute__((unused)) static size_t u64_to_decimal(uint64_t v, char *out, size_t cap)
+/* newlib-nano printf drops %llu, so format the uint64 microsecond timestamp
+   manually for the CSV row. */
+static size_t u64_to_decimal(uint64_t v, char *out, size_t cap)
 {
   if (cap == 0)
   {
@@ -621,14 +621,14 @@ static int csv_emit_v(const char *response_type, const char *fmt, va_list ap)
     response_type = "";
   }
 
-  // uint64_t us = FEB_Time_Us();
-  // char us_str[24];
-  // u64_to_decimal(us, us_str, sizeof(us_str));
+  uint64_t us = FEB_Time_Us();
+  char us_str[24];
+  u64_to_decimal(us, us_str, sizeof(us_str));
 
   const char *board_name = (feb_build_info.board_name != NULL) ? feb_build_info.board_name : "?";
 
   char buf[FEB_CONSOLE_PRINTF_BUFFER_SIZE];
-  int pre = snprintf(buf, sizeof(buf), "csv,%s,%s,%s,%s", csv_current_tx_id, board_name, ".", response_type);
+  int pre = snprintf(buf, sizeof(buf), "csv,%s,%s,%s,%s", csv_current_tx_id, board_name, us_str, response_type);
   if (pre < 0)
   {
     return pre;
