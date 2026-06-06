@@ -16,6 +16,7 @@
 #include "FEB_CAN_Fusion.h"
 #include "FEB_CAN_Sensors.h"
 #include "FEB_Fusion.h"
+#include "FEB_SN_PingPong.h"
 
 #include "feb_uart.h"
 #include "feb_log.h"
@@ -24,13 +25,19 @@
 
 #define TAG_MAIN "[MAIN]"
 
-/* Tick periods. IMU tick is microsecond-based (TIM5 @ 1 MHz) so it can run at
- * 1 kHz without HAL_GetTick's 1 ms quantization. Other ticks stay millisecond. */
-#define TICK_PERIOD_IMU_US 1000u    /* 1 kHz: IMU + mag sample + Fusion + fusion CAN frames */
-#define TICK_PERIOD_WSS_MS 20u      /* 50  Hz: WSS computation + CAN */
-#define TICK_PERIOD_RAW_IMU_MS 100u /* 10  Hz: raw IMU + mag CAN frames (debug visibility) */
-#define TICK_PERIOD_GPS_MS 200u     /* 5   Hz: GPS frames (six per tick) */
-#define TICK_PERIOD_TEMP_MS 1000u   /* 1   Hz: temperatures */
+/* Tick periods (all millisecond-based off HAL_GetTick).
+ *
+ * The IMU/mag/Fusion pipeline is capped at 10 Hz on purpose. FEB_CAN_Fusion_Tick
+ * emits 5 CAN frames per call; at the old 1 kHz that was 5000 frames/s, which
+ * alone exceeds the ~4000 frames/s ceiling of the 500 kbps bus and permanently
+ * filled the 16-deep TX FIFO — starving lower-rate frames (notably WSS, which
+ * appeared to "stop after one send"). 10 Hz drops Fusion to 50 frames/s and
+ * leaves the bus comfortable. Fusion still uses a µs-accurate dt from TIM5. */
+#define TICK_PERIOD_IMU_MS 100u   /* 10 Hz: IMU + mag sample + Fusion update + IMU/mag/fusion CAN */
+#define TICK_PERIOD_WSS_MS 20u    /* 50 Hz: WSS computation + CAN */
+#define TICK_PERIOD_GPS_MS 200u   /* 5  Hz: GPS frames (six per tick) */
+#define TICK_PERIOD_TEMP_MS 1000u /* 1  Hz: temperatures */
+#define TICK_PERIOD_PING_MS 100u  /* 10 Hz: CAN ping/pong test service */
 
 static bool gps_ready = false;
 
@@ -151,21 +158,95 @@ void FEB_Init(void)
   FEB_CAN_Init(&can_cfg);
   FEB_Console_Printf("CAN initialized\r\n");
 
+  FEB_SN_PingPong_Init();
+  FEB_Console_Printf("CAN ping/pong ready (SN|ping|<1-4>, SN|pong|<1-4>)\r\n");
+
   FEB_Console_Printf("Sensor Node (%s) Setup Complete\r\n", FEB_SN_VARIANT_NAME);
+}
+
+/* ----------------------------------------------------------------------------
+ * CAN bus health logging (DEBUG).
+ *
+ * The feb_can library records error/recovery counters plus a snapshot of the
+ * controller ESR (TEC/REC/LEC) on every error IRQ, but nothing on this board
+ * ever surfaced them — so when the bus died there was zero signal. Poll them
+ * once per main-loop iteration and emit a single LOG_D line only when a counter
+ * changes (throttled to ~4/s), so a healthy bus stays quiet while a dying bus is
+ * immediately visible. LEC is the key discriminator: stuff/bit/crc => bit-timing
+ * (clock) trouble; ack => nobody on the bus is acknowledging. */
+static void can_health_log(void)
+{
+  static const char *const LEC_NAME[8] = {
+      "none", "stuff", "form", "ack", "bit-rec", "bit-dom", "crc", "sw",
+  };
+
+  static bool primed = false;
+  static uint32_t last_log_ms = 0;
+  static uint32_t p_errcb = 0, p_busoff = 0, p_ewg = 0, p_hal = 0, p_txovf = 0, p_rxovf = 0;
+
+  const uint32_t errcb = FEB_CAN_GetErrorCallbackCount();
+  const uint32_t busoff = FEB_CAN_GetBusOffCount();
+  const uint32_t ewg = FEB_CAN_GetEwgRecoveryCount();
+  const uint32_t hal = FEB_CAN_GetHalErrorCount();
+  const uint32_t txovf = FEB_CAN_GetTxQueueOverflowCount();
+  const uint32_t rxovf = FEB_CAN_GetRxQueueOverflowCount();
+
+  if (!primed)
+  {
+    p_errcb = errcb;
+    p_busoff = busoff;
+    p_ewg = ewg;
+    p_hal = hal;
+    p_txovf = txovf;
+    p_rxovf = rxovf;
+    primed = true;
+    return;
+  }
+
+  if (errcb == p_errcb && busoff == p_busoff && ewg == p_ewg && hal == p_hal && txovf == p_txovf && rxovf == p_rxovf)
+  {
+    return; /* nothing changed — stay quiet */
+  }
+
+  /* Throttle to ~4 lines/s so an error storm can't flood the console; the next
+   * iteration still sees the change (we don't resync prev) and logs once the
+   * window opens, always showing the latest cumulative totals. */
+  const uint32_t now = HAL_GetTick();
+  if ((uint32_t)(now - last_log_ms) < 250u)
+  {
+    return;
+  }
+
+  const uint32_t esr = FEB_CAN_GetLastErrorEsr();
+  const uint32_t lec = (esr >> 4) & 0x7u;
+  const uint32_t tec = (esr >> 16) & 0xFFu;
+  const uint32_t rec = (esr >> 24) & 0xFFu;
+
+  LOG_D(TAG_CAN, "health busoff=%lu ewg=%lu errcb=%lu hal=%lu txovf=%lu rxovf=%lu | TEC=%lu REC=%lu LEC=%s code=0x%lX",
+        (unsigned long)busoff, (unsigned long)ewg, (unsigned long)errcb, (unsigned long)hal, (unsigned long)txovf,
+        (unsigned long)rxovf, (unsigned long)tec, (unsigned long)rec, LEC_NAME[lec],
+        (unsigned long)FEB_CAN_GetLastErrorCode());
+
+  last_log_ms = now;
+  p_errcb = errcb;
+  p_busoff = busoff;
+  p_ewg = ewg;
+  p_hal = hal;
+  p_txovf = txovf;
+  p_rxovf = rxovf;
 }
 
 void FEB_Main_Loop(void)
 {
-  static uint32_t t_imu_us = 0;
+  static uint32_t t_imu_ms = 0;
   static uint32_t t_wss_ms = 0;
-  static uint32_t t_raw_imu_ms = 0;
   static uint32_t t_gps_ms = 0;
   static uint32_t t_temp_ms = 0;
+  static uint32_t t_ping_ms = 0;
   static uint32_t prev_fusion_us = 0;
   static bool fusion_dt_primed = false;
 
   const uint32_t now_ms = HAL_GetTick();
-  const uint32_t now_us = __HAL_TIM_GET_COUNTER(&htim5);
 
   /* Drain UART RX every iteration so console + GPS NMEA never starve. */
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
@@ -176,12 +257,25 @@ void FEB_Main_Loop(void)
   }
 #endif
 
-  /* 1 kHz: sample IMU+mag, run Fusion with µs-accurate dt, publish related CAN frames.
-   * Gated by TIM5 (1 MHz free-running) so we don't get HAL_GetTick's 1 ms quantization.
-   * Each sample/Tick is independently compile-gated so the loop stays uniform across variants. */
-  if ((uint32_t)(now_us - t_imu_us) >= TICK_PERIOD_IMU_US)
+  /* Keep the bare-metal CAN TX FIFO draining and run any pending bus-off
+   * recovery (this is the *only* place bus-off recovery runs). Matches the
+   * pattern used by PCU/BMS/DASH. */
+  FEB_CAN_TX_Process();
+  FEB_CAN_TX_ProcessPeriodic();
+
+  /* Surface CAN bus health (bus-off / error-passive / TX drops) at DEBUG. */
+  can_health_log();
+
+  /* 10 Hz: sample IMU+mag, run Fusion with µs-accurate dt, publish fusion + raw
+   * IMU/mag CAN frames. Capped at 10 Hz so the 500 kbps bus isn't flooded
+   * (Fusion alone is 5 frames/tick). dt comes from TIM5 (1 MHz free-running)
+   * so it tracks real elapsed time despite the 1 ms HAL_GetTick gate. Each
+   * sample/Tick is independently compile-gated so the loop stays uniform across
+   * variants. */
+  if ((uint32_t)(now_ms - t_imu_ms) >= TICK_PERIOD_IMU_MS)
   {
-    float dt = 0.001f;
+    const uint32_t now_us = __HAL_TIM_GET_COUNTER(&htim5);
+    float dt = (float)TICK_PERIOD_IMU_MS / 1000.0f;
     if (fusion_dt_primed)
     {
       dt = (float)((uint32_t)(now_us - prev_fusion_us)) / 1.0e6f;
@@ -203,8 +297,10 @@ void FEB_Main_Loop(void)
 #endif
 
     FEB_CAN_Fusion_Tick();
+    FEB_CAN_IMU_Tick();
+    FEB_CAN_Magnetometer_Tick();
 
-    t_imu_us = now_us;
+    t_imu_ms = now_ms;
   }
 
   /* 50 Hz: recompute wheel RPM from per-edge timestamp ring, transmit. */
@@ -237,11 +333,10 @@ void FEB_Main_Loop(void)
     t_temp_ms = now_ms;
   }
 
-  /* 10 Hz: raw IMU + mag CAN frames (downsampled — fusion ships at 1 kHz). */
-  if ((uint32_t)(now_ms - t_raw_imu_ms) >= TICK_PERIOD_RAW_IMU_MS)
+  /* 10 Hz: CAN ping/pong test service (PING transmit + deferred RX logging). */
+  if ((uint32_t)(now_ms - t_ping_ms) >= TICK_PERIOD_PING_MS)
   {
-    FEB_CAN_IMU_Tick();
-    FEB_CAN_Magnetometer_Tick();
-    t_raw_imu_ms = now_ms;
+    FEB_SN_PingPong_Tick();
+    t_ping_ms = now_ms;
   }
 }

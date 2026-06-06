@@ -1,8 +1,16 @@
 /**
  ******************************************************************************
  * @file           : DCU_Commands.c
- * @brief          : Console commands for DCU_Receiver (radio-only)
+ * @brief          : Console commands for DCU_Receiver (radio + CAN-state)
  * @author         : Formula Electric @ Berkeley
+ ******************************************************************************
+ * @details
+ *
+ * Table-driven command set (same pattern as the other boards). Each functional
+ * group (radio / can) is one FEB_Console_Cmd_t registered top-level with a text
+ * handler and a CSV handler, plus a text-only `dcu` parent that dispatches
+ * `dcu|<group>|...`. Because each group is registered top-level, the CSV
+ * protocol resolves `DCU_Receiver|csv|<tx>|<group>|...` directly.
  ******************************************************************************
  */
 
@@ -16,23 +24,12 @@
 #include "rfm95.h"
 #include "spi.h"
 #include "main.h"
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define TAG_DCU "[DCU]"
-
-/* ============================================================================
- * Help
- * ============================================================================ */
-
-static void print_dcu_help(void)
-{
-  FEB_Console_Printf("DCU_Receiver Commands:\r\n");
-  FEB_Console_Printf("  dcu                    - Show this help\r\n");
-  FEB_Console_Printf("  dcu|radio              - Radio commands (see dcu|radio for help)\r\n");
-  FEB_Console_Printf("  dcu|can|state          - Show latest value of each received CAN message\r\n");
-  FEB_Console_Printf("  dcu|can|msg|<name>     - Show signals for one CAN message\r\n");
-}
 
 /* ============================================================================
  * Radio Commands
@@ -67,8 +64,19 @@ static void print_radio_help(void)
   FEB_Console_Printf("  dcu|radio|listen [on|off]       - Toggle/set listen-only mode\r\n");
   FEB_Console_Printf("  dcu|radio|config <p> <value>    - p in {freq,power,sf,bw}\r\n");
   FEB_Console_Printf("  dcu|radio|reset                 - Hardware reset of RFM95\r\n");
-  FEB_Console_Printf("  dcu|radio|spi [sep|raw]         - Low-level SPI test\r\n");
-  FEB_Console_Printf("  dcu|radio|en                    - Toggle EN pin test\r\n");
+  FEB_Console_Printf("  dcu|radio|spi [sep|raw]         - Low-level SPI test (text only)\r\n");
+  FEB_Console_Printf("  dcu|radio|en                    - Toggle EN pin test (text only)\r\n");
+}
+
+/* Read the radio's current frequency from FRF registers (Hz). */
+static uint32_t radio_read_freq_hz(void)
+{
+  uint8_t frf_msb = rfm95_read_register(&s_debug_handle, RFM95_REG_FRF_MSB);
+  uint8_t frf_mid = rfm95_read_register(&s_debug_handle, RFM95_REG_FRF_MID);
+  uint8_t frf_lsb = rfm95_read_register(&s_debug_handle, RFM95_REG_FRF_LSB);
+  uint32_t frf = ((uint32_t)frf_msb << 16) | ((uint32_t)frf_mid << 8) | frf_lsb;
+  /* Frequency = FRF * F_XOSC / 2^19, F_XOSC = 32 MHz */
+  return (uint32_t)(((uint64_t)frf * 32000000ULL) >> 19);
 }
 
 static void cmd_radio_status(void)
@@ -79,13 +87,9 @@ static void cmd_radio_status(void)
   FEB_RFM95_GetStats(&stats);
 
   uint8_t op_mode = rfm95_read_register(&s_debug_handle, RFM95_REG_OP_MODE);
-  uint8_t frf_msb = rfm95_read_register(&s_debug_handle, RFM95_REG_FRF_MSB);
-  uint8_t frf_mid = rfm95_read_register(&s_debug_handle, RFM95_REG_FRF_MID);
-  uint8_t frf_lsb = rfm95_read_register(&s_debug_handle, RFM95_REG_FRF_LSB);
   uint8_t mc1 = rfm95_read_register(&s_debug_handle, RFM95_REG_MODEM_CONFIG_1);
   uint8_t mc2 = rfm95_read_register(&s_debug_handle, RFM95_REG_MODEM_CONFIG_2);
-  uint32_t frf = ((uint32_t)frf_msb << 16) | ((uint32_t)frf_mid << 8) | frf_lsb;
-  uint32_t freq_hz = (uint32_t)(((uint64_t)frf * 32000000ULL) >> 19);
+  uint32_t freq_hz = radio_read_freq_hz();
 
   FEB_Console_Printf("Radio Status:\r\n");
   FEB_Console_Printf("  Last RSSI:    %d dBm\r\n", (int)stats.last_rssi);
@@ -100,7 +104,7 @@ static void cmd_radio_status(void)
 
 static void cmd_radio_stats(int argc, char *argv[])
 {
-  if (argc >= 4 && FEB_strcasecmp(argv[3], "reset") == 0)
+  if (argc >= 3 && FEB_strcasecmp(argv[2], "reset") == 0)
   {
     FEB_RFM95_ResetStats();
     FEB_Console_Printf("Radio stats reset.\r\n");
@@ -119,26 +123,34 @@ static void cmd_radio_stats(int argc, char *argv[])
   FEB_Console_Printf("  Last SNR:     %d dB\r\n", (int)stats.last_snr);
 }
 
+/* Join argv[start..argc-1] with single spaces into out (NUL-terminated). */
+static void join_args(int start, int argc, char *argv[], char *out, size_t out_size)
+{
+  size_t pos = 0;
+  for (int i = start; i < argc && pos + 1 < out_size; i++)
+  {
+    if (i > start && pos + 1 < out_size)
+      out[pos++] = ' ';
+    size_t alen = strlen(argv[i]);
+    size_t cap = out_size - 1 - pos;
+    size_t to_copy = (alen < cap) ? alen : cap;
+    memcpy(&out[pos], argv[i], to_copy);
+    pos += to_copy;
+  }
+  out[pos] = '\0';
+}
+
 static void cmd_radio_tx(int argc, char *argv[])
 {
-  if (argc < 4)
+  if (argc < 3)
   {
     FEB_Console_Printf("Usage: dcu|radio|tx <message>\r\n");
     return;
   }
 
   char payload[128];
-  size_t pos = 0;
-  for (int i = 3; i < argc && pos < sizeof(payload) - 1; i++)
-  {
-    if (i > 3 && pos < sizeof(payload) - 1)
-      payload[pos++] = ' ';
-    size_t arg_len = strlen(argv[i]);
-    size_t to_copy = (arg_len < sizeof(payload) - 1 - pos) ? arg_len : sizeof(payload) - 1 - pos;
-    memcpy(&payload[pos], argv[i], to_copy);
-    pos += to_copy;
-  }
-  payload[pos] = '\0';
+  join_args(2, argc, argv, payload, sizeof(payload));
+  size_t pos = strlen(payload);
 
   FEB_RFM95_Status_t s = FEB_RFM95_Transmit((const uint8_t *)payload, (uint8_t)pos, 1000);
   if (s == FEB_RFM95_OK)
@@ -149,12 +161,12 @@ static void cmd_radio_tx(int argc, char *argv[])
 
 static void cmd_radio_rx(int argc, char *argv[])
 {
-  if (argc < 4)
+  if (argc < 3)
   {
     FEB_Console_Printf("Usage: dcu|radio|rx <timeout_ms>\r\n");
     return;
   }
-  uint32_t timeout = (uint32_t)strtoul(argv[3], NULL, 10);
+  uint32_t timeout = (uint32_t)strtoul(argv[2], NULL, 10);
   if (timeout == 0)
   {
     FEB_Console_Printf("Invalid timeout\r\n");
@@ -166,8 +178,8 @@ static void cmd_radio_rx(int argc, char *argv[])
   FEB_RFM95_Status_t s = FEB_RFM95_Receive(buf, &len, timeout);
   if (s == FEB_RFM95_OK)
   {
-    FEB_Console_Printf("RX %u bytes  RSSI=%d  SNR=%d\r\n",
-                       (unsigned int)len, (int)FEB_RFM95_GetRSSI(), (int)FEB_RFM95_GetSNR());
+    FEB_Console_Printf("RX %u bytes  RSSI=%d  SNR=%d\r\n", (unsigned int)len, (int)FEB_RFM95_GetRSSI(),
+                       (int)FEB_RFM95_GetSNR());
     FEB_Console_Printf("ASCII: \"");
     for (uint8_t i = 0; i < len; i++)
     {
@@ -188,11 +200,11 @@ static void cmd_radio_rx(int argc, char *argv[])
 static void cmd_radio_listen(int argc, char *argv[])
 {
   bool target;
-  if (argc >= 4)
+  if (argc >= 3)
   {
-    if (FEB_strcasecmp(argv[3], "on") == 0)
+    if (FEB_strcasecmp(argv[2], "on") == 0)
       target = true;
-    else if (FEB_strcasecmp(argv[3], "off") == 0)
+    else if (FEB_strcasecmp(argv[2], "off") == 0)
       target = false;
     else
     {
@@ -210,21 +222,23 @@ static void cmd_radio_listen(int argc, char *argv[])
 
 static void cmd_radio_config(int argc, char *argv[])
 {
-  if (argc < 5)
+  if (argc < 4)
   {
     FEB_Console_Printf("Usage: dcu|radio|config <freq|power|sf|bw> <value>\r\n");
     return;
   }
   init_debug_handle();
-  const char *param = argv[3];
-  long value = strtol(argv[4], NULL, 0);
+  const char *param = argv[2];
+  long value = strtol(argv[3], NULL, 0);
 
   if (FEB_strcasecmp(param, "freq") == 0)
   {
-    if (value < 902000000 || value > 928000000) {
+    if (value < 902000000 || value > 928000000)
+    {
       FEB_Console_Printf("Invalid frequency value");
     }
-    else {
+    else
+    {
       if (rfm95_set_frequency(&s_debug_handle, (uint32_t)value))
         FEB_Console_Printf("Frequency set to %ld Hz\r\n", value);
       else
@@ -268,15 +282,15 @@ static void cmd_radio_config(int argc, char *argv[])
   }
 }
 
-static void cmd_radio(int argc, char *argv[])
+static void sub_radio(int argc, char *argv[])
 {
-  if (argc < 3)
+  if (argc < 2)
   {
     print_radio_help();
     return;
   }
 
-  const char *subcmd = argv[2];
+  const char *subcmd = argv[1];
 
   if (FEB_strcasecmp(subcmd, "status") == 0)
     cmd_radio_status();
@@ -298,9 +312,9 @@ static void cmd_radio(int argc, char *argv[])
   else if (FEB_strcasecmp(subcmd, "spi") == 0)
   {
     init_debug_handle();
-    if (argc >= 4 && FEB_strcasecmp(argv[3], "sep") == 0)
+    if (argc >= 3 && FEB_strcasecmp(argv[2], "sep") == 0)
       rfm95_debug_spi_separate(&s_debug_handle);
-    else if (argc >= 4 && FEB_strcasecmp(argv[3], "raw") == 0)
+    else if (argc >= 3 && FEB_strcasecmp(argv[2], "raw") == 0)
       rfm95_debug_spi_raw(&s_debug_handle);
     else
       rfm95_debug_spi_poll(&s_debug_handle);
@@ -317,32 +331,242 @@ static void cmd_radio(int argc, char *argv[])
   }
 }
 
+static void cmd_radio_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("info", "usage,radio|<status|stats|tx|rx|listen|config|reset>");
+    return;
+  }
+
+  const char *subcmd = argv[1];
+
+  if (FEB_strcasecmp(subcmd, "status") == 0)
+  {
+    init_debug_handle();
+    FEB_RFM95_Stats_t stats;
+    FEB_RFM95_GetStats(&stats);
+    uint8_t op_mode = rfm95_read_register(&s_debug_handle, RFM95_REG_OP_MODE);
+    uint8_t mc1 = rfm95_read_register(&s_debug_handle, RFM95_REG_MODEM_CONFIG_1);
+    uint8_t mc2 = rfm95_read_register(&s_debug_handle, RFM95_REG_MODEM_CONFIG_2);
+    uint32_t freq_hz = radio_read_freq_hz();
+    /* Body: last_rssi,last_snr,listen,op_mode,freq_hz,mc1,mc2 */
+    FEB_Console_CsvEmit("radio-status", "%d,%d,%d,0x%02X,%lu,0x%02X,0x%02X", (int)stats.last_rssi, (int)stats.last_snr,
+                        FEB_Task_Radio_GetListenMode() ? 1 : 0, op_mode, (unsigned long)freq_hz, mc1, mc2);
+  }
+  else if (FEB_strcasecmp(subcmd, "stats") == 0)
+  {
+    if (argc >= 3 && FEB_strcasecmp(argv[2], "reset") == 0)
+    {
+      FEB_RFM95_ResetStats();
+      FEB_Console_CsvEmit("radio-stats", "reset");
+      return;
+    }
+    FEB_RFM95_Stats_t stats;
+    FEB_RFM95_GetStats(&stats);
+    /* Body: tx_count,tx_errors,rx_count,rx_errors,rx_timeouts,last_rssi,last_snr */
+    FEB_Console_CsvEmit("radio-stats", "%lu,%lu,%lu,%lu,%lu,%d,%d", (unsigned long)stats.tx_count,
+                        (unsigned long)stats.tx_errors, (unsigned long)stats.rx_count, (unsigned long)stats.rx_errors,
+                        (unsigned long)stats.rx_timeouts, (int)stats.last_rssi, (int)stats.last_snr);
+  }
+  else if (FEB_strcasecmp(subcmd, "tx") == 0)
+  {
+    if (argc < 3)
+    {
+      FEB_Console_CsvError("error", "usage,radio|tx|<message>");
+      return;
+    }
+    char payload[128];
+    join_args(2, argc, argv, payload, sizeof(payload));
+    size_t pos = strlen(payload);
+    FEB_RFM95_Status_t s = FEB_RFM95_Transmit((const uint8_t *)payload, (uint8_t)pos, 1000);
+    /* Body: bytes,status (status 0 == OK) */
+    FEB_Console_CsvEmit("radio-tx", "%u,%d", (unsigned int)pos, (int)s);
+  }
+  else if (FEB_strcasecmp(subcmd, "rx") == 0)
+  {
+    if (argc < 3)
+    {
+      FEB_Console_CsvError("error", "usage,radio|rx|<timeout_ms>");
+      return;
+    }
+    uint32_t timeout = (uint32_t)strtoul(argv[2], NULL, 10);
+    if (timeout == 0)
+    {
+      FEB_Console_CsvError("error", "invalid_timeout");
+      return;
+    }
+    uint8_t buf[64];
+    uint8_t len = 0;
+    FEB_RFM95_Status_t s = FEB_RFM95_Receive(buf, &len, timeout);
+    if (s == FEB_RFM95_OK)
+    {
+      char hex[2 * sizeof(buf) + 1];
+      size_t hp = 0;
+      for (uint8_t i = 0; i < len && hp + 2 < sizeof(hex); i++)
+      {
+        hp += (size_t)snprintf(hex + hp, sizeof(hex) - hp, "%02X", buf[i]);
+      }
+      hex[hp] = '\0';
+      /* Body: len,rssi,snr,hex */
+      FEB_Console_CsvEmit("radio-rx", "%u,%d,%d,%s", (unsigned int)len, (int)FEB_RFM95_GetRSSI(),
+                          (int)FEB_RFM95_GetSNR(), hex);
+    }
+    else if (s == FEB_RFM95_ERR_RX_TIMEOUT)
+    {
+      FEB_Console_CsvError("warn", "rx_timeout");
+    }
+    else
+    {
+      FEB_Console_CsvError("error", "rx_failed,%d", (int)s);
+    }
+  }
+  else if (FEB_strcasecmp(subcmd, "listen") == 0)
+  {
+    bool target;
+    if (argc >= 3)
+    {
+      if (FEB_strcasecmp(argv[2], "on") == 0)
+        target = true;
+      else if (FEB_strcasecmp(argv[2], "off") == 0)
+        target = false;
+      else
+      {
+        FEB_Console_CsvError("error", "listen,%s", argv[2]);
+        return;
+      }
+    }
+    else
+    {
+      target = !FEB_Task_Radio_GetListenMode();
+    }
+    FEB_Task_Radio_SetListenMode(target);
+    FEB_Console_CsvEmit("radio-listen", "%d", target ? 1 : 0);
+  }
+  else if (FEB_strcasecmp(subcmd, "config") == 0)
+  {
+    if (argc < 4)
+    {
+      FEB_Console_CsvError("error", "usage,radio|config|<freq|power|sf|bw>|<value>");
+      return;
+    }
+    init_debug_handle();
+    const char *param = argv[2];
+    long value = strtol(argv[3], NULL, 0);
+    bool ok = false;
+    if (FEB_strcasecmp(param, "freq") == 0)
+    {
+      if (value < 902000000 || value > 928000000)
+      {
+        FEB_Console_CsvError("error", "freq_range,902000000-928000000");
+        return;
+      }
+      ok = rfm95_set_frequency(&s_debug_handle, (uint32_t)value);
+    }
+    else if (FEB_strcasecmp(param, "power") == 0)
+    {
+      ok = rfm95_set_power(&s_debug_handle, (int8_t)value);
+    }
+    else if (FEB_strcasecmp(param, "sf") == 0)
+    {
+      if (value < 6 || value > 12)
+      {
+        FEB_Console_CsvError("error", "sf_range,6-12");
+        return;
+      }
+      uint8_t cur = rfm95_read_register(&s_debug_handle, RFM95_REG_MODEM_CONFIG_2);
+      uint8_t new_val = (cur & 0x0F) | ((uint8_t)(value & 0x0F) << 4);
+      rfm95_write_register(&s_debug_handle, RFM95_REG_MODEM_CONFIG_2, new_val);
+      ok = true;
+    }
+    else if (FEB_strcasecmp(param, "bw") == 0)
+    {
+      if (value < 0 || value > 9)
+      {
+        FEB_Console_CsvError("error", "bw_range,0-9");
+        return;
+      }
+      uint8_t cur = rfm95_read_register(&s_debug_handle, RFM95_REG_MODEM_CONFIG_1);
+      uint8_t new_val = (cur & 0x0F) | ((uint8_t)(value & 0x0F) << 4);
+      rfm95_write_register(&s_debug_handle, RFM95_REG_MODEM_CONFIG_1, new_val);
+      ok = true;
+    }
+    else
+    {
+      FEB_Console_CsvError("error", "param,%s", param);
+      return;
+    }
+    /* Body: param,value,ok */
+    FEB_Console_CsvEmit("radio-config", "%s,%ld,%d", param, value, ok ? 1 : 0);
+  }
+  else if (FEB_strcasecmp(subcmd, "reset") == 0)
+  {
+    init_debug_handle();
+    rfm95_debug_reset(&s_debug_handle);
+    FEB_Console_CsvEmit("radio-reset", "ok");
+  }
+  else if (FEB_strcasecmp(subcmd, "spi") == 0 || FEB_strcasecmp(subcmd, "en") == 0)
+  {
+    /* Low-level debug helpers print raw text; not representable as CSV rows. */
+    FEB_Console_CsvError("info", "text_only,%s", subcmd);
+  }
+  else
+  {
+    FEB_Console_CsvError("error", "radio_subcommand,%s", subcmd);
+  }
+}
+
 /* ============================================================================
  * CAN State Commands
+ *
+ * The generated FEB_CAN_State_Print / PrintOne emit human text via a
+ * printf-style callback. csv_line_emit adapts that to CSV: each callback call
+ * is one full line, so we strip the trailing CRLF and wrap it as a single `log`
+ * row, keeping CSV framing intact.
  * ============================================================================ */
 
-static void cmd_can(int argc, char *argv[])
+static int csv_line_emit(const char *fmt, ...)
 {
-  if (argc < 3)
+  char line[FEB_CONSOLE_PRINTF_BUFFER_SIZE];
+  va_list ap;
+  va_start(ap, fmt);
+  int n = vsnprintf(line, sizeof(line), fmt, ap);
+  va_end(ap);
+
+  size_t len = strlen(line);
+  while (len > 0 && (line[len - 1] == '\r' || line[len - 1] == '\n'))
+  {
+    line[--len] = '\0';
+  }
+  if (len > 0)
+  {
+    FEB_Console_CsvLog("%s", line);
+  }
+  return n;
+}
+
+static void sub_can(int argc, char *argv[])
+{
+  if (argc < 2)
   {
     FEB_Console_Printf("Usage: dcu|can|state  or  dcu|can|msg|<name>\r\n");
     return;
   }
-  const char *sub = argv[2];
+  const char *sub = argv[1];
   if (FEB_strcasecmp(sub, "state") == 0)
   {
     FEB_CAN_State_Print(FEB_Console_Printf);
   }
   else if (FEB_strcasecmp(sub, "msg") == 0)
   {
-    if (argc < 4)
+    if (argc < 3)
     {
       FEB_Console_Printf("Usage: dcu|can|msg|<name>\r\n");
       return;
     }
-    if (FEB_CAN_State_PrintOne(argv[3], FEB_Console_Printf) != 0)
+    if (FEB_CAN_State_PrintOne(argv[2], FEB_Console_Printf) != 0)
     {
-      FEB_Console_Printf("Unknown CAN message: %s\r\n", argv[3]);
+      FEB_Console_Printf("Unknown CAN message: %s\r\n", argv[2]);
     }
   }
   else
@@ -351,9 +575,70 @@ static void cmd_can(int argc, char *argv[])
   }
 }
 
+static void cmd_can_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("info", "usage,can|state or can|msg|<name>");
+    return;
+  }
+  const char *sub = argv[1];
+  if (FEB_strcasecmp(sub, "state") == 0)
+  {
+    FEB_CAN_State_Print(csv_line_emit);
+  }
+  else if (FEB_strcasecmp(sub, "msg") == 0)
+  {
+    if (argc < 3)
+    {
+      FEB_Console_CsvError("error", "usage,can|msg|<name>");
+      return;
+    }
+    if (FEB_CAN_State_PrintOne(argv[2], csv_line_emit) != 0)
+    {
+      FEB_Console_CsvError("error", "unknown_message,%s", argv[2]);
+    }
+  }
+  else
+  {
+    FEB_Console_CsvError("error", "can_subcommand,%s", sub);
+  }
+}
+
 /* ============================================================================
- * Main DCU Command Handler
+ * Help + parent dispatcher + registration
  * ============================================================================ */
+
+static void print_dcu_help(void)
+{
+  FEB_Console_Printf("DCU_Receiver Commands:\r\n");
+  FEB_Console_Printf("  dcu                    - Show this help\r\n");
+  FEB_Console_Printf("  dcu|radio              - Radio commands (see dcu|radio for help)\r\n");
+  FEB_Console_Printf("  dcu|can|state          - Latest value of each received CAN message\r\n");
+  FEB_Console_Printf("  dcu|can|msg|<name>     - Show signals for one CAN message\r\n");
+  FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
+  FEB_Console_Printf("  DCU_Receiver|csv|<tx_id>|<sub>  - any subcommand above also works as CSV\r\n");
+  FEB_Console_Printf("  *|csv|<tx_id>|hello             - Discover all boards (system command)\r\n");
+  FEB_Console_Printf("Each request emits: ack -> [rows] -> done\r\n");
+}
+
+static const FEB_Console_Cmd_t dcu_radio_cmd = {.name = "radio",
+                                                .help = "Radio commands (status, stats, tx, rx, listen, config, reset)",
+                                                .handler = sub_radio,
+                                                .csv_handler = cmd_radio_csv,
+                                                .hidden = true};
+static const FEB_Console_Cmd_t dcu_can_cmd = {.name = "can",
+                                              .help = "CAN state (can|state, can|msg|<name>)",
+                                              .handler = sub_can,
+                                              .csv_handler = cmd_can_csv,
+                                              .hidden = true};
+
+static const FEB_Console_Cmd_t *const DCU_SUBCMDS[] = {
+    &dcu_radio_cmd,
+    &dcu_can_cmd,
+};
+#define DCU_SUBCMDS_COUNT (sizeof(DCU_SUBCMDS) / sizeof(DCU_SUBCMDS[0]))
 
 static void cmd_dcu(int argc, char *argv[])
 {
@@ -362,36 +647,43 @@ static void cmd_dcu(int argc, char *argv[])
     print_dcu_help();
     return;
   }
-
   const char *subcmd = argv[1];
-
-  if (FEB_strcasecmp(subcmd, "radio") == 0)
-    cmd_radio(argc, argv);
-  else if (FEB_strcasecmp(subcmd, "can") == 0)
-    cmd_can(argc, argv);
-  else
+  for (size_t i = 0; i < DCU_SUBCMDS_COUNT; i++)
   {
-    FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
-    print_dcu_help();
+    if (FEB_strcasecmp(DCU_SUBCMDS[i]->name, subcmd) == 0)
+    {
+      if (DCU_SUBCMDS[i]->handler != NULL)
+        DCU_SUBCMDS[i]->handler(argc - 1, argv + 1);
+      return;
+    }
   }
+  FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
+  print_dcu_help();
 }
 
 static const FEB_Console_Cmd_t dcu_cmd = {
     .name = "dcu",
     .help = "DCU_Receiver board commands (dcu|radio, dcu|can)",
     .handler = cmd_dcu,
+    .csv_handler = NULL,
 };
-
-/* ============================================================================
- * Registration
- * ============================================================================ */
 
 bool DCU_RegisterCommands(void)
 {
-  if (FEB_Console_Register(&dcu_cmd) != 0)
+  int rc = FEB_Console_Register(&dcu_cmd);
+  if (rc != 0)
   {
-    LOG_E(TAG_DCU, "Failed to register dcu command");
+    LOG_E(TAG_DCU, "Failed to register dcu command (rc=%d)", rc);
     return false;
+  }
+  for (size_t i = 0; i < DCU_SUBCMDS_COUNT; i++)
+  {
+    rc = FEB_Console_Register(DCU_SUBCMDS[i]);
+    if (rc != 0)
+    {
+      LOG_E(TAG_DCU, "Failed to register '%s' (rc=%d)", DCU_SUBCMDS[i]->name, rc);
+      return false;
+    }
   }
   return true;
 }

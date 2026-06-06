@@ -170,6 +170,6 @@ void WSS_Main(void)
   compute_wheel_rpm(&wheel_left, &left_rpm_x10, &left_dir);
   compute_wheel_rpm(&wheel_right, &right_rpm_x10, &right_dir);
 
-  LOG_D(TAG_WSS, "L: pos=%ld rpm_x10=%u dir=%d | R: pos=%ld rpm_x10=%u dir=%d", (long)wheel_left.pos_edges,
+  LOG_T(TAG_WSS, "L: pos=%ld rpm_x10=%u dir=%d | R: pos=%ld rpm_x10=%u dir=%d", (long)wheel_left.pos_edges,
         (unsigned)left_rpm_x10, (int)left_dir, (long)wheel_right.pos_edges, (unsigned)right_rpm_x10, (int)right_dir);
 }

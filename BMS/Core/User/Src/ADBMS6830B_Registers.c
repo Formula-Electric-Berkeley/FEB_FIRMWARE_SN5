@@ -565,6 +565,185 @@ void ADBMS_RegSubcmd(int argc, char *argv[])
 }
 
 /*============================================================================
+ * Console: CSV-mode reg dispatcher (machine-readable mirror of ADBMS_RegSubcmd)
+ *
+ * Same argv layout as the text path (argv[0]="reg", argv[1]=action). Emits CSV
+ * rows instead of formatted tables; ack/done framing is automatic.
+ *============================================================================*/
+void ADBMS_RegSubcmd_Csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("info", "usage,reg|<list|read|write|cmd|dump|status>");
+    return;
+  }
+
+  const char *action = argv[1];
+
+  if (FEB_strcasecmp(action, "list") == 0)
+  {
+    const char *type_str[] = {"WR", "RD", "ACT", "POLL"};
+    for (const ADBMS_CmdInfo_t *cmd = cmd_table; cmd->name != NULL; cmd++)
+    {
+      /* Body: name,code,type,"desc" (desc quoted; may contain spaces). */
+      FEB_Console_CsvEmit("reg-cmd", "%s,0x%04X,%s,\"%s\"", cmd->name, cmd->code, type_str[cmd->type], cmd->desc);
+    }
+  }
+  else if (FEB_strcasecmp(action, "read") == 0)
+  {
+    if (argc < 3)
+    {
+      FEB_Console_CsvError("error", "usage,reg|read|<name>|[ic]");
+      return;
+    }
+    const ADBMS_CmdInfo_t *cmd = ADBMS_FindCmdByName(argv[2]);
+    if (cmd == NULL)
+    {
+      FEB_Console_CsvError("error", "unknown_command,%s", argv[2]);
+      return;
+    }
+    if (cmd->type != ADBMS_CMD_READ)
+    {
+      FEB_Console_CsvError("error", "not_a_read_command,%s", cmd->name);
+      return;
+    }
+    uint8_t ic_start = 0;
+    uint8_t ic_end = FEB_NUM_IC;
+    if (argc >= 4)
+    {
+      int ic = atoi(argv[3]);
+      if (ic < 0 || ic >= FEB_NUM_IC)
+      {
+        FEB_Console_CsvError("error", "invalid_ic,%d", ic);
+        return;
+      }
+      ic_start = (uint8_t)ic;
+      ic_end = ic_start + 1;
+    }
+    for (uint8_t ic = ic_start; ic < ic_end; ic++)
+    {
+      uint8_t data[6];
+      int err = ADBMS_ReadReg(cmd->code, ic, data);
+      if (err < 0)
+      {
+        FEB_Console_CsvEmit("reg-read", "%s,%d,error", cmd->name, ic);
+      }
+      else
+      {
+        /* Body: name,ic,bytes(12 hex chars) */
+        FEB_Console_CsvEmit("reg-read", "%s,%d,%02X%02X%02X%02X%02X%02X", cmd->name, ic, data[0], data[1], data[2],
+                            data[3], data[4], data[5]);
+      }
+    }
+  }
+  else if (FEB_strcasecmp(action, "write") == 0)
+  {
+    if (argc < 4)
+    {
+      FEB_Console_CsvError("error", "usage,reg|write|<name>|<hex12>");
+      return;
+    }
+    const ADBMS_CmdInfo_t *cmd = ADBMS_FindCmdByName(argv[2]);
+    if (cmd == NULL)
+    {
+      FEB_Console_CsvError("error", "unknown_command,%s", argv[2]);
+      return;
+    }
+    if (cmd->type != ADBMS_CMD_WRITE)
+    {
+      FEB_Console_CsvError("error", "not_a_write_command,%s", cmd->name);
+      return;
+    }
+    const char *hex = argv[3];
+    if (strlen(hex) != 12)
+    {
+      FEB_Console_CsvError("error", "bad_data_len,need_12_hex_chars");
+      return;
+    }
+    uint8_t data[6];
+    for (int i = 0; i < 6; i++)
+    {
+      char byte_str[3] = {hex[i * 2], hex[i * 2 + 1], '\0'};
+      data[i] = (uint8_t)strtoul(byte_str, NULL, 16);
+    }
+    int err = ADBMS_WriteReg(cmd->code, 0, data);
+    FEB_Console_CsvEmit("reg-write", "%s,%s", cmd->name, err < 0 ? "fail" : "ok");
+  }
+  else if (FEB_strcasecmp(action, "cmd") == 0)
+  {
+    if (argc < 3)
+    {
+      FEB_Console_CsvError("error", "usage,reg|cmd|<name>");
+      return;
+    }
+    const ADBMS_CmdInfo_t *cmd = ADBMS_FindCmdByName(argv[2]);
+    if (cmd == NULL)
+    {
+      FEB_Console_CsvError("error", "unknown_command,%s", argv[2]);
+      return;
+    }
+    if (cmd->type != ADBMS_CMD_ACTION && cmd->type != ADBMS_CMD_POLL)
+    {
+      FEB_Console_CsvError("error", "not_an_action_command,%s", cmd->name);
+      return;
+    }
+    int err = ADBMS_SendCmd(cmd->code);
+    FEB_Console_CsvEmit("reg-cmd-send", "%s,0x%04X,%s", cmd->name, cmd->code, err < 0 ? "fail" : "ok");
+  }
+  else if (FEB_strcasecmp(action, "dump") == 0)
+  {
+    uint8_t ic = 0;
+    if (argc >= 3)
+    {
+      ic = (uint8_t)atoi(argv[2]);
+      if (ic >= FEB_NUM_IC)
+      {
+        FEB_Console_CsvError("error", "invalid_ic,%d", ic);
+        return;
+      }
+    }
+    static const uint16_t dump_cmds[] = {RDCFGA, RDCFGB, RDSTATA, RDSTATB, RDPWMA, RDAUXA, RDAUXB, RDAUXC,
+                                         RDAUXD, RDCVA,  RDCVB,   RDCVC,   RDCVD,  RDCVE,  RDCVF,  RDSID};
+    for (size_t i = 0; i < sizeof(dump_cmds) / sizeof(dump_cmds[0]); i++)
+    {
+      const ADBMS_CmdInfo_t *cmd = ADBMS_FindCmdByCode(dump_cmds[i]);
+      if (cmd == NULL)
+        continue;
+      uint8_t data[6];
+      ADBMS_ReadReg(cmd->code, ic, data);
+      /* Body: ic,name,bytes(12 hex chars) */
+      FEB_Console_CsvEmit("reg-dump", "%d,%s,%02X%02X%02X%02X%02X%02X", ic, cmd->name, data[0], data[1], data[2],
+                          data[3], data[4], data[5]);
+    }
+  }
+  else if (FEB_strcasecmp(action, "status") == 0)
+  {
+    ADBMS_STATA_t stata = {0};
+    ADBMS_ReadReg(RDSTATA, 0, stata.raw);
+    float vref2 = ADBMS_CodeToVoltage_mV(stata.values.VREF2) / 1000.0f;
+    float temp = ADBMS_CodeToTemp_C(stata.values.ITMP);
+    float va = ADBMS_CodeToVoltage_mV(stata.values.VA) / 1000.0f;
+
+    ADBMS_STATB_t statb = {0};
+    ADBMS_ReadReg(RDSTATB, 0, statb.raw);
+    float vd = ADBMS_CodeToVoltage_mV(statb.bits.VD) / 1000.0f;
+    uint16_t uv_flags = statb.bits.C_UV_LO | ((uint16_t)statb.bits.C_UV_HI << 8);
+    uint16_t ov_flags = statb.bits.C_OV_LO | ((uint16_t)statb.bits.C_OV_HI << 8);
+
+    uint8_t sid[6];
+    ADBMS_ReadReg(RDSID, 0, sid);
+
+    /* Body: vref2,itmp,va,vd,uv,ov,sid */
+    FEB_Console_CsvEmit("reg-status", "%.3f,%.1f,%.3f,%.3f,0x%04X,0x%04X,%02X%02X%02X%02X%02X%02X", vref2, temp, va, vd,
+                        uv_flags, ov_flags, sid[5], sid[4], sid[3], sid[2], sid[1], sid[0]);
+  }
+  else
+  {
+    FEB_Console_CsvError("error", "unknown_action,%s", action);
+  }
+}
+
+/*============================================================================
  * Registration (called from BMS_RegisterCommands)
  *============================================================================*/
 void ADBMS_RegisterConsoleCommands(void)

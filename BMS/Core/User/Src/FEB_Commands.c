@@ -1037,6 +1037,177 @@ static void subcmd_volts(int argc, char *argv[])
   }
 }
 
+/* ----------------------------------------------------------------------------
+ * CSV handlers for the remaining diagnostic subcommands. Each mirrors the
+ * fields its text handler prints, comma-separated with no human labels, so CSV
+ * hosts can drive every BMS command. ack / done framing is automatic.
+ * -------------------------------------------------------------------------- */
+
+static void cmd_balance_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    /* Body: balancing,state */
+    FEB_Console_CsvEmit("balance", "%d,%s", FEB_Cell_Balancing_Status() ? 1 : 0,
+                        FEB_CAN_State_GetStateName(FEB_SM_Get_Current_State()));
+    return;
+  }
+  if (FEB_strcasecmp(argv[1], "on") == 0)
+  {
+    if (!is_balancing_allowed())
+    {
+      FEB_Console_CsvError("error", "not_allowed,%s", FEB_CAN_State_GetStateName(FEB_SM_Get_Current_State()));
+      return;
+    }
+    FEB_Cell_Balance_Start();
+    FEB_Console_CsvEmit("balance", "%d", 1);
+  }
+  else if (FEB_strcasecmp(argv[1], "off") == 0)
+  {
+    FEB_Stop_Balance();
+    FEB_Console_CsvEmit("balance", "%d", 0);
+  }
+  else
+  {
+    FEB_Console_CsvError("error", "invalid_option,%s", argv[1]);
+  }
+}
+
+static void cmd_cell_csv(int argc, char *argv[])
+{
+  if (argc < 3)
+  {
+    FEB_Console_CsvError("error", "usage,cell|<bank>|<cell>");
+    return;
+  }
+  int bank = atoi(argv[1]);
+  int cell = atoi(argv[2]);
+  if (bank < 1 || bank > FEB_NBANKS)
+  {
+    FEB_Console_CsvError("error", "invalid_bank,%d", bank);
+    return;
+  }
+  if (cell < 1 || cell > FEB_NUM_CELLS_PER_BANK)
+  {
+    FEB_Console_CsvError("error", "invalid_cell,%d", cell);
+    return;
+  }
+  int bank_idx = bank - 1;
+  int cell_idx = cell - 1;
+  float voltage_c = FEB_ADBMS_GET_Cell_Voltage((uint8_t)bank_idx, (uint16_t)cell_idx);
+  float voltage_s = FEB_ADBMS_GET_Cell_Voltage_S((uint8_t)bank_idx, (uint16_t)cell_idx);
+  float temp = FEB_ADBMS_GET_Cell_Temperature((uint8_t)bank_idx, (uint16_t)cell_idx);
+  uint8_t violations = FEB_ADBMS_GET_Cell_Violations((uint8_t)bank_idx, (uint16_t)cell_idx);
+  /* Body: bank,cell,v_primary,v_secondary,delta,temp,violations */
+  FEB_Console_CsvEmit("cell", "%d,%d,%.3f,%.3f,%.4f,%.1f,%d", bank, cell, voltage_c, voltage_s, voltage_c - voltage_s,
+                      temp, violations);
+}
+
+static void cmd_spi_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  const char *mode_str;
+  switch (ISOSPI_MODE)
+  {
+  case ISOSPI_MODE_REDUNDANT:
+    mode_str = "REDUNDANT";
+    break;
+  case ISOSPI_MODE_SPI1_ONLY:
+    mode_str = "SPI1_ONLY";
+    break;
+  case ISOSPI_MODE_SPI2_ONLY:
+    mode_str = "SPI2_ONLY";
+    break;
+  default:
+    mode_str = "UNKNOWN";
+    break;
+  }
+  /* Body: mode,primary_channel,failover_pec_threshold */
+  FEB_Console_CsvEmit("spi", "%s,%d,%d", mode_str, ISOSPI_PRIMARY_CHANNEL, ISOSPI_FAILOVER_PEC_THRESHOLD);
+}
+
+static void cmd_ping_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("error", "usage,ping|<1-4>");
+    return;
+  }
+  int ch = atoi(argv[1]);
+  if (ch < 1 || ch > 4)
+  {
+    FEB_Console_CsvError("error", "invalid_channel,%d", ch);
+    return;
+  }
+  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PING);
+  /* Body: channel,frame_id,mode */
+  FEB_Console_CsvEmit("ping", "%d,0x%02X,started", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+}
+
+static void cmd_pong_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("error", "usage,pong|<1-4>");
+    return;
+  }
+  int ch = atoi(argv[1]);
+  if (ch < 1 || ch > 4)
+  {
+    FEB_Console_CsvError("error", "invalid_channel,%d", ch);
+    return;
+  }
+  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PONG);
+  /* Body: channel,frame_id,mode */
+  FEB_Console_CsvEmit("pong", "%d,0x%02X,started", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+}
+
+static void cmd_canstop_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("error", "usage,canstop|<1-4|all>");
+    return;
+  }
+  if (FEB_strcasecmp(argv[1], "all") == 0)
+  {
+    FEB_CAN_PingPong_Reset();
+    FEB_Console_CsvEmit("canstop", "all,stopped");
+    return;
+  }
+  int ch = atoi(argv[1]);
+  if (ch < 1 || ch > 4)
+  {
+    FEB_Console_CsvError("error", "invalid_channel,%d", ch);
+    return;
+  }
+  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_OFF);
+  FEB_Console_CsvEmit("canstop", "%d,stopped", ch);
+}
+
+/* Mirrors subcmd_volts: triggers an ADSTAT-all conversion then emits one row
+ * per IC. Body: ic,vref2,va,vd,itmp. */
+static void cmd_volts_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  ADBMS_SendCmd(0x0468);
+  osDelay(pdMS_TO_TICKS(1));
+  for (uint8_t ic = 0; ic < FEB_NUM_IC; ic++)
+  {
+    ADBMS_STATA_t a = {0};
+    ADBMS_STATB_t b = {0};
+    ADBMS_ReadReg(RDSTATA, ic, a.raw);
+    ADBMS_ReadReg(RDSTATB, ic, b.raw);
+    float vref2 = ADBMS_CodeToVoltage_mV(a.values.VREF2) / 1000.0f;
+    float va = ADBMS_CodeToVoltage_mV(a.values.VA) / 1000.0f;
+    float vd = ADBMS_CodeToVoltage_mV(b.bits.VD) / 1000.0f;
+    float itmp = ADBMS_CodeToTemp_C(a.values.ITMP);
+    FEB_Console_CsvEmit("volts", "%u,%.3f,%.3f,%.3f,%.1f", (unsigned)ic, vref2, va, vd, itmp);
+  }
+}
+
 /* ============================================================================
  * Command Descriptors
  *
@@ -1075,7 +1246,7 @@ static const FEB_Console_Cmd_t bms_state_cmd = {.name = "state",
 static const FEB_Console_Cmd_t bms_balance_cmd = {.name = "balance",
                                                   .help = "Control cell balancing (on/off)",
                                                   .handler = subcmd_balance,
-                                                  .csv_handler = NULL,
+                                                  .csv_handler = cmd_balance_csv,
                                                   .hidden = true};
 static const FEB_Console_Cmd_t bms_gpio_cmd = {
     .name = "gpio", .help = "Hardware I/O status", .handler = subcmd_gpio, .csv_handler = cmd_gpio_csv, .hidden = true};
@@ -1091,10 +1262,10 @@ static const FEB_Console_Cmd_t bms_mem_cmd = {
 static const FEB_Console_Cmd_t bms_cell_cmd = {.name = "cell",
                                                .help = "Single cell details: cell|<bank>|<cell>",
                                                .handler = subcmd_cell,
-                                               .csv_handler = NULL,
+                                               .csv_handler = cmd_cell_csv,
                                                .hidden = true};
 static const FEB_Console_Cmd_t bms_spi_cmd = {
-    .name = "spi", .help = "isoSPI status", .handler = subcmd_spi, .csv_handler = NULL, .hidden = true};
+    .name = "spi", .help = "isoSPI status", .handler = subcmd_spi, .csv_handler = cmd_spi_csv, .hidden = true};
 static const FEB_Console_Cmd_t bms_errors_cmd = {
     .name = "errors", .help = "Error summary", .handler = subcmd_errors, .csv_handler = cmd_errors_csv, .hidden = true};
 static const FEB_Console_Cmd_t bms_config_cmd = {.name = "config",
@@ -1102,14 +1273,20 @@ static const FEB_Console_Cmd_t bms_config_cmd = {.name = "config",
                                                  .handler = subcmd_config,
                                                  .csv_handler = cmd_config_csv,
                                                  .hidden = true};
-static const FEB_Console_Cmd_t bms_ping_cmd = {
-    .name = "ping", .help = "Start CAN ping: ping|<1-4>", .handler = subcmd_ping, .csv_handler = NULL, .hidden = true};
-static const FEB_Console_Cmd_t bms_pong_cmd = {
-    .name = "pong", .help = "Start CAN pong: pong|<1-4>", .handler = subcmd_pong, .csv_handler = NULL, .hidden = true};
+static const FEB_Console_Cmd_t bms_ping_cmd = {.name = "ping",
+                                               .help = "Start CAN ping: ping|<1-4>",
+                                               .handler = subcmd_ping,
+                                               .csv_handler = cmd_ping_csv,
+                                               .hidden = true};
+static const FEB_Console_Cmd_t bms_pong_cmd = {.name = "pong",
+                                               .help = "Start CAN pong: pong|<1-4>",
+                                               .handler = subcmd_pong,
+                                               .csv_handler = cmd_pong_csv,
+                                               .hidden = true};
 static const FEB_Console_Cmd_t bms_canstop_cmd = {.name = "canstop",
                                                   .help = "Stop CAN ch: canstop|<1-4|all>",
                                                   .handler = subcmd_canstop,
-                                                  .csv_handler = NULL,
+                                                  .csv_handler = cmd_canstop_csv,
                                                   .hidden = true};
 static const FEB_Console_Cmd_t bms_canstatus_cmd = {.name = "canstatus",
                                                     .help = "CAN ping/pong status",
@@ -1124,12 +1301,12 @@ static const FEB_Console_Cmd_t bms_cell_stats_cmd = {.name = "cell-stats",
 static const FEB_Console_Cmd_t bms_reg_cmd = {.name = "reg",
                                               .help = "ADBMS register access (reg|list, reg|read|<n>, reg|dump, ...)",
                                               .handler = ADBMS_RegSubcmd,
-                                              .csv_handler = NULL,
+                                              .csv_handler = ADBMS_RegSubcmd_Csv,
                                               .hidden = true};
 static const FEB_Console_Cmd_t bms_volts_cmd = {.name = "volts",
                                                 .help = "ADBMS supply/reference voltages (VREF2/VA/VD/ITMP per IC)",
                                                 .handler = subcmd_volts,
-                                                .csv_handler = NULL,
+                                                .csv_handler = cmd_volts_csv,
                                                 .hidden = true};
 
 /* Per-board subcommand table. cmd_bms iterates this for `BMS|<sub>` dispatch.

@@ -12,9 +12,11 @@
 #include "FEB_GPS.h"
 #include "FEB_Fusion.h"
 #include "FEB_WSS.h"
+#include "FEB_SN_PingPong.h"
 #include "FEB_SN_Config.h"
 #include "feb_console.h"
 #include "feb_string_utils.h"
+#include "feb_can_lib.h"
 #include "lsm6dsox_reg.h"
 #include "lis3mdl_reg.h"
 #include <string.h>
@@ -1223,11 +1225,11 @@ static void print_cal_help(void)
   FEB_Console_Printf("               Prints hardIron + diagonal softIron (per-axis scale).\r\n");
 }
 
-static void cmd_cal_accel(void)
+/* Capture helpers shared by the text and CSV cal handlers. Each blocks the main
+ * loop while sampling (bench-only) and returns the computed offsets so both
+ * output modes format identical numbers. */
+static void cal_capture_accel(double off_g[3], double mean_mg[3])
 {
-  FEB_Console_Printf("=== Accel calibration ===\r\n");
-  FEB_Console_Printf("Hold the board flat & static. Capturing %u samples...\r\n", (unsigned)CAL_ACCEL_SAMPLES);
-
   double sx = 0.0, sy = 0.0, sz = 0.0;
   for (uint32_t i = 0; i < CAL_ACCEL_SAMPLES; i++)
   {
@@ -1237,25 +1239,17 @@ static void cmd_cal_accel(void)
     sz += acceleration_mg[2];
     HAL_Delay(1);
   }
-  const double mx = sx / (double)CAL_ACCEL_SAMPLES;
-  const double my = sy / (double)CAL_ACCEL_SAMPLES;
-  const double mz = sz / (double)CAL_ACCEL_SAMPLES;
-
+  mean_mg[0] = sx / (double)CAL_ACCEL_SAMPLES;
+  mean_mg[1] = sy / (double)CAL_ACCEL_SAMPLES;
+  mean_mg[2] = sz / (double)CAL_ACCEL_SAMPLES;
   /* Offsets are in g (driver gives mg). Subtract +1 g on Z (board flat, NWU = Z up). */
-  const double off_x_g = mx * 0.001;
-  const double off_y_g = my * 0.001;
-  const double off_z_g = (mz * 0.001) - 1.0;
-
-  FEB_Console_Printf("Mean (mg): X=%.2f Y=%.2f Z=%.2f\r\n", mx, my, mz);
-  FEB_Console_Printf("Paste into FEB_Fusion.c:\r\n");
-  FEB_Console_Printf("FusionVector accOffset = {.array = {%.6ff, %.6ff, %.6ff}};\r\n", off_x_g, off_y_g, off_z_g);
+  off_g[0] = mean_mg[0] * 0.001;
+  off_g[1] = mean_mg[1] * 0.001;
+  off_g[2] = (mean_mg[2] * 0.001) - 1.0;
 }
 
-static void cmd_cal_gyro(void)
+static void cal_capture_gyro(double off_dps[3])
 {
-  FEB_Console_Printf("=== Gyro calibration ===\r\n");
-  FEB_Console_Printf("Hold the board static. Capturing %u samples...\r\n", (unsigned)CAL_GYRO_SAMPLES);
-
   double sx = 0.0, sy = 0.0, sz = 0.0;
   for (uint32_t i = 0; i < CAL_GYRO_SAMPLES; i++)
   {
@@ -1266,21 +1260,15 @@ static void cmd_cal_gyro(void)
     HAL_Delay(1);
   }
   /* Driver gives mdps; FusionBias accepts dps. */
-  const double off_x_dps = (sx / (double)CAL_GYRO_SAMPLES) * 0.001;
-  const double off_y_dps = (sy / (double)CAL_GYRO_SAMPLES) * 0.001;
-  const double off_z_dps = (sz / (double)CAL_GYRO_SAMPLES) * 0.001;
-
-  FEB_Console_Printf("Paste into FEB_Fusion.c:\r\n");
-  FEB_Console_Printf("FusionVector gyroOffset = {.array = {%.6ff, %.6ff, %.6ff}};\r\n", off_x_dps, off_y_dps,
-                     off_z_dps);
+  off_dps[0] = (sx / (double)CAL_GYRO_SAMPLES) * 0.001;
+  off_dps[1] = (sy / (double)CAL_GYRO_SAMPLES) * 0.001;
+  off_dps[2] = (sz / (double)CAL_GYRO_SAMPLES) * 0.001;
 }
 
-static void cmd_cal_mag(void)
+/* @param csv  When true, progress ticks go out as CSV `log` rows (safe inside a
+ *             CSV transaction); when false they print as plain text. */
+static void cal_capture_mag(float hi[3], float scale[3], float span[3], bool csv)
 {
-  FEB_Console_Printf("=== Mag calibration ===\r\n");
-  FEB_Console_Printf("Slowly rotate the board through ALL orientations for %u s...\r\n",
-                     (unsigned)(CAL_MAG_DURATION_MS / 1000u));
-
   /* Prime with first sample so min/max start sensible. */
   read_Magnetic_Field_Data();
   float min_x = magnetic_mG[0], max_x = magnetic_mG[0];
@@ -1308,30 +1296,96 @@ static void cmd_cal_mag(void)
     const uint32_t elapsed_s = (HAL_GetTick() - t_start) / 1000u;
     if (elapsed_s != last_log_s && (elapsed_s % 5u) == 0u)
     {
-      FEB_Console_Printf("  %u s elapsed\r\n", (unsigned)elapsed_s);
+      if (csv)
+        FEB_Console_CsvLog("%u_s_elapsed", (unsigned)elapsed_s);
+      else
+        FEB_Console_Printf("  %u s elapsed\r\n", (unsigned)elapsed_s);
       last_log_s = elapsed_s;
     }
     HAL_Delay(CAL_MAG_SAMPLE_PERIOD_MS);
   }
 
-  const float hi_x = 0.5f * (max_x + min_x);
-  const float hi_y = 0.5f * (max_y + min_y);
-  const float hi_z = 0.5f * (max_z + min_z);
-  const float span_x = max_x - min_x;
-  const float span_y = max_y - min_y;
-  const float span_z = max_z - min_z;
-  const float span_avg = (span_x + span_y + span_z) / 3.0f;
-  const float scale_x = (span_x > 1e-6f) ? (span_avg / span_x) : 1.0f;
-  const float scale_y = (span_y > 1e-6f) ? (span_avg / span_y) : 1.0f;
-  const float scale_z = (span_z > 1e-6f) ? (span_avg / span_z) : 1.0f;
+  hi[0] = 0.5f * (max_x + min_x);
+  hi[1] = 0.5f * (max_y + min_y);
+  hi[2] = 0.5f * (max_z + min_z);
+  span[0] = max_x - min_x;
+  span[1] = max_y - min_y;
+  span[2] = max_z - min_z;
+  const float span_avg = (span[0] + span[1] + span[2]) / 3.0f;
+  scale[0] = (span[0] > 1e-6f) ? (span_avg / span[0]) : 1.0f;
+  scale[1] = (span[1] > 1e-6f) ? (span_avg / span[1]) : 1.0f;
+  scale[2] = (span[2] > 1e-6f) ? (span_avg / span[2]) : 1.0f;
+}
 
-  FEB_Console_Printf("Span (mG): X=%.1f Y=%.1f Z=%.1f\r\n", span_x, span_y, span_z);
+static void cmd_cal_accel(void)
+{
+  FEB_Console_Printf("=== Accel calibration ===\r\n");
+  FEB_Console_Printf("Hold the board flat & static. Capturing %u samples...\r\n", (unsigned)CAL_ACCEL_SAMPLES);
+
+  double off_g[3], mean_mg[3];
+  cal_capture_accel(off_g, mean_mg);
+
+  FEB_Console_Printf("Mean (mg): X=%.2f Y=%.2f Z=%.2f\r\n", mean_mg[0], mean_mg[1], mean_mg[2]);
   FEB_Console_Printf("Paste into FEB_Fusion.c:\r\n");
-  FEB_Console_Printf("FusionVector hardIron = {.array = {%.3ff, %.3ff, %.3ff}};\r\n", hi_x, hi_y, hi_z);
+  FEB_Console_Printf("FusionVector accOffset = {.array = {%.6ff, %.6ff, %.6ff}};\r\n", off_g[0], off_g[1], off_g[2]);
+}
+
+static void cmd_cal_gyro(void)
+{
+  FEB_Console_Printf("=== Gyro calibration ===\r\n");
+  FEB_Console_Printf("Hold the board static. Capturing %u samples...\r\n", (unsigned)CAL_GYRO_SAMPLES);
+
+  double off_dps[3];
+  cal_capture_gyro(off_dps);
+
+  FEB_Console_Printf("Paste into FEB_Fusion.c:\r\n");
+  FEB_Console_Printf("FusionVector gyroOffset = {.array = {%.6ff, %.6ff, %.6ff}};\r\n", off_dps[0], off_dps[1],
+                     off_dps[2]);
+}
+
+static void cmd_cal_mag(void)
+{
+  FEB_Console_Printf("=== Mag calibration ===\r\n");
+  FEB_Console_Printf("Slowly rotate the board through ALL orientations for %u s...\r\n",
+                     (unsigned)(CAL_MAG_DURATION_MS / 1000u));
+
+  float hi[3], scale[3], span[3];
+  cal_capture_mag(hi, scale, span, false);
+
+  FEB_Console_Printf("Span (mG): X=%.1f Y=%.1f Z=%.1f\r\n", span[0], span[1], span[2]);
+  FEB_Console_Printf("Paste into FEB_Fusion.c:\r\n");
+  FEB_Console_Printf("FusionVector hardIron = {.array = {%.3ff, %.3ff, %.3ff}};\r\n", hi[0], hi[1], hi[2]);
   FEB_Console_Printf("FusionMatrix softIron = {.array = {%.6ff, 0.0f, 0.0f, "
                      "0.0f, %.6ff, 0.0f, "
                      "0.0f, 0.0f, %.6ff}};\r\n",
-                     scale_x, scale_y, scale_z);
+                     scale[0], scale[1], scale[2]);
+}
+
+/* CSV mirrors: capture identical data, emit one row instead of paste-ready text. */
+static void csv_cal_accel(void)
+{
+  double off_g[3], mean_mg[3];
+  cal_capture_accel(off_g, mean_mg);
+  /* Body: meanX_mg,meanY_mg,meanZ_mg,offX_g,offY_g,offZ_g */
+  FEB_Console_CsvEmit("cal-accel", "%.2f,%.2f,%.2f,%.6f,%.6f,%.6f", mean_mg[0], mean_mg[1], mean_mg[2], off_g[0],
+                      off_g[1], off_g[2]);
+}
+
+static void csv_cal_gyro(void)
+{
+  double off_dps[3];
+  cal_capture_gyro(off_dps);
+  /* Body: offX_dps,offY_dps,offZ_dps */
+  FEB_Console_CsvEmit("cal-gyro", "%.6f,%.6f,%.6f", off_dps[0], off_dps[1], off_dps[2]);
+}
+
+static void csv_cal_mag(void)
+{
+  float hi[3], scale[3], span[3];
+  cal_capture_mag(hi, scale, span, true);
+  /* Body: hiX,hiY,hiZ,scaleX,scaleY,scaleZ,spanX,spanY,spanZ */
+  FEB_Console_CsvEmit("cal-mag", "%.3f,%.3f,%.3f,%.6f,%.6f,%.6f,%.1f,%.1f,%.1f", hi[0], hi[1], hi[2], scale[0],
+                      scale[1], scale[2], span[0], span[1], span[2]);
 }
 
 static void cmd_cal(int argc, char *argv[])
@@ -1359,6 +1413,232 @@ static void cmd_cal(int argc, char *argv[])
     FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
     print_cal_help();
   }
+}
+
+/* CSV-mode handler. Same argv layout as cmd_cal: argv[0]="CAL", argv[1]=axis.
+ * Bench-only and blocking, but answers over CSV instead of returning
+ * `unsupported`. ack/done framing is automatic. */
+static void cmd_cal_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("info", "usage,cal|<accel|gyro|mag>");
+    return;
+  }
+  const char *subcmd = argv[1];
+  if (FEB_strcasecmp(subcmd, "accel") == 0)
+  {
+    csv_cal_accel();
+  }
+  else if (FEB_strcasecmp(subcmd, "gyro") == 0)
+  {
+    csv_cal_gyro();
+  }
+  else if (FEB_strcasecmp(subcmd, "mag") == 0)
+  {
+    csv_cal_mag();
+  }
+  else
+  {
+    FEB_Console_CsvError("error", "cal_axis,%s", subcmd);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                        CAN Ping/Pong Commands                              */
+/* -------------------------------------------------------------------------- */
+/* Ported from LVPDB. Channels 1-4 map to frame IDs 0xE0-0xE3. PING transmits
+ * an incrementing counter every tick; PONG echoes received pings with
+ * counter+1. Exposed as SN|ping|<1-4>, SN|pong|<1-4>, SN|stop|<1-4|all>,
+ * SN|canstatus (and the same names CSV-side). */
+
+static const char *const pingpong_mode_names[] = {"OFF", "PING", "PONG"};
+static const uint32_t pingpong_frame_ids[] = {0xE0, 0xE1, 0xE2, 0xE3};
+
+/* Parse + validate a 1-4 channel number; returns false on anything else. */
+static bool parse_channel(const char *str, int *ch_out)
+{
+  char *endptr;
+  long val = strtol(str, &endptr, 10);
+  if (*endptr != '\0' || val < 1 || val > 4)
+  {
+    return false;
+  }
+  *ch_out = (int)val;
+  return true;
+}
+
+static void cmd_ping(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_Printf("Usage: SN|ping|<channel>\r\n");
+    FEB_Console_Printf("Channels: 1-4 (Frame IDs 0xE0-0xE3)\r\n");
+    return;
+  }
+  int ch;
+  if (!parse_channel(argv[1], &ch))
+  {
+    FEB_Console_Printf("Error: Channel must be 1-4\r\n");
+    return;
+  }
+  FEB_SN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PING);
+  FEB_Console_Printf("Channel %d (0x%02X): PING mode started\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+}
+
+static void cmd_pong(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_Printf("Usage: SN|pong|<channel>\r\n");
+    FEB_Console_Printf("Channels: 1-4 (Frame IDs 0xE0-0xE3)\r\n");
+    return;
+  }
+  int ch;
+  if (!parse_channel(argv[1], &ch))
+  {
+    FEB_Console_Printf("Error: Channel must be 1-4\r\n");
+    return;
+  }
+  FEB_SN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PONG);
+  FEB_Console_Printf("Channel %d (0x%02X): PONG mode started\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+}
+
+static void cmd_stop(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_Printf("Usage: SN|stop|<channel|all>\r\n");
+    return;
+  }
+  if (FEB_strcasecmp(argv[1], "all") == 0)
+  {
+    FEB_SN_PingPong_Reset();
+    FEB_Console_Printf("All channels stopped\r\n");
+    return;
+  }
+  int ch;
+  if (!parse_channel(argv[1], &ch))
+  {
+    FEB_Console_Printf("Error: Channel must be 1-4 or 'all'\r\n");
+    return;
+  }
+  FEB_SN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_OFF);
+  FEB_Console_Printf("Channel %d stopped\r\n", ch);
+}
+
+static void cmd_canstatus(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  FEB_Console_Printf("CAN Ping/Pong Status:\r\n");
+  FEB_Console_Printf("%-3s %-6s %-5s %10s %10s %12s\r\n", "Ch", "FrameID", "Mode", "TX Count", "RX Count", "Last RX");
+  FEB_Console_Printf("--- ------ ----- ---------- ---------- ------------\r\n");
+  for (int ch = 1; ch <= 4; ch++)
+  {
+    FEB_PingPong_Mode_t mode = FEB_SN_PingPong_GetMode((uint8_t)ch);
+    uint32_t tx_count = FEB_SN_PingPong_GetTxCount((uint8_t)ch);
+    uint32_t rx_count = FEB_SN_PingPong_GetRxCount((uint8_t)ch);
+    int32_t last_rx = FEB_SN_PingPong_GetLastCounter((uint8_t)ch);
+    FEB_Console_Printf("%-3d 0x%02X   %-5s %10u %10u %12d\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1],
+                       pingpong_mode_names[mode], (unsigned int)tx_count, (unsigned int)rx_count, (int)last_rx);
+  }
+
+  /* Bus health snapshot from the feb_can library. LEC is the key tell: a
+   * climbing TEC with LEC=stuff/bit/crc means bit-timing (clock) trouble; LEC=ack
+   * means nobody on the bus is acknowledging. bus_off>0 means the controller has
+   * latched off and been recovered (frames are not reaching the wire while it is). */
+  static const char *const lec_names[8] = {"none", "stuff", "form", "ack", "bit-rec", "bit-dom", "crc", "sw"};
+  uint32_t esr = FEB_CAN_GetLastErrorEsr();
+  FEB_Console_Printf("\r\nCAN Bus Health:\r\n");
+  FEB_Console_Printf("  bus_off=%u  ewg_recovery=%u  error_irq=%u\r\n", (unsigned)FEB_CAN_GetBusOffCount(),
+                     (unsigned)FEB_CAN_GetEwgRecoveryCount(), (unsigned)FEB_CAN_GetErrorCallbackCount());
+  FEB_Console_Printf("  hal_err=%u  tx_overflow=%u  rx_overflow=%u\r\n", (unsigned)FEB_CAN_GetHalErrorCount(),
+                     (unsigned)FEB_CAN_GetTxQueueOverflowCount(), (unsigned)FEB_CAN_GetRxQueueOverflowCount());
+  FEB_Console_Printf("  TEC=%u  REC=%u  LEC=%s  last_code=0x%lX\r\n", (unsigned)((esr >> 16) & 0xFFu),
+                     (unsigned)((esr >> 24) & 0xFFu), lec_names[(esr >> 4) & 0x7u],
+                     (unsigned long)FEB_CAN_GetLastErrorCode());
+}
+
+/* CSV mirrors: same actions, machine-readable rows. */
+static void cmd_csv_ping(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("error", "ping_usage,channel=1..4");
+    return;
+  }
+  int ch;
+  if (!parse_channel(argv[1], &ch))
+  {
+    FEB_Console_CsvError("error", "ping_channel,%s", argv[1]);
+    return;
+  }
+  FEB_SN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PING);
+  FEB_Console_CsvEmit("ping", "%d,0x%02X", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+}
+
+static void cmd_csv_pong(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("error", "pong_usage,channel=1..4");
+    return;
+  }
+  int ch;
+  if (!parse_channel(argv[1], &ch))
+  {
+    FEB_Console_CsvError("error", "pong_channel,%s", argv[1]);
+    return;
+  }
+  FEB_SN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PONG);
+  FEB_Console_CsvEmit("pong", "%d,0x%02X", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+}
+
+static void cmd_csv_stop(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("error", "stop_usage,channel=1..4|all");
+    return;
+  }
+  if (FEB_strcasecmp(argv[1], "all") == 0)
+  {
+    FEB_SN_PingPong_Reset();
+    FEB_Console_CsvEmit("stop", "all");
+    return;
+  }
+  int ch;
+  if (!parse_channel(argv[1], &ch))
+  {
+    FEB_Console_CsvError("error", "stop_channel,%s", argv[1]);
+    return;
+  }
+  FEB_SN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_OFF);
+  FEB_Console_CsvEmit("stop", "%d", ch);
+}
+
+static void cmd_csv_canstatus(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  for (int ch = 1; ch <= 4; ch++)
+  {
+    FEB_PingPong_Mode_t mode = FEB_SN_PingPong_GetMode((uint8_t)ch);
+    uint32_t tx_count = FEB_SN_PingPong_GetTxCount((uint8_t)ch);
+    uint32_t rx_count = FEB_SN_PingPong_GetRxCount((uint8_t)ch);
+    int32_t last_rx = FEB_SN_PingPong_GetLastCounter((uint8_t)ch);
+    FEB_Console_CsvEmit("can", "%d,0x%02X,%s,%u,%u,%d", ch, (unsigned int)pingpong_frame_ids[ch - 1],
+                        pingpong_mode_names[mode], (unsigned int)tx_count, (unsigned int)rx_count, (int)last_rx);
+  }
+
+  uint32_t esr = FEB_CAN_GetLastErrorEsr();
+  FEB_Console_CsvEmit("canhealth", "busoff=%u,ewg=%u,errcb=%u,hal=%u,txovf=%u,rxovf=%u,tec=%u,rec=%u,lec=%u,code=0x%lX",
+                      (unsigned)FEB_CAN_GetBusOffCount(), (unsigned)FEB_CAN_GetEwgRecoveryCount(),
+                      (unsigned)FEB_CAN_GetErrorCallbackCount(), (unsigned)FEB_CAN_GetHalErrorCount(),
+                      (unsigned)FEB_CAN_GetTxQueueOverflowCount(), (unsigned)FEB_CAN_GetRxQueueOverflowCount(),
+                      (unsigned)((esr >> 16) & 0xFFu), (unsigned)((esr >> 24) & 0xFFu), (unsigned)((esr >> 4) & 0x7u),
+                      (unsigned long)FEB_CAN_GetLastErrorCode());
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1390,7 +1670,7 @@ static const FEB_Console_Cmd_t cal_cmd = {
     .name = "CAL",
     .help = "Fusion calibration capture (CAL|accel, CAL|gyro, CAL|mag) — bench only",
     .handler = cmd_cal,
-    .csv_handler = NULL,
+    .csv_handler = cmd_cal_csv,
 };
 
 static const FEB_Console_Cmd_t fusion_cmd = {
@@ -1407,12 +1687,40 @@ static const FEB_Console_Cmd_t wss_cmd = {
     .csv_handler = cmd_wss_csv,
 };
 
+static const FEB_Console_Cmd_t ping_cmd = {
+    .name = "ping",
+    .help = "Start CAN ping: ping|<1-4> (frame IDs 0xE0-0xE3)",
+    .handler = cmd_ping,
+    .csv_handler = cmd_csv_ping,
+};
+
+static const FEB_Console_Cmd_t pong_cmd = {
+    .name = "pong",
+    .help = "Start CAN pong: pong|<1-4>",
+    .handler = cmd_pong,
+    .csv_handler = cmd_csv_pong,
+};
+
+static const FEB_Console_Cmd_t stop_cmd = {
+    .name = "stop",
+    .help = "Stop CAN ping/pong: stop|<1-4|all>",
+    .handler = cmd_stop,
+    .csv_handler = cmd_csv_stop,
+};
+
+static const FEB_Console_Cmd_t canstatus_cmd = {
+    .name = "canstatus",
+    .help = "CAN ping/pong status",
+    .handler = cmd_canstatus,
+    .csv_handler = cmd_csv_canstatus,
+};
+
 /* Per-board subcommand table. Each entry is one IMU/MAG/GPS sensor whose own
  * struct already unifies text + CSV handlers. cmd_sn dispatches `SN|<sensor>`
  * by delegating to the sensor's text handler; CSV mode resolves directly via
  * top-level registration of each sensor. */
 static const FEB_Console_Cmd_t *const SN_SUBCMDS[] = {
-    &imu_cmd, &mag_cmd, &gps_cmd, &cal_cmd, &fusion_cmd, &wss_cmd,
+    &imu_cmd, &mag_cmd, &gps_cmd, &cal_cmd, &fusion_cmd, &wss_cmd, &ping_cmd, &pong_cmd, &stop_cmd, &canstatus_cmd,
 };
 #define SN_SUBCMDS_COUNT (sizeof(SN_SUBCMDS) / sizeof(SN_SUBCMDS[0]))
 

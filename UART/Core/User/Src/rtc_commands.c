@@ -19,6 +19,7 @@
  * ============================================================================ */
 
 static void cmd_rtc(int argc, char *argv[]);
+static void cmd_rtc_csv(int argc, char *argv[]);
 static void print_rtc_help(void);
 static void cmd_get(void);
 static void cmd_time(void);
@@ -36,6 +37,7 @@ const FEB_Console_Cmd_t rtc_cmd = {
     .help = "RTC commands: rtc|get, rtc|time, rtc|date, rtc|set|YYYY|MM|DD|HH|MM|SS, rtc|settime|HH|MM|SS, "
             "rtc|setdate|YYYY|MM|DD",
     .handler = cmd_rtc,
+    .csv_handler = cmd_rtc_csv,
     .hidden = true,
 };
 
@@ -58,6 +60,26 @@ static void print_status_error(FEB_RTC_Status_t status)
     break;
   default:
     FEB_Console_Printf("Error: Unknown error (%d)\r\n", status);
+    break;
+  }
+}
+
+/* CSV mirror of print_status_error: emit a machine-readable error row. */
+static void csv_status_error(FEB_RTC_Status_t status)
+{
+  switch (status)
+  {
+  case FEB_RTC_ERROR:
+    FEB_Console_CsvError("error", "hal_failed");
+    break;
+  case FEB_RTC_INVALID_ARG:
+    FEB_Console_CsvError("error", "invalid_arg");
+    break;
+  case FEB_RTC_TIMEOUT:
+    FEB_Console_CsvError("error", "busy_timeout");
+    break;
+  default:
+    FEB_Console_CsvError("error", "unknown,%d", status);
     break;
   }
 }
@@ -257,4 +279,121 @@ static void cmd_setdate(int argc, char *argv[])
   }
 
   FEB_Console_Printf("Date set to: %04u-%02u-%02u\r\n", year, month, day);
+}
+
+/* ============================================================================
+ * CSV-mode handler (machine-readable). Same argv layout as cmd_rtc: argv[0]
+ * is "rtc", argv[1] is the subcommand, args follow. ack/done are automatic.
+ * ============================================================================ */
+
+static void cmd_rtc_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("info", "usage,rtc|<get|time|date|set|settime|setdate>");
+    return;
+  }
+
+  const char *subcmd = argv[1];
+
+  if (FEB_strcasecmp(subcmd, "get") == 0)
+  {
+    FEB_RTC_DateTime_t dt;
+    FEB_RTC_Status_t status = FEB_RTC_GetDateTime(&dt);
+    if (status != FEB_RTC_OK)
+    {
+      csv_status_error(status);
+      return;
+    }
+    /* Body: year,month,day,hours,minutes,seconds,weekday */
+    FEB_Console_CsvEmit("rtc", "%u,%u,%u,%u,%u,%u,%s", dt.year, dt.month, dt.day, dt.hours, dt.minutes, dt.seconds,
+                        FEB_RTC_GetWeekdayName(dt.weekday));
+  }
+  else if (FEB_strcasecmp(subcmd, "time") == 0)
+  {
+    FEB_RTC_DateTime_t dt;
+    FEB_RTC_Status_t status = FEB_RTC_GetDateTime(&dt);
+    if (status != FEB_RTC_OK)
+    {
+      csv_status_error(status);
+      return;
+    }
+    FEB_Console_CsvEmit("time", "%u,%u,%u", dt.hours, dt.minutes, dt.seconds);
+  }
+  else if (FEB_strcasecmp(subcmd, "date") == 0)
+  {
+    FEB_RTC_DateTime_t dt;
+    FEB_RTC_Status_t status = FEB_RTC_GetDateTime(&dt);
+    if (status != FEB_RTC_OK)
+    {
+      csv_status_error(status);
+      return;
+    }
+    FEB_Console_CsvEmit("date", "%u,%u,%u,%s", dt.year, dt.month, dt.day, FEB_RTC_GetWeekdayName(dt.weekday));
+  }
+  else if (FEB_strcasecmp(subcmd, "set") == 0)
+  {
+    /* argv: rtc|set|YYYY|MM|DD|HH|MM|SS */
+    if (argc < 8)
+    {
+      FEB_Console_CsvError("error", "usage,rtc|set|YYYY|MM|DD|HH|MM|SS");
+      return;
+    }
+    FEB_RTC_DateTime_t dt;
+    dt.year = (uint16_t)strtoul(argv[2], NULL, 10);
+    dt.month = (uint8_t)strtoul(argv[3], NULL, 10);
+    dt.day = (uint8_t)strtoul(argv[4], NULL, 10);
+    dt.hours = (uint8_t)strtoul(argv[5], NULL, 10);
+    dt.minutes = (uint8_t)strtoul(argv[6], NULL, 10);
+    dt.seconds = (uint8_t)strtoul(argv[7], NULL, 10);
+    FEB_RTC_Status_t status = FEB_RTC_SetDateTime(&dt);
+    if (status != FEB_RTC_OK)
+    {
+      csv_status_error(status);
+      return;
+    }
+    FEB_Console_CsvEmit("rtc", "%u,%u,%u,%u,%u,%u", dt.year, dt.month, dt.day, dt.hours, dt.minutes, dt.seconds);
+  }
+  else if (FEB_strcasecmp(subcmd, "settime") == 0)
+  {
+    /* argv: rtc|settime|HH|MM|SS */
+    if (argc < 5)
+    {
+      FEB_Console_CsvError("error", "usage,rtc|settime|HH|MM|SS");
+      return;
+    }
+    uint8_t hours = (uint8_t)strtoul(argv[2], NULL, 10);
+    uint8_t minutes = (uint8_t)strtoul(argv[3], NULL, 10);
+    uint8_t seconds = (uint8_t)strtoul(argv[4], NULL, 10);
+    FEB_RTC_Status_t status = FEB_RTC_SetTime(hours, minutes, seconds);
+    if (status != FEB_RTC_OK)
+    {
+      csv_status_error(status);
+      return;
+    }
+    FEB_Console_CsvEmit("time", "%u,%u,%u", hours, minutes, seconds);
+  }
+  else if (FEB_strcasecmp(subcmd, "setdate") == 0)
+  {
+    /* argv: rtc|setdate|YYYY|MM|DD */
+    if (argc < 5)
+    {
+      FEB_Console_CsvError("error", "usage,rtc|setdate|YYYY|MM|DD");
+      return;
+    }
+    uint16_t year = (uint16_t)strtoul(argv[2], NULL, 10);
+    uint8_t month = (uint8_t)strtoul(argv[3], NULL, 10);
+    uint8_t day = (uint8_t)strtoul(argv[4], NULL, 10);
+    FEB_RTC_Status_t status = FEB_RTC_SetDate(day, month, year);
+    if (status != FEB_RTC_OK)
+    {
+      csv_status_error(status);
+      return;
+    }
+    FEB_Console_CsvEmit("date", "%u,%u,%u", year, month, day);
+  }
+  else
+  {
+    FEB_Console_CsvError("error", "unknown_subcommand,%s", subcmd);
+  }
 }

@@ -378,4 +378,11 @@ void ADBMS_RegisterConsoleCommands(void);
  */
 void ADBMS_RegSubcmd(int argc, char *argv[]);
 
+/**
+ * @brief CSV-mode handler for BMS|csv|<tx>|reg|* (machine-readable)
+ * @param argc Argument count (includes "reg")
+ * @param argv Argument vector
+ */
+void ADBMS_RegSubcmd_Csv(int argc, char *argv[]);
+
 #endif /* ADBMS6830B_REGISTERS_H */

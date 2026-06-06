@@ -52,15 +52,15 @@ int32_t lsm6dsox_write(void *handle, uint8_t reg, const uint8_t *bufp, uint16_t 
 
 void i2c_scan(void)
 {
-  LOG_I(TAG_IMU, "Scanning I2C3...");
+  LOG_T(TAG_IMU, "Scanning I2C3...");
   for (uint8_t addr = 0x00; addr < 0x80; addr++)
   {
     if (HAL_I2C_IsDeviceReady(&hi2c3, addr << 1, 1, 10) == HAL_OK)
     {
-      LOG_I(TAG_IMU, "Device found at 0x%02X", addr);
+      LOG_T(TAG_IMU, "Device found at 0x%02X", addr);
     }
   }
-  LOG_I(TAG_IMU, "Scan complete");
+  LOG_T(TAG_IMU, "Scan complete");
 }
 
 int lsm6dsox_init(void)

@@ -418,6 +418,32 @@ static void cmd_pwm_set_csv(int argc, char *argv[])
   }
 }
 
+/* CSV router for the pwm subcommand (DART|csv|<tx>|pwm|<set|get>|...). Delegates
+ * to the same logic as the standalone pwm-set / pwm-get CSV commands, mirroring
+ * the text-mode sub_pwm router. */
+static void cmd_pwm_csv(int argc, char *argv[])
+{
+  /* argv = ["pwm", <sub>, ...] */
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("error", "usage,pwm|<set|get>|...");
+    return;
+  }
+  const char *sub = argv[1];
+  if (FEB_strcasecmp(sub, "set") == 0)
+  {
+    cmd_pwm_set_csv(argc - 1, argv + 1);
+  }
+  else if (FEB_strcasecmp(sub, "get") == 0)
+  {
+    cmd_pwm_get_csv(argc - 1, argv + 1);
+  }
+  else
+  {
+    FEB_Console_CsvError("error", "pwm_subcommand,%s", sub);
+  }
+}
+
 static void cmd_auto_csv(int argc, char *argv[])
 {
   (void)argc;
@@ -460,7 +486,7 @@ static const FEB_Console_Cmd_t dart_status_cmd = {.name = "status",
 static const FEB_Console_Cmd_t dart_pwm_cmd = {.name = "pwm",
                                                .help = "PWM router: pwm|set|<fan>|<pct>, pwm|get|<fan>",
                                                .handler = sub_pwm,
-                                               .csv_handler = NULL,
+                                               .csv_handler = cmd_pwm_csv,
                                                .hidden = true};
 static const FEB_Console_Cmd_t dart_pwm_get_cmd = {.name = "pwm-get",
                                                    .help = "Read commanded PWM duty",

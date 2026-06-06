@@ -346,8 +346,8 @@
       }
     },
     "Sensor_Nodes": {
-      "ioc_checksum": "be12ff3a8379f17c1b0a08bbdaf4953fb8f1c19bc8888a1df18d8395bb5a58f1",
-      "generated_at": "2026-05-31T22:00:48Z",
+      "ioc_checksum": "92d075b8d175250a76dee123ca59955032f2ebe8519ffb49e998bb810b3701f2",
+      "generated_at": "2026-06-06T20:57:01Z",
       "files": {
         "Core/Inc/adc.h": "0ac97025a4065f07b7b65a906bd0c45ea800215434ed43c287c1685507f3f612",
         "Core/Inc/can.h": "98925d7f4010f054e17d240116244377377c15248a5413a09ff811cdc23084e5",
@@ -355,7 +355,7 @@
         "Core/Inc/gpio.h": "e2d62f964a0b7f238384ed6a20a181d09df9647240a268dc547acf5b35099f74",
         "Core/Inc/i2c.h": "f8ccbb92e950fd1d84e3851b46a5e327f04797b3596af4ad306373eee85840a4",
         "Core/Inc/main.h": "3d094f9cafa9dddc183ec8a0549cf2a3bf78b6bdf2aee71402de2f5634f26f99",
-        "Core/Inc/stm32f4xx_hal_conf.h": "73d247d57dfb67fbdd50432f98f71c6fe9c18d23a705828178ca7a3589f9e709",
+        "Core/Inc/stm32f4xx_hal_conf.h": "f96b5d882a8a0fca29cc10422776fc4f7851618256fe229ff90e1320f60f0506",
         "Core/Inc/stm32f4xx_it.h": "475e3816ec3c320e776dd14a5cf2e8eddadff4261a4bc80034210d1c3d71ee73",
         "Core/Inc/tim.h": "6ea6adbad8265f73a0ca556e657fc3f1906a29dbbb243b4337030b4ce847eff8",
         "Core/Inc/usart.h": "8c7ef615ce73773c33fdce85e6a9809f9eef65226b59e67e53e72c902a6a70a9",
@@ -364,7 +364,7 @@
         "Core/Src/dma.c": "34e9a60453cff20a0e179e43e2464abb3aa205dd8faf7acd7581ca0086f3a673",
         "Core/Src/gpio.c": "12d70d25d5a8026905bcf10ea026c982e785528fe85bd1861d2095dbae583e0e",
         "Core/Src/i2c.c": "0f52452004f5449129f1065f0d51ea4b2b4a69837c098a8bb6190372e5a113e1",
-        "Core/Src/main.c": "63b74204d8837f4da7fc73912967c5134ab6abfcbbea1bd7d0665a4837a60830",
+        "Core/Src/main.c": "82190ff765e5181fd0b62cec46b333fef71c6fc6856ca15ce50cff4812421ad8",
         "Core/Src/stm32f4xx_hal_msp.c": "3217d99dc7006dc46ac384717641fe84386f05fc71db0a3340fa0eae810bc1b7",
         "Core/Src/stm32f4xx_it.c": "ceaa18875b9504a3e34d1821555549042e62d7c1b4c4fe6fcd4d54662a34bb59",
         "Core/Src/syscalls.c": "03c06c72eafb44b499814cf9234aba57dd830f345d9b8779b5d7090e78517600",
