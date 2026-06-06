@@ -26,7 +26,7 @@ void FEB_UI_Update_Torque()
   // snprintf(buf, sizeof(buf), "%d", torque);
   // lv_label_set_text(ui_TorqueValue, buf);
 
-  torque = FEB_CAN_PCU_GetLastTorque() * 1;
+  torque = FEB_CAN_PCU_GetLastTorque() * 25;
 
   if (torque < 0)
   {
