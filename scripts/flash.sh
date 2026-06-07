@@ -15,7 +15,7 @@ set -e
 # Available boards. Sensor_Nodes ships in two variants (FRONT, REAR); pick
 # the right ELF for the physical node you're flashing. See
 # Sensor_Nodes/Core/User/Inc/FEB_SN_Config.h.
-BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes_FRONT" "Sensor_Nodes_REAR" "UART" "UART_TEST")
+BOARDS=("BMS" "DASH" "DART" "DCU" "DCU_Receiver" "LVPDB" "PCU" "Sensor_Nodes_FRONT" "Sensor_Nodes_REAR" "UART" "UART_TEST")
 
 # Colors for output
 RED='\033[0;31m'

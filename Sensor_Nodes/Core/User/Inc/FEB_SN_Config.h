@@ -64,6 +64,7 @@ extern const char FEB_SN_VARIANT_NAME[];
 #define FEB_SN_HAS_WSS 1
 #define FEB_SN_HAS_FUSION 1
 #define FEB_SN_HAS_SENSOR_TEMPS 1
+#define FEB_SN_HAS_LINEAR_POTENTIOMETER 1
 #else /* REAR */
 #define FEB_SN_HAS_IMU 1
 #define FEB_SN_HAS_MAG 1
@@ -71,6 +72,7 @@ extern const char FEB_SN_VARIANT_NAME[];
 #define FEB_SN_HAS_WSS 1
 #define FEB_SN_HAS_FUSION 1
 #define FEB_SN_HAS_SENSOR_TEMPS 1
+#define FEB_SN_HAS_LINEAR_POTENTIOMETER 1
 #endif
 
 /* Consistency checks: composite features require their primitives. */
@@ -232,6 +234,17 @@ extern const char FEB_SN_VARIANT_NAME[];
 #define feb_sn_sensor_temps_imu_encode feb_can_sensor_temps_data_imu_temp_encode
 #define feb_sn_sensor_temps_mag_encode feb_can_sensor_temps_data_mag_temp_encode
 
+/* ---------------- Linear potentiometer (0x1E FRONT / 0x1F REAR) ----------------
+ * Layout is identical FRONT/REAR (two uint16); only the signal-member suffix
+ * differs, so the member names are aliased too (feb_sn_linpot_left/right) to keep
+ * FEB_CAN_LinearPotentiometer.c fully variant-agnostic. */
+#define FEB_SN_LINPOT_FRAME_ID FEB_CAN_LINEAR_POTENTIOMETER_FRONT_FRAME_ID
+#define FEB_SN_LINPOT_LENGTH FEB_CAN_LINEAR_POTENTIOMETER_FRONT_LENGTH
+#define feb_sn_linpot_t feb_can_linear_potentiometer_front_t
+#define feb_sn_linpot_pack feb_can_linear_potentiometer_front_pack
+#define feb_sn_linpot_left linear_potentiometer_1_front
+#define feb_sn_linpot_right linear_potentiometer_2_front
+
 #else /* REAR */
 
 /* ---------------- IMU acceleration (REAR = 0x27) ---------------- */
@@ -374,6 +387,14 @@ extern const char FEB_SN_VARIANT_NAME[];
 #define feb_sn_sensor_temps_pack feb_can_sensor_temps_data_rear_pack
 #define feb_sn_sensor_temps_imu_encode feb_can_sensor_temps_data_rear_imu_temp_encode
 #define feb_sn_sensor_temps_mag_encode feb_can_sensor_temps_data_rear_mag_temp_encode
+
+/* ---------------- Linear potentiometer (REAR = 0x1F) ---------------- */
+#define FEB_SN_LINPOT_FRAME_ID FEB_CAN_LINEAR_POTENTIOMETER_REAR_FRAME_ID
+#define FEB_SN_LINPOT_LENGTH FEB_CAN_LINEAR_POTENTIOMETER_REAR_LENGTH
+#define feb_sn_linpot_t feb_can_linear_potentiometer_rear_t
+#define feb_sn_linpot_pack feb_can_linear_potentiometer_rear_pack
+#define feb_sn_linpot_left linear_potentiometer_1_rear
+#define feb_sn_linpot_right linear_potentiometer_2_rear
 
 #endif
 

@@ -29,7 +29,7 @@
 set -e
 
 # Same board list as flash.sh — keep these in sync if a board is added.
-BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes_FRONT" "Sensor_Nodes_REAR" "UART" "UART_TEST")
+BOARDS=("BMS" "DASH" "DART" "DCU" "DCU_Receiver" "LVPDB" "PCU" "Sensor_Nodes_FRONT" "Sensor_Nodes_REAR" "UART" "UART_TEST")
 
 DEFAULT_BAUD=115200
 DEFAULT_SETTLE=2
@@ -107,6 +107,10 @@ expected_banner_for() {
             echo "Expect: nothing (placeholder skeleton; Core/User/ is empty). USART2 is enabled in the .ioc but no app code drives it."
             echo "If you're trying to verify behavior here, there is no behavior yet — propose what should be added."
             ;;
+        DCU_Receiver)
+            echo "Expect within ~2s: 'DCU_Receiver Console Ready' banner (USART2 @115200; a second console also runs on UART4). RFM95 LoRa ground-station receiver."
+            echo "Smoke check: \`version\`, \`uptime\`, \`help\`, \`dcu|radio|status\` (RSSI/SNR + register state), \`dcu|radio|stats\` (TX/RX counters)."
+            ;;
         LVPDB)
             echo "Expect: no FEB_Main banner (bare-metal, init driven from CubeMX-generated main.c). feb_io may or may not be wired."
             echo "Primary proof-of-life is on CAN (dual-CAN, 7× TPS2482 monitors). Check CAN bus before declaring success."
@@ -141,6 +145,7 @@ board_hint_tag() {
         DASH)                echo "LCD primary" ;;
         DART)                echo "silent / CAN-only" ;;
         DCU)                 echo "placeholder skeleton" ;;
+        DCU_Receiver)        echo "LoRa receiver" ;;
         LVPDB)               echo "CAN primary" ;;
         PCU)                 echo "8-step boot trace" ;;
         Sensor_Nodes_FRONT)  echo "CAN primary" ;;

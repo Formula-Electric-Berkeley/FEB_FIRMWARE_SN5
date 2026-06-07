@@ -16,6 +16,8 @@
 #include "FEB_CAN_Fusion.h"
 #include "FEB_CAN_Sensors.h"
 #include "FEB_Fusion.h"
+#include "FEB_LinearPotentiometer.h"
+#include "FEB_CAN_LinearPotentiometer.h"
 #include "FEB_SN_PingPong.h"
 
 #include "feb_uart.h"
@@ -35,6 +37,7 @@
  * leaves the bus comfortable. Fusion still uses a µs-accurate dt from TIM5. */
 #define TICK_PERIOD_IMU_MS 100u   /* 10 Hz: IMU + mag sample + Fusion update + IMU/mag/fusion CAN */
 #define TICK_PERIOD_WSS_MS 20u    /* 50 Hz: WSS computation + CAN */
+#define TICK_PERIOD_LP_MS 20u     /* 50 Hz: linear potentiometer sample + CAN */
 #define TICK_PERIOD_GPS_MS 200u   /* 5  Hz: GPS frames (six per tick) */
 #define TICK_PERIOD_TEMP_MS 1000u /* 1  Hz: temperatures */
 #define TICK_PERIOD_PING_MS 100u  /* 10 Hz: CAN ping/pong test service */
@@ -122,6 +125,14 @@ void FEB_Init(void)
   FEB_Console_Printf("WSS initialized\r\n");
 #else
   FEB_Console_Printf("WSS absent on this variant\r\n");
+#endif
+
+#if FEB_SN_HAS_LINEAR_POTENTIOMETER
+  FEB_LinearPotentiometer_Init();
+  FEB_CAN_LinearPotentiometer_Init();
+  FEB_Console_Printf("Linear potentiometers initialized\r\n");
+#else
+  FEB_Console_Printf("Linear potentiometers absent on this variant\r\n");
 #endif
 
 #if FEB_SN_HAS_GPS
@@ -240,6 +251,7 @@ void FEB_Main_Loop(void)
 {
   static uint32_t t_imu_ms = 0;
   static uint32_t t_wss_ms = 0;
+  static uint32_t t_lp_ms = 0;
   static uint32_t t_gps_ms = 0;
   static uint32_t t_temp_ms = 0;
   static uint32_t t_ping_ms = 0;
@@ -311,6 +323,18 @@ void FEB_Main_Loop(void)
 #endif
     FEB_CAN_WSS_Tick();
     t_wss_ms = now_ms;
+  }
+
+  /* 50 Hz: sample both linear potentiometers (ADC) and publish suspension
+   * position (0x1E FRONT / 0x1F REAR). The reporter Tick self-gates on the
+   * variant flag, so it is called unconditionally like the other reporters. */
+  if ((uint32_t)(now_ms - t_lp_ms) >= TICK_PERIOD_LP_MS)
+  {
+#if FEB_SN_HAS_LINEAR_POTENTIOMETER
+    read_LinearPotentiometer();
+#endif
+    FEB_CAN_LinearPotentiometer_Tick();
+    t_lp_ms = now_ms;
   }
 
   /* 5 Hz: GPS frames (six per tick: pos, altitude, motion, time, date, status). */

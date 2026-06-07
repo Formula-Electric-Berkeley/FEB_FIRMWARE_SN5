@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-BOARDS=(BMS DASH DART DCU LVPDB PCU Sensor_Nodes UART UART_TEST)
+BOARDS=(BMS DASH DART DCU DCU_Receiver LVPDB PCU Sensor_Nodes UART UART_TEST)
 
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 if [ -z "$REPO_ROOT" ]; then

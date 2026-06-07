@@ -132,8 +132,7 @@ FEB_RFM95_Status_t FEB_RFM95_Transmit(const uint8_t *data, uint8_t length, uint3
 
   rfm95_write_register(&s_rfm95, RFM95_REG_OP_MODE, RFM95_MODE_LONG_RANGE_MODE | RFM95_MODE_TX);
 
-  uint32_t flags = osEventFlagsWait(radioEventsHandle, EVT_TX_DONE,
-                                    osFlagsWaitAny, pdMS_TO_TICKS(timeout_ms));
+  uint32_t flags = osEventFlagsWait(radioEventsHandle, EVT_TX_DONE, osFlagsWaitAny, pdMS_TO_TICKS(timeout_ms));
 
   rfm95_standby(&s_rfm95);
 
@@ -163,8 +162,8 @@ FEB_RFM95_Status_t FEB_RFM95_Receive(uint8_t *buffer, uint8_t *length, uint32_t 
   /* Non-blocking: programs DIO0=RxDone, enters RX_CONTINUOUS, clears flags */
   rfm95_start_receive(&s_rfm95);
 
-  uint32_t flags = osEventFlagsWait(radioEventsHandle, EVT_RX_DONE | EVT_CRC_ERROR,
-                                    osFlagsWaitAny, pdMS_TO_TICKS(timeout_ms));
+  uint32_t flags =
+      osEventFlagsWait(radioEventsHandle, EVT_RX_DONE | EVT_CRC_ERROR, osFlagsWaitAny, pdMS_TO_TICKS(timeout_ms));
 
   rfm95_standby(&s_rfm95);
 

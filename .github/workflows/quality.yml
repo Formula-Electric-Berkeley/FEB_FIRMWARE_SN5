@@ -33,7 +33,7 @@ jobs:
         # Sensor_Nodes ships in two variants (FRONT, REAR) but cppcheck
         # operates on the shared source tree. Run it once with both variants
         # explored via -D arguments below.
-        project: [BMS, PCU, DASH, LVPDB, DART, DCU, Sensor_Nodes, UART, UART_TEST]
+        project: [BMS, PCU, DASH, LVPDB, DART, DCU, DCU_Receiver, Sensor_Nodes, UART, UART_TEST]
 
     steps:
       - name: Checkout

@@ -133,7 +133,6 @@ const osEventFlagsAttr_t radioEvents_attributes = {
 /* USER CODE END FunctionPrototypes */
 
 void StartUartRxTask(void *argument);
-void StartUart4RxTask(void *argument);
 void RadioTask(void *argument);
 void rxTimeoutCallback(void *argument);
 

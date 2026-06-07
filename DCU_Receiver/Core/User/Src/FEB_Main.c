@@ -119,14 +119,13 @@ void FEB_Init(void)
   DCU_RegisterCommands();
 
   /* Startup banner on both consoles */
-  static const char banner[] =
-      "\r\n"
-      "========================================\r\n"
-      "      DCU_Receiver Console Ready\r\n"
-      "========================================\r\n"
-      "Use | as delimiter: dcu|radio, dcu|can\r\n"
-      "Type 'help' for available commands\r\n"
-      "\r\n";
+  static const char banner[] = "\r\n"
+                               "========================================\r\n"
+                               "      DCU_Receiver Console Ready\r\n"
+                               "========================================\r\n"
+                               "Use | as delimiter: dcu|radio, dcu|can\r\n"
+                               "Type 'help' for available commands\r\n"
+                               "\r\n";
   FEB_UART_Write(FEB_UART_INSTANCE_1, (const uint8_t *)banner, sizeof(banner) - 1);
   FEB_UART_Write(FEB_UART_INSTANCE_2, (const uint8_t *)banner, sizeof(banner) - 1);
 }

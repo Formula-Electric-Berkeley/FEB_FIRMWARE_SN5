@@ -21,7 +21,7 @@ REPO_ROOT="$SCRIPT_DIR/.."
 # and Sensor_Nodes_REAR — each a separately-buildable executable defined in
 # Sensor_Nodes/CMakeLists.txt. Both build into the shared build/Debug tree.
 # See Sensor_Nodes/Core/User/Inc/FEB_SN_Config.h for variant configuration.
-BOARDS=("BMS" "DASH" "DART" "DCU" "LVPDB" "PCU" "Sensor_Nodes_FRONT" "Sensor_Nodes_REAR" "UART" "UART_TEST")
+BOARDS=("BMS" "DASH" "DART" "DCU" "DCU_Receiver" "LVPDB" "PCU" "Sensor_Nodes_FRONT" "Sensor_Nodes_REAR" "UART" "UART_TEST")
 
 # Colors for output
 RED='\033[0;31m'

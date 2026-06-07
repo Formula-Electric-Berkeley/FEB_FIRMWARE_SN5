@@ -32,7 +32,7 @@ BASE_SHA="$1"
 MERGE_SHA="$2"
 PR_NUMBER="${3:-}"
 
-BOARDS=(BMS DASH DART DCU LVPDB PCU Sensor_Nodes UART UART_TEST)
+BOARDS=(BMS DASH DART DCU DCU_Receiver LVPDB PCU Sensor_Nodes UART UART_TEST)
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"

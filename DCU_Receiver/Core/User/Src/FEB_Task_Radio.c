@@ -137,8 +137,7 @@ void StartRadioTask(void *argument)
       status = FEB_RFM95_Receive(rx_buffer, &rx_len, LISTEN_RX_TIMEOUT_MS);
       if (status == FEB_RFM95_OK)
       {
-        LOG_I(TAG, "[listen] RX %u bytes, RSSI=%d, SNR=%d",
-              rx_len, FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
+        LOG_I(TAG, "[listen] RX %u bytes, RSSI=%d, SNR=%d", rx_len, FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
         print_raw_packet(rx_buffer, rx_len, FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
         handle_radio_payload(rx_buffer, rx_len);
       }

@@ -12,6 +12,7 @@
 #include "FEB_GPS.h"
 #include "FEB_Fusion.h"
 #include "FEB_WSS.h"
+#include "FEB_LinearPotentiometer.h"
 #include "FEB_SN_PingPong.h"
 #include "FEB_SN_Config.h"
 #include "feb_console.h"
@@ -1200,6 +1201,137 @@ static void cmd_wss_csv(int argc, char *argv[])
 }
 
 /* -------------------------------------------------------------------------- */
+/*                     Linear Potentiometer Commands                          */
+/* -------------------------------------------------------------------------- */
+/* The board is silent on UART (it publishes on CAN), so these readouts are the
+ * practical way to capture raw ADC counts when calibrating the start/end points
+ * in FEB_LinearPotentiometer.c. Each handler forces a fresh ADC sample. */
+
+static void print_lp_help(void)
+{
+  FEB_Console_Printf("LP Commands:\r\n");
+  FEB_Console_Printf("  LP|status - Show raw ADC + position [mm] for Left/Right\r\n");
+  FEB_Console_Printf("  LP|raw    - Show raw ADC counts (0-4095) Left/Right\r\n");
+  FEB_Console_Printf("  LP|pos    - Show position [mm] Left/Right\r\n");
+  FEB_Console_Printf("  LP|all    - Same as status\r\n");
+  FEB_Console_Printf("\r\n");
+  FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|LP|status - raw_l,raw_r,pos_l_mm,pos_r_mm\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|LP|raw    - raw_l,raw_r\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|LP|pos    - pos_l_mm,pos_r_mm\r\n");
+}
+
+#if FEB_SN_HAS_LINEAR_POTENTIOMETER
+static void cmd_lp_status(void)
+{
+  read_LinearPotentiometer();
+  FEB_Console_Printf("=== Linear Potentiometers ===\r\n");
+  FEB_Console_Printf("Left  (PC3/IN13): raw=%4u  pos=%.2f mm\r\n", (unsigned)lp_raw[0], lp_position_mm[0]);
+  FEB_Console_Printf("Right (PB1/IN9):  raw=%4u  pos=%.2f mm\r\n", (unsigned)lp_raw[1], lp_position_mm[1]);
+}
+
+static void cmd_lp_raw(void)
+{
+  read_LinearPotentiometer();
+  FEB_Console_Printf("=== Linear Pot Raw ADC ===\r\n");
+  FEB_Console_Printf("Left:  %u\r\n", (unsigned)lp_raw[0]);
+  FEB_Console_Printf("Right: %u\r\n", (unsigned)lp_raw[1]);
+}
+
+static void cmd_lp_pos(void)
+{
+  read_LinearPotentiometer();
+  FEB_Console_Printf("=== Linear Pot Position [mm] ===\r\n");
+  FEB_Console_Printf("Left:  %.2f\r\n", lp_position_mm[0]);
+  FEB_Console_Printf("Right: %.2f\r\n", lp_position_mm[1]);
+}
+#endif /* FEB_SN_HAS_LINEAR_POTENTIOMETER */
+
+static void cmd_lp(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    print_lp_help();
+    return;
+  }
+#if !FEB_SN_HAS_LINEAR_POTENTIOMETER
+  (void)argv;
+  FEB_Console_Printf("Linear potentiometers absent on this variant\r\n");
+#else
+  const char *subcmd = argv[1];
+  if (FEB_strcasecmp(subcmd, "status") == 0 || FEB_strcasecmp(subcmd, "all") == 0)
+  {
+    cmd_lp_status();
+  }
+  else if (FEB_strcasecmp(subcmd, "raw") == 0)
+  {
+    cmd_lp_raw();
+  }
+  else if (FEB_strcasecmp(subcmd, "pos") == 0)
+  {
+    cmd_lp_pos();
+  }
+  else
+  {
+    FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
+    print_lp_help();
+  }
+#endif
+}
+
+#if FEB_SN_HAS_LINEAR_POTENTIOMETER
+static void csv_lp_status(void)
+{
+  read_LinearPotentiometer();
+  FEB_Console_CsvEmit("status", "%u,%u,%.2f,%.2f", (unsigned)lp_raw[0], (unsigned)lp_raw[1], lp_position_mm[0],
+                      lp_position_mm[1]);
+}
+
+static void csv_lp_raw(void)
+{
+  read_LinearPotentiometer();
+  FEB_Console_CsvEmit("raw", "%u,%u", (unsigned)lp_raw[0], (unsigned)lp_raw[1]);
+}
+
+static void csv_lp_pos(void)
+{
+  read_LinearPotentiometer();
+  FEB_Console_CsvEmit("pos", "%.2f,%.2f", lp_position_mm[0], lp_position_mm[1]);
+}
+#endif /* FEB_SN_HAS_LINEAR_POTENTIOMETER */
+
+static void cmd_lp_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("error", "lp_usage,status|raw|pos|all");
+    return;
+  }
+#if !FEB_SN_HAS_LINEAR_POTENTIOMETER
+  (void)argv;
+  FEB_Console_CsvError("error", "lp_absent");
+#else
+  const char *subcmd = argv[1];
+  if (FEB_strcasecmp(subcmd, "status") == 0 || FEB_strcasecmp(subcmd, "all") == 0)
+  {
+    csv_lp_status();
+  }
+  else if (FEB_strcasecmp(subcmd, "raw") == 0)
+  {
+    csv_lp_raw();
+  }
+  else if (FEB_strcasecmp(subcmd, "pos") == 0)
+  {
+    csv_lp_pos();
+  }
+  else
+  {
+    FEB_Console_CsvError("error", "lp_mode,%s", subcmd);
+  }
+#endif
+}
+
+/* -------------------------------------------------------------------------- */
 /*                         Calibration Capture                                */
 /* -------------------------------------------------------------------------- */
 /* Bench-time helpers that print values to paste into FEB_Fusion.c calibration
@@ -1687,6 +1819,13 @@ static const FEB_Console_Cmd_t wss_cmd = {
     .csv_handler = cmd_wss_csv,
 };
 
+static const FEB_Console_Cmd_t lp_cmd = {
+    .name = "LP",
+    .help = "Linear potentiometer commands (LP|status, LP|raw, LP|pos, LP|all)",
+    .handler = cmd_lp,
+    .csv_handler = cmd_lp_csv,
+};
+
 static const FEB_Console_Cmd_t ping_cmd = {
     .name = "ping",
     .help = "Start CAN ping: ping|<1-4> (frame IDs 0xE0-0xE3)",
@@ -1720,7 +1859,8 @@ static const FEB_Console_Cmd_t canstatus_cmd = {
  * by delegating to the sensor's text handler; CSV mode resolves directly via
  * top-level registration of each sensor. */
 static const FEB_Console_Cmd_t *const SN_SUBCMDS[] = {
-    &imu_cmd, &mag_cmd, &gps_cmd, &cal_cmd, &fusion_cmd, &wss_cmd, &ping_cmd, &pong_cmd, &stop_cmd, &canstatus_cmd,
+    &imu_cmd, &mag_cmd,  &gps_cmd,  &cal_cmd,  &fusion_cmd,    &wss_cmd,
+    &lp_cmd,  &ping_cmd, &pong_cmd, &stop_cmd, &canstatus_cmd,
 };
 #define SN_SUBCMDS_COUNT (sizeof(SN_SUBCMDS) / sizeof(SN_SUBCMDS[0]))
 
