@@ -9,6 +9,7 @@
 
 #include "FEB_CAN_IVT.h"
 #include "feb_can_lib.h"
+#include "feb_can.h"
 #include "stm32f4xx_hal.h"
 #include "cmsis_compiler.h"
 #include <stddef.h>
@@ -34,22 +35,12 @@ static FEB_CAN_IVT_Data_t ivt_data = {0};
  * ============================================================================ */
 
 /**
- * @brief Parse IVT CAN message data
- * @param data CAN message data (6 bytes for IVT messages)
- * @return Signed 32-bit value from bytes 2-5 (big-endian)
- *
- * IVT message format:
- * - Bytes 0-1: Message counter/ID
- * - Bytes 2-5: Signed 32-bit value (big-endian)
- */
-static int32_t parse_ivt_value(const uint8_t *data)
-{
-  /* Big-endian to native conversion */
-  return ((int32_t)data[2] << 24) | ((int32_t)data[3] << 16) | ((int32_t)data[4] << 8) | ((int32_t)data[5]);
-}
-
-/**
  * @brief IVT CAN RX callback
+ *
+ * The IVT-S frames are defined in the shared CAN library
+ * (common/FEB_CAN_Library_SN4, message defs IVTCurrent / IVTVoltage1-3 /
+ * IVTTemperature). Decoding is delegated to the generated unpack functions;
+ * the raw int32 value is then scaled into engineering units below.
  */
 static void FEB_CAN_IVT_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                  const uint8_t *data, uint8_t length, void *user_data)
@@ -58,47 +49,75 @@ static void FEB_CAN_IVT_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
   (void)id_type;
   (void)user_data;
 
-  if (length < 6)
-  {
-    return; /* IVT messages are 6+ bytes */
-  }
-
-  int32_t raw_value = parse_ivt_value(data);
-
   switch (can_id)
   {
-  case FEB_CAN_ID_IVT_CURRENT:
+  case FEB_CAN_IVT_CURRENT_FRAME_ID:
+  {
+    struct feb_can_ivt_current_t msg;
+    if (feb_can_ivt_current_unpack(&msg, data, length) < 0)
+    {
+      return;
+    }
     /* Current in mA, negate for reversed direction */
-    ivt_data.current_mA = (float)raw_value * (-0.001f) * 1000.0f;
+    ivt_data.current_mA = (float)msg.current * (-0.001f) * 1000.0f;
     __DMB(); /* Memory barrier to ensure data write completes before timestamp */
     ivt_data.last_rx_tick = HAL_GetTick();
     break;
+  }
 
-  case FEB_CAN_ID_IVT_VOLTAGE_1:
+  case FEB_CAN_IVT_VOLTAGE1_FRAME_ID:
+  {
+    struct feb_can_ivt_voltage1_t msg;
+    if (feb_can_ivt_voltage1_unpack(&msg, data, length) < 0)
+    {
+      return;
+    }
     /* Voltage 1 (pack voltage) in mV */
-    ivt_data.voltage_1_mV = (float)raw_value;
+    ivt_data.voltage_1_mV = (float)msg.voltage1;
     __DMB();
     ivt_data.last_rx_tick = HAL_GetTick();
     break;
+  }
 
-  case FEB_CAN_ID_IVT_VOLTAGE_2:
-    ivt_data.voltage_2_mV = (float)raw_value;
+  case FEB_CAN_IVT_VOLTAGE2_FRAME_ID:
+  {
+    struct feb_can_ivt_voltage2_t msg;
+    if (feb_can_ivt_voltage2_unpack(&msg, data, length) < 0)
+    {
+      return;
+    }
+    ivt_data.voltage_2_mV = (float)msg.voltage2;
     __DMB();
     ivt_data.last_rx_tick = HAL_GetTick();
     break;
+  }
 
-  case FEB_CAN_ID_IVT_VOLTAGE_3:
-    ivt_data.voltage_3_mV = (float)raw_value;
+  case FEB_CAN_IVT_VOLTAGE3_FRAME_ID:
+  {
+    struct feb_can_ivt_voltage3_t msg;
+    if (feb_can_ivt_voltage3_unpack(&msg, data, length) < 0)
+    {
+      return;
+    }
+    ivt_data.voltage_3_mV = (float)msg.voltage3;
     __DMB();
     ivt_data.last_rx_tick = HAL_GetTick();
     break;
+  }
 
-  case FEB_CAN_ID_IVT_TEMPERATURE:
+  case FEB_CAN_IVT_TEMPERATURE_FRAME_ID:
+  {
+    struct feb_can_ivt_temperature_t msg;
+    if (feb_can_ivt_temperature_unpack(&msg, data, length) < 0)
+    {
+      return;
+    }
     /* Temperature in 0.1 degrees C */
-    ivt_data.temperature_C = (float)raw_value * 0.1f;
+    ivt_data.temperature_C = (float)msg.temperature * 0.1f;
     __DMB();
     ivt_data.last_rx_tick = HAL_GetTick();
     break;
+  }
 
   default:
     break;
@@ -122,7 +141,7 @@ void FEB_CAN_IVT_Init(void)
   /* Register for IVT current message */
   FEB_CAN_RX_Params_t rx_params = {
       .instance = FEB_CAN_INSTANCE_1,
-      .can_id = FEB_CAN_ID_IVT_CURRENT,
+      .can_id = FEB_CAN_IVT_CURRENT_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,
       .mask = 0,
@@ -133,19 +152,19 @@ void FEB_CAN_IVT_Init(void)
   FEB_CAN_RX_Register(&rx_params);
 
   /* Register for IVT voltage 1 message */
-  rx_params.can_id = FEB_CAN_ID_IVT_VOLTAGE_1;
+  rx_params.can_id = FEB_CAN_IVT_VOLTAGE1_FRAME_ID;
   FEB_CAN_RX_Register(&rx_params);
 
   /* Register for IVT voltage 2 message */
-  rx_params.can_id = FEB_CAN_ID_IVT_VOLTAGE_2;
+  rx_params.can_id = FEB_CAN_IVT_VOLTAGE2_FRAME_ID;
   FEB_CAN_RX_Register(&rx_params);
 
   /* Register for IVT voltage 3 message */
-  rx_params.can_id = FEB_CAN_ID_IVT_VOLTAGE_3;
+  rx_params.can_id = FEB_CAN_IVT_VOLTAGE3_FRAME_ID;
   FEB_CAN_RX_Register(&rx_params);
 
   /* Register for IVT temperature message */
-  rx_params.can_id = FEB_CAN_ID_IVT_TEMPERATURE;
+  rx_params.can_id = FEB_CAN_IVT_TEMPERATURE_FRAME_ID;
   FEB_CAN_RX_Register(&rx_params);
 }
 
