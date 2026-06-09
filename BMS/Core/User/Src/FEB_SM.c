@@ -19,8 +19,12 @@
 #include "FEB_CAN_DASH.h"
 #include "FEB_ADBMS6830B.h"
 #include "FEB_CAN_IVT.h"
+#include "FEB_CAN_Charger.h"
+#include "FEB_CAN_Heartbeat.h"
+#include "FEB_Const.h"
 #include "feb_log.h"
 #include "stm32f4xx_hal.h"
+#include <math.h>
 #include <stdbool.h>
 
 /* Logging tag for state machine */
@@ -47,6 +51,9 @@
 
 /* Precharge timeout - abort if not complete within this time */
 #define PRECHARGE_TIMEOUT_MS 10000
+
+/* Heartbeat freshness window for CAN-presence (BATTERY_FREE <-> LV_POWER) */
+#define HB_PRESENCE_TIMEOUT_MS 1000
 
 /* ============================================================================
  * Internal State
@@ -81,6 +88,11 @@ static volatile uint32_t reset_button_debounce_tick = 0;
 static volatile uint8_t shutdown_open_count = 0;
 #define SHUTDOWN_DEBOUNCE_COUNT 3 /* Require 3 consecutive OPEN readings */
 
+/* Debounce timers for evaluate_faults() (0 = condition currently clear) */
+static uint32_t overcurrent_start_tick = 0;
+static uint32_t imd_open_start_tick = 0;
+static uint32_t contactor_mismatch_start_tick = 0;
+
 /* Special DEFAULT value for transition function calls during FEB_SM_Process */
 #define BMS_STATE_DEFAULT BMS_STATE_COUNT
 
@@ -92,6 +104,14 @@ static bool isFaultState(BMS_State_t state);
 static void fault_begin(BMS_State_t fault_type);
 static bool fault_process(void);
 static void check_reset_button(void);
+static void evaluate_faults(void);
+
+/* TODO(spec 5->10 BSPD): no BSPD GPIO/CAN input on SN5 yet. Drive-only fault.
+ * Safe default: never trips until a real BSPD source is wired in. */
+static inline bool BSPD_brake_fault(void)
+{
+  return false;
+}
 
 /* ============================================================================
  * Forward Declarations - Transition Functions
@@ -139,10 +159,11 @@ static void (*transitionVector[14])(BMS_State_t) = {
  */
 static BMS_State_t updateStateProtected(BMS_State_t next_state)
 {
-  /* Don't allow exit from BMS fault state */
-  if (SM_Current_State == BMS_STATE_FAULT_BMS)
+  /* Faults latch until power cycle: block exit from ANY fault state.
+   * fault_begin() sets the state directly, so fault entry is unaffected. */
+  if (isFaultState(SM_Current_State))
   {
-    return BMS_STATE_FAULT_BMS;
+    return SM_Current_State;
   }
 
   BMS_State_t prev_state = SM_Current_State;
@@ -254,6 +275,150 @@ static void check_reset_button(void)
   }
 }
 
+/**
+ * @brief Centralized safety-condition evaluation (runs every SM tick).
+ *
+ * Faults route per the spec diagram by state group:
+ *  - drive group (BOOT..DRIVE)             -> FAULT_BMS / FAULT_IMD
+ *  - charger group (BATTERY_FREE..BALANCE) -> FAULT_CHARGING
+ *
+ * Thread-safety: reads only lock-free sources. Cell V/T violations and
+ * cell-monitor staleness cross from the ADBMS task via latched volatile flags
+ * (FEB_ADBMS_Get_Fault_Flags / _Get_Last_Update_Tick). IVT current, IMD, and
+ * contactor sense are single-register reads. No mutex is taken on this path.
+ */
+static void evaluate_faults(void)
+{
+  BMS_State_t s = SM_Current_State;
+
+  /* Already latched or mid-entry: nothing to do. */
+  if (isFaultState(s) || fault_pending)
+  {
+    return;
+  }
+
+  bool charger_group = (s == BMS_STATE_BATTERY_FREE || s == BMS_STATE_CHARGER_PRECHARGE || s == BMS_STATE_CHARGING ||
+                        s == BMS_STATE_BALANCE);
+  BMS_State_t grp_fault = charger_group ? BMS_STATE_FAULT_CHARGING : BMS_STATE_FAULT_BMS;
+
+  /* (a) Cell voltage / temperature violations latched by the ADBMS task. */
+  uint32_t af = FEB_ADBMS_Get_Fault_Flags();
+  if (af & (ADBMS_FAULT_FLAG_VOLTAGE | ADBMS_FAULT_FLAG_TEMP))
+  {
+    LOG_E(TAG_SM, "Cell V/T violation (flags=0x%02lX)", (unsigned long)af);
+    fault_begin(grp_fault);
+    return;
+  }
+
+  /* (b) Cell-monitor sensor timeout (guard against the pre-first-scan zero). */
+  uint32_t last = FEB_ADBMS_Get_Last_Update_Tick();
+  if (last != 0 && (HAL_GetTick() - last) > FEB_ADBMS_DATA_TIMEOUT_MS)
+  {
+    LOG_E(TAG_SM, "Cell-monitor data timeout");
+    fault_begin(grp_fault);
+    return;
+  }
+
+  /* (c) IVT overcurrent + sensor timeout, only while current can actually flow
+   * (HV contactors closed). BATTERY_FREE and BALANCE are excluded: the pack is
+   * isolated there and the IVT may legitimately be silent, so checking it would
+   * spuriously fault. */
+  bool hv_current_path =
+      (s >= BMS_STATE_PRECHARGE && s <= BMS_STATE_DRIVE) || s == BMS_STATE_CHARGER_PRECHARGE || s == BMS_STATE_CHARGING;
+  if (hv_current_path)
+  {
+    if (!FEB_CAN_IVT_IsDataFresh(FEB_IVT_FAULT_TIMEOUT_MS))
+    {
+      LOG_E(TAG_SM, "IVT current-sensor timeout");
+      fault_begin(grp_fault);
+      return;
+    }
+
+    bool charging_path = (s == BMS_STATE_CHARGER_PRECHARGE || s == BMS_STATE_CHARGING);
+    float ilim = charging_path ? FEB_CHARGE_OVERCURRENT_A : FEB_DISCHARGE_OVERCURRENT_A;
+    if (fabsf(FEB_CAN_IVT_GetCurrent()) > ilim)
+    {
+      if (overcurrent_start_tick == 0)
+      {
+        overcurrent_start_tick = HAL_GetTick();
+      }
+      else if ((HAL_GetTick() - overcurrent_start_tick) >= FEB_OVERCURRENT_CONFIRM_MS)
+      {
+        LOG_E(TAG_SM, "Overcurrent event (|I| > %.0fA)", (double)ilim);
+        fault_begin(grp_fault);
+        return;
+      }
+    }
+    else
+    {
+      overcurrent_start_tick = 0;
+    }
+  }
+  else
+  {
+    overcurrent_start_tick = 0;
+  }
+
+  /* (d) Continuous IMD monitoring (debounced; suppressed during BOOT). */
+  if (s != BMS_STATE_BOOT && FEB_HW_IMD_Sense() == FEB_RELAY_STATE_OPEN)
+  {
+    if (imd_open_start_tick == 0)
+    {
+      imd_open_start_tick = HAL_GetTick();
+    }
+    else if ((HAL_GetTick() - imd_open_start_tick) >= FEB_IMD_FAULT_CONFIRM_MS)
+    {
+      LOG_E(TAG_SM, "IMD triggered");
+      fault_begin(charger_group ? BMS_STATE_FAULT_CHARGING : BMS_STATE_FAULT_IMD);
+      return;
+    }
+  }
+  else
+  {
+    imd_open_start_tick = 0;
+  }
+
+  /* (e) RECOMMENDED: contactor feedback plausibility (weld/stuck detection).
+   * Compare commanded vs sensed AIR+/precharge in steady HV states. Skipped
+   * while the non-blocking energize/charging settle is in flight (the sense
+   * legitimately disagrees with the state label during that window). */
+  {
+    bool expect_air_plus = (s == BMS_STATE_ENERGIZED || s == BMS_STATE_DRIVE || s == BMS_STATE_CHARGING);
+    bool expect_precharge = (s == BMS_STATE_PRECHARGE || s == BMS_STATE_CHARGER_PRECHARGE);
+    bool check_contactors = (s == BMS_STATE_ENERGIZED || s == BMS_STATE_DRIVE || s == BMS_STATE_CHARGING ||
+                             s == BMS_STATE_PRECHARGE || s == BMS_STATE_CHARGER_PRECHARGE) &&
+                            !energize_pending && !charging_pending;
+
+    if (check_contactors)
+    {
+      bool air_plus_closed = (FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE);
+      bool precharge_closed = (FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_CLOSE);
+      if (air_plus_closed != expect_air_plus || precharge_closed != expect_precharge)
+      {
+        if (contactor_mismatch_start_tick == 0)
+        {
+          contactor_mismatch_start_tick = HAL_GetTick();
+        }
+        else if ((HAL_GetTick() - contactor_mismatch_start_tick) >= FEB_CONTACTOR_FEEDBACK_TIMEOUT_MS)
+        {
+          LOG_E(TAG_SM, "Contactor feedback mismatch (AIR+ %d/exp %d, PrC %d/exp %d)", air_plus_closed, expect_air_plus,
+                precharge_closed, expect_precharge);
+          fault_begin(grp_fault);
+          return;
+        }
+      }
+      else
+      {
+        contactor_mismatch_start_tick = 0;
+      }
+    }
+    else
+    {
+      contactor_mismatch_start_tick = 0;
+    }
+  }
+}
+
 /* ============================================================================
  * Public Interface
  * ============================================================================ */
@@ -303,6 +468,10 @@ void FEB_SM_Process(void)
   /* Check reset button */
   check_reset_button();
 
+  /* Evaluate safety conditions before anything else so a fault is caught even
+   * during contactor-settle windows and before per-handler soft returns. */
+  evaluate_faults();
+
   /* Process pending fault delay first */
   fault_process();
 
@@ -324,8 +493,9 @@ void FEB_SM_Process(void)
   {
     if ((HAL_GetTick() - charging_delay_start) >= CONTACTOR_SETTLE_DELAY_MS)
     {
-      /* Open precharge after AIR+ has settled */
+      /* Open precharge after AIR+ has settled, then command the charger on */
       FEB_HW_Precharge_Set(false);
+      FEB_CAN_Charger_Start_Charge();
       updateStateProtected(BMS_STATE_CHARGING);
       charging_pending = false;
     }
@@ -416,10 +586,19 @@ static void LVPowerTransition(BMS_State_t next_state)
     break;
 
   case BMS_STATE_DEFAULT:
-    /* Check if shutdown loop is complete before going to health check */
+    /* 1->2: shutdown loop ("ESC/TSMS") closed -> bus health check. */
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE)
     {
       LVPowerTransition(BMS_STATE_BUS_HEALTH_CHECK);
+      break;
+    }
+
+    /* 1->6 (Disconnection): only the charger is on CAN (no DASH/PCU heartbeat)
+     * -> BATTERY_FREE. Mirrors SN4 disconnection semantics. */
+    if (!FEB_CAN_Heartbeat_OthersPresent(HB_PRESENCE_TIMEOUT_MS) && FEB_CAN_Charger_Received())
+    {
+      LOG_I(TAG_SM, "Only charger on CAN, entering BATTERY_FREE");
+      LVPowerTransition(BMS_STATE_BATTERY_FREE);
     }
     break;
 
@@ -548,18 +727,19 @@ static void PrechargeTransition(BMS_State_t next_state)
     /* Hold precharge relay closed for redundancy */
     FEB_HW_Precharge_Set(true);
 
-    /* Check precharge completion: IVT voltage >= 90% of pack voltage */
-    // {
-    //   float ivt_voltage = FEB_CAN_IVT_GetVoltage();
-    //   float pack_voltage = FEB_ADBMS_GET_ACC_Total_Voltage();
-    //   if (pack_voltage > 0.0f && ivt_voltage >= PRECHARGE_THRESHOLD_PCT * pack_voltage)
-    //   {
-    //     LOG_I(TAG_SM, "Precharge complete: IVT=%.1fV Pack=%.1fV", ivt_voltage, pack_voltage);
-    //     precharge_start_time = 0;
-    //     shutdown_open_count = 0;  /* Reset debounce counter */
-    PrechargeTransition(BMS_STATE_ENERGIZED);
-    //   }
-    // }
+    /* Precharge completion gate (3->4): IVT voltage >= 90% of pack voltage.
+     * Snapshot read: never take the ADBMS mutex on this 1ms path. */
+    {
+      float ivt_voltage = FEB_CAN_IVT_GetVoltage();
+      float pack_voltage = FEB_ADBMS_Snapshot_Total_Voltage();
+      if (pack_voltage > 0.0f && ivt_voltage >= PRECHARGE_THRESHOLD_PCT * pack_voltage)
+      {
+        LOG_I(TAG_SM, "Precharge complete: IVT=%.1fV Pack=%.1fV", (double)ivt_voltage, (double)pack_voltage);
+        precharge_start_time = 0;
+        shutdown_open_count = 0; /* Reset debounce counter */
+        PrechargeTransition(BMS_STATE_ENERGIZED);
+      }
+    }
     break;
 
   default:
@@ -602,12 +782,12 @@ static void EnergizedTransition(BMS_State_t next_state)
       break;
     }
 
-    /* Check for ready-to-drive signal from DASH */
-    // if (FEB_CAN_DASH_IsReadyToDrive(R2D_TIMEOUT_MS))
-    // {
-    LOG_I(TAG_SM, "R2D signal received, entering DRIVE");
-    EnergizedTransition(BMS_STATE_DRIVE);
-    // }
+    /* Ready-to-drive gate (4->5): enter DRIVE only on a fresh R2D from DASH. */
+    if (FEB_CAN_DASH_IsReadyToDrive(R2D_TIMEOUT_MS))
+    {
+      LOG_I(TAG_SM, "R2D signal received, entering DRIVE");
+      EnergizedTransition(BMS_STATE_DRIVE);
+    }
     break;
 
   default:
@@ -650,12 +830,22 @@ static void DriveTransition(BMS_State_t next_state)
       break;
     }
 
-    /* If driver no longer requests R2D, go back to energized */
-    // if (!FEB_CAN_DASH_IsReadyToDrive(R2D_TIMEOUT_MS))
-    // {
-    //   LOG_I(TAG_SM, "R2D signal lost, returning to ENERGIZED");
-    // DriveTransition(BMS_STATE_ENERGIZED);
-    // }
+    /* 5->10 (Brake Fault): BSPD reports a fault. No BSPD input on SN5 yet, so
+     * this stub never trips (see BSPD_brake_fault above). Drive-only per spec. */
+    if (BSPD_brake_fault())
+    {
+      LOG_E(TAG_SM, "BSPD fault while driving");
+      DriveTransition(BMS_STATE_FAULT_BSPD);
+      break;
+    }
+
+    /* 5->4: spec trigger is APPS-deactivated / Park, which the BMS cannot see
+     * today. R2D-loss is the available proxy: drop back to ENERGIZED. */
+    if (!FEB_CAN_DASH_IsReadyToDrive(R2D_TIMEOUT_MS))
+    {
+      LOG_I(TAG_SM, "R2D signal lost, returning to ENERGIZED");
+      DriveTransition(BMS_STATE_ENERGIZED);
+    }
     break;
 
   default:
@@ -670,7 +860,9 @@ static void FreeTransition(BMS_State_t next_state)
   case BMS_STATE_FAULT_BMS:
   case BMS_STATE_FAULT_IMD:
   case BMS_STATE_FAULT_CHARGING:
-    fault_begin(next_state);
+    /* Charger group: any fault lands in FAULT_CHARGING (diagram 6,7,8->12;
+     * matches SN4's coercion). evaluate_faults() routes the same way. */
+    fault_begin(BMS_STATE_FAULT_CHARGING);
     break;
 
   case BMS_STATE_BATTERY_FREE:
@@ -691,9 +883,32 @@ static void FreeTransition(BMS_State_t next_state)
     break;
 
   case BMS_STATE_DEFAULT:
-    /* In battery free state, wait for charger connection or return to LV */
-    /* Note: Charger detection logic would be added here when charger CAN is implemented */
+  {
+    /* 6->1 (Reconnection): other subsystems (DASH/PCU) back on CAN -> LV_POWER. */
+    if (FEB_CAN_Heartbeat_OthersPresent(HB_PRESENCE_TIMEOUT_MS))
+    {
+      LOG_I(TAG_SM, "Other subsystems on CAN, returning to LV_POWER");
+      FreeTransition(BMS_STATE_LV_POWER);
+      break;
+    }
+
+    /* Charge decision (mirrors SN4 FreeTransition). */
+    int8_t charging_status = FEB_CAN_Charging_Status();
+    if (charging_status == -1)
+    {
+      LOG_E(TAG_SM, "Charging fault detected in BATTERY_FREE");
+      FreeTransition(BMS_STATE_FAULT_CHARGING);
+      break;
+    }
+
+    /* 6->7 (begin charge): charger present on CAN, AIR- closed, no charge fault. */
+    if (FEB_CAN_Charger_Received() && charging_status == 0 && FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE)
+    {
+      LOG_I(TAG_SM, "Charger detected, entering charger precharge");
+      FreeTransition(BMS_STATE_CHARGER_PRECHARGE);
+    }
     break;
+  }
 
   default:
     break;
@@ -707,17 +922,21 @@ static void ChargingPrechargeTransition(BMS_State_t next_state)
   case BMS_STATE_FAULT_BMS:
   case BMS_STATE_FAULT_IMD:
   case BMS_STATE_FAULT_CHARGING:
-    fault_begin(next_state);
+    FEB_CAN_Charger_Stop_Charge();
+    /* Charger group: coerce to FAULT_CHARGING (diagram 6,7,8->12; SN4 parity) */
+    fault_begin(BMS_STATE_FAULT_CHARGING);
     break;
 
   case BMS_STATE_BATTERY_FREE:
     FEB_HW_AIR_Plus_Set(false);
     FEB_HW_Precharge_Set(false);
+    FEB_CAN_Charger_Stop_Charge();
     updateStateProtected(next_state);
     break;
 
   case BMS_STATE_CHARGING:
-    /* Close AIR+ and start non-blocking delay */
+    /* Close AIR+ and start non-blocking delay (charger commanded on after
+     * settle, in FEB_SM_Process). */
     FEB_HW_AIR_Plus_Set(true);
     charging_pending = true;
     charging_delay_start = HAL_GetTick();
@@ -758,9 +977,9 @@ static void ChargingPrechargeTransition(BMS_State_t next_state)
     /* Hold precharge relay closed */
     FEB_HW_Precharge_Set(true);
 
-    /* Check precharge completion */
+    /* Check precharge completion (snapshot read: no ADBMS mutex on 1ms path) */
     float ivt_voltage = FEB_CAN_IVT_GetVoltage();
-    float pack_voltage = FEB_ADBMS_GET_ACC_Total_Voltage();
+    float pack_voltage = FEB_ADBMS_Snapshot_Total_Voltage();
     if (pack_voltage > 0.0f && ivt_voltage >= PRECHARGE_THRESHOLD_PCT * pack_voltage)
     {
       charger_precharge_start_time = 0;
@@ -780,26 +999,44 @@ static void ChargingTransition(BMS_State_t next_state)
   case BMS_STATE_FAULT_BMS:
   case BMS_STATE_FAULT_IMD:
   case BMS_STATE_FAULT_CHARGING:
-    /* Note: Would stop charger here when charger CAN is implemented */
-    fault_begin(next_state);
+    FEB_CAN_Charger_Stop_Charge();
+    /* Charger group: coerce to FAULT_CHARGING (diagram 6,7,8->12; SN4 parity) */
+    fault_begin(BMS_STATE_FAULT_CHARGING);
     break;
 
   case BMS_STATE_LV_POWER:
   case BMS_STATE_BATTERY_FREE:
     FEB_HW_AIR_Plus_Set(false);
     FEB_HW_Precharge_Set(false);
-    /* Note: Would stop charger here when charger CAN is implemented */
+    FEB_CAN_Charger_Stop_Charge();
     updateStateProtected(BMS_STATE_BATTERY_FREE);
     break;
 
   case BMS_STATE_DEFAULT:
-    /* Safety check: go back to FREE if AIR- opens */
+  {
+    /* Safety: AIR- open -> back to FREE (mirrors SN4). */
     if (FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
     {
       ChargingTransition(BMS_STATE_BATTERY_FREE);
+      break;
     }
-    /* Note: Would check charging status here when charger CAN is implemented */
+
+    /* SN4 charge decision: 1 = done / soft V or T limit -> FREE; -1 = hard
+     * over-V/T -> FAULT_CHARGING. (Other charger-group faults are caught by
+     * evaluate_faults().) */
+    int8_t charge_status = FEB_CAN_Charging_Status();
+    if (charge_status == 1)
+    {
+      LOG_I(TAG_SM, "Charge complete, returning to BATTERY_FREE");
+      ChargingTransition(BMS_STATE_BATTERY_FREE);
+    }
+    else if (charge_status == -1)
+    {
+      LOG_E(TAG_SM, "Charging hard fault");
+      ChargingTransition(BMS_STATE_FAULT_CHARGING);
+    }
     break;
+  }
 
   default:
     break;
@@ -814,7 +1051,8 @@ static void BalanceTransition(BMS_State_t next_state)
   case BMS_STATE_FAULT_IMD:
   case BMS_STATE_FAULT_CHARGING:
     FEB_Stop_Balance();
-    fault_begin(next_state);
+    /* Charger group: coerce to FAULT_CHARGING (diagram 6,7,8->12; SN4 parity) */
+    fault_begin(BMS_STATE_FAULT_CHARGING);
     break;
 
   case BMS_STATE_LV_POWER:
@@ -826,12 +1064,28 @@ static void BalanceTransition(BMS_State_t next_state)
     break;
 
   case BMS_STATE_DEFAULT:
+  {
     /* Safety check: go back to FREE if AIR- opens */
     if (FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
     {
       BalanceTransition(BMS_STATE_BATTERY_FREE);
+      break;
+    }
+
+    /* 8->6 (balance complete): cell delta within slippage threshold. Checked at
+     * ~1 Hz to avoid hammering the mutex-taking status call every 1 ms tick. */
+    static uint32_t balance_check_tick = 0;
+    if ((HAL_GetTick() - balance_check_tick) >= 1000)
+    {
+      balance_check_tick = HAL_GetTick();
+      if (!FEB_Cell_Balancing_Status())
+      {
+        LOG_I(TAG_SM, "Cells balanced, returning to BATTERY_FREE");
+        BalanceTransition(BMS_STATE_BATTERY_FREE);
+      }
     }
     break;
+  }
 
   default:
     break;

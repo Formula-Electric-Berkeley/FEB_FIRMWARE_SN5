@@ -42,6 +42,22 @@ uint16_t balancing_mask = 0xAAAA;
 
 uint8_t ERROR_TYPE = 0; // HEXDIGIT 1 voltage faults; HEXDIGIT 2 temp faults; HEXDIGIT 3 relay faults
 
+/* Sticky fault flags + freshness tick for the state machine.
+ * Written here under ADBMSMutexHandle (validators run while the task holds it);
+ * read lock-free by the SM task via FEB_ADBMS_Get_Fault_Flags() /
+ * FEB_ADBMS_Get_Last_Update_Tick(). 32-bit aligned access is atomic on M4. */
+static volatile uint32_t adbms_fault_flags = 0;
+static volatile uint32_t adbms_last_update_tick = 0;
+
+/* Lock-free pack-level snapshots for the 1ms SM task. Written at the end of
+ * each process pass (writer holds ADBMSMutexHandle); read without the mutex
+ * (aligned 32-bit float reads are atomic on Cortex-M4). The mutex-taking
+ * FEB_ADBMS_GET_ACC_* getters MUST NOT be called from the SM task hot path:
+ * a temperature scan holds the mutex for tens of ms and would stall it. */
+static volatile float adbms_snap_total_V = 0.0f;
+static volatile float adbms_snap_max_cell_V = 0.0f;
+static volatile float adbms_snap_max_temp_C = NAN;
+
 // ********************************** Config Bits ********************************
 
 static bool refon = 1;
@@ -224,15 +240,22 @@ static void validate_voltages()
         // Check redundant S-code measurement to confirm violation
         if (voltageS > vMax || voltageS < vMin)
         {
-          FEB_ACC.banks[bank].cells[cell].violations += 1;
-          DEBUG_VOLTAGE_PRINT("Both C and S codes confirm violation: violations=%d",
-                              FEB_ACC.banks[bank].cells[cell].violations);
-          if (FEB_ACC.banks[bank].cells[cell].violations == FEB_VOLTAGE_ERROR_THRESH)
+          /* Saturating increment (counter is uint8_t — a free-running += would
+           * wrap at 255); actions fire exactly once, on the crossing scan. */
+          if (FEB_ACC.banks[bank].cells[cell].violations < FEB_VOLTAGE_ERROR_THRESH)
           {
-            printf("[ADBMS] FAULT: Cell voltage out of range - Bank %d Cell %d: %.3fV (limits: %.3f-%.3fV)\r\n", bank,
-                   cell, voltageC / 1000.0f, vMin / 1000.0f, vMax / 1000.0f);
-            FEB_ADBMS_Update_Error_Type(ERROR_TYPE_VOLTAGE_VIOLATION);
-            // FEB_SM_Transition(FEB_SM_ST_FAULT_BMS);
+            FEB_ACC.banks[bank].cells[cell].violations += 1;
+            DEBUG_VOLTAGE_PRINT("Both C and S codes confirm violation: violations=%d",
+                                FEB_ACC.banks[bank].cells[cell].violations);
+            if (FEB_ACC.banks[bank].cells[cell].violations >= FEB_VOLTAGE_ERROR_THRESH)
+            {
+              printf("[ADBMS] FAULT: Cell voltage out of range - Bank %d Cell %d: %.3fV (limits: %.3f-%.3fV)\r\n", bank,
+                     cell, voltageC / 1000.0f, vMin / 1000.0f, vMax / 1000.0f);
+              FEB_ADBMS_Update_Error_Type(ERROR_TYPE_VOLTAGE_VIOLATION);
+              /* Latch for the SM task; evaluate_faults() in FEB_SM.c routes this
+               * to FAULT_BMS (drive group) or FAULT_CHARGING (charger group). */
+              adbms_fault_flags |= ADBMS_FAULT_FLAG_VOLTAGE;
+            }
           }
         }
         else
@@ -449,13 +472,18 @@ static void validate_temps()
       {
         DEBUG_TEMP_PRINT("Temperature violation: Bank %d Sensor %d Temp=%.1fC violations=%d", bank, sensor,
                          temp / 10.0f, FEB_ACC.banks[bank].temp_violations[sensor] + 1);
-        FEB_ACC.banks[bank].temp_violations[sensor]++;
-        if (FEB_ACC.banks[bank].temp_violations[sensor] == FEB_TEMP_ERROR_THRESH)
+        /* Saturating increment (uint8_t would wrap); actions fire once. */
+        if (FEB_ACC.banks[bank].temp_violations[sensor] < FEB_TEMP_ERROR_THRESH)
         {
-          printf("[ADBMS] FAULT: Cell temperature out of range - Bank %d Sensor %d: %.1fC (limits: %.1f-%.1fC)\r\n",
-                 bank, sensor, temp / 10.0f, tMin / 10.0f, tMax / 10.0f);
-          FEB_ADBMS_Update_Error_Type(ERROR_TYPE_TEMP_VIOLATION);
-          // FEB_SM_Transition(FEB_SM_ST_FAULT_BMS);
+          FEB_ACC.banks[bank].temp_violations[sensor]++;
+          if (FEB_ACC.banks[bank].temp_violations[sensor] >= FEB_TEMP_ERROR_THRESH)
+          {
+            printf("[ADBMS] FAULT: Cell temperature out of range - Bank %d Sensor %d: %.1fC (limits: %.1f-%.1fC)\r\n",
+                   bank, sensor, temp / 10.0f, tMin / 10.0f, tMax / 10.0f);
+            FEB_ADBMS_Update_Error_Type(ERROR_TYPE_TEMP_VIOLATION);
+            /* Latch for the SM task; evaluate_faults() routes per state group. */
+            adbms_fault_flags |= ADBMS_FAULT_FLAG_TEMP;
+          }
         }
       }
       else
@@ -473,7 +501,10 @@ static void validate_temps()
   {
     DEBUG_TEMP_PRINT("WARNING: Low temperature read ratio (%.1f%%)", read_ratio * 100.0f);
     FEB_ADBMS_Update_Error_Type(ERROR_TYPE_LOW_TEMP_READS);
-    // FEB_SM_Transition(FEB_SM_ST_FAULT_BMS);
+    /* NOTE: chronic low temp-read ratio is a sensor-health warning, not a cell
+     * over-temp event; intentionally NOT latched as a hard fault (would
+     * false-trip on a flaky harness). A truly dead cell-monitor is caught by
+     * the staleness timeout (adbms_last_update_tick) in evaluate_faults(). */
   }
   DEBUG_TEMP_PRINT("Temperature validation complete");
 }
@@ -582,6 +613,10 @@ void FEB_ADBMS_Voltage_Process()
   read_cell_voltages();
   store_cell_voltages();
   validate_voltages();
+  /* Publish lock-free snapshots for the SM task (we hold the mutex here) */
+  adbms_snap_total_V = FEB_ACC.total_voltage_V;
+  adbms_snap_max_cell_V = FEB_ACC.pack_max_voltage_V;
+  adbms_last_update_tick = HAL_GetTick(); /* freshness for SM sensor-timeout check */
   DEBUG_VOLTAGE_PRINT("=== Voltage Process Completed ===");
 }
 
@@ -604,6 +639,9 @@ void FEB_ADBMS_Temperature_Process()
   }
   compute_pack_temp_stats();
   validate_temps();
+  /* Publish lock-free snapshot for the SM task (we hold the mutex here) */
+  adbms_snap_max_temp_C = FEB_ACC.pack_max_temp;
+  adbms_last_update_tick = HAL_GetTick(); /* freshness for SM sensor-timeout check */
 
   DEBUG_TEMP_PRINT("=== Temperature Process Completed ===");
 }
@@ -917,4 +955,34 @@ uint8_t FEB_ADBMS_Get_Error_Type()
 void FEB_ADBMS_Update_Error_Type(uint8_t error)
 {
   ERROR_TYPE = error;
+}
+
+// ********************************** Fault Flags (SM handoff) *******************
+
+uint32_t FEB_ADBMS_Get_Fault_Flags(void)
+{
+  return adbms_fault_flags;
+}
+
+uint32_t FEB_ADBMS_Get_Last_Update_Tick(void)
+{
+  return adbms_last_update_tick;
+}
+
+// ********************************** Lock-free Snapshots ************************
+// For the 1ms SM task / charger logic. Never blocks on ADBMSMutexHandle.
+
+float FEB_ADBMS_Snapshot_Total_Voltage(void)
+{
+  return adbms_snap_total_V;
+}
+
+float FEB_ADBMS_Snapshot_Max_Cell_Voltage(void)
+{
+  return adbms_snap_max_cell_V;
+}
+
+float FEB_ADBMS_Snapshot_Max_Temp(void)
+{
+  return adbms_snap_max_temp_C;
 }

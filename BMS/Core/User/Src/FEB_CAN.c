@@ -26,6 +26,8 @@
 #include "FEB_CAN_PingPong.h"
 #include "FEB_CAN_DASH.h"
 #include "FEB_CAN_IVT.h"
+#include "FEB_CAN_Charger.h"
+#include "FEB_CAN_Heartbeat.h"
 
 /* ========================== External HAL handles ========================== */
 extern CAN_HandleTypeDef hcan1;
@@ -41,21 +43,6 @@ extern osSemaphoreId_t canTxMailboxSemHandle;
 
 /* ========================== Local Prototypes ========================== */
 static void BMS_CAN_Init(void);
-static void BMS_CAN_RxCallback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
-                               const uint8_t *data, uint8_t length, void *user_data);
-
-/* ========================== RX Callback ========================== */
-
-static void BMS_CAN_RxCallback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
-                               const uint8_t *data, uint8_t length, void *user_data)
-{
-  (void)instance;
-  (void)id_type;
-  (void)data;
-  (void)user_data;
-
-  /* Removed: per-message RX logging was too verbose */
-}
 
 /* ========================== CAN Initialization ========================== */
 
@@ -82,20 +69,10 @@ static void BMS_CAN_Init(void)
     }
   }
 
-  /* ---------------- RX Registration ---------------- */
-  FEB_CAN_RX_Params_t rx_params = {
-      .instance = FEB_CAN_INSTANCE_1,
-      .can_id = 0x00,
-      .id_type = FEB_CAN_ID_STD,
-      .filter_type = FEB_CAN_FILTER_EXACT,
-      .mask = 0,
-      .fifo = FEB_CAN_FIFO_0,
-      .callback = BMS_CAN_RxCallback,
-      .user_data = NULL,
-  };
-
-  FEB_CAN_RX_Register(&rx_params);
-  /* Note: Filter update deferred to StartBMSTaskRx() after all registrations */
+  /* RX registrations live in the per-module *_Init() functions called from
+   * StartBMSTaskRx(). CAN1 has only 14 hardware filter banks (one per unique
+   * registered ID/mask) — keep registrations consolidated (mask filters for
+   * ranges) so dynamic ones (PingPong) always fit. */
 }
 
 /* ============================================================================
@@ -120,6 +97,12 @@ void StartBMSTaskRx(void *argument)
 
   /* Initialize IVT CAN reception (voltage/current for precharge monitoring) */
   FEB_CAN_IVT_Init();
+
+  /* Initialize charger CAN (extended-ID CCS protocol) */
+  FEB_CAN_Charger_Init();
+
+  /* Initialize heartbeat-presence tracking (BATTERY_FREE <-> LV_POWER) */
+  FEB_CAN_Heartbeat_Init();
 
   /* Update filters after all registrations */
   FEB_CAN_Filter_UpdateFromRegistry(FEB_CAN_INSTANCE_1);

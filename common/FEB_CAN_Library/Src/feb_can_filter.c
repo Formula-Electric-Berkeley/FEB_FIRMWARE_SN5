@@ -286,6 +286,17 @@ FEB_CAN_Status_t FEB_CAN_Filter_UpdateFromRegistry(FEB_CAN_Instance_t instance)
     }
   }
 
+  /* Registered IDs beyond the bank budget never get a hardware filter and
+   * their frames are silently dropped — make that loud and report it. */
+  uint32_t needed = unique_count + (has_wildcard ? 1u : 0u);
+  uint32_t available = (uint32_t)(filter_end - filter_start);
+  bool overflow = (needed > available);
+  if (overflow)
+  {
+    LOG_E("[CAN-FLT]", "Filter overflow: %lu IDs registered, %lu banks available — %lu ID(s) will NOT be received",
+          (unsigned long)needed, (unsigned long)available, (unsigned long)(needed - available));
+  }
+
   /* Disable remaining filter banks for this instance */
   while (current_filter < filter_end)
   {
@@ -293,7 +304,7 @@ FEB_CAN_Status_t FEB_CAN_Filter_UpdateFromRegistry(FEB_CAN_Instance_t instance)
     current_filter++;
   }
 
-  return FEB_CAN_OK;
+  return overflow ? FEB_CAN_ERROR_FULL : FEB_CAN_OK;
 }
 
 /* ============================================================================

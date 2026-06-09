@@ -15,6 +15,7 @@
 #include "FEB_Commands.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
+#include "FEB_CAN_Charger.h"
 #include "FEB_SM.h"
 #include "cmsis_os2.h"
 #include "FreeRTOS.h"
@@ -155,12 +156,14 @@ void StartSMTask(void *argument)
     /* CAN state publishing (every 100ms via internal divider in function) */
     FEB_CAN_State_Tick();
 
-    /* PingPong tick every 100ms */
+    /* PingPong + charger command tick every 100ms */
     pingpong_divider++;
     if (pingpong_divider >= 100)
     {
       pingpong_divider = 0;
       FEB_CAN_PingPong_Tick();
+      /* Charger command TX + trickle logic (no-op unless in CHARGING) */
+      FEB_CAN_Charger_Process();
     }
   }
 }

@@ -121,4 +121,33 @@ bool FEB_Cell_Balancing_Status(void);
 uint8_t FEB_ADBMS_Get_Error_Type(void);
 void FEB_ADBMS_Update_Error_Type(uint8_t error);
 
+// ********************************** Fault Flags (SM handoff) *******************
+// Sticky flags set by the ADBMS task (under mutex) and read lock-free by the
+// state machine task. 32-bit aligned reads are atomic on Cortex-M4.
+#define ADBMS_FAULT_FLAG_VOLTAGE (1u << 0)
+#define ADBMS_FAULT_FLAG_TEMP (1u << 1)
+#define ADBMS_FAULT_FLAG_SENSOR (1u << 2) // reserved: PEC / comm failure
+
+/** @brief Latched cell V/T fault flags (ADBMS_FAULT_FLAG_*). */
+uint32_t FEB_ADBMS_Get_Fault_Flags(void);
+
+/** @brief HAL tick of last completed V/T process (0 = never). Used for the
+ *  cell-monitor sensor-timeout check in the state machine. */
+uint32_t FEB_ADBMS_Get_Last_Update_Tick(void);
+
+// ********************************** Lock-free Snapshots ************************
+// Pack-level values published by the ADBMS task at the end of each scan and
+// readable WITHOUT the ADBMS mutex (atomic 32-bit reads). Use these — not the
+// FEB_ADBMS_GET_ACC_* getters — from the 1ms state-machine task: the mutex is
+// held for tens of ms during a temperature scan and would stall the SM.
+
+/** @brief Pack total voltage [V] from the last scan (0 until first scan). */
+float FEB_ADBMS_Snapshot_Total_Voltage(void);
+
+/** @brief Highest cell voltage [V] from the last scan. */
+float FEB_ADBMS_Snapshot_Max_Cell_Voltage(void);
+
+/** @brief Highest pack temperature [C] from the last scan (NaN until first scan). */
+float FEB_ADBMS_Snapshot_Max_Temp(void);
+
 #endif /* INC_FEB_ADBMS6830B_H_ */

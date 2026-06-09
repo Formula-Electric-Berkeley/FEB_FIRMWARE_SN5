@@ -86,6 +86,37 @@
 #define FEB_VOLTAGE_ERROR_THRESH 3 // Trigger fault after 3 consecutive voltage violations
 #define FEB_TEMP_ERROR_THRESH 5    // Trigger fault after 5 consecutive temp violations
 
+// ********************************** Charging Limits (SN4-derived) **************
+// Used by FEB_CAN_Charging_Status(). Soft limit -> stop charging and return to
+// BATTERY_FREE; hard limit -> FAULT_CHARGING. SN5 values (do not copy SN4's
+// pack-specific thermal numbers verbatim).
+#define FEB_CONFIG_CELL_HARD_MAX_VOLTAGE_mV 4200 // Hard cell over-voltage -> FAULT_CHARGING
+#define FEB_CONFIG_CELL_SOFT_MAX_VOLTAGE_mV 4180 // TUNE: soft target -> stop charge
+#define FEB_CONFIG_CELL_HARD_MAX_TEMP_dC 600     // 60.0C hard over-temp -> FAULT_CHARGING
+// (soft charge temp limit FEB_CONFIG_CELL_SOFT_MAX_TEMP_dC defined above = 550)
+
+// Pack hard-max voltage in VOLTS (compared against pack/IVT voltage in volts).
+#define FEB_CONFIG_PACK_HARD_MAX_VOLTAGE_V                                                                             \
+  ((FEB_NBANKS * FEB_NUM_CELLS_PER_BANK * FEB_CONFIG_CELL_HARD_MAX_VOLTAGE_mV) / 1000.0f)
+
+// ********************************** Charger CAN (SN4-derived) ******************
+// Charger command (BMS -> charger) targets, in charger units (deci-amps / deci-volts).
+#define FEB_CHARGE_CURRENT_dA 40 // TUNE: 4.0 A nominal charge current
+#define FEB_TRICKLE_CHARGE_CURRENT_dA (FEB_CHARGE_CURRENT_dA / 2)
+#define FEB_TRICKLE_CHARGE_INTERVAL_MS 5000 // toggle interval near full charge
+#define FEB_CHARGE_TARGET_VOLTAGE_dV ((uint16_t)(FEB_CONFIG_PACK_HARD_MAX_VOLTAGE_V * 10.0f * 0.99f))        // TUNE
+#define FEB_TRICKLE_CHARGE_START_VOLTAGE_dV ((uint16_t)(FEB_CONFIG_PACK_HARD_MAX_VOLTAGE_V * 10.0f * 0.98f)) // TUNE
+#define FEB_CHARGER_RX_TIMEOUT_MS 1000 // charger considered absent after this
+
+// ********************************** Fault Evaluation Thresholds ****************
+#define FEB_DISCHARGE_OVERCURRENT_A 350.0f    // TUNE: drive-side limit (fuse/AIR rating)
+#define FEB_CHARGE_OVERCURRENT_A 60.0f        // TUNE: charge-side limit (charger rating)
+#define FEB_OVERCURRENT_CONFIRM_MS 50         // |I| must exceed limit this long before fault
+#define FEB_IVT_FAULT_TIMEOUT_MS 1000         // IVT CAN staleness -> sensor timeout fault
+#define FEB_ADBMS_DATA_TIMEOUT_MS 1000        // cell-monitor staleness -> sensor timeout fault
+#define FEB_IMD_FAULT_CONFIRM_MS 100          // debounce IMD-open before faulting
+#define FEB_CONTACTOR_FEEDBACK_TIMEOUT_MS 200 // cmd vs sense mismatch -> weld/stuck fault
+
 // ********************************** isoSPI Communication Mode ******************
 
 // isoSPI Mode Selection - Choose ONE of the following:

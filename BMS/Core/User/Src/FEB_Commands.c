@@ -221,11 +221,19 @@ static void subcmd_balance(int argc, char *argv[])
       return;
     }
     FEB_Cell_Balance_Start();
+    if (FEB_SM_Get_Current_State() == BMS_STATE_BATTERY_FREE)
+    {
+      FEB_SM_Transition(BMS_STATE_BALANCE); /* 6->8 begin_balance */
+    }
     FEB_Console_Printf("Balancing started\r\n");
   }
   else if (FEB_strcasecmp(argv[1], "off") == 0)
   {
     FEB_Stop_Balance();
+    if (FEB_SM_Get_Current_State() == BMS_STATE_BALANCE)
+    {
+      FEB_SM_Transition(BMS_STATE_BATTERY_FREE); /* 8->6 stop_balance */
+    }
     FEB_Console_Printf("Balancing stopped\r\n");
   }
   else
@@ -1061,11 +1069,19 @@ static void cmd_balance_csv(int argc, char *argv[])
       return;
     }
     FEB_Cell_Balance_Start();
+    if (FEB_SM_Get_Current_State() == BMS_STATE_BATTERY_FREE)
+    {
+      FEB_SM_Transition(BMS_STATE_BALANCE); /* 6->8 begin_balance */
+    }
     FEB_Console_CsvEmit("balance", "%d", 1);
   }
   else if (FEB_strcasecmp(argv[1], "off") == 0)
   {
     FEB_Stop_Balance();
+    if (FEB_SM_Get_Current_State() == BMS_STATE_BALANCE)
+    {
+      FEB_SM_Transition(BMS_STATE_BATTERY_FREE); /* 8->6 stop_balance */
+    }
     FEB_Console_CsvEmit("balance", "%d", 0);
   }
   else

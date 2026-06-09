@@ -139,33 +139,20 @@ void FEB_CAN_IVT_Init(void)
   ivt_data.temperature_C = 0.0f;
   ivt_data.last_rx_tick = 0;
 
-  /* Register for IVT current message */
+  /* Single MASK registration covering 0x520-0x527 (IVT frames are
+   * 0x521-0x525). One hardware filter bank instead of five — CAN1 only has
+   * 14 banks. The callback switches on can_id and ignores anything else in
+   * the range. */
   FEB_CAN_RX_Params_t rx_params = {
       .instance = FEB_CAN_INSTANCE_1,
-      .can_id = FEB_CAN_IVT_CURRENT_FRAME_ID,
+      .can_id = 0x520,
       .id_type = FEB_CAN_ID_STD,
-      .filter_type = FEB_CAN_FILTER_EXACT,
-      .mask = 0,
+      .filter_type = FEB_CAN_FILTER_MASK,
+      .mask = 0x7F8, /* match 0x520-0x527 */
       .fifo = FEB_CAN_FIFO_0,
       .callback = FEB_CAN_IVT_Callback,
       .user_data = NULL,
   };
-  FEB_CAN_RX_Register(&rx_params);
-
-  /* Register for IVT voltage 1 message */
-  rx_params.can_id = FEB_CAN_IVT_VOLTAGE1_FRAME_ID;
-  FEB_CAN_RX_Register(&rx_params);
-
-  /* Register for IVT voltage 2 message */
-  rx_params.can_id = FEB_CAN_IVT_VOLTAGE2_FRAME_ID;
-  FEB_CAN_RX_Register(&rx_params);
-
-  /* Register for IVT voltage 3 message */
-  rx_params.can_id = FEB_CAN_IVT_VOLTAGE3_FRAME_ID;
-  FEB_CAN_RX_Register(&rx_params);
-
-  /* Register for IVT temperature message */
-  rx_params.can_id = FEB_CAN_IVT_TEMPERATURE_FRAME_ID;
   FEB_CAN_RX_Register(&rx_params);
 }
 
