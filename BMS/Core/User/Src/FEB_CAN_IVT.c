@@ -8,6 +8,7 @@
  */
 
 #include "FEB_CAN_IVT.h"
+#include "FEB_Const.h"
 #include "feb_can_lib.h"
 #include "feb_can.h"
 #include "stm32f4xx_hal.h"
@@ -176,8 +177,17 @@ float FEB_CAN_IVT_GetVoltage(void)
     return 0.0f;
   }
 
-  /* Convert mV to V */
+  /* Convert mV to V. Channel is selected at compile time by the board wiring
+   * (FEB_IVT_PACK_VOLTAGE_CHANNEL in FEB_Const.h). */
+#if FEB_IVT_PACK_VOLTAGE_CHANNEL == 1
   return ivt_data.voltage_1_mV * 0.001f;
+#elif FEB_IVT_PACK_VOLTAGE_CHANNEL == 2
+  return ivt_data.voltage_2_mV * 0.001f;
+#elif FEB_IVT_PACK_VOLTAGE_CHANNEL == 3
+  return ivt_data.voltage_3_mV * 0.001f;
+#else
+#error "FEB_IVT_PACK_VOLTAGE_CHANNEL must be 1, 2, or 3"
+#endif
 }
 
 float FEB_CAN_IVT_GetCurrent(void)

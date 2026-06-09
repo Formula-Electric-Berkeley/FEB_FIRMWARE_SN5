@@ -101,6 +101,17 @@
 #define ISOSPI_FAILOVER_LOCKOUT_MS 1000 // Milliseconds to wait before allowing failover again
 #define ISOSPI_PRIMARY_CHANNEL 1        // Primary channel: 1=SPI1, 2=SPI2
 
+// ********************************** IVT-S Sensor Configuration *****************
+
+// IVT-S voltage channel carrying the HV pack sense line (which IVT input the
+// pack is physically wired to). Selects the channel FEB_CAN_IVT_GetVoltage()
+// reports — used by precharge and the BMS|ivt console. All channels are always
+// decoded via the DBC unpack; this only picks the reported one.
+//   1 -> U1 (frame 0x522)   2 -> U2 (0x523)   3 -> U3 (0x524)
+#ifndef FEB_IVT_PACK_VOLTAGE_CHANNEL
+#define FEB_IVT_PACK_VOLTAGE_CHANNEL 2
+#endif
+
 // ********************************** Accumulator Structure **********************
 
 typedef struct

@@ -384,9 +384,10 @@ static void subcmd_ivt(int argc, char *argv[])
 
   FEB_Console_Printf("\r\n=== IVT Sensor Data ===\r\n");
   FEB_Console_Printf("Pack Current:  %.2f A\r\n", ivt->current_mA / 1000.0f);
-  FEB_Console_Printf("Pack Voltage:  %.2f V (V1)\r\n", ivt->voltage_1_mV / 1000.0f);
+  FEB_Console_Printf("Voltage 1:     %.2f V\r\n", ivt->voltage_1_mV / 1000.0f);
   FEB_Console_Printf("Voltage 2:     %.2f V\r\n", ivt->voltage_2_mV / 1000.0f);
   FEB_Console_Printf("Voltage 3:     %.2f V\r\n", ivt->voltage_3_mV / 1000.0f);
+  FEB_Console_Printf("Pack Voltage:  %.2f V (U%d)\r\n", FEB_CAN_IVT_GetVoltage(), FEB_IVT_PACK_VOLTAGE_CHANNEL);
   FEB_Console_Printf("Temperature:   %.1f C\r\n", ivt->temperature_C);
   FEB_Console_Printf("Data Age:      %lu ms (%s)\r\n", (unsigned long)age, fresh ? "FRESH" : "STALE");
 }

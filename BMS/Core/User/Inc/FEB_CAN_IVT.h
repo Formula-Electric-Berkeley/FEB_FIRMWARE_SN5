@@ -3,7 +3,10 @@
  * @brief IVT (Isabellenhutte) Current/Voltage Sensor CAN Interface
  * @author Formula Electric @ Berkeley
  *
- * Receives IVT-S sensor data over CAN:
+ * The IVT we use is the ISAscale IVT-MODULAR (IVT-MOD, or just IVT for short),
+ * Isabellenhutte's modular high-accuracy current/voltage/temperature sensor.
+ *
+ * Receives IVT sensor data over CAN:
  * - 0x521: Current
  * - 0x522: Voltage 1 (pack voltage, used for precharge monitoring)
  * - 0x523: Voltage 2
