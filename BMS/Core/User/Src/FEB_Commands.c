@@ -607,6 +607,16 @@ static void subcmd_config(int argc, char *argv[])
 #else
   FEB_Console_Printf("Temp Checks:      enabled\r\n");
 #endif
+#if FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS
+  FEB_Console_Printf("Volt Checks (C):  DISABLED (BENCH MODE)\r\n");
+#else
+  FEB_Console_Printf("Volt Checks (C):  enabled\r\n");
+#endif
+#if FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS
+  FEB_Console_Printf("Volt Checks (S):  DISABLED (BENCH MODE)\r\n");
+#else
+  FEB_Console_Printf("Volt Checks (S):  enabled\r\n");
+#endif
 }
 
 /* ============================================================================

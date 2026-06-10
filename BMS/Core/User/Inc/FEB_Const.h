@@ -156,6 +156,27 @@
 #define FEB_BMS_DISABLE_TEMP_CHECKS 0
 #endif
 
+// ********************************** Cell-Voltage Enforcement Override (BENCH ONLY)
+
+// Bench bring-up of modules with desoldered cells: floating taps read garbage
+// on both ADBMS6830B voltage ADCs and latch spurious under/over-voltage faults.
+// Each macro removes one ADC's readings from the voltage-fault judgment in
+// validate_voltages():
+//   PRIMARY   -> C-ADC readings (cells[].voltage_V). Also compiles out the
+//                charging pack/cell over-voltage limits in
+//                FEB_CAN_Charging_Status() (computed from primary readings).
+//   SECONDARY -> S-ADC readings (cells[].voltage_S, the redundancy confirmation).
+// With one side disabled, the other alone judges violations. With BOTH set to
+// 1, voltage faults never latch — would-be violations print a one-shot warning
+// instead (set both for a module with desoldered cells). Readings stay visible.
+// Logs warnings at boot while enabled. NEVER enable with a real pack.
+#ifndef FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS
+#define FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS 0
+#endif
+#ifndef FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS
+#define FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS 0
+#endif
+
 // ********************************** Accumulator Structure **********************
 
 typedef struct

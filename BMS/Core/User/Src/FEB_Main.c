@@ -111,12 +111,28 @@ void FEB_Init(void)
   LOG_W(TAG_MAIN, "thermal gates are BYPASSED. Do NOT run a real pack.");
 #endif
 
+#if FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS
+  LOG_W(TAG_MAIN, "PRIMARY (C-ADC) CELL-VOLTAGE ENFORCEMENT DISABLED "
+                  "(FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS=1)");
+  LOG_W(TAG_MAIN, "Charging pack/cell over-voltage limits are also BYPASSED.");
+#endif
+#if FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS
+  LOG_W(TAG_MAIN, "SECONDARY (S-ADC) CELL-VOLTAGE ENFORCEMENT DISABLED "
+                  "(FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS=1)");
+#endif
+#if FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS && FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS
+  LOG_W(TAG_MAIN, "Bench mode: cell voltage faults will NEVER latch. Do NOT run a real pack.");
+#endif
+
   /* Startup banner */
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("========================================\r\n");
   FEB_Console_Printf("        BMS Console Ready\r\n");
 #if FEB_BMS_DISABLE_TEMP_CHECKS
   FEB_Console_Printf("  !! TEMP CHECKS DISABLED (BENCH) !!\r\n");
+#endif
+#if FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS || FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS
+  FEB_Console_Printf("  !! VOLT CHECKS DISABLED (BENCH) !!\r\n");
 #endif
   FEB_Console_Printf("========================================\r\n");
   FEB_Console_Printf("Use | as delimiter: BMS|status\r\n");

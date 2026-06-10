@@ -120,6 +120,7 @@ int8_t FEB_CAN_Charging_Status(void)
     return 1;
   }
 
+#if !FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS
   /* Pack-level hard over-voltage (volts vs volts). */
   if (pack_v >= FEB_CONFIG_PACK_HARD_MAX_VOLTAGE_V)
   {
@@ -136,6 +137,7 @@ int8_t FEB_CAN_Charging_Status(void)
     }
     return 1;
   }
+#endif
 
 #if !FEB_BMS_DISABLE_TEMP_CHECKS
   /* Highest temperature: soft limit -> stop charging, hard limit -> fault.

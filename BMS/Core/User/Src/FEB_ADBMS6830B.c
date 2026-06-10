@@ -233,35 +233,50 @@ static void validate_voltages()
     {
       float voltageC = FEB_ACC.banks[bank].cells[cell].voltage_V * 1000;
       float voltageS = FEB_ACC.banks[bank].cells[cell].voltage_S * 1000;
-      if (voltageC > vMax || voltageC < vMin)
+
+      /* Per-ADC bench overrides (FEB_BMS_DISABLE_*_VOLT_CHECKS in FEB_Const.h):
+       * the normal rule is "primary (C) triggers, secondary (S) confirms" —
+       * both must be out of range. A disabled side is removed from the
+       * judgment; with both disabled the normal rule still counts violations
+       * but only warns instead of latching the fault. */
+      const bool primary_bad = (voltageC > vMax || voltageC < vMin);
+      const bool secondary_bad = (voltageS > vMax || voltageS < vMin);
+#if FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS && !FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS
+      const bool violation = secondary_bad;
+      (void)primary_bad;
+#elif !FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS && FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS
+      const bool violation = primary_bad;
+      (void)secondary_bad;
+#else
+      const bool violation = primary_bad && secondary_bad;
+#endif
+
+      if (violation)
       {
         DEBUG_VOLTAGE_PRINT("Voltage violation detected: Bank %d Cell %d C=%.3fV S=%.3fV", bank, cell,
                             voltageC / 1000.0f, voltageS / 1000.0f);
-        // Check redundant S-code measurement to confirm violation
-        if (voltageS > vMax || voltageS < vMin)
+        /* Saturating increment (counter is uint8_t — a free-running += would
+         * wrap at 255); actions fire exactly once, on the crossing scan. */
+        if (FEB_ACC.banks[bank].cells[cell].violations < FEB_VOLTAGE_ERROR_THRESH)
         {
-          /* Saturating increment (counter is uint8_t — a free-running += would
-           * wrap at 255); actions fire exactly once, on the crossing scan. */
-          if (FEB_ACC.banks[bank].cells[cell].violations < FEB_VOLTAGE_ERROR_THRESH)
+          FEB_ACC.banks[bank].cells[cell].violations += 1;
+          if (FEB_ACC.banks[bank].cells[cell].violations >= FEB_VOLTAGE_ERROR_THRESH)
           {
-            FEB_ACC.banks[bank].cells[cell].violations += 1;
-            DEBUG_VOLTAGE_PRINT("Both C and S codes confirm violation: violations=%d",
-                                FEB_ACC.banks[bank].cells[cell].violations);
-            if (FEB_ACC.banks[bank].cells[cell].violations >= FEB_VOLTAGE_ERROR_THRESH)
-            {
-              printf("[ADBMS] FAULT: Cell voltage out of range - Bank %d Cell %d: %.3fV (limits: %.3f-%.3fV)\r\n", bank,
-                     cell, voltageC / 1000.0f, vMin / 1000.0f, vMax / 1000.0f);
-              FEB_ADBMS_Update_Error_Type(ERROR_TYPE_VOLTAGE_VIOLATION);
-              /* Latch for the SM task; evaluate_faults() in FEB_SM.c routes this
-               * to FAULT_BMS (drive group) or FAULT_CHARGING (charger group). */
-              adbms_fault_flags |= ADBMS_FAULT_FLAG_VOLTAGE;
-            }
+#if FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS && FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS
+            /* Bench mode: report the violation but do not latch the fault.
+             * Fires once per cell thanks to the saturating counter above. */
+            printf("[ADBMS] WARNING: voltage violation IGNORED (FEB_BMS_DISABLE_*_VOLT_CHECKS) - "
+                   "Bank %d Cell %d: C=%.3fV S=%.3fV (limits: %.3f-%.3fV)\r\n",
+                   bank, cell, voltageC / 1000.0f, voltageS / 1000.0f, vMin / 1000.0f, vMax / 1000.0f);
+#else
+            printf("[ADBMS] FAULT: Cell voltage out of range - Bank %d Cell %d: %.3fV (limits: %.3f-%.3fV)\r\n", bank,
+                   cell, voltageC / 1000.0f, vMin / 1000.0f, vMax / 1000.0f);
+            FEB_ADBMS_Update_Error_Type(ERROR_TYPE_VOLTAGE_VIOLATION);
+            /* Latch for the SM task; evaluate_faults() in FEB_SM.c routes this
+             * to FAULT_BMS (drive group) or FAULT_CHARGING (charger group). */
+            adbms_fault_flags |= ADBMS_FAULT_FLAG_VOLTAGE;
+#endif
           }
-        }
-        else
-        {
-          DEBUG_VOLTAGE_PRINT("S-code does not confirm violation, resetting counter");
-          FEB_ACC.banks[bank].cells[cell].violations = 0;
         }
       }
       else
