@@ -478,11 +478,19 @@ static void validate_temps()
           FEB_ACC.banks[bank].temp_violations[sensor]++;
           if (FEB_ACC.banks[bank].temp_violations[sensor] >= FEB_TEMP_ERROR_THRESH)
           {
+#if FEB_BMS_DISABLE_TEMP_CHECKS
+            /* Bench mode: report the violation but do not latch the fault.
+             * Fires once per sensor thanks to the saturating counter above. */
+            printf("[ADBMS] WARNING: temp violation IGNORED (FEB_BMS_DISABLE_TEMP_CHECKS) - "
+                   "Bank %d Sensor %d: %.1fC (limits: %.1f-%.1fC)\r\n",
+                   bank, sensor, temp / 10.0f, tMin / 10.0f, tMax / 10.0f);
+#else
             printf("[ADBMS] FAULT: Cell temperature out of range - Bank %d Sensor %d: %.1fC (limits: %.1f-%.1fC)\r\n",
                    bank, sensor, temp / 10.0f, tMin / 10.0f, tMax / 10.0f);
             FEB_ADBMS_Update_Error_Type(ERROR_TYPE_TEMP_VIOLATION);
             /* Latch for the SM task; evaluate_faults() routes per state group. */
             adbms_fault_flags |= ADBMS_FAULT_FLAG_TEMP;
+#endif
           }
         }
       }
@@ -799,6 +807,7 @@ void FEB_Cell_Balance_Start()
 // Caller must hold ADBMSMutexHandle.
 void FEB_Cell_Balance_Process()
 {
+#if !FEB_BMS_DISABLE_TEMP_CHECKS
   // Thermal safety gate. NaN fails the comparison → stops balancing when
   // telemetry is unavailable. Direct field read; caller already holds the mutex.
   const float gate_max_temp_dC = FEB_ACC.pack_max_temp * 10.0f;
@@ -807,6 +816,7 @@ void FEB_Cell_Balance_Process()
     LOG_W(TAG_BALANCE, "Temp limit: pack max=%.1fC, skipping balance cycle", gate_max_temp_dC / 10.0f);
     return;
   }
+#endif
 
   determineMinV();
 
@@ -876,6 +886,7 @@ void FEB_Cell_Balance_Process()
 
 bool FEB_Cell_Balancing_Status(void)
 {
+#if !FEB_BMS_DISABLE_TEMP_CHECKS
   // The per-cell loop used to index temp_sensor_readings by cell index, which
   // only covered FEB_NUM_CELLS_PER_BANK (14) of the FEB_NUM_TEMP_SENSORS (42)
   // sensors. Use the pack-wide max computed by compute_pack_temp_stats() so
@@ -888,6 +899,7 @@ bool FEB_Cell_Balancing_Status(void)
     LOG_W(TAG_BALANCE, "Temp limit: pack max=%.1fC, stopping", max_temp_dC / 10.0f);
     return false;
   }
+#endif
 
   float min_v = FLT_MAX;
   float max_v = -FLT_MAX;

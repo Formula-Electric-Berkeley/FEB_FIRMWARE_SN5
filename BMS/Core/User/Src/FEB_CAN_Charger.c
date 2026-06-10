@@ -137,6 +137,7 @@ int8_t FEB_CAN_Charging_Status(void)
     return 1;
   }
 
+#if !FEB_BMS_DISABLE_TEMP_CHECKS
   /* Highest temperature: soft limit -> stop charging, hard limit -> fault.
    * NaN (no temp scan yet) fails both comparisons -> treated as OK; cell-data
    * presence is already gated by pack_v above and ADBMS staleness is a fault. */
@@ -149,6 +150,7 @@ int8_t FEB_CAN_Charging_Status(void)
     }
     return 1;
   }
+#endif
 
   return 0;
 }

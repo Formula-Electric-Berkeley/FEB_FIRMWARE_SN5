@@ -602,6 +602,11 @@ static void subcmd_config(int argc, char *argv[])
   FEB_Console_Printf("Min Cell V:       %.3f V\r\n", FEB_CELL_MIN_VOLTAGE_MV / 1000.0f);
   FEB_Console_Printf("Max Cell Temp:    %.1f C\r\n", FEB_CELL_MAX_TEMP_DC / 10.0f);
   FEB_Console_Printf("Min Cell Temp:    %.1f C\r\n", FEB_CELL_MIN_TEMP_DC / 10.0f);
+#if FEB_BMS_DISABLE_TEMP_CHECKS
+  FEB_Console_Printf("Temp Checks:      DISABLED (BENCH MODE)\r\n");
+#else
+  FEB_Console_Printf("Temp Checks:      enabled\r\n");
+#endif
 }
 
 /* ============================================================================

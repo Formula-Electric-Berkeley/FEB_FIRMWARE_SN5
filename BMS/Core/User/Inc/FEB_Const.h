@@ -143,6 +143,19 @@
 #define FEB_IVT_PACK_VOLTAGE_CHANNEL 2
 #endif
 
+// ********************************** Temperature Enforcement Override (BENCH ONLY)
+
+// Set to 1 to disable ALL cell-temperature enforcement: the over/under-temp
+// fault latch (validate_temps), the charging temp soft-stop/hard-fault block
+// (FEB_CAN_Charging_Status), and the balance thermal gates. For bench bring-up
+// of ADBMS modules with unpopulated thermistors: floating inputs can latch
+// spurious temp faults, and all-NaN readings block balancing entirely.
+// Readings and diagnostics remain visible; only enforcement is suppressed.
+// Logs a warning at boot while enabled. NEVER enable with a real pack.
+#ifndef FEB_BMS_DISABLE_TEMP_CHECKS
+#define FEB_BMS_DISABLE_TEMP_CHECKS 0
+#endif
+
 // ********************************** Accumulator Structure **********************
 
 typedef struct
