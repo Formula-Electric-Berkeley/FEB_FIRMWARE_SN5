@@ -225,8 +225,9 @@ static bool FEB_TPS_Check_Power_Good(void)
  * Perform board startup sequence and configure main subsystems.
  *
  * Initializes UART and console, scans the I2C bus for attached devices,
- * initializes and configures TPS2482 power-management devices (including
- * disabling all non-LV rails and verifying power-good signals), initializes
+ * initializes and configures TPS2482 power-management devices (disabling all
+ * non-LV rails, then enabling the shutdown (SH) rail and verifying power-good
+ * signals), initializes
  * the CAN subsystem and its ping/pong module, configures the brake-light GPIO
  * to off, and starts the 1 kHz timer interrupt for regular system ticks.
  */
@@ -293,6 +294,13 @@ void FEB_Main_Setup(void)
         FEB_TPS_Enable(tps_handles[i], false);
       }
     }
+
+    // The shutdown circuit must be powered for the car to come up.
+    if (tps_handles[1] != NULL)
+    {
+      FEB_TPS_Enable(tps_handles[1], true); // SH
+    }
+
     FEB_TPS_Check_Power_Good();
 
     LOG_I(TAG_MAIN, "TPS2482 power rails configured");
