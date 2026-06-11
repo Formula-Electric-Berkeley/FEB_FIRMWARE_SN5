@@ -672,8 +672,7 @@ static void cmd_radio_csv(int argc, char *argv[])
     }
     FEB_Task_Radio_SetStreamMode(target);
     /* Body: enabled,fwd_drops */
-    FEB_Console_CsvEmit("radio-stream", "%d,%lu", target ? 1 : 0,
-                        (unsigned long)FEB_Task_Radio_GetForwardDropCount());
+    FEB_Console_CsvEmit("radio-stream", "%d,%lu", target ? 1 : 0, (unsigned long)FEB_Task_Radio_GetForwardDropCount());
   }
   else if (FEB_strcasecmp(subcmd, "config") == 0)
   {
