@@ -9,6 +9,7 @@
 #include "DCU_CAN_Log.h"
 
 #include "DCU_CAN_Filter.h"
+#include "FEB_Task_Radio.h"
 #include "DCU_SD.h"
 #include "cmsis_os.h"
 #include "feb_can_lib.h"
@@ -324,7 +325,9 @@ void StartCanLogTask(void *argument)
 
       if (DCU_CAN_Filter_ShouldForwardToRadio(&frame))
       {
-        /* Radio forwarding is wired up in DCU_CAN_Filter.c — no-op stub today. */
+        /* Hand the frame to the radio task, which batches and transmits it.
+         * No-op unless `dcu|radio|stream on` has enabled CAN-over-radio. */
+        FEB_Task_Radio_ForwardCanFrame(&frame);
       }
     }
 

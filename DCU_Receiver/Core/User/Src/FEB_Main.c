@@ -8,6 +8,7 @@
 
 #include "FEB_Main.h"
 #include "DCU_Commands.h"
+#include "FEB_CAN_Stream.h"
 #include "main.h"
 #include "feb_uart.h"
 #include "feb_uart_config.h"
@@ -114,6 +115,10 @@ void FEB_Init(void)
 
   /* Initialize console (registers built-in commands: echo, help, version, uptime, reboot, log) */
   FEB_Console_Init(true);
+
+  /* Register the CAN-frame stream CSV handlers (can-stream-on/off/status) so the
+   * receiver exposes the same streaming surface as the DCU. */
+  FEB_CAN_Stream_RegisterCsvHandlers();
 
   /* Register DCU-specific commands */
   DCU_RegisterCommands();

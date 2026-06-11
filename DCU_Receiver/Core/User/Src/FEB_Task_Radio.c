@@ -6,6 +6,8 @@
 
 #include "FEB_Task_Radio.h"
 #include "FEB_RFM95.h"
+#include "FEB_Radio_Protocol.h"
+#include "FEB_CAN_Stream.h"
 #include "feb_can_latest.h"
 #include "feb_log.h"
 #include "feb_uart.h"
@@ -33,32 +35,54 @@ static const char PING_MSG[] = "PING";
 static const char PONG_MSG[] = "PONG";
 #endif
 
-/* Wire format for CAN-over-radio:
- *   [0] = 0xFE magic
- *   [1..2] = frame_id (little-endian uint16)
- *   [3] = dlc (0..8)
- *   [4..4+dlc-1] = payload
- * Total length = 4 + dlc (<= 12). */
-#define RADIO_CAN_MAGIC 0xFE
+/* Per-frame callback for FEB_Radio_Parse: update the local CAN state model and,
+ * if a host is streaming, emit the frame as a `can,...` row identical to the
+ * DCU's. CAN wire formats (0xFB batch / 0xFE legacy single) live in
+ * FEB_Radio_Protocol.h and are shared byte-for-byte with the DCU transmitter. */
+static void on_decoded_frame(uint32_t can_id, uint8_t id_type, uint8_t bus, const uint8_t *data, uint8_t dlc, void *ctx)
+{
+  (void)id_type;
+  (void)ctx;
 
+  int rc = FEB_CAN_State_Update(can_id, data, dlc, HAL_GetTick());
+  if (rc != 0)
+  {
+    LOG_W(TAG, "CAN frame 0x%03X update failed (%d)", (unsigned)can_id, rc);
+  }
+
+  /* Same bus/id/dlc/data the originating DCU captured, so a host app cannot tell
+   * whether it is reading from the DCU or from the receiver. */
+  FEB_CAN_Stream_EmitFrame(bus, can_id, dlc, data);
+}
+
+/* Dispatch a received packet by its leading magic (packet type). Every link
+ * packet carries a type byte (see the registry in FEB_Radio_Protocol.h); this
+ * switch is the single place new packet types get handled. */
 static void handle_radio_payload(const uint8_t *buf, uint8_t len)
 {
-  if (len >= 1 && buf[0] == RADIO_CAN_MAGIC && len >= 4)
+  if (len < 1)
   {
-    uint16_t frame_id = (uint16_t)buf[1] | ((uint16_t)buf[2] << 8);
-    uint8_t dlc = buf[3];
-    if (dlc <= 8 && (uint16_t)len == (uint16_t)(4 + dlc))
+    return;
+  }
+
+  switch (buf[0])
+  {
+  case FEB_RADIO_MAGIC_BATCH:
+    /* CAN frame(s): parser walks the batch and calls on_decoded_frame each. */
+    if (FEB_Radio_Parse(buf, len, on_decoded_frame, NULL) < 0)
     {
-      int rc = FEB_CAN_State_Update(frame_id, &buf[4], dlc, HAL_GetTick());
-      if (rc != 0)
-      {
-        LOG_W(TAG, "CAN frame 0x%03X update failed (%d)", (unsigned)frame_id, rc);
-      }
+      LOG_W(TAG, "Malformed CAN packet: type=0x%02X len=%u", buf[0], (unsigned)len);
     }
-    else
-    {
-      LOG_W(TAG, "CAN frame malformed: len=%u dlc=%u", (unsigned)len, (unsigned)dlc);
-    }
+    break;
+
+  case FEB_RADIO_MAGIC_TEXT:
+    /* RESERVED: inbound ASCII (receiver->DCU is the live path; if the DCU ever
+     * sends text this is where it would be surfaced). Ignored for now. */
+    break;
+
+  default:
+    /* Plain-text PING/PONG link-check traffic or an unknown type — not ours. */
+    break;
   }
 }
 
@@ -123,7 +147,7 @@ void StartRadioTask(void *argument)
   }
 
   /* Main loop */
-  uint8_t rx_buffer[64];
+  uint8_t rx_buffer[255];
   uint8_t rx_len;
 #if (RADIO_ROLE == RADIO_ROLE_PING)
   uint32_t last_tick = osKernelGetTickCount();
@@ -133,7 +157,10 @@ void StartRadioTask(void *argument)
   {
     if (s_listen_mode)
     {
-      /* Listen-only mode: continuously receive, no TX */
+      /* Listen-only mode: continuously receive, no TX. FEB_RFM95_Receive already
+       * blocks (up to LISTEN_RX_TIMEOUT_MS), so re-arm immediately after each
+       * packet — a long post-RX delay here is a window where streamed batches
+       * get dropped. A 1-tick yield keeps equal-priority tasks fed. */
       status = FEB_RFM95_Receive(rx_buffer, &rx_len, LISTEN_RX_TIMEOUT_MS);
       if (status == FEB_RFM95_OK)
       {
@@ -141,7 +168,7 @@ void StartRadioTask(void *argument)
         print_raw_packet(rx_buffer, rx_len, FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
         handle_radio_payload(rx_buffer, rx_len);
       }
-      osDelay(pdMS_TO_TICKS(10));
+      osDelay(1);
       continue;
     }
 
