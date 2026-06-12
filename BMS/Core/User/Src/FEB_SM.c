@@ -311,6 +311,7 @@ static void evaluate_faults(void)
   }
 
   /* (b) Cell-monitor sensor timeout (guard against the pre-first-scan zero). */
+#if !FEB_BMS_DISABLE_ADBMS_CHECKS
   uint32_t last = FEB_ADBMS_Get_Last_Update_Tick();
   if (last != 0 && (HAL_GetTick() - last) > FEB_ADBMS_DATA_TIMEOUT_MS)
   {
@@ -318,6 +319,7 @@ static void evaluate_faults(void)
     fault_begin(grp_fault);
     return;
   }
+#endif
 
   /* (c) IVT overcurrent + sensor timeout, only while current can actually flow
    * (HV contactors closed). BATTERY_FREE and BALANCE are excluded: the pack is

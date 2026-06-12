@@ -105,6 +105,12 @@ void FEB_Init(void)
   /* Log after all subsystems initialized */
   LOG_I(TAG_MAIN, "BMS initialization complete");
 
+#if FEB_BMS_DISABLE_ADBMS_CHECKS
+  LOG_W(TAG_MAIN, "ALL ADBMS CHECKS DISABLED (FEB_BMS_DISABLE_ADBMS_CHECKS=1)");
+  LOG_W(TAG_MAIN, "Bench mode: voltage/temp enforcement AND the cell-monitor");
+  LOG_W(TAG_MAIN, "data-timeout fault are BYPASSED. Do NOT run a real pack.");
+#endif
+
 #if FEB_BMS_DISABLE_TEMP_CHECKS
   LOG_W(TAG_MAIN, "TEMPERATURE ENFORCEMENT DISABLED (FEB_BMS_DISABLE_TEMP_CHECKS=1)");
   LOG_W(TAG_MAIN, "Bench mode: temp faults, charging temp limits, and balance");
@@ -128,6 +134,9 @@ void FEB_Init(void)
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("========================================\r\n");
   FEB_Console_Printf("        BMS Console Ready\r\n");
+#if FEB_BMS_DISABLE_ADBMS_CHECKS
+  FEB_Console_Printf("  !! ALL ADBMS CHECKS DISABLED (BENCH) !!\r\n");
+#endif
 #if FEB_BMS_DISABLE_TEMP_CHECKS
   FEB_Console_Printf("  !! TEMP CHECKS DISABLED (BENCH) !!\r\n");
 #endif

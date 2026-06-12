@@ -177,6 +177,28 @@
 #define FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS 0
 #endif
 
+// ********************************** ADBMS Master Override (BENCH ONLY)
+
+// Set to 1 to disable EVERY ADBMS-derived check at once, for testing the state
+// machine in isolation with no functional cell monitor attached. Implies all
+// three enforcement overrides above (temp + primary/secondary voltage) and
+// additionally bypasses the cell-monitor data-staleness fault in
+// FEB_SM evaluate_faults() — the one check the per-domain macros don't cover.
+// Readings and diagnostics remain visible; only enforcement is suppressed.
+// Logs warnings at boot while enabled. NEVER enable with a real pack.
+#ifndef FEB_BMS_DISABLE_ADBMS_CHECKS
+#define FEB_BMS_DISABLE_ADBMS_CHECKS 0
+#endif
+
+#if FEB_BMS_DISABLE_ADBMS_CHECKS
+#undef FEB_BMS_DISABLE_TEMP_CHECKS
+#define FEB_BMS_DISABLE_TEMP_CHECKS 1
+#undef FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS
+#define FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS 1
+#undef FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS
+#define FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS 1
+#endif
+
 // ********************************** Accumulator Structure **********************
 
 typedef struct
