@@ -41,6 +41,16 @@ void FEB_HW_BMS_Shutdown_Set(bool closed)
   HAL_GPIO_WritePin(BMS_A_GPIO_Port, BMS_A_Pin, closed ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
+bool FEB_HW_BMS_Shutdown_Get(void)
+{
+  return HAL_GPIO_ReadPin(BMS_A_GPIO_Port, BMS_A_Pin) == GPIO_PIN_SET;
+}
+
+bool FEB_HW_BMS_Indicator_Get(void)
+{
+  return HAL_GPIO_ReadPin(BMS_IND_GPIO_Port, BMS_IND_Pin) == GPIO_PIN_SET;
+}
+
 void FEB_HW_BMS_Indicator_Set(bool on)
 {
   HAL_GPIO_WritePin(BMS_IND_GPIO_Port, BMS_IND_Pin, on ? GPIO_PIN_SET : GPIO_PIN_RESET);

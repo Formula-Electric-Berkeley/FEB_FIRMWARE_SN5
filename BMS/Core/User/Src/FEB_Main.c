@@ -110,6 +110,7 @@ void FEB_Init(void)
   LOG_W(TAG_MAIN, "Bench mode: voltage/temp enforcement AND the cell-monitor");
   LOG_W(TAG_MAIN, "data-timeout fault are BYPASSED. Do NOT run a real pack.");
   LOG_W(TAG_MAIN, "Pack voltage FORCED to %.1fV for bench precharge", (double)FEB_BMS_BENCH_PACK_VOLTAGE_V);
+  LOG_W(TAG_MAIN, "Shutdown/AIR- backouts and contactor-feedback fault DISABLED");
 #endif
 
 #if FEB_BMS_DISABLE_TEMP_CHECKS

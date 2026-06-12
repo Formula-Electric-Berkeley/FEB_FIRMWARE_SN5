@@ -48,10 +48,22 @@ void FEB_HW_Precharge_Set(bool closed);
 void FEB_HW_BMS_Shutdown_Set(bool closed);
 
 /**
+ * @brief Read back the actual BMS shutdown relay pin level (PC1)
+ * @return true if the pin is high (relay commanded closed)
+ */
+bool FEB_HW_BMS_Shutdown_Get(void);
+
+/**
  * @brief Set BMS indicator output
  * @param on true = indicator on, false = indicator off
  */
 void FEB_HW_BMS_Indicator_Set(bool on);
+
+/**
+ * @brief Read back the actual BMS indicator pin level (PC0)
+ * @return true if the indicator output is driven on
+ */
+bool FEB_HW_BMS_Indicator_Get(void);
 
 /**
  * @brief Set fault indicator LED

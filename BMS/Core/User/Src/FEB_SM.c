@@ -91,7 +91,9 @@ static volatile uint8_t shutdown_open_count = 0;
 /* Debounce timers for evaluate_faults() (0 = condition currently clear) */
 static uint32_t overcurrent_start_tick = 0;
 static uint32_t imd_open_start_tick = 0;
+#if !FEB_BMS_DISABLE_ADBMS_CHECKS
 static uint32_t contactor_mismatch_start_tick = 0;
+#endif
 
 /* The IMD status S-R latch powers up LOW; SHS_IMD only goes high once the
  * operator resets the IMD. Low is benign until then — only after the latch
@@ -203,8 +205,10 @@ static void fault_begin(BMS_State_t fault_type)
   /* Stop cell balancing immediately */
   FEB_Stop_Balance();
 
-  /* Open BMS shutdown relay immediately (disables HV path) */
+  /* Open BMS shutdown relay immediately (disables HV path). The BMS
+   * indicator (PC0) is always the inverse of the relay pin (PC1). */
   FEB_HW_BMS_Shutdown_Set(false);
+  FEB_HW_BMS_Indicator_Set(true);
   LOG_W(TAG_SM, "BMS shutdown relay opened");
 
   /* Turn on fault indicator */
@@ -399,7 +403,10 @@ static void evaluate_faults(void)
   /* (e) RECOMMENDED: contactor feedback plausibility (weld/stuck detection).
    * Compare commanded vs sensed AIR+/precharge in steady HV states. Skipped
    * while the non-blocking energize/charging settle is in flight (the sense
-   * legitimately disagrees with the state label during that window). */
+   * legitimately disagrees with the state label during that window).
+   * Bench: compiled out — AIR+ sense follows shutdown-loop power the bench
+   * doesn't have, so it would fault every console-skipped energize. */
+#if !FEB_BMS_DISABLE_ADBMS_CHECKS
   {
     bool expect_air_plus = (s == BMS_STATE_ENERGIZED || s == BMS_STATE_DRIVE || s == BMS_STATE_CHARGING);
     bool expect_precharge = (s == BMS_STATE_PRECHARGE || s == BMS_STATE_CHARGER_PRECHARGE);
@@ -435,6 +442,7 @@ static void evaluate_faults(void)
       contactor_mismatch_start_tick = 0;
     }
   }
+#endif
 }
 
 /* ============================================================================
@@ -608,6 +616,16 @@ static void LVPowerTransition(BMS_State_t next_state)
     updateStateProtected(next_state);
     break;
 
+  case BMS_STATE_PRECHARGE:
+    /* Console-requested skip past BUS_HEALTH_CHECK. Same entry actions as
+     * HealthCheckTransition; the normal PRECHARGE backout/timeout still
+     * applies (unless compiled out by the bench master macro). */
+    LOG_W(TAG_SM, "Bus health check skipped via console, entering PRECHARGE");
+    FEB_HW_AIR_Plus_Set(false);
+    FEB_HW_Precharge_Set(true);
+    updateStateProtected(next_state);
+    break;
+
   case BMS_STATE_DEFAULT:
     /* 1->2: shutdown loop ("ESC/TSMS") closed -> bus health check. */
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE)
@@ -710,6 +728,7 @@ static void PrechargeTransition(BMS_State_t next_state)
     break;
 
   case BMS_STATE_DEFAULT:
+#if !FEB_BMS_DISABLE_ADBMS_CHECKS
     /* Safety check with debounce: require multiple consecutive OPEN readings to filter transients */
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN || FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
     {
@@ -726,6 +745,7 @@ static void PrechargeTransition(BMS_State_t next_state)
     {
       shutdown_open_count = 0; /* Reset counter on good reading */
     }
+#endif
 
     /* Start precharge timer on first entry */
     if (precharge_start_time == 0)
@@ -797,6 +817,7 @@ static void EnergizedTransition(BMS_State_t next_state)
     break;
 
   case BMS_STATE_DEFAULT:
+#if !FEB_BMS_DISABLE_ADBMS_CHECKS
     /* Safety check: go back to LV if shutdown or AIR- opens */
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN || FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
     {
@@ -804,6 +825,7 @@ static void EnergizedTransition(BMS_State_t next_state)
       EnergizedTransition(BMS_STATE_LV_POWER);
       break;
     }
+#endif
 
     /* Ready-to-drive gate (4->5): enter DRIVE only on a fresh R2D from DASH. */
     if (FEB_CAN_DASH_IsReadyToDrive(R2D_TIMEOUT_MS))
