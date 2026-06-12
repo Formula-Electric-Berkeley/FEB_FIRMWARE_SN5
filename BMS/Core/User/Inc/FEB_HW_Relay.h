@@ -100,10 +100,15 @@ FEB_Relay_State_t FEB_HW_Shutdown_Sense(void);
 FEB_Relay_State_t FEB_HW_IMD_Sense(void);
 
 /**
- * @brief Read TSMS shutdown sense input
- * @return FEB_RELAY_STATE_CLOSE if TSMS active, FEB_RELAY_STATE_OPEN otherwise
+ * @brief Drive the TSMS indicator light output (PC11)
  */
-FEB_Relay_State_t FEB_HW_TSMS_Sense(void);
+void FEB_HW_TSMS_Indicator_Set(bool on);
+
+/**
+ * @brief Read back the commanded TSMS indicator light state
+ * @return true if the indicator output is driven on
+ */
+bool FEB_HW_TSMS_Indicator_Get(void);
 
 /**
  * @brief Read BMS reset button state

@@ -93,6 +93,12 @@ static uint32_t overcurrent_start_tick = 0;
 static uint32_t imd_open_start_tick = 0;
 static uint32_t contactor_mismatch_start_tick = 0;
 
+/* The IMD status S-R latch powers up LOW; SHS_IMD only goes high once the
+ * operator resets the IMD. Low is benign until then — only after the latch
+ * has been seen high (armed) does a sustained low mean an IMD fault. Never
+ * cleared at runtime: a power cycle resets both the MCU and the latch. */
+static bool imd_armed = false;
+
 /* Special DEFAULT value for transition function calls during FEB_SM_Process */
 #define BMS_STATE_DEFAULT BMS_STATE_COUNT
 
@@ -361,8 +367,18 @@ static void evaluate_faults(void)
     overcurrent_start_tick = 0;
   }
 
-  /* (d) Continuous IMD monitoring (debounced; suppressed during BOOT). */
-  if (s != BMS_STATE_BOOT && FEB_HW_IMD_Sense() == FEB_RELAY_STATE_OPEN)
+  /* (d) Continuous IMD monitoring (debounced; suppressed during BOOT).
+   * Armed only after the latch is first seen high — see imd_armed above. */
+  if (FEB_HW_IMD_Sense() == FEB_RELAY_STATE_CLOSE)
+  {
+    if (!imd_armed)
+    {
+      imd_armed = true;
+      LOG_I(TAG_SM, "IMD latch set, monitoring armed");
+    }
+    imd_open_start_tick = 0;
+  }
+  else if (imd_armed && s != BMS_STATE_BOOT)
   {
     if (imd_open_start_tick == 0)
     {
@@ -535,6 +551,11 @@ bool FEB_SM_Is_Drive_Ready(void)
 {
   BMS_State_t state = SM_Current_State;
   return (state == BMS_STATE_ENERGIZED || state == BMS_STATE_DRIVE);
+}
+
+bool FEB_SM_IMD_Armed(void)
+{
+  return imd_armed;
 }
 
 /* ============================================================================

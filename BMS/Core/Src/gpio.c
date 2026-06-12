@@ -87,10 +87,8 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : WAKE1_Pin INT1_Pin BMS_RESET_Pin PG_Pin
-                           ALERT_Pin */
-  GPIO_InitStruct.Pin = WAKE1_Pin|INT1_Pin|BMS_RESET_Pin|PG_Pin
-                          |ALERT_Pin;
+  /*Configure GPIO pins : WAKE1_Pin INT1_Pin PG_Pin ALERT_Pin */
+  GPIO_InitStruct.Pin = WAKE1_Pin|INT1_Pin|PG_Pin|ALERT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
@@ -108,6 +106,12 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(PC_RELAY_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : BMS_RESET_Pin */
+  GPIO_InitStruct.Pin = BMS_RESET_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(BMS_RESET_GPIO_Port, &GPIO_InitStruct);
 
 }
 

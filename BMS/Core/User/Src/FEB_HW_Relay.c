@@ -14,7 +14,7 @@
  * - AIR_P_SENSE_Pin (PC5): AIR+ feedback input
  * - SHS_IN_Pin (PC12): Shutdown loop input
  * - SHS_IMD_Pin (PC10): IMD shutdown input
- * - SHS_TSMS_Pin (PC11): TSMS shutdown input
+ * - SHS_TSMS_Pin (PC11): TSMS indicator light output
  */
 
 #include "FEB_HW_Relay.h"
@@ -86,9 +86,14 @@ FEB_Relay_State_t FEB_HW_IMD_Sense(void)
   return (FEB_Relay_State_t)HAL_GPIO_ReadPin(SHS_IMD_GPIO_Port, SHS_IMD_Pin);
 }
 
-FEB_Relay_State_t FEB_HW_TSMS_Sense(void)
+void FEB_HW_TSMS_Indicator_Set(bool on)
 {
-  return (FEB_Relay_State_t)HAL_GPIO_ReadPin(SHS_TSMS_GPIO_Port, SHS_TSMS_Pin);
+  HAL_GPIO_WritePin(SHS_TSMS_GPIO_Port, SHS_TSMS_Pin, on ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+bool FEB_HW_TSMS_Indicator_Get(void)
+{
+  return HAL_GPIO_ReadPin(SHS_TSMS_GPIO_Port, SHS_TSMS_Pin) == GPIO_PIN_SET;
 }
 
 bool FEB_HW_Reset_Button_Pressed(void)
