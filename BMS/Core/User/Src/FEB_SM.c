@@ -45,7 +45,6 @@
 
 /* R2D timeout for freshness check */
 #define R2D_TIMEOUT_MS 500
-#define R2D_BUZZER_DURATION_MS 2000 /* FSAE RTDS: 1-3s on ready-to-drive */
 
 /* Contactor settling delay in milliseconds */
 #define CONTACTOR_SETTLE_DELAY_MS 500
@@ -79,11 +78,6 @@ static volatile uint32_t charging_delay_start = 0;
 /* Precharge start time for timeout */
 static volatile uint32_t precharge_start_time = 0;
 static volatile uint32_t charger_precharge_start_time = 0;
-
-/* Ready-to-drive sound: set on each ENERGIZED->DRIVE entry, auto-off after
- * R2D_BUZZER_DURATION_MS (non-blocking, processed every SM tick) */
-static volatile bool buzzer_active = false;
-static volatile uint32_t buzzer_start_tick = 0;
 
 /* Reset button state tracking */
 static volatile bool reset_button_last_state = false;
@@ -212,14 +206,12 @@ static void fault_begin(BMS_State_t fault_type)
   FEB_Stop_Balance();
 
   /* Open BMS shutdown relay immediately (disables HV path). The BMS
-   * indicator (PC0) is always the inverse of the relay pin (PC1). */
+   * indicator (PC0) is always the inverse of the relay pin (PC1), and the
+   * buzzer sounds for as long as the fault is latched (power-cycle to clear). */
   FEB_HW_BMS_Shutdown_Set(false);
   FEB_HW_BMS_Indicator_Set(true);
+  FEB_HW_Buzzer_Set(true);
   LOG_W(TAG_SM, "BMS shutdown relay opened");
-
-  /* Silence the R2D buzzer if a fault lands inside its window */
-  FEB_HW_Buzzer_Set(false);
-  buzzer_active = false;
 
   /* Turn on fault indicator */
   FEB_HW_Fault_Indicator_Set(true);
@@ -470,9 +462,10 @@ void FEB_SM_Init(void)
   FEB_HW_Precharge_Set(false);
   LOG_D(TAG_SM, "AIR+ and precharge relays opened");
 
-  /* Reset indicators */
+  /* Reset indicators and fault buzzer */
   FEB_HW_BMS_Indicator_Set(false);
   FEB_HW_Fault_Indicator_Set(false);
+  FEB_HW_Buzzer_Set(false);
 
   /* Close BMS shutdown relay (enables HV path when shutdown loop complete) */
   FEB_HW_BMS_Shutdown_Set(true);
@@ -501,13 +494,6 @@ void FEB_SM_Transition(BMS_State_t next_state)
 
 void FEB_SM_Process(void)
 {
-  /* R2D buzzer auto-off (before any early return so it runs every tick) */
-  if (buzzer_active && (HAL_GetTick() - buzzer_start_tick) >= R2D_BUZZER_DURATION_MS)
-  {
-    FEB_HW_Buzzer_Set(false);
-    buzzer_active = false;
-  }
-
   /* Check reset button */
   check_reset_button();
 
@@ -818,11 +804,6 @@ static void EnergizedTransition(BMS_State_t next_state)
     break;
 
   case BMS_STATE_DRIVE:
-    /* Ready-to-drive sound (SN4 RTDS): non-blocking, auto-off in Process */
-    FEB_HW_Buzzer_Set(true);
-    buzzer_active = true;
-    buzzer_start_tick = HAL_GetTick();
-    LOG_I(TAG_SM, "R2D buzzer on");
     updateStateProtected(next_state);
     break;
 
