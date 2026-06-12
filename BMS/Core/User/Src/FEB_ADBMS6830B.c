@@ -673,10 +673,15 @@ void FEB_ADBMS_Temperature_Process()
 
 float FEB_ADBMS_GET_ACC_Total_Voltage()
 {
+#if FEB_BMS_DISABLE_ADBMS_CHECKS
+  /* Bench: no cell monitor — report the forced pack voltage (see FEB_Const.h) */
+  return FEB_BMS_BENCH_PACK_VOLTAGE_V;
+#else
   osMutexAcquire(ADBMSMutexHandle, osWaitForever);
   float voltage = FEB_ACC.total_voltage_V;
   osMutexRelease(ADBMSMutexHandle);
   return voltage;
+#endif
 }
 
 float FEB_ADBMS_GET_ACC_MIN_Voltage()
@@ -1001,7 +1006,12 @@ uint32_t FEB_ADBMS_Get_Last_Update_Tick(void)
 
 float FEB_ADBMS_Snapshot_Total_Voltage(void)
 {
+#if FEB_BMS_DISABLE_ADBMS_CHECKS
+  /* Bench: no cell monitor — report the forced pack voltage (see FEB_Const.h) */
+  return FEB_BMS_BENCH_PACK_VOLTAGE_V;
+#else
   return adbms_snap_total_V;
+#endif
 }
 
 float FEB_ADBMS_Snapshot_Max_Cell_Voltage(void)

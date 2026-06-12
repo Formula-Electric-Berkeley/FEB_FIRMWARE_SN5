@@ -184,7 +184,9 @@
 // three enforcement overrides above (temp + primary/secondary voltage) and
 // additionally bypasses the cell-monitor data-staleness fault in
 // FEB_SM evaluate_faults() — the one check the per-domain macros don't cover.
-// Readings and diagnostics remain visible; only enforcement is suppressed.
+// Also forces the reported pack total voltage to FEB_BMS_BENCH_PACK_VOLTAGE_V
+// so precharge can complete against a low-voltage bench supply. Per-cell
+// readings and diagnostics remain visible; only enforcement is suppressed.
 // Logs warnings at boot while enabled. NEVER enable with a real pack.
 #ifndef FEB_BMS_DISABLE_ADBMS_CHECKS
 #define FEB_BMS_DISABLE_ADBMS_CHECKS 0
@@ -197,6 +199,15 @@
 #define FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS 1
 #undef FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS
 #define FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS 1
+#endif
+
+// With the master override enabled, both pack-voltage getters return this
+// value (volts) instead of the (absent) cell-monitor sum, so the precharge
+// completion gate (IVT >= 90% of pack) can pass with a bench supply: at the
+// default 60 V the IVT must read >= 54 V. Has no effect when the master
+// override is 0.
+#ifndef FEB_BMS_BENCH_PACK_VOLTAGE_V
+#define FEB_BMS_BENCH_PACK_VOLTAGE_V 60.0f
 #endif
 
 // ********************************** Accumulator Structure **********************
