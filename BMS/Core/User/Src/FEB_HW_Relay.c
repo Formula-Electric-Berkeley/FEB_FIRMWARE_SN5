@@ -15,6 +15,7 @@
  * - SHS_IN_Pin (PC12): Shutdown loop input
  * - SHS_IMD_Pin (PC10): IMD shutdown input
  * - SHS_TSMS_Pin (PC11): TSMS indicator light output
+ * - TSSI_IN_Pin (PB2): Tractive System Status Indicator (high=green, low=red)
  */
 
 #include "FEB_HW_Relay.h"
@@ -64,6 +65,12 @@ void FEB_HW_Fault_Indicator_Set(bool on)
 void FEB_HW_Buzzer_Set(bool on)
 {
   HAL_GPIO_WritePin(BUZZER_EN_GPIO_Port, BUZZER_EN_Pin, on ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+void FEB_HW_TSSI_Set(bool green)
+{
+  /* TSSI_IN (PB2): high = green (healthy), low = red (fault). */
+  HAL_GPIO_WritePin(TSSI_IN_GPIO_Port, TSSI_IN_Pin, green ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 /* ============================================================================

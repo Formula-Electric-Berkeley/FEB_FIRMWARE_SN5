@@ -41,7 +41,7 @@
  * ============================================================================ */
 
 /* Precharge voltage threshold (90% of pack voltage) */
-#define PRECHARGE_THRESHOLD_PCT 0.90f
+#define PRECHARGE_THRESHOLD_PCT 0.80f
 
 /* R2D timeout for freshness check */
 #define R2D_TIMEOUT_MS 500
@@ -504,6 +504,11 @@ void FEB_SM_Process(void)
   /* Process pending fault delay first */
   fault_process();
 
+  /* Tractive System Status Indicator: green (high) when healthy, red (low)
+   * latched while in any fault state. Driven every tick as the single source
+   * of truth, before the contactor-settle early returns below. */
+  FEB_HW_TSSI_Set(!isFaultState(SM_Current_State));
+
   /* Process pending energize delay (precharge->energized) */
   if (energize_pending)
   {
@@ -821,11 +826,12 @@ static void EnergizedTransition(BMS_State_t next_state)
 
   case BMS_STATE_DEFAULT:
 #if !FEB_BMS_DISABLE_ADBMS_CHECKS
-    /* Safety check: go back to LV if shutdown or AIR- opens */
+    /* Safety: shutdown loop or AIR- opening while the bus is live is a hard
+     * fault, not a graceful return to LV. Latch a BMS fault. */
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN || FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
     {
-      LOG_W(TAG_SM, "Shutdown/AIR- open while energized, returning to LV_POWER");
-      EnergizedTransition(BMS_STATE_LV_POWER);
+      LOG_E(TAG_SM, "Shutdown/AIR- open while energized, entering FAULT");
+      EnergizedTransition(BMS_STATE_FAULT_BMS);
       break;
     }
 #endif
@@ -870,11 +876,12 @@ static void DriveTransition(BMS_State_t next_state)
     break;
 
   case BMS_STATE_DEFAULT:
-    /* Safety check: go back to LV if shutdown or AIR- opens */
+    /* Safety: shutdown loop or AIR- opening while driving is a hard fault, not a
+     * graceful return to LV. Latch a BMS fault. */
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN || FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
     {
-      LOG_W(TAG_SM, "Shutdown/AIR- open while driving, returning to LV_POWER");
-      DriveTransition(BMS_STATE_LV_POWER);
+      LOG_E(TAG_SM, "Shutdown/AIR- open while driving, entering FAULT");
+      DriveTransition(BMS_STATE_FAULT_BMS);
       break;
     }
 

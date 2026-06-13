@@ -268,15 +268,20 @@ void FEB_RMS_Torque(void)
     FEB_ADC_CheckBrakePlausibility();
   }
 
-  // Check plausibility and safety conditions (require BMS in drive state)
+  // Check plausibility and safety conditions (require BMS in drive state).
+  // Gate on FEB_ADC_CheckAPPSPlausibility() (not the raw APPS_Data.plausible
+  // cache field): it folds in the latched implausibility AND the hardware
+  // short-/open-circuit faults, so a single-channel short or open cuts torque
+  // immediately instead of only via the (oscillating) dual-channel latch.
   bool bms_in_drive = FEB_RMS_DriveAllowed();
-  bool sensors_plausible = bms_in_drive && DRIVE_STATE && APPS_Data.plausible && brake_plausible;
+  bool apps_plausible = FEB_ADC_CheckAPPSPlausibility();
+  bool sensors_plausible = bms_in_drive && DRIVE_STATE && apps_plausible && brake_plausible;
 
   // Log any safety violations
   if (!sensors_plausible)
   {
     uint32_t now_rms = HAL_GetTick();
-    if (!APPS_Data.plausible && (now_rms - last_rms_implaus_log_tick) >= 1000)
+    if (!apps_plausible && (now_rms - last_rms_implaus_log_tick) >= 1000)
     {
       last_rms_implaus_log_tick = now_rms;
       float v1_mv = 0.0f, v2_mv = 0.0f;

@@ -77,6 +77,12 @@ void FEB_HW_Fault_Indicator_Set(bool on);
  */
 void FEB_HW_Buzzer_Set(bool on);
 
+/**
+ * @brief Set the Tractive System Status Indicator (TSSI_IN, PB2)
+ * @param green true = high (green / healthy), false = low (red / fault)
+ */
+void FEB_HW_TSSI_Set(bool green);
+
 /* ============================================================================
  * Sense Input Functions
  * ============================================================================ */

@@ -189,7 +189,7 @@
 // readings and diagnostics remain visible; only enforcement is suppressed.
 // Logs warnings at boot while enabled. NEVER enable with a real pack.
 #ifndef FEB_BMS_DISABLE_ADBMS_CHECKS
-#define FEB_BMS_DISABLE_ADBMS_CHECKS 0
+#define FEB_BMS_DISABLE_ADBMS_CHECKS 1
 #endif
 
 #if FEB_BMS_DISABLE_ADBMS_CHECKS

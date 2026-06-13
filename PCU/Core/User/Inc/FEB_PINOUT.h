@@ -143,7 +143,7 @@ extern "C"
  * FSAE EV.5.3 transfer-function diversity. */
 #define APPS1_DEFAULT_MIN_VOLTAGE_MV 1355 /* APPS1 0% throttle (est.; verify per-car) */
 #define APPS1_DEFAULT_MAX_VOLTAGE_MV 2406 /* APPS1 100% throttle (est.; verify per-car) */
-#define APPS2_DEFAULT_MIN_VOLTAGE_MV 400  /* APPS2 0% throttle (est.; verify per-car) */
+#define APPS2_DEFAULT_MIN_VOLTAGE_MV 550  /* APPS2 0% throttle (est.; verify per-car) */
 #define APPS2_DEFAULT_MAX_VOLTAGE_MV 1030 /* APPS2 100% throttle (est.; verify per-car) */
 #define APPS_MIN_PHYSICAL_PERCENT 0.0f    /* Physical minimum: 0% throttle */
 #define APPS_MAX_PHYSICAL_PERCENT 100.0f  /* Physical maximum: 100% throttle */
