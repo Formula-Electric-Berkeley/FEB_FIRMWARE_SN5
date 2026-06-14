@@ -49,6 +49,15 @@ repos:
         pass_filenames: false
         always_run: true
 
+      # Bench-flag guard - BMS ADBMS safety overrides must never ship enabled.
+      # Enable bench mode via the build flag (cmake -DBMS_BENCH_MODE=ON) instead.
+      - id: check-bench-flags
+        name: check-bench-flags
+        entry: ./scripts/check-bench-flags.sh
+        language: script
+        pass_filenames: false
+        always_run: true
+
       # Auto-increment patch version on each commit for affected boards + repo.
       # No-ops if a VERSION file is already staged (so /version stays authoritative).
       - id: auto-bump-patch

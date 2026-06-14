@@ -49,6 +49,13 @@ uint8_t ERROR_TYPE = 0; // HEXDIGIT 1 voltage faults; HEXDIGIT 2 temp faults; HE
 static volatile uint32_t adbms_fault_flags = 0;
 static volatile uint32_t adbms_last_update_tick = 0;
 
+#if !FEB_BMS_DISABLE_TEMP_CHECKS
+/* Arm tick for the temperature-telemetry-loss fault (0 = disarmed). Set when the
+ * valid-read fraction first drops below FEB_TEMP_MIN_VALID_FRACTION; a sensor
+ * fault latches once it stays low for FEB_TEMP_TELEMETRY_TIMEOUT_MS. */
+static uint32_t temp_telemetry_loss_tick = 0;
+#endif
+
 /* Lock-free pack-level snapshots for the 1ms SM task. Written at the end of
  * each process pass (writer holds ADBMSMutexHandle); read without the mutex
  * (aligned 32-bit float reads are atomic on Cortex-M4). The mutex-taking
@@ -518,17 +525,45 @@ static void validate_temps()
     DEBUG_TEMP_PRINT("Bank %d: tempRead=%d", bank, FEB_ACC.banks[bank].tempRead);
   }
 
-  float read_ratio = totalReads / (float)(FEB_NUM_TEMP_SENSORS * FEB_NBANKS);
-  DEBUG_TEMP_PRINT("Total reads: %d/%d (%.1f%%)", totalReads, FEB_NUM_TEMP_SENSORS * FEB_NBANKS, read_ratio * 100.0f);
-  if (read_ratio < 0.2)
+  /* Valid-read fraction measured against the POPULATED sensor count (NOT the
+   * 42-wide array: index 39 / MUX6[4] is unconnected by design), so a healthy
+   * pack reads ~100%, not ~98%, and the fault threshold below is meaningful. */
+  const int expected_reads = FEB_TEMP_SENSORS_POPULATED_PER_BANK * FEB_NBANKS;
+  float read_ratio = totalReads / (float)expected_reads;
+  DEBUG_TEMP_PRINT("Total reads: %d/%d (%.1f%%)", totalReads, expected_reads, read_ratio * 100.0f);
+  bool telemetry_low = (read_ratio < FEB_TEMP_MIN_VALID_FRACTION);
+  if (telemetry_low)
   {
     DEBUG_TEMP_PRINT("WARNING: Low temperature read ratio (%.1f%%)", read_ratio * 100.0f);
     FEB_ADBMS_Update_Error_Type(ERROR_TYPE_LOW_TEMP_READS);
-    /* NOTE: chronic low temp-read ratio is a sensor-health warning, not a cell
-     * over-temp event; intentionally NOT latched as a hard fault (would
-     * false-trip on a flaky harness). A truly dead cell-monitor is caught by
-     * the staleness timeout (adbms_last_update_tick) in evaluate_faults(). */
   }
+
+#if !FEB_BMS_DISABLE_TEMP_CHECKS
+  /* FSAE fail-safe: the AMS must open the shutdown circuit within ~1 s if it
+   * loses the temperature data it depends on (e.g. a temperature sense wire
+   * disconnects). Latch a sensor fault when too few populated sensors read valid
+   * for longer than FEB_TEMP_TELEMETRY_TIMEOUT_MS. Time-confirmed so a single
+   * flaky scan does not trip it; evaluate_faults() routes ADBMS_FAULT_FLAG_SENSOR
+   * to FAULT_BMS/FAULT_CHARGING like the over-temp fault. */
+  if (telemetry_low)
+  {
+    uint32_t now = HAL_GetTick();
+    if (temp_telemetry_loss_tick == 0)
+    {
+      temp_telemetry_loss_tick = (now == 0) ? 1u : now; /* 0 is the disarmed sentinel */
+    }
+    else if ((now - temp_telemetry_loss_tick) >= FEB_TEMP_TELEMETRY_TIMEOUT_MS)
+    {
+      printf("[ADBMS] FAULT: temperature telemetry lost - %d/%d sensors valid (%.0f%%)\r\n", totalReads, expected_reads,
+             (double)(read_ratio * 100.0f));
+      adbms_fault_flags |= ADBMS_FAULT_FLAG_SENSOR;
+    }
+  }
+  else
+  {
+    temp_telemetry_loss_tick = 0; /* healthy: disarm the loss timer */
+  }
+#endif
   DEBUG_TEMP_PRINT("Temperature validation complete");
 }
 

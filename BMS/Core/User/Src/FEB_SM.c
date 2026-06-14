@@ -313,11 +313,13 @@ static void evaluate_faults(void)
                         s == BMS_STATE_BALANCE);
   BMS_State_t grp_fault = charger_group ? BMS_STATE_FAULT_CHARGING : BMS_STATE_FAULT_BMS;
 
-  /* (a) Cell voltage / temperature violations latched by the ADBMS task. */
+  /* (a) Cell voltage / temperature violations and temperature-telemetry loss
+   * latched by the ADBMS task (SENSOR = too few valid temp reads, a required
+   * FSAE fail-safe — treated as a hard fault, same as an over-temp cell). */
   uint32_t af = FEB_ADBMS_Get_Fault_Flags();
-  if (af & (ADBMS_FAULT_FLAG_VOLTAGE | ADBMS_FAULT_FLAG_TEMP))
+  if (af & (ADBMS_FAULT_FLAG_VOLTAGE | ADBMS_FAULT_FLAG_TEMP | ADBMS_FAULT_FLAG_SENSOR))
   {
-    LOG_E(TAG_SM, "Cell V/T violation (flags=0x%02lX)", (unsigned long)af);
+    LOG_E(TAG_SM, "Cell V/T/sensor violation (flags=0x%02lX)", (unsigned long)af);
     fault_begin(grp_fault);
     return;
   }
