@@ -75,7 +75,11 @@ void StartADBMSTask(void *argument)
 
   /* === Main Task Loop === */
   uint32_t voltage_tick = osKernelGetTickCount();
-  uint32_t temp_tick = osKernelGetTickCount();
+  /* Phase-offset the temperature scan by half a period so it doesn't fire on the
+   * same tick as the (now equal-rate) voltage scan and serialize their isoSPI
+   * work under the shared mutex. Unsigned tick wrap is intentional and matches
+   * the rollover-safe `now - tick` comparison idiom used below. */
+  uint32_t temp_tick = osKernelGetTickCount() - pdMS_TO_TICKS(FEB_TEMP_SCAN_PERIOD_MS / 2);
   uint32_t balance_tick = osKernelGetTickCount();
 
   for (;;)
