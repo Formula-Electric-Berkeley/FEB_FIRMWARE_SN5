@@ -17,6 +17,7 @@
 #include "DCU_Commands.h"
 #include "FEB_RFM95.h"
 #include "FEB_Task_Radio.h"
+#include "FEB_CAN_Stream.h"
 #include "feb_can_latest.h"
 #include "feb_console.h"
 #include "feb_string_utils.h"
@@ -173,7 +174,7 @@ static void cmd_radio_rx(int argc, char *argv[])
     return;
   }
 
-  uint8_t buf[64];
+  uint8_t buf[255];
   uint8_t len = 0;
   FEB_RFM95_Status_t s = FEB_RFM95_Receive(buf, &len, timeout);
   if (s == FEB_RFM95_OK)
@@ -396,7 +397,7 @@ static void cmd_radio_csv(int argc, char *argv[])
       FEB_Console_CsvError("error", "invalid_timeout");
       return;
     }
-    uint8_t buf[64];
+    uint8_t buf[255];
     uint8_t len = 0;
     FEB_RFM95_Status_t s = FEB_RFM95_Receive(buf, &len, timeout);
     if (s == FEB_RFM95_OK)
@@ -545,17 +546,50 @@ static int csv_line_emit(const char *fmt, ...)
   return n;
 }
 
+/* dcu|can|stream [on|off] — mirrors the DCU command so a host app gets the same
+ * `can,...` row stream from either board. Here the rows come from radio. */
+static void cmd_can_stream(int argc, char *argv[])
+{
+  const char *sub = (argc >= 3) ? argv[2] : NULL;
+
+  if (sub != NULL && FEB_strcasecmp(sub, "on") == 0)
+  {
+    FEB_CAN_Stream_SetStream(true, "pipe");
+    FEB_Console_Printf("CAN stream: on\r\n");
+    return;
+  }
+  if (sub != NULL && FEB_strcasecmp(sub, "off") == 0)
+  {
+    FEB_CAN_Stream_SetStream(false, NULL);
+    FEB_Console_Printf("CAN stream: off\r\n");
+    return;
+  }
+
+  if (FEB_CAN_Stream_IsStreaming())
+  {
+    FEB_Console_Printf("CAN stream: on (tx_id=%s)\r\n", FEB_CAN_Stream_GetTxId());
+  }
+  else
+  {
+    FEB_Console_Printf("CAN stream: off\r\n");
+  }
+}
+
 static void sub_can(int argc, char *argv[])
 {
   if (argc < 2)
   {
-    FEB_Console_Printf("Usage: dcu|can|state  or  dcu|can|msg|<name>\r\n");
+    FEB_Console_Printf("Usage: dcu|can|state  or  dcu|can|msg|<name>  or  dcu|can|stream|[on|off]\r\n");
     return;
   }
   const char *sub = argv[1];
   if (FEB_strcasecmp(sub, "state") == 0)
   {
     FEB_CAN_State_Print(FEB_Console_Printf);
+  }
+  else if (FEB_strcasecmp(sub, "stream") == 0)
+  {
+    cmd_can_stream(argc, argv);
   }
   else if (FEB_strcasecmp(sub, "msg") == 0)
   {
@@ -587,6 +621,29 @@ static void cmd_can_csv(int argc, char *argv[])
   {
     FEB_CAN_State_Print(csv_line_emit);
   }
+  else if (FEB_strcasecmp(sub, "stream") == 0)
+  {
+    const char *s2 = (argc >= 3) ? argv[2] : NULL;
+    if (s2 != NULL && FEB_strcasecmp(s2, "on") == 0)
+    {
+      char tx[FEB_CSV_TX_ID_MAX_LEN + 1];
+      FEB_CAN_Stream_SetStream(true, FEB_Console_CsvCurrentTxId(tx, sizeof(tx)) ? tx : "csv");
+      FEB_Console_CsvEmit("can-stream", "on");
+    }
+    else if (s2 != NULL && FEB_strcasecmp(s2, "off") == 0)
+    {
+      FEB_CAN_Stream_SetStream(false, NULL);
+      FEB_Console_CsvEmit("can-stream", "off");
+    }
+    else if (FEB_CAN_Stream_IsStreaming())
+    {
+      FEB_Console_CsvEmit("can-stream", "on,%s", FEB_CAN_Stream_GetTxId());
+    }
+    else
+    {
+      FEB_Console_CsvEmit("can-stream", "off");
+    }
+  }
   else if (FEB_strcasecmp(sub, "msg") == 0)
   {
     if (argc < 3)
@@ -616,6 +673,7 @@ static void print_dcu_help(void)
   FEB_Console_Printf("  dcu|radio              - Radio commands (see dcu|radio for help)\r\n");
   FEB_Console_Printf("  dcu|can|state          - Latest value of each received CAN message\r\n");
   FEB_Console_Printf("  dcu|can|msg|<name>     - Show signals for one CAN message\r\n");
+  FEB_Console_Printf("  dcu|can|stream [on|off]- Stream received CAN frames as can,... rows\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
   FEB_Console_Printf("  DCU_Receiver|csv|<tx_id>|<sub>  - any subcommand above also works as CSV\r\n");

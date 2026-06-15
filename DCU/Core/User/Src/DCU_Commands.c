@@ -225,6 +225,7 @@ static void print_radio_help(void)
   FEB_Console_Printf("  dcu|radio|tx <message>          - Transmit a string\r\n");
   FEB_Console_Printf("  dcu|radio|rx <timeout_ms>       - Receive once with timeout\r\n");
   FEB_Console_Printf("  dcu|radio|listen [on|off]       - Toggle/set listen-only mode\r\n");
+  FEB_Console_Printf("  dcu|radio|stream [on|off]       - Toggle CAN-over-radio forwarding\r\n");
   FEB_Console_Printf("  dcu|radio|config <p> <value>    - p in {freq,power,sf,bw}\r\n");
   FEB_Console_Printf("  dcu|radio|reset                 - Hardware reset of RFM95\r\n");
   FEB_Console_Printf("  dcu|radio|spi [sep|raw]         - Low-level SPI test (text only)\r\n");
@@ -340,7 +341,7 @@ static void cmd_radio_rx(int argc, char *argv[])
     return;
   }
 
-  uint8_t buf[64];
+  uint8_t buf[255];
   uint8_t len = 0;
   FEB_RFM95_Status_t s = FEB_RFM95_Receive(buf, &len, timeout);
   if (s == FEB_RFM95_OK)
@@ -391,6 +392,30 @@ static void cmd_radio_listen(int argc, char *argv[])
   }
   FEB_Task_Radio_SetListenMode(target);
   FEB_Console_Printf("Listen mode: %s\r\n", target ? "ON" : "off");
+}
+
+/* dcu|radio|stream [on|off] — enable/disable CAN-over-radio forwarding. Which
+ * CAN IDs are eligible is decided by DCU_CAN_Filter.c; this just gates the TX. */
+static void cmd_radio_stream(int argc, char *argv[])
+{
+  const char *sub = (argc >= 3) ? argv[2] : NULL;
+
+  if (sub != NULL && FEB_strcasecmp(sub, "on") == 0)
+  {
+    FEB_Task_Radio_SetStreamMode(true);
+    FEB_Console_Printf("Radio stream: on\r\n");
+    return;
+  }
+  if (sub != NULL && FEB_strcasecmp(sub, "off") == 0)
+  {
+    FEB_Task_Radio_SetStreamMode(false);
+    FEB_Console_Printf("Radio stream: off\r\n");
+    return;
+  }
+
+  /* default / "status" */
+  FEB_Console_Printf("Radio stream: %s (fwd drops=%lu)\r\n", FEB_Task_Radio_GetStreamMode() ? "on" : "off",
+                     (unsigned long)FEB_Task_Radio_GetForwardDropCount());
 }
 
 static void cmd_radio_config(int argc, char *argv[])
@@ -478,6 +503,10 @@ static void sub_radio(int argc, char *argv[])
   else if (FEB_strcasecmp(subcmd, "listen") == 0)
   {
     cmd_radio_listen(argc, argv);
+  }
+  else if (FEB_strcasecmp(subcmd, "stream") == 0)
+  {
+    cmd_radio_stream(argc, argv);
   }
   else if (FEB_strcasecmp(subcmd, "config") == 0)
   {
@@ -575,7 +604,7 @@ static void cmd_radio_csv(int argc, char *argv[])
       FEB_Console_CsvError("error", "invalid_timeout");
       return;
     }
-    uint8_t buf[64];
+    uint8_t buf[255];
     uint8_t len = 0;
     FEB_RFM95_Status_t s = FEB_RFM95_Receive(buf, &len, timeout);
     if (s == FEB_RFM95_OK)
@@ -621,6 +650,29 @@ static void cmd_radio_csv(int argc, char *argv[])
     }
     FEB_Task_Radio_SetListenMode(target);
     FEB_Console_CsvEmit("radio-listen", "%d", target ? 1 : 0);
+  }
+  else if (FEB_strcasecmp(subcmd, "stream") == 0)
+  {
+    bool target;
+    if (argc >= 3)
+    {
+      if (FEB_strcasecmp(argv[2], "on") == 0)
+        target = true;
+      else if (FEB_strcasecmp(argv[2], "off") == 0)
+        target = false;
+      else
+      {
+        FEB_Console_CsvError("error", "stream,%s", argv[2]);
+        return;
+      }
+    }
+    else
+    {
+      target = !FEB_Task_Radio_GetStreamMode();
+    }
+    FEB_Task_Radio_SetStreamMode(target);
+    /* Body: enabled,fwd_drops */
+    FEB_Console_CsvEmit("radio-stream", "%d,%lu", target ? 1 : 0, (unsigned long)FEB_Task_Radio_GetForwardDropCount());
   }
   else if (FEB_strcasecmp(subcmd, "config") == 0)
   {

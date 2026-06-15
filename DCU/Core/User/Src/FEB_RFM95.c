@@ -44,7 +44,7 @@ void FEB_RFM95_GetDefaultConfig(FEB_RFM95_Config_t *config)
 
   config->frequency_hz = 915000000; /* US ISM band */
   config->tx_power_dbm = 14;
-  config->bandwidth = 7; /* 125 kHz */
+  config->bandwidth = 8; /* 250 kHz — ~2x airtime vs 125 kHz; must match RX */
   config->spreading_factor = 7;
   config->coding_rate = 1; /* 4/5 */
   config->sync_word = 0x12;
