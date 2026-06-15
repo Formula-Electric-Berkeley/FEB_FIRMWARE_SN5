@@ -53,7 +53,14 @@ typedef struct
  *   { .bus = DCU_CAN_BUS_ANY, .can_id = 0x300, .min_interval_ms = 0   }, // every frame
  * -------------------------------------------------------------------------- */
 static const DCU_CAN_AllowEntry_t k_radio_allow[] = {
-    /* (empty — nothing forwarded until you add entries) */
+    {.bus = 1, .can_id = 0xD0, .min_interval_ms = 500}, // PCU heartbeat
+    {.bus = 1, .can_id = 0xD1, .min_interval_ms = 500}, // DASH heartbeat
+    {.bus = 1, .can_id = 0xD2, .min_interval_ms = 500}, // LVPDB heartbeat
+    {.bus = 1, .can_id = 0xD3, .min_interval_ms = 500}, // DCU heartbeat
+    {.bus = 1, .can_id = 0xD4, .min_interval_ms = 500}, // Front sensor node heartbeat
+    {.bus = 1, .can_id = 0xD5, .min_interval_ms = 500}, // Rear sensor node heartbeat
+    {.bus = 1, .can_id = 0x25, .min_interval_ms = 250}, // Rear sensor node data (wheel speed)
+    {.bus = 1, .can_id = 0x10, .min_interval_ms = 500}, // Dash state
 };
 
 #define DCU_CAN_ALLOW_COUNT (sizeof(k_radio_allow) / sizeof(k_radio_allow[0]))

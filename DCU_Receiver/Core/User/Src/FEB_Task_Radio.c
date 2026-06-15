@@ -101,7 +101,7 @@ static void print_raw_packet(const uint8_t *buf, uint8_t len, int16_t rssi, int8
   FEB_UART_Write(FEB_UART_INSTANCE_2, (const uint8_t *)line, pos);
 }
 
-static volatile bool s_listen_mode = false;
+static volatile bool s_listen_mode = true;
 
 void FEB_Task_Radio_SetListenMode(bool enable)
 {
@@ -117,7 +117,7 @@ void StartRadioTask(void *argument)
 {
   (void)argument;
 
-  LOG_I(TAG, "Task started (%s mode)", RADIO_ROLE == RADIO_ROLE_PING ? "PING" : "PONG");
+  LOG_I(TAG, "Task started (%s)", s_listen_mode ? "listen" : (RADIO_ROLE == RADIO_ROLE_PING ? "PING" : "PONG"));
 
   /* Initialize with retries */
   uint8_t attempts = 0;

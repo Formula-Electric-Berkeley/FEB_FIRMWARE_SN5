@@ -50,7 +50,7 @@ static const char PONG_MSG[] = "PONG";
 #endif
 
 static volatile bool s_listen_mode = false;
-static volatile bool s_stream_mode = false;
+static volatile bool s_stream_mode = true;
 
 /* Forward path: CAN logger task -> radio task. Created in StartRadioTask before
  * the init-retry loop so producers have a valid handle as early as possible. */
@@ -139,7 +139,7 @@ void StartRadioTask(void *argument)
 {
   (void)argument;
 
-  LOG_I(TAG, "Task started (%s mode)", RADIO_ROLE == RADIO_ROLE_PING ? "PING" : "PONG");
+  LOG_I(TAG, "Task started (%s)", s_stream_mode ? "CAN stream" : (RADIO_ROLE == RADIO_ROLE_PING ? "PING" : "PONG"));
 
   /* Create the forward queue first so canLogTask can enqueue immediately. */
   s_fwd_queue = osMessageQueueNew(FWD_QUEUE_DEPTH, sizeof(DCU_CAN_Frame_t), NULL);
