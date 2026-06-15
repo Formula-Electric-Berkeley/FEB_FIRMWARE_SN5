@@ -768,7 +768,12 @@ void FEB_ADC_GetAPPSCacheSnapshot(APPS_DataTypeDef *out, uint16_t *raw1, uint16_
 
 void FEB_ADC_AcknowledgeAPPSImplausibility(void)
 {
-  if (apps_cache.position1 < 5.0f && apps_cache.position2 < 5.0f)
+  /* Release-and-reset must not fire while a hardware circuit fault is still
+   * asserted: a noisy short/open can intermittently map both channels below 5%
+   * and "look like" a released pedal, clearing the latch and reopening a fresh
+   * 100 ms drive window. Require the pedal low AND no live short/open circuit. */
+  if (apps_cache.position1 < 5.0f && apps_cache.position2 < 5.0f && !apps_cache.short_circuit &&
+      !apps_cache.open_circuit)
   {
     if (active_faults & FAULT_APPS_IMPLAUSIBILITY)
     {

@@ -13,25 +13,26 @@ static bool rtd_timer_armed = false;
 static uint32_t rtd_trying_to_toggle_start_tick = 0;
 static bool rtd_toggle_complete = false;
 
-// Minimum brake pressure required for RTD activation (safety interlock)
-#define RTD_BRAKE_THRESHOLD 200
+// Minimum brake required for RTD activation (safety interlock).
+// brake_position is centi-percent (0-10000 = 0-100%); 1000 = 10% brake.
+#define RTD_BRAKE_THRESHOLD 1000
 
 // Any RTD input older than this is treated as missing — RTD will not arm on
 // stale CAN data. Matches BMS_STATE_TIMEOUT_MS.
-#define RTD_INPUT_FRESHNESS_MS 500
+#define RTD_INPUT_FRESHNESS_MS 1000
 
 void FEB_State_Update_RTD(void)
 {
   // MARK: Start buzzer code
-  // Buzz on any entry into / exit from BMS_STATE_DRIVE so faults that drop us
-  // out of drive (DRIVE -> FAULT_*) still trigger the exit chime.
+  // Chime only on the normal R2D enter/exit (ENERGIZED <-> DRIVE). A fault that
+  // drops us out of DRIVE (DRIVE -> FAULT_*) must NOT buzz.
   static BMS_State_t previous_bms_state = BMS_STATE_BOOT;
   BMS_State_t bms_state = FEB_CAN_BMS_GetLastState();
-  if (previous_bms_state != BMS_STATE_DRIVE && bms_state == BMS_STATE_DRIVE)
+  if (previous_bms_state == BMS_STATE_ENERGIZED && bms_state == BMS_STATE_DRIVE)
   {
     FEB_IO_Play_Buzzer(BUZZER_DURATION_RTD_ENTER);
   }
-  else if (previous_bms_state == BMS_STATE_DRIVE && bms_state != BMS_STATE_DRIVE)
+  else if (previous_bms_state == BMS_STATE_DRIVE && bms_state == BMS_STATE_ENERGIZED)
   {
     FEB_IO_Play_Buzzer(BUZZER_DURATION_RTD_EXIT);
   }
@@ -41,15 +42,12 @@ void FEB_State_Update_RTD(void)
   // Send the ready to drive message over CAN when all the conditions are met
   IO_States_t states = FEB_IO_GetLastIOStates();
   uint16_t brake_pressure = FEB_CAN_PCU_GetLastBrakePosition();
-  uint8_t inv_enabled = FEB_CAN_PCU_GetLastRMSEnabled();
 
-  bool inputs_fresh = FEB_CAN_PCU_IsBrakeDataFresh(RTD_INPUT_FRESHNESS_MS) &&
-                      FEB_CAN_PCU_IsRMSDataFresh(RTD_INPUT_FRESHNESS_MS) &&
-                      FEB_CAN_BMS_IsDataFresh(RTD_INPUT_FRESHNESS_MS);
+  bool inputs_fresh =
+      FEB_CAN_PCU_IsBrakeDataFresh(RTD_INPUT_FRESHNESS_MS) && FEB_CAN_BMS_IsDataFresh(RTD_INPUT_FRESHNESS_MS);
 
-  // RTD requires: fresh CAN inputs, button held, brake applied, inverter enabled, BMS energized
-  if (inputs_fresh && (brake_pressure >= RTD_BRAKE_THRESHOLD) && (inv_enabled == 1) &&
-      (bms_state == BMS_STATE_ENERGIZED) && states.button_rtd)
+  // RTD requires: fresh CAN inputs, button 1 held, brake >10%, BMS energized
+  if (inputs_fresh && (brake_pressure > RTD_BRAKE_THRESHOLD) && (bms_state == BMS_STATE_ENERGIZED) && states.button_rtd)
   {
     if (!rtd_timer_armed)
     {

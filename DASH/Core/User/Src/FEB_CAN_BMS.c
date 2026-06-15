@@ -48,10 +48,13 @@ static BMS_CAN_Data_t bms_data = {
 static void rx_callback_bms_state(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                   const uint8_t *data, uint8_t length, void *user_data)
 {
-  FEB_Console_Printf("BMS State: %X", data[0]);
-  bms_data.state = data[0] >> 3;
-  __DMB();
-  bms_data.last_rx_tick = HAL_GetTick();
+  struct feb_can_bms_state_t msg;
+  if (feb_can_bms_state_unpack(&msg, data, length) == 0)
+  {
+    bms_data.state = (BMS_State_t)msg.bms_state; /* low 5 bits of byte 0; codegen owns the layout */
+    __DMB();
+    bms_data.last_rx_tick = HAL_GetTick();
+  }
 }
 
 static void rx_callback_bms_temperature(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,

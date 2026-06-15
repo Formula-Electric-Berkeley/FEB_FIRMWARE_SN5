@@ -59,7 +59,7 @@
 osThreadId_t uartRxTaskHandle;
 const osThreadAttr_t uartRxTask_attributes = {
   .name = "uartRxTask",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for ADBMSTask */
@@ -73,28 +73,28 @@ const osThreadAttr_t ADBMSTask_attributes = {
 osThreadId_t TPSTaskHandle;
 const osThreadAttr_t TPSTask_attributes = {
   .name = "TPSTask",
-  .stack_size = 256 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for BMSTaskRx */
 osThreadId_t BMSTaskRxHandle;
 const osThreadAttr_t BMSTaskRx_attributes = {
   .name = "BMSTaskRx",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for BMSTaskTx */
 osThreadId_t BMSTaskTxHandle;
 const osThreadAttr_t BMSTaskTx_attributes = {
   .name = "BMSTaskTx",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for SMTask */
 osThreadId_t SMTaskHandle;
 const osThreadAttr_t SMTask_attributes = {
   .name = "SMTask",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for canTxQueue */

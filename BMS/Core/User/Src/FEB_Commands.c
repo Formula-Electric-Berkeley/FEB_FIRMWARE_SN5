@@ -258,6 +258,18 @@ static bool is_state_transition_allowed(BMS_State_t current, BMS_State_t target)
   {
     return true;
   }
+  /* Manual stepping through the HV path (skips the BUS_HEALTH auto-gate).
+   * With a healthy shutdown loop this mirrors what the SM does on its own;
+   * with the loop open, the per-state Shutdown/AIR- backouts eject to
+   * LV_POWER. ENERGIZED->LV_POWER is the teardown (opens AIR+/precharge). */
+  if ((current == BMS_STATE_LV_POWER && (target == BMS_STATE_BUS_HEALTH_CHECK || target == BMS_STATE_PRECHARGE)) ||
+      (current == BMS_STATE_BUS_HEALTH_CHECK && target == BMS_STATE_PRECHARGE) ||
+      (current == BMS_STATE_ENERGIZED && target == BMS_STATE_LV_POWER))
+  {
+    LOG_W(TAG_BMS, "Manual transition override: %s -> %s", FEB_CAN_State_GetStateName(current),
+          FEB_CAN_State_GetStateName(target));
+    return true;
+  }
   if (target == BMS_STATE_BATTERY_FREE)
   {
     if (current == BMS_STATE_LV_POWER || current == BMS_STATE_BUS_HEALTH_CHECK)
@@ -285,6 +297,7 @@ static void subcmd_state(int argc, char *argv[])
     FEB_Console_Printf("        charging(8), balance(9), fault_bms(10), fault_bspd(11),\r\n");
     FEB_Console_Printf("        fault_imd(12), fault_charging(13)\r\n");
     FEB_Console_Printf("\r\nSafe transitions: ENERGIZED<->DRIVE, LV/BUS_HEALTH->BATTERY_FREE, ->FAULT_*\r\n");
+    FEB_Console_Printf("Manual: LV->BUS_HEALTH/PRECHARGE, BUS_HEALTH->PRECHARGE, ENERGIZED->LV\r\n");
     return;
   }
 
@@ -345,6 +358,7 @@ static void subcmd_state(int argc, char *argv[])
     FEB_Console_Printf("Error: Transition %s -> %s not allowed\r\n", FEB_CAN_State_GetStateName(current_state),
                        FEB_CAN_State_GetStateName(new_state));
     FEB_Console_Printf("Allowed: ENERGIZED<->DRIVE, LV/BUS_HEALTH->BATTERY_FREE, ->FAULT_*\r\n");
+    FEB_Console_Printf("Manual: LV->BUS_HEALTH/PRECHARGE, BUS_HEALTH->PRECHARGE, ENERGIZED->LV\r\n");
     return;
   }
 
@@ -370,9 +384,15 @@ static void subcmd_gpio(int argc, char *argv[])
   FEB_Console_Printf("  Precharge Sense: %s\r\n",
                      FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
   FEB_Console_Printf("  Shutdown Loop:   %s\r\n", FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
-  FEB_Console_Printf("  IMD Status:      %s\r\n", FEB_HW_IMD_Sense() == FEB_RELAY_STATE_CLOSE ? "OK" : "FAULT");
-  FEB_Console_Printf("  TSMS Status:     %s\r\n", FEB_HW_TSMS_Sense() == FEB_RELAY_STATE_CLOSE ? "ACTIVE" : "INACTIVE");
+  FEB_Console_Printf("  IMD Status:      %s\r\n", FEB_HW_IMD_Sense() == FEB_RELAY_STATE_CLOSE
+                                                      ? "OK (armed)"
+                                                      : (FEB_SM_IMD_Armed() ? "FAULT" : "LOW (not armed)"));
   FEB_Console_Printf("  Reset Button:    %s\r\n", FEB_HW_Reset_Button_Pressed() ? "PRESSED" : "NOT_PRESSED");
+
+  FEB_Console_Printf("Outputs:\r\n");
+  FEB_Console_Printf("  BMS SHDN (PC1):  %s\r\n", FEB_HW_BMS_Shutdown_Get() ? "CLOSED" : "OPEN");
+  FEB_Console_Printf("  BMS IND (PC0):   %s\r\n", FEB_HW_BMS_Indicator_Get() ? "ON" : "OFF");
+  FEB_Console_Printf("  TSMS Indicator:  %s\r\n", FEB_HW_TSMS_Indicator_Get() ? "ON" : "OFF");
 
   FEB_Console_Printf("\r\nHV Safe: %s\r\n", FEB_HW_Is_HV_Safe() ? "YES" : "NO");
 }
@@ -959,17 +979,17 @@ static void cmd_gpio_csv(int argc, char *argv[])
   (void)argc;
   (void)argv;
   /* Body: air_plus_sense,precharge_sense,air_minus_sense,air_plus_sense,
-   *       shutdown,imd_ok,tsms_active,reset_btn,hv_safe  (all 0/1)
+   *       shutdown,imd_ok,tsms_ind,reset_btn,hv_safe  (all 0/1)
    * Note: cols 0 and 3 both report AIR+ sense — schema preserved for
-   * compatibility with existing log consumers. */
+   * compatibility with existing log consumers. Col 6 (formerly the bogus
+   * "tsms_active" sense) now reports the TSMS indicator output level. */
   FEB_Console_CsvEmit("gpio", "%d,%d,%d,%d,%d,%d,%d,%d,%d", FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0,
                       FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0,
                       FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0,
                       FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0,
                       FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0,
-                      FEB_HW_IMD_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0,
-                      FEB_HW_TSMS_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0, FEB_HW_Reset_Button_Pressed() ? 1 : 0,
-                      FEB_HW_Is_HV_Safe() ? 1 : 0);
+                      FEB_HW_IMD_Sense() == FEB_RELAY_STATE_CLOSE ? 1 : 0, FEB_HW_TSMS_Indicator_Get() ? 1 : 0,
+                      FEB_HW_Reset_Button_Pressed() ? 1 : 0, FEB_HW_Is_HV_Safe() ? 1 : 0);
 }
 
 static void cmd_mem_csv(int argc, char *argv[])

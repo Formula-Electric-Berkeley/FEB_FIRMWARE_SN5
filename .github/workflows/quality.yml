@@ -7,6 +7,17 @@ on:
     branches: [main]
 
 jobs:
+  bench-flags:
+    runs-on: ubuntu-latest
+    name: bench-flag guard
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: BMS ADBMS safety overrides must not be enabled in source
+        run: ./scripts/check-bench-flags.sh
+
   clang-format:
     runs-on: ubuntu-latest
     name: clang-format check

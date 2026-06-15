@@ -14,7 +14,8 @@
  * - AIR_P_SENSE_Pin (PC5): AIR+ feedback input
  * - SHS_IN_Pin (PC12): Shutdown loop input
  * - SHS_IMD_Pin (PC10): IMD shutdown input
- * - SHS_TSMS_Pin (PC11): TSMS shutdown input
+ * - SHS_TSMS_Pin (PC11): TSMS indicator light output
+ * - TSSI_IN_Pin (PB2): Tractive System Status Indicator (high=green, low=red)
  */
 
 #include "FEB_HW_Relay.h"
@@ -41,6 +42,16 @@ void FEB_HW_BMS_Shutdown_Set(bool closed)
   HAL_GPIO_WritePin(BMS_A_GPIO_Port, BMS_A_Pin, closed ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
+bool FEB_HW_BMS_Shutdown_Get(void)
+{
+  return HAL_GPIO_ReadPin(BMS_A_GPIO_Port, BMS_A_Pin) == GPIO_PIN_SET;
+}
+
+bool FEB_HW_BMS_Indicator_Get(void)
+{
+  return HAL_GPIO_ReadPin(BMS_IND_GPIO_Port, BMS_IND_Pin) == GPIO_PIN_SET;
+}
+
 void FEB_HW_BMS_Indicator_Set(bool on)
 {
   HAL_GPIO_WritePin(BMS_IND_GPIO_Port, BMS_IND_Pin, on ? GPIO_PIN_SET : GPIO_PIN_RESET);
@@ -54,6 +65,12 @@ void FEB_HW_Fault_Indicator_Set(bool on)
 void FEB_HW_Buzzer_Set(bool on)
 {
   HAL_GPIO_WritePin(BUZZER_EN_GPIO_Port, BUZZER_EN_Pin, on ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+void FEB_HW_TSSI_Set(bool green)
+{
+  /* TSSI_IN (PB2): high = green (healthy), low = red (fault). */
+  HAL_GPIO_WritePin(TSSI_IN_GPIO_Port, TSSI_IN_Pin, green ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 /* ============================================================================
@@ -86,9 +103,14 @@ FEB_Relay_State_t FEB_HW_IMD_Sense(void)
   return (FEB_Relay_State_t)HAL_GPIO_ReadPin(SHS_IMD_GPIO_Port, SHS_IMD_Pin);
 }
 
-FEB_Relay_State_t FEB_HW_TSMS_Sense(void)
+void FEB_HW_TSMS_Indicator_Set(bool on)
 {
-  return (FEB_Relay_State_t)HAL_GPIO_ReadPin(SHS_TSMS_GPIO_Port, SHS_TSMS_Pin);
+  HAL_GPIO_WritePin(SHS_TSMS_GPIO_Port, SHS_TSMS_Pin, on ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+bool FEB_HW_TSMS_Indicator_Get(void)
+{
+  return HAL_GPIO_ReadPin(SHS_TSMS_GPIO_Port, SHS_TSMS_Pin) == GPIO_PIN_SET;
 }
 
 bool FEB_HW_Reset_Button_Pressed(void)
