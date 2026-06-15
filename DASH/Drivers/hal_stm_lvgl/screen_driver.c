@@ -16,8 +16,9 @@
 #define LCD_SCREEN_WIDTH 800  // Actual screen width in landscape mode
 #define LCD_SCREEN_HEIGHT 480 // Actual screen height in landscape mode
 #define FRAMEBUFFER_SIZE (uint32_t)(LCD_SCREEN_HEIGHT * LCD_SCREEN_WIDTH)
-#define DMA_XFERS_NEEDED FRAMEBUFFER_SIZE / 2 // We need half as many transfers because the buffer is an array of
-                                              // 16 bits but the transfers are 32 bits.
+#define DMA_XFERS_NEEDED                                                                                               \
+  FRAMEBUFFER_SIZE / 2 // We need half as many transfers because the buffer is an array of
+                       // 16 bits but the transfers are 32 bits.
 
 /*
  * Handles to peripherals
@@ -35,11 +36,20 @@ __attribute__((section(".framebuffer"))) lv_color_t framebuffer_1[FRAMEBUFFER_SI
 
 #define FRAMEBUFFER_ADDR ((uint32_t)0xC0000000)
 
+static lv_disp_drv_t *flush_disp_drv;
+static lv_disp_t *flush_disp;
+static uint32_t flush_src;
+static uint32_t flush_dst;
+static uint16_t flush_area_idx;
+
 /*
  * Private functions prototypes
  */
 void stm32_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p);
-void dma2d_copy_area(lv_area_t area, uint32_t src_buffer, uint32_t dst_buffer);
+static void dma2d_start_area_it(lv_area_t area, uint32_t src_buffer, uint32_t dst_buffer);
+static void dma2d_flush_next_area(void);
+static void dma2d_xfer_cplt(DMA2D_HandleTypeDef *h);
+static void dma2d_xfer_error(DMA2D_HandleTypeDef *h);
 
 /*
  * Public functions definitions
@@ -82,6 +92,9 @@ void screen_driver_init(void)
   HAL_LTDC_ConfigLayer(&hltdc, &layer_cfg, 0);
   HAL_LTDC_Reload(&hltdc, LTDC_RELOAD_IMMEDIATE);
 
+  hdma2d.XferCpltCallback = dma2d_xfer_cplt;
+  hdma2d.XferErrorCallback = dma2d_xfer_error;
+
   /* ---- LVGL init ----  */
   static lv_disp_draw_buf_t draw_buf;
   lv_disp_draw_buf_init(&draw_buf, framebuffer_1, screen_buffer, FRAMEBUFFER_SIZE);
@@ -101,7 +114,6 @@ void screen_driver_init(void)
 void stm32_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p)
 {
   lv_disp_t *disp = _lv_refr_get_disp_refreshing();
-  uint16_t *dma_xfer_src, *dma_xfer_dst;
   if (!lv_disp_flush_is_last(disp_drv))
   {
     lv_disp_flush_ready(disp_drv);
@@ -112,30 +124,39 @@ void stm32_flush_cb(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *
   HAL_LTDC_SetAddress_NoReload(&hltdc, (uint32_t)color_p, 0);
   HAL_LTDC_Reload(&hltdc, LTDC_RELOAD_VERTICAL_BLANKING); // VSYNC
 
-  // Determine source and destination of transfer
-  dma_xfer_src = (uint16_t *)color_p;
-  if (color_p == screen_buffer)
-  {
-    dma_xfer_dst = (uint16_t *)framebuffer_1;
-  }
-  else
-  {
-    dma_xfer_dst = (uint16_t *)screen_buffer;
-  }
+  // The just-rendered buffer (color_p) is now on screen; sync the dirty areas
+  // back into the other buffer so it is coherent for the next frame. The copies
+  // run on DMA2D in the background, chained one per transfer-complete IRQ; the
+  // final one calls lv_disp_flush_ready() to release LVGL.
+  flush_disp_drv = disp_drv;
+  flush_disp = disp;
+  flush_src = (uint32_t)color_p;
+  flush_dst = (color_p == screen_buffer) ? (uint32_t)framebuffer_1 : (uint32_t)screen_buffer;
+  flush_area_idx = 0;
+  dma2d_flush_next_area();
+}
 
-  for (size_t i = 0; i < disp->inv_p; i++)
+// Start an interrupt-driven DMA2D copy of the next non-joined dirty area. When
+// no areas remain, release LVGL. Runs in task context for the first area and in
+// DMA2D IRQ context for the rest.
+static void dma2d_flush_next_area(void)
+{
+  while (flush_area_idx < flush_disp->inv_p)
   {
-    // If the area was not joined (and thus should not be ignored)
-    if (!disp->inv_area_joined[i])
+    uint16_t i = flush_area_idx++;
+    // Skip areas that were joined into another (and thus already copied)
+    if (!flush_disp->inv_area_joined[i])
     {
-      dma2d_copy_area(disp->inv_areas[i], (uint32_t)dma_xfer_src, (uint32_t)dma_xfer_dst);
+      dma2d_start_area_it(flush_disp->inv_areas[i], flush_src, flush_dst);
+      return; // wait for the transfer-complete IRQ to advance
     }
   }
 
-  lv_disp_flush_ready(disp_drv);
+  // All dirty areas synced into the back buffer
+  lv_disp_flush_ready(flush_disp_drv);
 }
 
-void dma2d_copy_area(lv_area_t area, uint32_t src_buffer, uint32_t dst_buffer)
+static void dma2d_start_area_it(lv_area_t area, uint32_t src_buffer, uint32_t dst_buffer)
 {
   size_t start_offset =
       (LCD_SCREEN_WIDTH * (area.y1) + (area.x1)) * 2; // address offset (not pixel offset so it is multiplied by 2)
@@ -154,7 +175,20 @@ void dma2d_copy_area(lv_area_t area, uint32_t src_buffer, uint32_t dst_buffer)
 
   HAL_DMA2D_Init(&hdma2d);
   HAL_DMA2D_ConfigLayer(&hdma2d, DMA2D_FOREGROUND_LAYER);
-  HAL_DMA2D_Start(&hdma2d, src_buffer + start_offset, dst_buffer + start_offset, area_width,
-                  area_height);              // Start transfer
-  HAL_DMA2D_PollForTransfer(&hdma2d, 10000); // Wait for transfer to be over
+  HAL_DMA2D_Start_IT(&hdma2d, src_buffer + start_offset, dst_buffer + start_offset, area_width, area_height);
+}
+
+// DMA2D transfer-complete IRQ: kick off the next dirty area (or finish).
+static void dma2d_xfer_cplt(DMA2D_HandleTypeDef *h)
+{
+  (void)h;
+  dma2d_flush_next_area();
+}
+
+// DMA2D error IRQ: give up on the remaining areas and release LVGL so the
+// rendering pipeline does not stall waiting for a flush that never completes.
+static void dma2d_xfer_error(DMA2D_HandleTypeDef *h)
+{
+  (void)h;
+  lv_disp_flush_ready(flush_disp_drv);
 }
