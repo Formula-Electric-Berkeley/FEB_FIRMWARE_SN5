@@ -59,8 +59,21 @@ static const DCU_CAN_AllowEntry_t k_radio_allow[] = {
     {.bus = 1, .can_id = 0xD3, .min_interval_ms = 500}, // DCU heartbeat
     {.bus = 1, .can_id = 0xD4, .min_interval_ms = 500}, // Front sensor node heartbeat
     {.bus = 1, .can_id = 0xD5, .min_interval_ms = 500}, // Rear sensor node heartbeat
+
     {.bus = 1, .can_id = 0x25, .min_interval_ms = 250}, // Rear sensor node data (wheel speed)
     {.bus = 1, .can_id = 0x10, .min_interval_ms = 500}, // Dash state
+
+    {.bus = 1, .can_id = 0x20, .min_interval_ms = 2000}, // Front left tire temperature
+    {.bus = 1, .can_id = 0x21, .min_interval_ms = 2000}, // Front right tire temperature
+    {.bus = 1, .can_id = 0x22, .min_interval_ms = 2000}, // Rear left tire temperature
+    {.bus = 1, .can_id = 0x23, .min_interval_ms = 2000}, // Rear right tire temperature
+
+    {.bus = 1, .can_id = 0x26, .min_interval_ms = 500}, // [IMU][FRONT] accelerometer data (raw)
+
+    {.bus = 1, .can_id = 0x02, .min_interval_ms = 500}, // Accumulator pack voltage
+    {.bus = 1, .can_id = 0x03, .min_interval_ms = 500}, // Accumulator pack temperature
+    {.bus = 1, .can_id = 0x04, .min_interval_ms = 500}, // Accumulator fault flags
+    {.bus = 1, .can_id = 0x05, .min_interval_ms = 500}, // BMS state machine status
 };
 
 #define DCU_CAN_ALLOW_COUNT (sizeof(k_radio_allow) / sizeof(k_radio_allow[0]))
