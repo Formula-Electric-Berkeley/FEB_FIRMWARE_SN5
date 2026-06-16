@@ -1949,8 +1949,8 @@ static const FEB_Console_Cmd_t irts_cmd = {
  * by delegating to the sensor's text handler; CSV mode resolves directly via
  * top-level registration of each sensor. */
 static const FEB_Console_Cmd_t *const SN_SUBCMDS[] = {
-    &imu_cmd, &mag_cmd,  &gps_cmd,  &cal_cmd,  &fusion_cmd,    &wss_cmd,      &lp_cmd,
-    &ping_cmd, &pong_cmd, &stop_cmd, &canstatus_cmd, &irts_cmd,
+    &imu_cmd, &mag_cmd,  &gps_cmd,  &cal_cmd,  &fusion_cmd,    &wss_cmd,
+    &lp_cmd,  &ping_cmd, &pong_cmd, &stop_cmd, &canstatus_cmd, &irts_cmd,
 };
 #define SN_SUBCMDS_COUNT (sizeof(SN_SUBCMDS) / sizeof(SN_SUBCMDS[0]))
 
