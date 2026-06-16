@@ -1,22 +1,17 @@
 /**
  ******************************************************************************
  * @file           : FEB_CAN_WSS.c
- * @brief          : CAN reporter for wheel speed sensors. Variant-aware:
- *                   FRONT and REAR DBC layouts genuinely differ, so this is
- *                   the one reporter with an explicit #if FEB_SN_IS_FRONT().
- *                   No-op if FEB_SN_HAS_WSS=0.
+ * @brief          : CAN reporter for wheel speed sensors. FRONT and REAR DBC
+ *                   layouts are identical (two uint16 @ 0.01 mph + dir flags),
+ *                   so this reporter is fully variant-agnostic via the
+ *                   FEB_SN_* WSS aliases. No-op if FEB_SN_HAS_WSS=0.
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  *
- * FRONT (0x24) wss_front_data:
- *   wss_left_front  (u16, 0.1 RPM/LSB)
- *   wss_right_front (u16, 0.1 RPM/LSB)
- *   wss_dir_flags   (u8: bit0 left_dir, bit1 right_dir; 1 = reverse)
- *
- * REAR  (0x25) wss_rear_data:
- *   wss_right_rear  (u32, 0.1 RPM/LSB)
- *   wss_left_rear   (u32, 0.1 RPM/LSB)
- *   (no direction flags — FEB_WSS.c still tracks direction internally)
+ * WSS (0x24 FRONT / 0x25 REAR) wss_*_data:
+ *   wss_left_*    (u16, 0.01 mph/LSB)
+ *   wss_right_*   (u16, 0.01 mph/LSB)
+ *   wss_dir_flags (u8: bit0 left_dir, bit1 right_dir; 1 = reverse)
  ******************************************************************************
  */
 
@@ -34,32 +29,23 @@ void FEB_CAN_WSS_Init(void) {}
 void FEB_CAN_WSS_Tick(void)
 {
 #if FEB_SN_HAS_WSS
-  /* The encode helpers expect physical units (RPM); globals are in 0.1 RPM units, so divide. */
-  const double left_rpm = (double)left_rpm_x10 * 0.1;
-  const double right_rpm = (double)right_rpm_x10 * 0.1;
+  /* The encode helpers expect physical units (mph); globals are in 0.01 mph units, so scale. */
+  const double left_mph = (double)left_mph_x100 * 0.01;
+  const double right_mph = (double)right_mph_x100 * 0.01;
 
-#if FEB_SN_IS_FRONT()
   uint8_t flags = 0;
   if (left_dir < 0)
     flags |= (1u << 0);
   if (right_dir < 0)
     flags |= (1u << 1);
 
-  struct feb_can_wss_front_data_t s = {
-      .wss_left_front = feb_can_wss_front_data_wss_left_front_encode(left_rpm),
-      .wss_right_front = feb_can_wss_front_data_wss_right_front_encode(right_rpm),
-      .wss_dir_flags = feb_can_wss_front_data_wss_dir_flags_encode((double)flags),
+  struct feb_sn_wss_t s = {
+      .feb_sn_wss_left = feb_sn_wss_left_encode(left_mph),
+      .feb_sn_wss_right = feb_sn_wss_right_encode(right_mph),
+      .feb_sn_wss_dir_flags = feb_sn_wss_dir_flags_encode((double)flags),
   };
   uint8_t buf[FEB_SN_WSS_LENGTH];
-  feb_can_wss_front_data_pack(buf, &s, sizeof(buf));
-#else /* REAR */
-  struct feb_can_wss_rear_data_t s = {
-      .wss_left_rear = feb_can_wss_rear_data_wss_left_rear_encode(left_rpm),
-      .wss_right_rear = feb_can_wss_rear_data_wss_right_rear_encode(right_rpm),
-  };
-  uint8_t buf[FEB_SN_WSS_LENGTH];
-  feb_can_wss_rear_data_pack(buf, &s, sizeof(buf));
-#endif
+  feb_sn_wss_pack(buf, &s, sizeof(buf));
 
   if (FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_SN_WSS_FRAME_ID, FEB_CAN_ID_STD, buf, sizeof(buf)) != FEB_CAN_OK)
   {

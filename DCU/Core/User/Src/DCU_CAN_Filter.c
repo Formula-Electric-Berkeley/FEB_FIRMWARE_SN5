@@ -60,7 +60,7 @@ static const DCU_CAN_AllowEntry_t k_radio_allow[] = {
     {.bus = 1, .can_id = 0xD4, .min_interval_ms = 500}, // Front sensor node heartbeat
     {.bus = 1, .can_id = 0xD5, .min_interval_ms = 500}, // Rear sensor node heartbeat
 
-    {.bus = 1, .can_id = 0x25, .min_interval_ms = 250}, // Rear sensor node data (wheel speed)
+    {.bus = 1, .can_id = 0x25, .min_interval_ms = 250}, // Rear sensor node data (wheel speed, 0.01 mph/LSB)
     {.bus = 1, .can_id = 0x10, .min_interval_ms = 500}, // Dash state
 
     {.bus = 1, .can_id = 0x20, .min_interval_ms = 2000}, // Front left tire temperature

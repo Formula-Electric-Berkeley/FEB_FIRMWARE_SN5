@@ -14,7 +14,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-static int16_t rear_wheel_speed = 0;
+static uint16_t rear_speed_mph = 0; /* averaged rear wheel ground speed, whole mph */
 static uint32_t last_rx_tick;
 
 /* ============================================================================
@@ -27,7 +27,9 @@ static void rx_callback_rear_wss(FEB_CAN_Instance_t instance, uint32_t can_id, F
   struct feb_can_wss_rear_data_t msg;
   if (feb_can_wss_rear_data_unpack(&msg, data, length) == 0)
   {
-    rear_wheel_speed = (msg.wss_right_rear + msg.wss_left_rear) / 2;
+    /* Signals are 0.01 mph/LSB; average the two wheels and rescale to whole mph
+     * (sum / 2 / 100 = sum / 200). */
+    rear_speed_mph = (uint16_t)((msg.wss_left_rear + msg.wss_right_rear) / 200u);
     __DMB();
     last_rx_tick = HAL_GetTick();
   }
@@ -54,7 +56,7 @@ void FEB_CAN_SensorNodes_Init(void)
 
 uint16_t FEB_CAN_SensorNodes_GetLastRearWheelSpeed(void)
 {
-  return rear_wheel_speed;
+  return rear_speed_mph;
 }
 
 bool FEB_CAN_SensorNodes_IsDataFresh(uint32_t timeout_ms)

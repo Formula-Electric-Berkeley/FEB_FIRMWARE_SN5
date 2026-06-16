@@ -1077,14 +1077,14 @@ static void cmd_fusion_csv(int argc, char *argv[])
 static void print_wss_help(void)
 {
   FEB_Console_Printf("WSS Commands:\r\n");
-  FEB_Console_Printf("  WSS|status - Show left/right RPM, direction, stale state\r\n");
-  FEB_Console_Printf("  WSS|rpm    - Read left/right RPM (0 = stopped/stale)\r\n");
+  FEB_Console_Printf("  WSS|status - Show left/right speed [mph], direction, stale state\r\n");
+  FEB_Console_Printf("  WSS|mph    - Read left/right speed [mph] (0 = stopped/stale)\r\n");
   FEB_Console_Printf("  WSS|dir    - Read direction codes (+1 fwd, -1 rev, 0 stopped)\r\n");
   FEB_Console_Printf("  WSS|all    - Same as status\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
-  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|WSS|status - left_x10,right_x10,left_dir,right_dir\r\n");
-  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|WSS|rpm    - left_rpm,right_rpm (decimal)\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|WSS|status - left_x100,right_x100,left_dir,right_dir\r\n");
+  FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|WSS|mph    - left_mph,right_mph (decimal)\r\n");
   FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|WSS|dir    - left_dir,right_dir\r\n");
   FEB_Console_Printf("  Sensor_Nodes|csv|<tx_id>|WSS|all    - status row\r\n");
 }
@@ -1097,18 +1097,18 @@ static const char *wss_dir_str(int8_t d)
 
 static void cmd_wss_status(void)
 {
-  const float left_rpm = (float)left_rpm_x10 / 10.0f;
-  const float right_rpm = (float)right_rpm_x10 / 10.0f;
+  const float left_mph = (float)left_mph_x100 / 100.0f;
+  const float right_mph = (float)right_mph_x100 / 100.0f;
   FEB_Console_Printf("=== Wheel Speed ===\r\n");
-  FEB_Console_Printf("Left:  %.1f RPM (%s)\r\n", left_rpm, wss_dir_str(left_dir));
-  FEB_Console_Printf("Right: %.1f RPM (%s)\r\n", right_rpm, wss_dir_str(right_dir));
+  FEB_Console_Printf("Left:  %.2f mph (%s)\r\n", left_mph, wss_dir_str(left_dir));
+  FEB_Console_Printf("Right: %.2f mph (%s)\r\n", right_mph, wss_dir_str(right_dir));
 }
 
-static void cmd_wss_rpm(void)
+static void cmd_wss_mph(void)
 {
-  FEB_Console_Printf("=== Wheel RPM ===\r\n");
-  FEB_Console_Printf("Left:  %.1f\r\n", (float)left_rpm_x10 / 10.0f);
-  FEB_Console_Printf("Right: %.1f\r\n", (float)right_rpm_x10 / 10.0f);
+  FEB_Console_Printf("=== Wheel Speed (mph) ===\r\n");
+  FEB_Console_Printf("Left:  %.2f\r\n", (float)left_mph_x100 / 100.0f);
+  FEB_Console_Printf("Right: %.2f\r\n", (float)right_mph_x100 / 100.0f);
 }
 
 static void cmd_wss_dir(void)
@@ -1135,9 +1135,9 @@ static void cmd_wss(int argc, char *argv[])
   {
     cmd_wss_status();
   }
-  else if (FEB_strcasecmp(subcmd, "rpm") == 0)
+  else if (FEB_strcasecmp(subcmd, "mph") == 0)
   {
-    cmd_wss_rpm();
+    cmd_wss_mph();
   }
   else if (FEB_strcasecmp(subcmd, "dir") == 0)
   {
@@ -1154,13 +1154,13 @@ static void cmd_wss(int argc, char *argv[])
 #if FEB_SN_HAS_WSS
 static void csv_wss_status(void)
 {
-  FEB_Console_CsvEmit("status", "%u,%u,%d,%d", (unsigned)left_rpm_x10, (unsigned)right_rpm_x10, (int)left_dir,
+  FEB_Console_CsvEmit("status", "%u,%u,%d,%d", (unsigned)left_mph_x100, (unsigned)right_mph_x100, (int)left_dir,
                       (int)right_dir);
 }
 
-static void csv_wss_rpm(void)
+static void csv_wss_mph(void)
 {
-  FEB_Console_CsvEmit("rpm", "%.1f,%.1f", (float)left_rpm_x10 / 10.0f, (float)right_rpm_x10 / 10.0f);
+  FEB_Console_CsvEmit("mph", "%.2f,%.2f", (float)left_mph_x100 / 100.0f, (float)right_mph_x100 / 100.0f);
 }
 
 static void csv_wss_dir(void)
@@ -1173,7 +1173,7 @@ static void cmd_wss_csv(int argc, char *argv[])
 {
   if (argc < 2)
   {
-    FEB_Console_CsvError("error", "wss_usage,status|rpm|dir|all");
+    FEB_Console_CsvError("error", "wss_usage,status|mph|dir|all");
     return;
   }
 #if !FEB_SN_HAS_WSS
@@ -1185,9 +1185,9 @@ static void cmd_wss_csv(int argc, char *argv[])
   {
     csv_wss_status();
   }
-  else if (FEB_strcasecmp(subcmd, "rpm") == 0)
+  else if (FEB_strcasecmp(subcmd, "mph") == 0)
   {
-    csv_wss_rpm();
+    csv_wss_mph();
   }
   else if (FEB_strcasecmp(subcmd, "dir") == 0)
   {
