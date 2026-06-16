@@ -115,6 +115,16 @@ _Static_assert((FEB_TEMP_ERROR_THRESH + 1) * FEB_TEMP_SCAN_PERIOD_MS <= FEB_TEMP
 #define FEB_TEMP_MIN_VALID_FRACTION 0.50f      // TUNE: fault below this fraction valid
 #define FEB_TEMP_TELEMETRY_TIMEOUT_MS 800      // sustained low reads this long -> fault (< 1 s)
 
+// Bad-connection (outlier) rejection. Cells are thermally coupled and have mass,
+// so a thermistor reading more than FEB_TEMP_OUTLIER_MARGIN_DC from its bank's
+// median is implausible as a real cell temperature -> treated as a faulty sense
+// connection, NOT a cell over/under-temp, and excluded from valid coverage. A
+// bank needs at least FEB_TEMP_MIN_SENSORS_FOR_MEDIAN valid readings for its
+// median to be trustworthy; below that, outlier-based over/under-temp faulting is
+// skipped for the bank (the telemetry-loss fault covers collapsed coverage).
+#define FEB_TEMP_OUTLIER_MARGIN_DC 250    // TUNE: 25.0C max deviation from bank median
+#define FEB_TEMP_MIN_SENSORS_FOR_MEDIAN 5 // min valid readings to trust the bank median
+
 // ********************************** Charging Limits (SN4-derived) **************
 // Used by FEB_CAN_Charging_Status(). Soft limit -> stop charging and return to
 // BATTERY_FREE; hard limit -> FAULT_CHARGING. SN5 values (do not copy SN4's

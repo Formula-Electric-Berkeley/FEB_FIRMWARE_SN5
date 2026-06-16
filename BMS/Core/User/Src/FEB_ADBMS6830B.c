@@ -453,6 +453,26 @@ static void compute_pack_temp_stats(void)
   }
 }
 
+/* Median of n readings (dC), sorted in place via insertion sort (n is bounded by
+ * FEB_NUM_TEMP_SENSORS). Used as a robust per-bank plausibility reference: a
+ * minority of bad-connection spikes cannot shift it, so genuine cell readings
+ * still define the median while outliers stand out. Caller guarantees n >= 1. */
+static float temp_median_dC(float *a, int n)
+{
+  for (int i = 1; i < n; i++)
+  {
+    float key = a[i];
+    int j = i - 1;
+    while (j >= 0 && a[j] > key)
+    {
+      a[j + 1] = a[j];
+      j--;
+    }
+    a[j + 1] = key;
+  }
+  return (n & 1) ? a[n / 2] : 0.5f * (a[n / 2 - 1] + a[n / 2]);
+}
+
 static void validate_temps()
 {
   DEBUG_TEMP_PRINT("Validating temperatures");
@@ -464,29 +484,58 @@ static void validate_temps()
   for (uint8_t bank = 0; bank < FEB_NBANKS; bank++)
   {
     FEB_ACC.banks[bank].tempRead = 0;
+
+    // Pass 1: gather this bank's finite, in-range readings (dC) and take the
+    // median as a robust plausibility reference. Cells are thermally coupled, so
+    // a reading far from the bank median is a bad sense connection, not a real
+    // cell temperature; the median is unmoved by a minority of such spikes.
+    float vals_dC[FEB_NUM_TEMP_SENSORS];
+    int n_valid = 0;
     for (uint16_t sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
     {
-      float temp = FEB_ACC.banks[bank].temp_sensor_readings_V[sensor] * 10;
-
-      // Check if temperature is within physically reasonable range.
-      // Valid range: -40C to +85C (typical automotive operating range).
-      //
-      // Intentionally NOT aligned with compute_pack_temp_stats() (which now
-      // accepts any finite reading): an open/shorted NTC reads ~88C and is a
-      // *sensor* fault, not a cell over-temp event. Letting hot sentinel
-      // values through this gate would falsely increment temp_violations[]
-      // and trip ERROR_TYPE_TEMP_VIOLATION. The stats display is a *report*;
-      // this function is a *health-gate*. Different purposes, deliberately
-      // different gates.
+      float temp = FEB_ACC.banks[bank].temp_sensor_readings_V[sensor] * 10.0f;
       if (temp >= TEMP_VALID_MIN_DC && temp <= TEMP_VALID_MAX_DC)
+        vals_dC[n_valid++] = temp;
+    }
+    bool have_median = (n_valid >= FEB_TEMP_MIN_SENSORS_FOR_MEDIAN);
+    float median_dC = have_median ? temp_median_dC(vals_dC, n_valid) : 0.0f;
+
+    // Pass 2: classify each sensor.
+    for (uint16_t sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
+    {
+      float temp = FEB_ACC.banks[bank].temp_sensor_readings_V[sensor] * 10.0f;
+
+      // Physically-reasonable range gate (-40..85C). An open/shorted NTC reads a
+      // hot sentinel / NaN and is dropped here as a *sensor* fault, not a cell
+      // over-temp; it is not counted as valid coverage.
+      if (!(temp >= TEMP_VALID_MIN_DC && temp <= TEMP_VALID_MAX_DC))
       {
-        FEB_ACC.banks[bank].tempRead += 1;
-      }
-      else
-      {
-        // Invalid reading - outside physically reasonable range
         DEBUG_TEMP_PRINT("Invalid temp reading: Bank %d Sensor %d Temp=%.1fC (outside valid range)", bank, sensor,
                          temp / 10.0f);
+        continue;
+      }
+
+      // Bad-connection outlier gate: a reading too far from the bank median is a
+      // faulty sense connection (cells cannot differ this much), NOT a cell
+      // over/under-temp. Exclude it from coverage and clear its violation counter
+      // so it can never latch a fault.
+      if (have_median && fabsf(temp - median_dC) > (float)FEB_TEMP_OUTLIER_MARGIN_DC)
+      {
+        DEBUG_TEMP_PRINT("Outlier temp ignored: Bank %d Sensor %d Temp=%.1fC (bank median %.1fC)", bank, sensor,
+                         temp / 10.0f, median_dC / 10.0f);
+        FEB_ACC.banks[bank].temp_violations[sensor] = 0;
+        continue;
+      }
+
+      // Plausible reading: counts as valid coverage.
+      FEB_ACC.banks[bank].tempRead += 1;
+
+      // Without a trustworthy median (too few valid sensors in this bank) we
+      // cannot reject outliers, so do not fault on over/under-temp here; the
+      // telemetry-loss fault below covers the collapsed-coverage case.
+      if (!have_median)
+      {
+        FEB_ACC.banks[bank].temp_violations[sensor] = 0;
         continue;
       }
 
