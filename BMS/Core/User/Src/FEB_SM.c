@@ -841,7 +841,6 @@ static void EnergizedTransition(BMS_State_t next_state)
     break;
 
   case BMS_STATE_DEFAULT:
-#if !FEB_BMS_DISABLE_ADBMS_CHECKS
     /* Safety: shutdown loop or AIR- opening while the bus is live is a hard
      * fault, not a graceful return to LV. Latch a BMS fault. */
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN || FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
@@ -850,7 +849,6 @@ static void EnergizedTransition(BMS_State_t next_state)
       EnergizedTransition(BMS_STATE_FAULT_BMS);
       break;
     }
-#endif
 
     /* Ready-to-drive gate (4->5): enter DRIVE only on a fresh R2D from DASH. */
     if (FEB_CAN_DASH_IsReadyToDrive(R2D_TIMEOUT_MS))
