@@ -17,6 +17,10 @@
 #include "FEB_CAN_LVPDB.h"
 #include "FEB_CAN_BMS.h"
 #include "FEB_CAN_PCU.h"
+#include "FEB_i2c_protected.h"
+#include "FEB_IO.h"
+
+extern I2C_HandleTypeDef hi2c1;
 
 /* ============================================================================
  * CAN Ping/Pong Commands
@@ -344,6 +348,53 @@ static const FEB_Console_Cmd_t dash_cmd_pcu = {
 };
 
 /* ============================================================================
+ * I2C Bus Scan (diagnostic)
+ * ============================================================================ */
+
+static void cmd_i2cscan(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  FEB_Console_Printf("Scanning I2C1 (0x08-0x77)...\r\n");
+  int found = 0;
+  for (uint8_t addr = 0x08; addr <= 0x77; addr++)
+  {
+    if (FEB_I2C_IsDeviceReady(&hi2c1, (uint16_t)(addr << 1), 1, 5) == HAL_OK)
+    {
+      FEB_Console_Printf("  0x%02X%s\r\n", addr, (addr == IOEXP_ADDR) ? "  <- IO expander" : "");
+      found++;
+    }
+  }
+  FEB_Console_Printf("Done. %d device(s) found.\r\n", found);
+  if (FEB_I2C_IsDeviceReady(&hi2c1, (uint16_t)(IOEXP_ADDR << 1), 2, 5) != HAL_OK)
+  {
+    FEB_Console_Printf("WARNING: IO expander 0x%02X NOT responding!\r\n", (unsigned int)IOEXP_ADDR);
+  }
+}
+
+static void cmd_i2cscan_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  for (uint8_t addr = 0x08; addr <= 0x77; addr++)
+  {
+    if (FEB_I2C_IsDeviceReady(&hi2c1, (uint16_t)(addr << 1), 1, 5) == HAL_OK)
+    {
+      FEB_Console_CsvEmit("i2c", "0x%02X", addr);
+    }
+  }
+}
+
+static const FEB_Console_Cmd_t dash_cmd_i2cscan = {
+    .name = "i2cscan",
+    .help = "Scan I2C1 and list responding addresses",
+    .handler = cmd_i2cscan,
+    .csv_handler = cmd_i2cscan_csv,
+    .hidden = true,
+};
+
+/* ============================================================================
  * Mega-dispatcher and Registration
  *
  * Each subcommand above is one unified FEB_Console_Cmd_t with both .handler
@@ -354,7 +405,7 @@ static const FEB_Console_Cmd_t dash_cmd_pcu = {
 
 static const FEB_Console_Cmd_t *const DASH_SUBCMDS[] = {
     &dash_cmd_ping,  &dash_cmd_pong, &dash_cmd_canstop, &dash_cmd_canstatus,
-    &dash_cmd_lvpdb, &dash_cmd_bms,  &dash_cmd_pcu,
+    &dash_cmd_lvpdb, &dash_cmd_bms,  &dash_cmd_pcu,     &dash_cmd_i2cscan,
 };
 #define DASH_SUBCMDS_COUNT (sizeof(DASH_SUBCMDS) / sizeof(DASH_SUBCMDS[0]))
 
