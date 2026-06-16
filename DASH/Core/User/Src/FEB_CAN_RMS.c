@@ -59,7 +59,7 @@ static void rx_callback_ch1(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CA
 void FEB_CAN_RMS_Init(void)
 {
   FEB_CAN_RX_Params_t rx_params = {
-      .instance = FEB_CAN_INSTANCE_1,
+      .instance = FEB_CAN_INSTANCE_2,
       .can_id = FEB_CAN_M192_COMMAND_MESSAGE_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,

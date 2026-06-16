@@ -69,7 +69,11 @@ FEB_CAN_Status_t FEB_CAN_Init(const FEB_CAN_Config_t *config)
     return FEB_CAN_ERROR_INVALID_PARAM;
   }
 
-  if (config->hcan1 == NULL)
+  /* At least one CAN instance must be provided. A board may populate only
+   * hcan2 (CAN2-only, e.g. DASH): on STM32F4 the shared filter banks are still
+   * reachable through the CAN2 handle since its MspInit enables the CAN1 clock
+   * and HAL_CAN_ConfigFilter() routes all filter writes to the CAN1 block. */
+  if (config->hcan1 == NULL && config->hcan2 == NULL)
   {
     return FEB_CAN_ERROR_INVALID_PARAM;
   }
@@ -117,40 +121,49 @@ FEB_CAN_Status_t FEB_CAN_Init(const FEB_CAN_Config_t *config)
   CAN_HandleTypeDef *hcan1 = (CAN_HandleTypeDef *)config->hcan1;
   CAN_HandleTypeDef *hcan2 = (CAN_HandleTypeDef *)config->hcan2;
 
-  /* Start CAN peripherals */
-  if (HAL_CAN_Start(hcan1) != HAL_OK)
+  /* Start CAN peripherals (a board may populate only one instance) */
+  if (hcan1 != NULL)
   {
-    FEB_CAN_DeInit();
-    return FEB_CAN_ERROR_HAL;
+    if (HAL_CAN_Start(hcan1) != HAL_OK)
+    {
+      FEB_CAN_DeInit();
+      return FEB_CAN_ERROR_HAL;
+    }
   }
 
   if (hcan2 != NULL)
   {
     if (HAL_CAN_Start(hcan2) != HAL_OK)
     {
-      HAL_CAN_Stop(hcan1);
+      if (hcan1 != NULL)
+      {
+        HAL_CAN_Stop(hcan1);
+      }
       FEB_CAN_DeInit();
       return FEB_CAN_ERROR_HAL;
     }
   }
 
   /* Activate RX/TX/error notifications */
-  if (HAL_CAN_ActivateNotification(hcan1, FEB_CAN_RX_NOTIFICATIONS) != HAL_OK)
+  if (hcan1 != NULL)
   {
-    FEB_CAN_DeInit();
-    return FEB_CAN_ERROR_HAL;
-  }
+    if (HAL_CAN_ActivateNotification(hcan1, FEB_CAN_RX_NOTIFICATIONS) != HAL_OK)
+    {
+      FEB_CAN_DeInit();
+      return FEB_CAN_ERROR_HAL;
+    }
 
-  if (HAL_CAN_ActivateNotification(hcan1, FEB_CAN_TX_NOTIFICATIONS) != HAL_OK)
-  {
-    FEB_CAN_DeInit();
-    return FEB_CAN_ERROR_HAL;
-  }
+    if (HAL_CAN_ActivateNotification(hcan1, FEB_CAN_TX_NOTIFICATIONS) != HAL_OK)
+    {
+      FEB_CAN_DeInit();
+      return FEB_CAN_ERROR_HAL;
+    }
 
-  if (HAL_CAN_ActivateNotification(hcan1, FEB_CAN_ERROR_NOTIFICATIONS) != HAL_OK)
-  {
-    FEB_CAN_DeInit();
-    return FEB_CAN_ERROR_HAL;
+    if (HAL_CAN_ActivateNotification(hcan1, FEB_CAN_ERROR_NOTIFICATIONS) != HAL_OK)
+    {
+      FEB_CAN_DeInit();
+      return FEB_CAN_ERROR_HAL;
+    }
   }
 
   if (hcan2 != NULL)

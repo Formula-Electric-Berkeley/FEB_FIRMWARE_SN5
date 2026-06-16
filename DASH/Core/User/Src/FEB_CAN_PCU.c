@@ -82,7 +82,7 @@ void FEB_CAN_PCU_Init(void)
 {
   // PCU Torque Commands for the RMS
   FEB_CAN_RX_Params_t rx_params_torque = {
-      .instance = FEB_CAN_INSTANCE_1,
+      .instance = FEB_CAN_INSTANCE_2,
       .can_id = FEB_CAN_M192_COMMAND_MESSAGE_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,
@@ -94,7 +94,7 @@ void FEB_CAN_PCU_Init(void)
 
   // PCU Brake Position
   FEB_CAN_RX_Params_t rx_params_brake_position = {
-      .instance = FEB_CAN_INSTANCE_1,
+      .instance = FEB_CAN_INSTANCE_2,
       .can_id = FEB_CAN_BRAKE_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,

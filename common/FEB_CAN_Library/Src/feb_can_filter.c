@@ -40,6 +40,21 @@ static uint8_t feb_can_get_filter_bank_end(FEB_CAN_Instance_t instance)
   }
 }
 
+/* On STM32F4 the 28 filter banks are physically owned by CAN1, and
+ * HAL_CAN_ConfigFilter() always routes its register writes to the CAN1 block
+ * regardless of which handle is passed. A CAN2-only board (hcan1 == NULL) can
+ * therefore configure both CAN1 and CAN2 banks through its CAN2 handle, whose
+ * MspInit enables the CAN1 clock. Prefer the CAN1 handle when present. */
+static CAN_HandleTypeDef *feb_can_get_filter_handle(FEB_CAN_Context_t *ctx)
+{
+  CAN_HandleTypeDef *hcan = (CAN_HandleTypeDef *)ctx->hcan[FEB_CAN_INSTANCE_1];
+  if (hcan == NULL)
+  {
+    hcan = (CAN_HandleTypeDef *)ctx->hcan[FEB_CAN_INSTANCE_2];
+  }
+  return hcan;
+}
+
 /* ============================================================================
  * Filter Configuration API
  * ============================================================================ */
@@ -100,8 +115,9 @@ FEB_CAN_Status_t FEB_CAN_Filter_Configure(FEB_CAN_Instance_t instance, uint8_t f
     filter_config.FilterMaskIdLow = (uint16_t)(((mask << 3) & 0xFFF8) | CAN_ID_EXT);
   }
 
-  /* Use CAN1 handle for filter configuration (required by HAL) */
-  CAN_HandleTypeDef *filter_hcan = (CAN_HandleTypeDef *)ctx->hcan[FEB_CAN_INSTANCE_1];
+  /* All STM32F4 filter config routes to the CAN1 block; on a CAN2-only board
+   * this falls back to the CAN2 handle (see feb_can_get_filter_handle). */
+  CAN_HandleTypeDef *filter_hcan = feb_can_get_filter_handle(ctx);
   if (filter_hcan == NULL)
   {
     return FEB_CAN_ERROR_NOT_INIT;
@@ -150,7 +166,7 @@ static FEB_CAN_Status_t feb_can_filter_disable(uint8_t filter_bank)
     return FEB_CAN_ERROR_NOT_INIT;
   }
 
-  CAN_HandleTypeDef *hcan = (CAN_HandleTypeDef *)ctx->hcan[FEB_CAN_INSTANCE_1];
+  CAN_HandleTypeDef *hcan = feb_can_get_filter_handle(ctx);
   if (hcan == NULL)
   {
     return FEB_CAN_ERROR_NOT_INIT;
@@ -316,10 +332,10 @@ void FEB_CAN_Filter_Dump(FEB_CAN_Instance_t instance)
   (void)instance; /* On STM32F4 the filter registers live on CAN1 for both instances */
 
   FEB_CAN_Context_t *ctx = feb_can_get_context();
-  CAN_HandleTypeDef *hcan = (CAN_HandleTypeDef *)ctx->hcan[FEB_CAN_INSTANCE_1];
+  CAN_HandleTypeDef *hcan = feb_can_get_filter_handle(ctx);
   if (hcan == NULL || hcan->Instance == NULL)
   {
-    LOG_W("[CAN-FLT]", "Dump: hcan1 not initialized");
+    LOG_W("[CAN-FLT]", "Dump: no CAN handle initialized");
     return;
   }
 

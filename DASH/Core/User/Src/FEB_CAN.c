@@ -33,7 +33,8 @@
 #include "FEB_CAN_SensorNodes.h"
 
 /* ========================== External HAL handles ========================== */
-extern CAN_HandleTypeDef hcan1;
+/* DASH drives the vehicle bus on the CAN2 peripheral (PB12/PB13). */
+extern CAN_HandleTypeDef hcan2;
 
 /* ========================== External FreeRTOS handles (from CubeMX) ========================== */
 /* NOTE: These are created in CubeMX .ioc and defined in freertos.c */
@@ -68,8 +69,8 @@ static void DASH_CAN_RxCallback(FEB_CAN_Instance_t instance, uint32_t can_id, FE
 static void DASH_CAN_Init(void)
 {
   FEB_CAN_Config_t cfg = {
-      .hcan1 = &hcan1,
-      .hcan2 = NULL,
+      .hcan1 = NULL,
+      .hcan2 = &hcan2,
       .get_tick_ms = HAL_GetTick,
 #if FEB_CAN_USE_FREERTOS
       .tx_queue = canTxQueueHandle,
@@ -98,7 +99,7 @@ static void DASH_CAN_Init(void)
    * fires DASH_CAN_RxCallback, independent of any per-channel ping/pong filters.
    */
   FEB_CAN_RX_Params_t rx_params = {
-      .instance = FEB_CAN_INSTANCE_1,
+      .instance = FEB_CAN_INSTANCE_2,
       .can_id = 0x00,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_WILDCARD,
@@ -110,7 +111,7 @@ static void DASH_CAN_Init(void)
   FEB_CAN_RX_Register(&rx_params);
 
   /* Ensure filters reflect registry */
-  FEB_CAN_Filter_UpdateFromRegistry(FEB_CAN_INSTANCE_1);
+  FEB_CAN_Filter_UpdateFromRegistry(FEB_CAN_INSTANCE_2);
 }
 
 /* ============================================================================

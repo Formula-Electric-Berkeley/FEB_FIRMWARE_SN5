@@ -50,7 +50,7 @@ void FEB_CAN_State_Tick(void)
   uint8_t tx_data[FEB_CAN_DASH_TPS_LENGTH];
   memset(tx_data, 0x00, sizeof(tx_data));
   // feb_can_dash_tps_pack(tx_data, &((struct feb_can_dash_tps_t){.current = }), sizeof(tx_data));
-  // FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_DASH_TPS_FRAME_ID, FEB_CAN_ID_STD, tx_data, FEB_CAN_DASH_TPS_LENGTH);
+  // FEB_CAN_TX_Send(FEB_CAN_INSTANCE_2, FEB_CAN_DASH_TPS_FRAME_ID, FEB_CAN_ID_STD, tx_data, FEB_CAN_DASH_TPS_LENGTH);
 
   /* Divider for 100ms period (called every 1ms) */
   static uint16_t heartbeat_divider = 0;
@@ -64,7 +64,7 @@ void FEB_CAN_State_Tick(void)
     uint8_t tx_data[FEB_CAN_DASH_HEARTBEAT_LENGTH];
     memset(tx_data, 0x00, sizeof(tx_data));
     feb_can_dash_heartbeat_pack(tx_data, &dash_heartbeat_msg, sizeof(tx_data));
-    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_DASH_HEARTBEAT_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_2, FEB_CAN_DASH_HEARTBEAT_FRAME_ID, FEB_CAN_ID_STD, tx_data,
                     FEB_CAN_DASH_HEARTBEAT_LENGTH);
   }
 
@@ -98,7 +98,7 @@ void FEB_CAN_State_Tick(void)
                                                                 .ready_to_drive = FEB_State_GetLastRTD()}),
                                 sizeof(tx_data)) == FEB_CAN_DASH_STATE_LENGTH)
     {
-      FEB_CAN_Status_t st = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_DASH_STATE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+      FEB_CAN_Status_t st = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_2, FEB_CAN_DASH_STATE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
                                             FEB_CAN_DASH_STATE_LENGTH);
       if (st == FEB_CAN_OK)
       {

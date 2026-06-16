@@ -40,7 +40,7 @@ static void rx_callback_rear_wss(FEB_CAN_Instance_t instance, uint32_t can_id, F
 void FEB_CAN_SensorNodes_Init(void)
 {
   FEB_CAN_RX_Params_t rx_params = {
-      .instance = FEB_CAN_INSTANCE_1,
+      .instance = FEB_CAN_INSTANCE_2,
       .can_id = FEB_CAN_WSS_REAR_DATA_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,

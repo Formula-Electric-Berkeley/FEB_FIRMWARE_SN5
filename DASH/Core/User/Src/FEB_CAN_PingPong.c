@@ -84,7 +84,7 @@ static void pingpong_rx_callback(uint8_t channel_idx, const uint8_t *data, uint8
     tx_data[2] = (uint8_t)((response >> 16) & 0xFF);
     tx_data[3] = (uint8_t)((response >> 24) & 0xFF);
 
-    FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, frame_ids[channel_idx], FEB_CAN_ID_STD, tx_data, 8);
+    FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_2, frame_ids[channel_idx], FEB_CAN_ID_STD, tx_data, 8);
     if (status == FEB_CAN_OK)
     {
       ch->tx_count++;
@@ -189,7 +189,7 @@ void FEB_CAN_PingPong_SetMode(uint8_t channel, FEB_PingPong_Mode_t mode)
     if (mode == PINGPONG_MODE_PONG || mode == PINGPONG_MODE_PING || mode == PINGPONG_MODE_PINGPONG)
     {
       FEB_CAN_RX_Params_t rx_params = {
-          .instance = FEB_CAN_INSTANCE_1,
+          .instance = FEB_CAN_INSTANCE_2,
           .can_id = frame_ids[idx],
           .id_type = FEB_CAN_ID_STD,
           .filter_type = FEB_CAN_FILTER_EXACT,
@@ -198,7 +198,7 @@ void FEB_CAN_PingPong_SetMode(uint8_t channel, FEB_PingPong_Mode_t mode)
           .callback = rx_callbacks[idx],
       };
       ch->rx_handle = FEB_CAN_RX_Register(&rx_params);
-      FEB_CAN_Filter_Dump(FEB_CAN_INSTANCE_1);
+      FEB_CAN_Filter_Dump(FEB_CAN_INSTANCE_2);
     }
 
     /* Preserve the active ping counter when adding responder behavior. */
@@ -241,7 +241,7 @@ void FEB_CAN_PingPong_Tick(void)
       tx_data[2] = (uint8_t)((ch->tx_counter >> 16) & 0xFF);
       tx_data[3] = (uint8_t)((ch->tx_counter >> 24) & 0xFF);
 
-      FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, frame_ids[i], FEB_CAN_ID_STD, tx_data, 8);
+      FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_2, frame_ids[i], FEB_CAN_ID_STD, tx_data, 8);
 
       if (status == FEB_CAN_OK)
       {

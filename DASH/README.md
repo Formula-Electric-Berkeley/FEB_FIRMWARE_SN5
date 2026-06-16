@@ -18,7 +18,7 @@ From [`DASH.ioc`](DASH.ioc):
 - **I2C1** — FT6x06 touchscreen controller (via `FEB_I2C_Mutex`)
 - **I2C2** — auxiliary I²C bus
 - **SDIO + FATFS** — SD-card logging
-- **CAN1** — vehicle CAN
+- **CAN2** — vehicle CAN (PB12 RX / PB13 TX)
 - **USART3, USART6** — debug + auxiliary
 - **SAI1** — audio
 - **CRC**, **TIM1**, **DMA**, **NVIC**

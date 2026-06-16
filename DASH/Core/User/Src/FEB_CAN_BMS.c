@@ -87,7 +87,7 @@ void FEB_CAN_BMS_Init(void)
   FEB_Console_Printf("Initializing BMS CAN");
 
   FEB_CAN_RX_Params_t rx_params_bms_state = {
-      .instance = FEB_CAN_INSTANCE_1,
+      .instance = FEB_CAN_INSTANCE_2,
       .can_id = FEB_CAN_BMS_STATE_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,
@@ -98,7 +98,7 @@ void FEB_CAN_BMS_Init(void)
   };
 
   FEB_CAN_RX_Params_t rx_params_bms_temperature = {
-      .instance = FEB_CAN_INSTANCE_1,
+      .instance = FEB_CAN_INSTANCE_2,
       .can_id = FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,
@@ -109,7 +109,7 @@ void FEB_CAN_BMS_Init(void)
   };
 
   FEB_CAN_RX_Params_t rx_params_bms_voltage = {
-      .instance = FEB_CAN_INSTANCE_1,
+      .instance = FEB_CAN_INSTANCE_2,
       .can_id = FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,
