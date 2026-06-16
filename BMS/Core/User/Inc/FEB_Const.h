@@ -156,6 +156,7 @@ _Static_assert((FEB_TEMP_ERROR_THRESH + 1) * FEB_TEMP_SCAN_PERIOD_MS <= FEB_TEMP
 #define FEB_OVERCURRENT_CONFIRM_MS 50         // |I| must exceed limit this long before fault
 #define FEB_IVT_FAULT_TIMEOUT_MS 1000         // IVT CAN staleness -> sensor timeout fault
 #define FEB_ADBMS_DATA_TIMEOUT_MS 1000        // cell-monitor staleness -> sensor timeout fault
+#define FEB_ADBMS_BOOT_GRACE_MS 3000          // no first scan by now -> cell monitor never initialized -> fault
 #define FEB_IMD_FAULT_CONFIRM_MS 100          // debounce IMD-open before faulting
 #define FEB_CONTACTOR_FEEDBACK_TIMEOUT_MS 200 // cmd vs sense mismatch -> weld/stuck fault
 

@@ -95,8 +95,9 @@ void StartADBMSTask(void *argument)
       voltage_tick = now;
     }
 
-    /* Temperature measurement every 500ms (2 Hz) */
-    if (now - temp_tick >= pdMS_TO_TICKS(500))
+    /* Temperature measurement (FEB_TEMP_SCAN_PERIOD_MS; 10 Hz) — fast enough that
+     * the per-sensor over/under-temp debounce latches within the FSAE 1 s window. */
+    if (now - temp_tick >= pdMS_TO_TICKS(FEB_TEMP_SCAN_PERIOD_MS))
     {
       osMutexAcquire(ADBMSMutexHandle, osWaitForever);
       FEB_ADBMS_Temperature_Process();

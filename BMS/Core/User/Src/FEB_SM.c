@@ -41,7 +41,7 @@
  * ============================================================================ */
 
 /* Precharge voltage threshold (90% of pack voltage) */
-#define PRECHARGE_THRESHOLD_PCT 0.80f
+#define PRECHARGE_THRESHOLD_PCT 0.90f
 
 /* R2D timeout for freshness check */
 #define R2D_TIMEOUT_MS 500
@@ -324,10 +324,24 @@ static void evaluate_faults(void)
     return;
   }
 
-  /* (b) Cell-monitor sensor timeout (guard against the pre-first-scan zero). */
+  /* (b) Cell-monitor never initialized OR went stale. */
 #if !FEB_BMS_DISABLE_ADBMS_CHECKS
   uint32_t last = FEB_ADBMS_Get_Last_Update_Tick();
-  if (last != 0 && (HAL_GetTick() - last) > FEB_ADBMS_DATA_TIMEOUT_MS)
+  uint32_t now = HAL_GetTick();
+  if (last == 0)
+  {
+    /* No scan has EVER completed. Benign during early boot, but a persistent
+     * zero means the cell monitor never came up (isoSPI dead / 0 ICs / init
+     * failed) — running the TS with no cell data is unsafe. Fault past the boot
+     * grace. Catches init failure and a hung ADBMS task alike. */
+    if (now > FEB_ADBMS_BOOT_GRACE_MS)
+    {
+      LOG_E(TAG_SM, "Cell-monitor never initialized");
+      fault_begin(grp_fault);
+      return;
+    }
+  }
+  else if ((now - last) > FEB_ADBMS_DATA_TIMEOUT_MS)
   {
     LOG_E(TAG_SM, "Cell-monitor data timeout");
     fault_begin(grp_fault);
