@@ -14,6 +14,7 @@
 #include "FEB_WSS.h"
 #include "FEB_LinearPotentiometer.h"
 #include "FEB_SN_PingPong.h"
+#include "FEB_CAN_IRTSSensorConfig.h"
 #include "FEB_SN_Config.h"
 #include "feb_console.h"
 #include "feb_string_utils.h"
@@ -1774,6 +1775,88 @@ static void cmd_csv_canstatus(int argc, char *argv[])
 }
 
 /* -------------------------------------------------------------------------- */
+/*                     IRTS Sensor Config Commands                            */
+/* -------------------------------------------------------------------------- */
+/* Programs an Infrared Tire Temperature Sensor by sending a fixed 8-byte config
+ * frame at 1 Hz for 15 s. The CAN ID and payload are edited in
+ * FEB_CAN_IRTSSensorConfig.c. */
+
+static void print_irts_help(void)
+{
+  FEB_Console_Printf("IRTS Commands:\r\n");
+  FEB_Console_Printf("  IRTS|send   - Send config frame at 1 Hz for 15 s, then stop\r\n");
+  FEB_Console_Printf("  IRTS|stop   - Abort the burst early\r\n");
+  FEB_Console_Printf("  IRTS|status - Show active state, frames sent, time left\r\n");
+}
+
+static void cmd_irts_status(void)
+{
+  FEB_Console_Printf("=== IRTS Config Burst ===\r\n");
+  FEB_Console_Printf("Active:    %s\r\n", FEB_CAN_IRTSSensorConfig_IsActive() ? "Yes" : "No");
+  FEB_Console_Printf("Sent:      %lu frames\r\n", (unsigned long)FEB_CAN_IRTSSensorConfig_SentCount());
+  FEB_Console_Printf("Remaining: %lu ms\r\n", (unsigned long)FEB_CAN_IRTSSensorConfig_RemainingMs());
+}
+
+static void cmd_irts(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    print_irts_help();
+    return;
+  }
+  const char *subcmd = argv[1];
+  if (FEB_strcasecmp(subcmd, "send") == 0 || FEB_strcasecmp(subcmd, "start") == 0)
+  {
+    FEB_CAN_IRTSSensorConfig_Start();
+    FEB_Console_Printf("IRTS config burst started (1 Hz for 15 s)\r\n");
+  }
+  else if (FEB_strcasecmp(subcmd, "stop") == 0)
+  {
+    FEB_CAN_IRTSSensorConfig_Stop();
+    FEB_Console_Printf("IRTS config burst stopped\r\n");
+  }
+  else if (FEB_strcasecmp(subcmd, "status") == 0)
+  {
+    cmd_irts_status();
+  }
+  else
+  {
+    FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
+    print_irts_help();
+  }
+}
+
+static void cmd_irts_csv(int argc, char *argv[])
+{
+  if (argc < 2)
+  {
+    FEB_Console_CsvError("error", "irts_usage,send|stop|status");
+    return;
+  }
+  const char *subcmd = argv[1];
+  if (FEB_strcasecmp(subcmd, "send") == 0 || FEB_strcasecmp(subcmd, "start") == 0)
+  {
+    FEB_CAN_IRTSSensorConfig_Start();
+    FEB_Console_CsvEmit("irts", "send,%lu", (unsigned long)FEB_CAN_IRTSSensorConfig_RemainingMs());
+  }
+  else if (FEB_strcasecmp(subcmd, "stop") == 0)
+  {
+    FEB_CAN_IRTSSensorConfig_Stop();
+    FEB_Console_CsvEmit("irts", "stop");
+  }
+  else if (FEB_strcasecmp(subcmd, "status") == 0)
+  {
+    FEB_Console_CsvEmit("irts", "%d,%lu,%lu", FEB_CAN_IRTSSensorConfig_IsActive() ? 1 : 0,
+                        (unsigned long)FEB_CAN_IRTSSensorConfig_SentCount(),
+                        (unsigned long)FEB_CAN_IRTSSensorConfig_RemainingMs());
+  }
+  else
+  {
+    FEB_Console_CsvError("error", "irts_mode,%s", subcmd);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /*                         Command Descriptors                                */
 /* -------------------------------------------------------------------------- */
 
@@ -1854,13 +1937,20 @@ static const FEB_Console_Cmd_t canstatus_cmd = {
     .csv_handler = cmd_csv_canstatus,
 };
 
+static const FEB_Console_Cmd_t irts_cmd = {
+    .name = "IRTS",
+    .help = "IR tire-temp sensor config burst (IRTS|send, IRTS|stop, IRTS|status)",
+    .handler = cmd_irts,
+    .csv_handler = cmd_irts_csv,
+};
+
 /* Per-board subcommand table. Each entry is one IMU/MAG/GPS sensor whose own
  * struct already unifies text + CSV handlers. cmd_sn dispatches `SN|<sensor>`
  * by delegating to the sensor's text handler; CSV mode resolves directly via
  * top-level registration of each sensor. */
 static const FEB_Console_Cmd_t *const SN_SUBCMDS[] = {
-    &imu_cmd, &mag_cmd,  &gps_cmd,  &cal_cmd,  &fusion_cmd,    &wss_cmd,
-    &lp_cmd,  &ping_cmd, &pong_cmd, &stop_cmd, &canstatus_cmd,
+    &imu_cmd, &mag_cmd,  &gps_cmd,  &cal_cmd,  &fusion_cmd,    &wss_cmd,      &lp_cmd,
+    &ping_cmd, &pong_cmd, &stop_cmd, &canstatus_cmd, &irts_cmd,
 };
 #define SN_SUBCMDS_COUNT (sizeof(SN_SUBCMDS) / sizeof(SN_SUBCMDS[0]))
 
