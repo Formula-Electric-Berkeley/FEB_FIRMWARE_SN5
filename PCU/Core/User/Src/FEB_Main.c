@@ -198,17 +198,19 @@ void FEB_Main_Loop(void)
  * Handle periodic tasks driven by the 1 ms system tick.
  *
  * Processes the BMS heartbeat on every invocation, triggers the RMS torque
- * update at a 10 ms cadence, and transmits brake and APPS diagnostics at a
- * 20 ms cadence.
+ * update at a 10 ms cadence, and transmits brake, APPS, and raw pedal-voltage
+ * diagnostics at a 10 Hz cadence.
  */
 void FEB_1ms_Callback(void)
 {
   static uint16_t torque_divider = 0;
   static uint16_t brake_divider = 0;
-  // Diagnostics are throttled hard (brake/APPS @ 10 Hz) to keep CAN traffic low;
-  // apps_divider is offset 50 ms so APPS and brake never fire in the same tick.
-  // The software TX FIFO in feb_can absorbs any residual bursting.
+  // Diagnostics are throttled hard (brake/APPS/pedal-mV @ 10 Hz) to keep CAN
+  // traffic low; the dividers are offset (brake @ 0 ms, pedal-mV @ 25 ms, APPS @
+  // 50 ms) so the three never fire in the same tick. The software TX FIFO in
+  // feb_can absorbs any residual bursting.
   static uint16_t apps_divider = 50;
+  static uint16_t pedal_mv_divider = 75; // first fire at tick 25, then every 100
 
   // Refresh the APPS cache every 1 ms so the implausibility timer
   // accumulates correctly across all consumers (FEB_RMS_Torque,
@@ -246,5 +248,13 @@ void FEB_1ms_Callback(void)
   {
     apps_divider = 0;
     FEB_CAN_Diagnostics_TransmitAPPSData();
+  }
+
+  // Raw pedal sensor voltages (mV) — telemetry only, 10 Hz.
+  pedal_mv_divider++;
+  if (pedal_mv_divider >= 100)
+  {
+    pedal_mv_divider = 0;
+    FEB_CAN_Diagnostics_TransmitPedalVoltages();
   }
 }
