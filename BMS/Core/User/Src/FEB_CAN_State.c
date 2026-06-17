@@ -6,9 +6,11 @@
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_DASH.h"
 #include "FEB_SM.h"
+#include "FEB_ADBMS6830B.h"
 #include "feb_can_lib.h"
 #include "feb_can.h"
 #include "stm32f4xx_hal.h"
+#include <math.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -25,6 +27,12 @@ static volatile BMS_State_t current_state = BMS_STATE_BOOT;
 
 /* BMS state message data */
 static struct feb_can_bms_state_t bms_state_msg;
+
+/* Accumulator telemetry messages broadcast to the PCU (consumed by FEB_CAN_BMS
+ * on the PCU for the `bms` console display). total_pack_voltage is the cell-sum
+ * pack voltage in decivolts; max_cell_temperature is in deci-degrees C. */
+static struct feb_can_bms_accumulator_voltage_t acc_voltage_msg;
+static struct feb_can_bms_accumulator_temperature_t acc_temp_msg;
 
 /* State name lookup table - must match BMS_State_t enum order */
 static const char *state_names[] = {
@@ -47,6 +55,8 @@ static const char *state_names[] = {
 void FEB_CAN_State_Init(void)
 {
   memset(&bms_state_msg, 0, sizeof(bms_state_msg));
+  memset(&acc_voltage_msg, 0, sizeof(acc_voltage_msg));
+  memset(&acc_temp_msg, 0, sizeof(acc_temp_msg));
   current_state = BMS_STATE_BOOT;
 }
 
@@ -103,6 +113,25 @@ void FEB_CAN_State_Tick(void)
     feb_can_bms_state_pack(tx_data, &bms_state_msg, sizeof(tx_data));
 
     FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_STATE_FRAME_ID, FEB_CAN_ID_STD, tx_data, FEB_CAN_BMS_STATE_LENGTH);
+
+    /* Accumulator voltage (0x02): total_pack_voltage = cell-sum in decivolts.
+     * The PCU divides by 10 for display and uses it for the `bms` console view. */
+    acc_voltage_msg.total_pack_voltage = (uint16_t)(FEB_ADBMS_Snapshot_Total_Voltage() * 10.0f + 0.5f);
+
+    uint8_t acc_v_data[FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_LENGTH];
+    feb_can_bms_accumulator_voltage_pack(acc_v_data, &acc_voltage_msg, sizeof(acc_v_data));
+    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID, FEB_CAN_ID_STD, acc_v_data,
+                    FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_LENGTH);
+
+    /* Accumulator temperature (0x03): max_cell_temperature in deci-degrees C.
+     * Snapshot is NaN until the first cell-monitor scan completes. */
+    float max_temp_c = FEB_ADBMS_Snapshot_Max_Temp();
+    acc_temp_msg.max_cell_temperature = isnan(max_temp_c) ? 0 : (int16_t)(max_temp_c * 10.0f);
+
+    uint8_t acc_t_data[FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_LENGTH];
+    feb_can_bms_accumulator_temperature_pack(acc_t_data, &acc_temp_msg, sizeof(acc_t_data));
+    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID, FEB_CAN_ID_STD, acc_t_data,
+                    FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_LENGTH);
   }
 }
 

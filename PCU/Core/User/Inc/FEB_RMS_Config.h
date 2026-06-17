@@ -58,6 +58,20 @@ extern "C"
 #define LOW_PACK_VOLTAGE 4200 /* 420.0V in decivolts */
 
 /**
+ * @brief Low pack voltage threshold in volts (for IVT-measured comparisons)
+ * @note Same threshold as LOW_PACK_VOLTAGE, expressed in volts since the IVT
+ *       getters return volts. Below this, torque is limited to MAX_TORQUE_LOW_V.
+ */
+#define LOW_PACK_VOLTAGE_V 420.0f
+
+/**
+ * @brief IVT-measured pack current limit in Amps for the protective torque derate
+ * @note Backstop to the power cap: above this measured current, torque is scaled
+ *       down proportionally. Bench-tune to avoid oscillation before trusting.
+ */
+#define IVT_CURRENT_LIMIT_A PEAK_CURRENT
+
+/**
  * @brief Initial/nominal pack voltage in decivolts
  * @note Used for startup calculations
  *       Example: 5100 = 510.0V

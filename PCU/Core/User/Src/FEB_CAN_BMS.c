@@ -96,7 +96,6 @@ static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
 {
   (void)instance;
   (void)id_type;
-  (void)length;
   (void)user_data;
 
   /* NOTE: This callback runs in ISR context - avoid logging and blocking operations */
@@ -105,8 +104,11 @@ static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
 
   if (can_id == FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID)
   {
-    BMS_MESSAGE.temperature = data[2] << 8 | data[3];
-    BMS_MESSAGE.max_temperature = (float)BMS_MESSAGE.temperature / 10.0f;
+    /* deci-degrees C, max cell temperature (signed) */
+    struct feb_can_bms_accumulator_temperature_t t;
+    feb_can_bms_accumulator_temperature_unpack(&t, data, length);
+    BMS_MESSAGE.temperature = (uint16_t)t.max_cell_temperature;
+    BMS_MESSAGE.max_temperature = (float)t.max_cell_temperature / 10.0f;
   }
   else if (can_id == FEB_CAN_BMS_STATE_FRAME_ID)
   {
@@ -121,8 +123,11 @@ static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
   }
   else if (can_id == FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID)
   {
-    BMS_MESSAGE.voltage = (data[0] << 8) | (data[1]);
-    BMS_MESSAGE.accumulator_voltage = (float)BMS_MESSAGE.voltage / 10.0f;
+    /* decivolts, cell-sum pack voltage — used for the `bms` console display */
+    struct feb_can_bms_accumulator_voltage_t v;
+    feb_can_bms_accumulator_voltage_unpack(&v, data, length);
+    BMS_MESSAGE.voltage = v.total_pack_voltage;
+    BMS_MESSAGE.accumulator_voltage = (float)v.total_pack_voltage / 10.0f;
   }
 }
 

@@ -120,6 +120,11 @@ void FEB_Main_Setup(void)
     // === CHECKPOINT 6: BMS ready ===
     LOG_I(TAG_MAIN, "[6/8] BMS initialized");
     HAL_Delay(50);
+
+    // IVT current/voltage sensor RX (pack voltage + current for RMS limiting)
+    FEB_CAN_IVT_Init();
+    LOG_I(TAG_MAIN, "[6/8] IVT initialized");
+    HAL_Delay(50);
   }
   else
   {

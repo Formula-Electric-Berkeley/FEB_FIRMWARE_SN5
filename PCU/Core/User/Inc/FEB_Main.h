@@ -17,6 +17,7 @@
 #include "FEB_RMS.h"
 #include "FEB_CAN_RMS.h"
 #include "FEB_CAN_BMS.h"
+#include "FEB_CAN_IVT.h"
 #include "FEB_CAN_Diagnostics.h"
 #include "FEB_CAN_TPS.h"
 #include "FEB_PCU_Commands.h"

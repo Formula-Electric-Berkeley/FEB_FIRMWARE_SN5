@@ -2,10 +2,12 @@
 #include "FEB_ADC.h"
 #include "FEB_CAN_BMS.h"
 #include "FEB_CAN_RMS.h"
+#include "FEB_CAN_IVT.h"
 #include "FEB_RMS_Config.h"
 #include "feb_log.h"
 #include "FEB_Regen.h"
 #include "main.h"
+#include <math.h>
 
 /* Safe min macro with proper parentheses */
 #define min(x1, x2) (((x1) < (x2)) ? (x1) : (x2))
@@ -119,20 +121,28 @@ bool FEB_RMS_IsForceDisabled(void)
  */
 float FEB_Get_Peak_Current_Delimiter()
 {
-  // Skip voltage-based limiting if we've never received RMS data
-  if (RMS_MESSAGE.last_rx_timestamp == 0)
+  // Pack voltage for limiting: prefer the IVT (measured terminal voltage, sags
+  // under load); fall back to the inverter's M167 DC bus voltage if the IVT is
+  // stale; if neither is available, don't limit torque.
+  float accumulator_voltage;
+  if (FEB_CAN_IVT_IsDataFresh(FEB_CAN_IVT_DATA_TIMEOUT_MS))
+  {
+    accumulator_voltage = FEB_CAN_IVT_GetVoltage();
+  }
+  else if (RMS_MESSAGE.last_rx_timestamp != 0)
+  {
+    accumulator_voltage = RMS_MESSAGE.DC_Bus_Voltage_V;
+  }
+  else
   {
     static uint32_t last_no_data_log = 0;
     if (HAL_GetTick() - last_no_data_log >= 5000)
     {
       last_no_data_log = HAL_GetTick();
-      LOG_W(TAG_RMS, "No RMS voltage data received yet");
+      LOG_W(TAG_RMS, "No pack voltage data (IVT + RMS) received yet");
     }
     return 1.0f; // Don't limit torque without real data
   }
-
-  // Real DC bus voltage, decoded from the M167 Voltage Info broadcast.
-  float accumulator_voltage = RMS_MESSAGE.DC_Bus_Voltage_V;
 
   // Start derating when voltage = MIN_PACK_VOLTAGE_V + expected_drop_at_peak_current
   // With R_acc = 1Ω and PEAK_CURRENT = 60A: start_derating = 400V + 60V = 460V
@@ -178,16 +188,18 @@ float FEB_RMS_GetMaxTorque(void)
   float motor_speed = RMS_MESSAGE.Motor_Speed * RPM_TO_RAD_S;
   float peak_current_limited = PEAK_CURRENT * FEB_Get_Peak_Current_Delimiter();
 
-  // Cap power to peak_current * MIN_PACK_VOLTAGE_V (e.g., 60A * 400V = 24kW)
-  float power_capped = peak_current_limited * MIN_PACK_VOLTAGE_V;
+  // Measured pack voltage/current from the IVT (terminal values, sag under load).
+  // The getters return 0.0 when stale, so gate every use on freshness.
+  bool ivt_fresh = FEB_CAN_IVT_IsDataFresh(FEB_CAN_IVT_DATA_TIMEOUT_MS);
+  float pack_voltage_v = ivt_fresh ? FEB_CAN_IVT_GetVoltage() : MIN_PACK_VOLTAGE_V;
 
-  // Select torque limit based on pack voltage
+  // Cap power to peak_current * measured pack voltage (constant-power budget).
+  float power_capped = peak_current_limited * pack_voltage_v;
+
+  // Select torque limit based on the measured (IVT) pack voltage. Only trip when
+  // the IVT is fresh — a stale getter reads 0.0 and would look like a brownout.
   uint16_t minimum_torque = MAX_TORQUE;
-  if (BMS_MESSAGE.last_rx_timestamp == 0)
-  {
-    // No BMS data yet, use default max torque
-  }
-  else if (BMS_MESSAGE.voltage < LOW_PACK_VOLTAGE)
+  if (ivt_fresh && FEB_CAN_IVT_GetVoltage() < LOW_PACK_VOLTAGE_V)
   {
     minimum_torque = MAX_TORQUE_LOW_V;
     // Rate-limit this warning to once per second
@@ -199,15 +211,36 @@ float FEB_RMS_GetMaxTorque(void)
     }
   }
 
-  // Below minimum speed threshold: use constant torque mode
-  // Prevents division by zero and handles stopped/negative rotation
+  // Below minimum speed threshold: use constant torque mode (prevents division by
+  // zero and handles stopped/negative rotation). Otherwise limit by power.
+  float maxTorque;
   if (motor_speed < MIN_MOTOR_SPEED_RAD_S)
   {
-    return minimum_torque;
+    maxTorque = (float)minimum_torque;
+  }
+  else
+  {
+    maxTorque = min((float)minimum_torque, (power_capped) / motor_speed);
   }
 
-  // Above minimum speed: limit by power (constant power mode)
-  float maxTorque = min(minimum_torque, (power_capped) / motor_speed);
+  // Measured-current protective limit: if the pack is already sourcing more than
+  // IVT_CURRENT_LIMIT_A, scale torque down proportionally. Mirrors the BMS
+  // measured-current check (FEB_SM.c). Conservative backstop — bench-tune.
+  if (ivt_fresh)
+  {
+    float ivt_current = fabsf(FEB_CAN_IVT_GetCurrent());
+    if (ivt_current > IVT_CURRENT_LIMIT_A)
+    {
+      maxTorque *= (IVT_CURRENT_LIMIT_A / ivt_current);
+      static uint32_t last_overcurrent_log = 0;
+      if (HAL_GetTick() - last_overcurrent_log >= 1000)
+      {
+        last_overcurrent_log = HAL_GetTick();
+        LOG_W(TAG_RMS, "IVT overcurrent %.1fA > %.1fA, derating torque", (double)ivt_current,
+              (double)IVT_CURRENT_LIMIT_A);
+      }
+    }
+  }
 
   return maxTorque;
 }
