@@ -105,9 +105,10 @@ void StartADBMSTask(void *argument)
       temp_tick = now;
     }
 
-    /* Cell balancing (only in BALANCE or BATTERY_FREE state) */
+    /* Cell balancing only in BALANCE state, which is entered solely via the
+     * BMS|balance|on serial command. Never balance in BATTERY_FREE. */
     BMS_State_t current_state = FEB_SM_Get_Current_State();
-    if (current_state == BMS_STATE_BALANCE || current_state == BMS_STATE_BATTERY_FREE)
+    if (current_state == BMS_STATE_BALANCE)
     {
       if (now - balance_tick >= pdMS_TO_TICKS(FEB_CELL_BALANCE_INTERVAL_MS))
       {

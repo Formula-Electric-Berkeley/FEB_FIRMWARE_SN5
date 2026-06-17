@@ -226,12 +226,20 @@ static void subcmd_balance(int argc, char *argv[])
       FEB_Console_Printf("Allowed states: BATTERY_FREE, BALANCE\r\n");
       return;
     }
-    FEB_Cell_Balance_Start();
+    /* Enter BALANCE first so no balance pass ever runs in BATTERY_FREE. */
     if (FEB_SM_Get_Current_State() == BMS_STATE_BATTERY_FREE)
     {
-      FEB_SM_Transition(BMS_STATE_BALANCE); /* 6->8 begin_balance */
+      FEB_SM_Transition(BMS_STATE_BALANCE); /* 6->9 begin_balance */
     }
-    FEB_Console_Printf("Balancing started\r\n");
+    if (FEB_SM_Get_Current_State() == BMS_STATE_BALANCE)
+    {
+      FEB_Cell_Balance_Start();
+      FEB_Console_Printf("Balancing started\r\n");
+    }
+    else
+    {
+      FEB_Console_Printf("Error: could not enter BALANCE state\r\n");
+    }
   }
   else if (FEB_strcasecmp(argv[1], "off") == 0)
   {
@@ -1115,12 +1123,20 @@ static void cmd_balance_csv(int argc, char *argv[])
       FEB_Console_CsvError("error", "not_allowed,%s", FEB_CAN_State_GetStateName(FEB_SM_Get_Current_State()));
       return;
     }
-    FEB_Cell_Balance_Start();
+    /* Enter BALANCE first so no balance pass ever runs in BATTERY_FREE. */
     if (FEB_SM_Get_Current_State() == BMS_STATE_BATTERY_FREE)
     {
-      FEB_SM_Transition(BMS_STATE_BALANCE); /* 6->8 begin_balance */
+      FEB_SM_Transition(BMS_STATE_BALANCE); /* 6->9 begin_balance */
     }
-    FEB_Console_CsvEmit("balance", "%d", 1);
+    if (FEB_SM_Get_Current_State() == BMS_STATE_BALANCE)
+    {
+      FEB_Cell_Balance_Start();
+      FEB_Console_CsvEmit("balance", "%d", 1);
+    }
+    else
+    {
+      FEB_Console_CsvError("error", "enter_balance_failed,%s", FEB_CAN_State_GetStateName(FEB_SM_Get_Current_State()));
+    }
   }
   else if (FEB_strcasecmp(argv[1], "off") == 0)
   {

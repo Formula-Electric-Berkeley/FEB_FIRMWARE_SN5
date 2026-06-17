@@ -113,6 +113,7 @@ static uint32_t overcurrent_start_tick = 0;
 static uint32_t imd_open_start_tick = 0;
 #if !FEB_BMS_DISABLE_ADBMS_CHECKS
 static uint32_t contactor_mismatch_start_tick = 0;
+static uint32_t balance_hv_start_tick = 0;
 #endif
 
 /* The IMD status S-R latch powers up LOW; SHS_IMD only goes high once the
@@ -536,6 +537,39 @@ static void evaluate_faults(void)
     {
       contactor_mismatch_start_tick = 0;
     }
+  }
+
+  /* (f) BALANCE requires HV fully off: the shutdown loop must be open and all
+   * contactors (AIR+/AIR-/precharge) open. A closed shutdown loop or any closed
+   * contactor while balancing means HV is (being) energized — illegal during a
+   * balance session. Debounced like the contactor weld check above; routes to
+   * the charger-group fault (FAULT_CHARGING). */
+  if (s == BMS_STATE_BALANCE)
+  {
+    bool hv_on =
+        (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE) || (FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE) ||
+        (FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE) || (FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_CLOSE);
+    if (hv_on)
+    {
+      if (balance_hv_start_tick == 0)
+      {
+        balance_hv_start_tick = HAL_GetTick();
+      }
+      else if ((HAL_GetTick() - balance_hv_start_tick) >= FEB_CONTACTOR_FEEDBACK_TIMEOUT_MS)
+      {
+        LOG_E(TAG_SM, "HV active during BALANCE (SDC/AIR/PrC closed)");
+        fault_begin(grp_fault);
+        return;
+      }
+    }
+    else
+    {
+      balance_hv_start_tick = 0;
+    }
+  }
+  else
+  {
+    balance_hv_start_tick = 0;
   }
 #endif
 }
@@ -1276,20 +1310,20 @@ static void BalanceTransition(BMS_State_t next_state)
 
   case BMS_STATE_DEFAULT:
   {
-    /* Safety check: go back to FREE if AIR- opens */
-    if (FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
-    {
-      BalanceTransition(BMS_STATE_BATTERY_FREE);
-      break;
-    }
-
-    /* 8->6 (balance complete): cell delta within slippage threshold. Checked at
-     * ~1 Hz to avoid hammering the mutex-taking status call every 1 ms tick. */
+    /* BALANCE runs with HV off, so AIR- is expected OPEN here — its state is not
+     * an exit condition. The only autonomous exit to BATTERY_FREE is balance
+     * completion below; serial BMS|balance|off and faults handle the rest.
+     *
+     * 9->6 (balance complete): valid telemetry AND cell delta within the
+     * slippage threshold. Checked at ~1 Hz to avoid hammering the mutex-taking
+     * status call every 1 ms tick. Using Balance_Complete (not
+     * !Balancing_Status) keeps us in BALANCE through a thermal pause / telemetry
+     * gap rather than bouncing out before the pack actually converges. */
     static uint32_t balance_check_tick = 0;
     if ((HAL_GetTick() - balance_check_tick) >= 1000)
     {
       balance_check_tick = HAL_GetTick();
-      if (!FEB_Cell_Balancing_Status())
+      if (FEB_Cell_Balance_Complete())
       {
         LOG_I(TAG_SM, "Cells balanced, returning to BATTERY_FREE");
         BalanceTransition(BMS_STATE_BATTERY_FREE);
