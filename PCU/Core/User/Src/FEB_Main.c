@@ -222,6 +222,12 @@ void FEB_1ms_Callback(void)
   // FEB_CAN_Diagnostics_TransmitAPPSData, the CLI snapshot view).
   FEB_ADC_TickAPPS();
 
+  // Brake fault detection at 1 ms: BSE sensor open/short (T.4.3.4/.5, 100 ms
+  // latch) and the EV.4.7 brake+throttle check (short debounce, ~immediate).
+  // Runs even if CAN init failed — it is local, ADC-only safety logic. Must
+  // follow FEB_ADC_TickAPPS() so apps_cache.acceleration is fresh for EV.4.7.
+  FEB_ADC_TickBrakeFaults();
+
   // Skip CAN-dependent operations if CAN init failed
   if (!can_init_success)
   {

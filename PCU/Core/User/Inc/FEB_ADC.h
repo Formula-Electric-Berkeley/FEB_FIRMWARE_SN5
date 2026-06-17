@@ -287,15 +287,29 @@ extern "C"
   /**
    * @brief  Acknowledge an APPS implausibility latch when both pedals are
    *         below 5%. No-op if either pedal is still above the release
-   *         threshold. Implements FSAE EV.5.5 release-and-reset semantics.
+   *         threshold. Implements FSAE T.4.2.4 release-and-reset semantics.
    */
   void FEB_ADC_AcknowledgeAPPSImplausibility(void);
 
   /**
-   * @brief  Acknowledge a brake plausibility latch when brake position is
-   *         below 15%. No-op otherwise.
+   * @brief  Acknowledge the EV.4.7 brake/APPS plausibility latch once APPS
+   *         travel is below APPS_RELEASE_PERCENT (5%), with or without brake
+   *         (FSAE EV.4.7.2.b). No-op otherwise.
    */
   void FEB_ADC_AcknowledgeBrakeImplausibility(void);
+
+  /**
+   * @brief  Per-1ms brake fault tick: BSE sensor open/short detection (FSAE
+   *         T.4.3.4/.5, 100 ms latch) and the EV.4.7 brake+throttle plausibility
+   *         check (short debounce). Call right after FEB_ADC_TickAPPS().
+   */
+  void FEB_ADC_TickBrakeFaults(void);
+
+  /**
+   * @brief  Mirror the FEB_RMS bench brake bypass into FEB_ADC so brake fault
+   *         detection is suppressed while the bypass is engaged.
+   */
+  void FEB_ADC_SetBrakeBypass(bool enabled);
 
   /**
    * @brief  Get brake system data

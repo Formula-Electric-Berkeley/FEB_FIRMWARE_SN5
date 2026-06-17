@@ -50,6 +50,7 @@ bool FEB_RMS_SetBrakeBypass(bool enabled)
   if (enabled && !FEB_CAN_BMS_IsSilent())
     return false;
   brake_bypass_active = enabled;
+  FEB_ADC_SetBrakeBypass(enabled);
   return true;
 }
 
@@ -248,10 +249,10 @@ float FEB_RMS_GetMaxTorque(void)
 /**
  * @brief Main torque control function - reads sensors and commands motor
  *
- * Implements FSAE EV.5.6 and EV.5.7 safety rules:
- * - Cuts torque if brake is pressed while throttle > 25%
- * - Enforces APPS plausibility checks
- * - Requires pedal release to clear faults
+ * Implements FSAE T.4.2 / T.4.3 / EV.4.7 safety rules:
+ * - Cuts torque if brakes engaged while APPS > 25% (EV.4.7)
+ * - Enforces APPS plausibility + BSE open/short checks (T.4.2 / T.4.3)
+ * - Requires APPS < 5% to clear the EV.4.7 / implausibility latch (EV.4.7.2.b)
  *
  * Called periodically from main loop
  */
@@ -281,6 +282,7 @@ void FEB_RMS_Torque(void)
   if (brake_bypass_active && !FEB_CAN_BMS_IsSilent())
   {
     brake_bypass_active = false;
+    FEB_ADC_SetBrakeBypass(false);
     LOG_W(TAG_RMS, "Brake bypass cancelled: BMS active on CAN bus");
   }
 
@@ -289,16 +291,16 @@ void FEB_RMS_Torque(void)
   // plausible so the accelerator alone commands torque (no regen/coast
   // diversion), and skip the BSPD check so a floating brake input can't latch a
   // fault. Otherwise run the BSPD/brake-plausibility check so faults latch.
-  bool brake_plausible = Brake_Data.plausible;
+  // brake_plausible folds in: the brake-pressure disagreement + latched BSE
+  // open/short fault (both via Brake_Data.plausible) AND the EV.4.7 brake+throttle
+  // latch (FEB_ADC_CheckBrakePlausibility). Detection/latching run in the 1 ms
+  // FEB_ADC_TickBrakeFaults; this just reads the result.
+  bool brake_plausible = Brake_Data.plausible && FEB_ADC_CheckBrakePlausibility();
   float brake_position = Brake_Data.brake_position;
   if (brake_bypass_active)
   {
     brake_plausible = true;
     brake_position = 0.0f;
-  }
-  else
-  {
-    FEB_ADC_CheckBrakePlausibility();
   }
 
   // Check plausibility and safety conditions (require BMS in drive state).
@@ -329,8 +331,9 @@ void FEB_RMS_Torque(void)
     }
   }
 
-  // Release-and-reset: independent conditions per FSAE EV.5.5.
-  // APPS fault clears when both pedals < 5%; brake fault clears when brake < 15%.
+  // Release-and-reset (FSAE T.4.2.4 / EV.4.7.2.b): both the APPS implausibility
+  // latch and the EV.4.7 brake/APPS latch clear only when APPS travel < 5% (the
+  // APPS latch additionally requires both channels low and no live short/open).
   FEB_ADC_AcknowledgeAPPSImplausibility();
   FEB_ADC_AcknowledgeBrakeImplausibility();
 

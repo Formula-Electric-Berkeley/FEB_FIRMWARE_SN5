@@ -32,12 +32,12 @@ extern "C"
 #define ADC1_BRAKE_INPUT_PIN GPIO_PIN_4
 #define ADC1_BRAKE_INPUT_PORT GPIOC
 
-#define ADC1_BRAKE_PRESSURE_1_CHANNEL ADC_CHANNEL_0 /* PA0 - Brake Pressure Sensor 1 */
-#define ADC1_BRAKE_PRESSURE_1_PIN GPIO_PIN_0
+#define ADC1_BRAKE_PRESSURE_1_CHANNEL ADC_CHANNEL_1 /* PA1 - Brake Pressure Sensor 1 (BP1) */
+#define ADC1_BRAKE_PRESSURE_1_PIN GPIO_PIN_1
 #define ADC1_BRAKE_PRESSURE_1_PORT GPIOA
 
-#define ADC1_BRAKE_PRESSURE_2_CHANNEL ADC_CHANNEL_1 /* PA1 - Brake Pressure Sensor 2 */
-#define ADC1_BRAKE_PRESSURE_2_PIN GPIO_PIN_1
+#define ADC1_BRAKE_PRESSURE_2_CHANNEL ADC_CHANNEL_0 /* PA0 - Brake Pressure Sensor 2 (BP2) */
+#define ADC1_BRAKE_PRESSURE_2_PIN GPIO_PIN_0
 #define ADC1_BRAKE_PRESSURE_2_PORT GPIOA
 
 /* -------------------------------------------------------------------------- */
@@ -58,11 +58,11 @@ extern "C"
 /* -------------------------------------------------------------------------- */
 /*                            ADC3 CHANNELS                                  */
 /* -------------------------------------------------------------------------- */
-#define ADC3_BSPD_INDICATOR_CHANNEL ADC_CHANNEL_8 /* PC0 - BSPD Indicator */
+#define ADC3_BSPD_INDICATOR_CHANNEL ADC_CHANNEL_10 /* PC0 - BSPD Indicator (ADC123_IN10) */
 #define ADC3_BSPD_INDICATOR_PIN GPIO_PIN_0
 #define ADC3_BSPD_INDICATOR_PORT GPIOC
 
-#define ADC3_BSPD_RESET_CHANNEL ADC_CHANNEL_9 /* PC1 - BSPD Reset Signal */
+#define ADC3_BSPD_RESET_CHANNEL ADC_CHANNEL_11 /* PC1 - BSPD Reset Signal (ADC123_IN11) */
 #define ADC3_BSPD_RESET_PIN GPIO_PIN_1
 #define ADC3_BSPD_RESET_PORT GPIOC
 
@@ -130,25 +130,22 @@ extern "C"
 /* These are DEFAULTS only - actual values are stored in calibration structs */
 
 /* Single-APPS mode is now a runtime flag (FEB_APPS_SingleSensorMode in FEB_ADC.c).
- * Default at boot is OFF — dual-sensor plausibility enforced (FSAE EV.5.3).
+ * Default at boot is OFF — dual-sensor plausibility enforced (FSAE T.4.2.2).
  * Toggle for bench testing only via PCU|apps|mode|single|<on|off> while not in
  * drive state. */
 
 /* Accelerator Pedal Calibration (APPS) - per-car values, post-divider
  * (sensor-side) mV: the domain FEB_ADC maps against (APPS1 = ADC pin x1.168,
- * APPS2 = pin x1.0; see VOLTAGE_DIVIDER_RATIO_ACCEL* in FEB_ADC.c).
- * Bench estimate 2026-05-28 from a pedal sweep (APPS1 pin 1.16-2.06V,
- * APPS2 pin 0.40-1.03V); CONFIRM on-car via PCU|apps|raw / PCU|apps|cal|capture
- * before driving. Asymmetric APPS1 vs APPS2 ranges are expected and preserve
- * FSAE EV.5.3 transfer-function diversity. */
-#define APPS1_DEFAULT_MIN_VOLTAGE_MV 1450 /* APPS1 0% throttle (est.; verify per-car) */
-#define APPS1_DEFAULT_MAX_VOLTAGE_MV 2330 /* APPS1 100% throttle (est.; verify per-car) */
-#define APPS2_DEFAULT_MIN_VOLTAGE_MV 555  /* APPS2 0% throttle (est.; verify per-car) */
-#define APPS2_DEFAULT_MAX_VOLTAGE_MV 1150 /* APPS2 100% throttle (est.; verify per-car) */
+ * APPS2 = pin x1.0; see VOLTAGE_DIVIDER_RATIO_ACCEL* in FEB_ADC.c). */
+#define APPS1_DEFAULT_MIN_VOLTAGE_MV 1360 /* APPS1 0% throttle */
+#define APPS1_DEFAULT_MAX_VOLTAGE_MV 2200 /* APPS1 100% throttle */
+#define APPS2_DEFAULT_MIN_VOLTAGE_MV 450  /* APPS2 0% throttle */
+#define APPS2_DEFAULT_MAX_VOLTAGE_MV 940  /* APPS2 100% throttle */
 #define APPS_MIN_PHYSICAL_PERCENT 0.0f    /* Physical minimum: 0% throttle */
 #define APPS_MAX_PHYSICAL_PERCENT 100.0f  /* Physical maximum: 100% throttle */
 #define APPS_DEADZONE_PERCENT 5           /* Deadzone at pedal extremes (%) */
 #define APPS_PLAUSIBILITY_TOLERANCE 10    /* Maximum deviation between sensors (%) */
+
 /* FSAE T.4.2.3: the two APPS use different transfer functions, so their RAW
  * pin-domain outputs (raw/ADC_MAX_VALUE*100) stay >=~23% apart across the pedal
  * range on SN5. If the two signal lines short together that designed separation
@@ -161,14 +158,14 @@ extern "C"
 /* Brake Pressure Sensor Default Calibration — per-sensor, sensor-side mV
  * (i.e. before the 5V->3.3V PCB divider; FEB_ADC_GetBrakePressureNVoltage()
  * already multiplies by VOLTAGE_DIVIDER_RATIO_BRAKE to give sensor-side V). */
-#define BRAKE_PRESSURE_1_MIN_MV 545            /* Sensor 1 @ 0% brake: 0.545 V sensor-side (5/3.3 divider) */
-#define BRAKE_PRESSURE_1_MAX_MV 2363           /* Sensor 1 @ 100% brake: 2.363 V sensor-side (5/3.3 divider) */
-#define BRAKE_PRESSURE_2_MIN_MV 480            /* Sensor 2 @ 0% brake: 0.480 V sensor-side (5/3.3 divider) */
-#define BRAKE_PRESSURE_2_MAX_MV 1844           /* Sensor 2 @ 100% brake: 1.844 V sensor-side (5/3.3 divider) */
-#define BRAKE_PRESSURE_MIN_PHYSICAL_BAR 0.0f   /* Physical minimum: 0 bar */
-#define BRAKE_PRESSURE_MAX_PHYSICAL_BAR 200.0f /* Physical maximum: 200 bar */
-#define BRAKE_PRESSURE_THRESHOLD_BAR 5         /* Brake activation threshold */
-#define BRAKE_PRESSURE_THRESHOLD_PERCENT 2.5f  /* Brake activation threshold in percent */
+#define BRAKE_PRESSURE_1_MIN_MV 465                         /* Sensor 1 @ 0% brake: */
+#define BRAKE_PRESSURE_1_MAX_MV 1130                        /* Sensor 1 @ 100% brake: */
+#define BRAKE_PRESSURE_2_MIN_MV 555                         /* Sensor 2 @ 0% brake: */
+#define BRAKE_PRESSURE_2_MAX_MV 1455                        /* Sensor 2 @ 100% brake: */
+#define BRAKE_PRESSURE_MIN_PHYSICAL_BAR 0.0f                /* Physical minimum: 0 bar */
+#define BRAKE_PRESSURE_MAX_PHYSICAL_BAR 200.0f              /* Physical maximum: 200 bar */
+#define BRAKE_PRESSURE_THRESHOLD_BAR 5                      /* Brake activation threshold */
+#define BRAKE_PRESSURE_THRESHOLD_PERCENT 2.5f               /* Brake activation threshold in percent */
 #define BRAKE_PRESSURE_PLAUSIBILITY_TOLERANCE_PERCENT 20.0f /* Max disagreement between brake pressure sensors */
 #define BRAKE_PRESSED_POSITION_PERCENT 10.0f                /* Brake "pressed" when combined position exceeds this */
 
@@ -190,14 +187,38 @@ extern "C"
 /* ========================================================================== */
 
 /* FSAE Rules Compliance */
-#define APPS_IMPLAUSIBILITY_TIME_MS 100  /* Time before APPS implausibility fault */
-#define BRAKE_PLAUSIBILITY_TIME_MS 100   /* Time before brake plausibility fault */
-#define APPS_SHORT_CIRCUIT_DETECT_MV 100 /* Voltage below this indicates short (both sensors) */
-/* Per-sensor open-circuit thresholds: each must sit above the sensor's valid
- * max (2406 mV for APPS1, 1030 mV for APPS2) and below the post-divider ADC
- * ceiling (~3854 mV for APPS1, ~3300 mV for APPS2 with no divider). */
-#define APPS1_OPEN_CIRCUIT_DETECT_MV 3500 /* APPS1 above this indicates open */
-#define APPS2_OPEN_CIRCUIT_DETECT_MV 1500 /* APPS2 above this indicates open */
+#define APPS_IMPLAUSIBILITY_TIME_MS 100 /* T.4.2.4: APPS >10% disagreement must persist >100ms to fault */
+#define BRAKE_PLAUSIBILITY_TIME_MS 100  /* T.4.3.4: BSE sensor open/short must persist >100ms to fault */
+/* EV.4.7 (brakes engaged + APPS >25%) must stop motor power IMMEDIATELY — the
+ * 100 ms grace above does NOT apply to it (that is T.4.2.4 / T.4.3.4 only). Use
+ * a short noise-rejection debounce so a single noisy frame can't false-trip. */
+#define EV47_PLAUSIBILITY_DEBOUNCE_MS 10 /* EV.4.7 brake+throttle debounce (effectively immediate) */
+#define APPS_RELEASE_PERCENT 5.0f        /* EV.4.7.2.b / T.4.2.4 release: APPS travel below this clears the latch */
+
+/* APPS short/open detection (T.4.2.10/.11/.13): a sensor has "failed" when its
+ * post-divider voltage is outside its normal operating range. Thresholds are
+ * PER-SENSOR — the two ranges differ, and APPS2's 0% sits at ~0.40 V (below the
+ * rule's generic <0.5 V example), so a single global floor cannot be used.
+ * Floors sit below each valid min, ceilings above each valid max, both with
+ * margin and inside the recoverable range (APPS1 ceiling 3.3V*1.168=3854mV,
+ * APPS2 3300mV). High-side over-range can't make phantom torque because the
+ * torque command uses MIN(APPS1,APPS2). RE-VERIFY after every recalibration so
+ * the margins still clear filter ripple at 0% and 100% pedal. */
+#define APPS1_SHORT_CIRCUIT_DETECT_MV 1000 /* APPS1 below this = short/under-range */
+#define APPS2_SHORT_CIRCUIT_DETECT_MV 250  /* APPS2 below this = short/under-range */
+#define APPS1_OPEN_CIRCUIT_DETECT_MV 2800  /* APPS1 above this = open/over-range */
+#define APPS2_OPEN_CIRCUIT_DETECT_MV 1300  /* APPS2 above this = open/over-range */
+
+/* BSE (brake) open/short detection (T.4.3.4/.5): per-sensor, sensor-side mV
+ * (post 5V->3.3V divider; recoverable ceiling ~5000 mV). Floors catch a short-
+ * to-ground or a lost shared 5 V supply (both sensors read ~0 V — the dangerous
+ * "looks like no brake" case); ceilings catch a short to 5 V. Open-circuit
+ * detectability REQUIRES a pull resistor on each brake line (confirm in HW).
+ * RE-VERIFY against the brake sensors' real 0%/100% voltages. */
+#define BRAKE_PRESSURE_1_UNDER_MV 350 /* Brake P1 below this = short/lost supply */
+#define BRAKE_PRESSURE_1_OVER_MV 4600 /* Brake P1 above this = open/short-to-5V */
+#define BRAKE_PRESSURE_2_UNDER_MV 300 /* Brake P2 below this = short/lost supply */
+#define BRAKE_PRESSURE_2_OVER_MV 4600 /* Brake P2 above this = open/short-to-5V */
 
 /* Brake Over Travel Protection (BOTS) */
 #define BOTS_ACTIVATION_PERCENT 25 /* Brake travel % that triggers BOTS */
