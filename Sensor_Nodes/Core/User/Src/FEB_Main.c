@@ -19,6 +19,7 @@
 #include "FEB_LinearPotentiometer.h"
 #include "FEB_CAN_LinearPotentiometer.h"
 #include "FEB_SN_PingPong.h"
+#include "FEB_CAN_IRTSSensorConfig.h"
 
 #include "feb_uart.h"
 #include "feb_log.h"
@@ -171,6 +172,9 @@ void FEB_Init(void)
 
   FEB_SN_PingPong_Init();
   FEB_Console_Printf("CAN ping/pong ready (SN|ping|<1-4>, SN|pong|<1-4>)\r\n");
+
+  FEB_CAN_IRTSSensorConfig_Init();
+  FEB_Console_Printf("IRTS sensor config ready (SN|IRTS|send)\r\n");
 
   FEB_Console_Printf("Sensor Node (%s) Setup Complete\r\n", FEB_SN_VARIANT_NAME);
 }
@@ -363,4 +367,8 @@ void FEB_Main_Loop(void)
     FEB_SN_PingPong_Tick();
     t_ping_ms = now_ms;
   }
+
+  /* IRTS sensor-config burst: self-gates on its own 1 Hz cadence and stops
+   * itself after 15 s, so call it every iteration (idle when not running). */
+  FEB_CAN_IRTSSensorConfig_Tick();
 }

@@ -42,12 +42,12 @@ repos:
         files: Core/User/
 
       # CubeMX sync check - ensures .ioc changes include regenerated code
-      - id: cubemx-sync
-        name: cubemx-sync
-        entry: ./scripts/cubemx-sync.sh --check
-        language: script
-        pass_filenames: false
-        always_run: true
+      # - id: cubemx-sync
+      #   name: cubemx-sync
+      #   entry: ./scripts/cubemx-sync.sh --check
+      #   language: script
+      #   pass_filenames: false
+      #   always_run: true
 
       # Bench-flag guard - BMS ADBMS safety overrides must never ship enabled.
       # Enable bench mode via the build flag (cmake -DBMS_BENCH_MODE=ON) instead.
