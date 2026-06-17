@@ -120,6 +120,11 @@ void FEB_Main_Setup(void)
     // === CHECKPOINT 6: BMS ready ===
     LOG_I(TAG_MAIN, "[6/8] BMS initialized");
     HAL_Delay(50);
+
+    // IVT current/voltage sensor RX (pack voltage + current for RMS limiting)
+    FEB_CAN_IVT_Init();
+    LOG_I(TAG_MAIN, "[6/8] IVT initialized");
+    HAL_Delay(50);
   }
   else
   {
@@ -198,22 +203,30 @@ void FEB_Main_Loop(void)
  * Handle periodic tasks driven by the 1 ms system tick.
  *
  * Processes the BMS heartbeat on every invocation, triggers the RMS torque
- * update at a 10 ms cadence, and transmits brake and APPS diagnostics at a
- * 20 ms cadence.
+ * update at a 10 ms cadence, and transmits brake, APPS, and raw pedal-voltage
+ * diagnostics at a 10 Hz cadence.
  */
 void FEB_1ms_Callback(void)
 {
   static uint16_t torque_divider = 0;
   static uint16_t brake_divider = 0;
-  // Diagnostics are throttled hard (brake/APPS @ 10 Hz) to keep CAN traffic low;
-  // apps_divider is offset 50 ms so APPS and brake never fire in the same tick.
-  // The software TX FIFO in feb_can absorbs any residual bursting.
+  // Diagnostics are throttled hard (brake/APPS/pedal-mV @ 10 Hz) to keep CAN
+  // traffic low; the dividers are offset (brake @ 0 ms, pedal-mV @ 25 ms, APPS @
+  // 50 ms) so the three never fire in the same tick. The software TX FIFO in
+  // feb_can absorbs any residual bursting.
   static uint16_t apps_divider = 50;
+  static uint16_t pedal_mv_divider = 75; // first fire at tick 25, then every 100
 
   // Refresh the APPS cache every 1 ms so the implausibility timer
   // accumulates correctly across all consumers (FEB_RMS_Torque,
   // FEB_CAN_Diagnostics_TransmitAPPSData, the CLI snapshot view).
   FEB_ADC_TickAPPS();
+
+  // Brake fault detection at 1 ms: BSE sensor open/short (T.4.3.4/.5, 100 ms
+  // latch) and the EV.4.7 brake+throttle check (short debounce, ~immediate).
+  // Runs even if CAN init failed — it is local, ADC-only safety logic. Must
+  // follow FEB_ADC_TickAPPS() so apps_cache.acceleration is fresh for EV.4.7.
+  FEB_ADC_TickBrakeFaults();
 
   // Skip CAN-dependent operations if CAN init failed
   if (!can_init_success)
@@ -246,5 +259,13 @@ void FEB_1ms_Callback(void)
   {
     apps_divider = 0;
     FEB_CAN_Diagnostics_TransmitAPPSData();
+  }
+
+  // Raw pedal sensor voltages (mV) — telemetry only, 10 Hz.
+  pedal_mv_divider++;
+  if (pedal_mv_divider >= 100)
+  {
+    pedal_mv_divider = 0;
+    FEB_CAN_Diagnostics_TransmitPedalVoltages();
   }
 }

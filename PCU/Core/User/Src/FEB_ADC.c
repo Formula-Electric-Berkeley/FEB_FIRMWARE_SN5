@@ -94,6 +94,12 @@ static struct
 /* Rate-limit timestamps for noisy fault logs. */
 static uint32_t last_open_log_tick = 0;
 static uint32_t last_short_log_tick = 0;
+static uint32_t last_bse_log_tick = 0;
+
+/* Brake fault detection state (owned by FEB_ADC_TickBrakeFaults, 1 ms tick). */
+static uint32_t bse_fault_start_tick = 0; /* T.4.3.4 BSE open/short 100 ms latch */
+static uint32_t ev47_start_tick = 0;      /* EV.4.7 brake+throttle debounce */
+static bool brake_bypass_enabled = false; /* mirrors FEB_RMS bench brake bypass */
 
 /* DMA Buffers for continuous conversion - must match number of channels */
 static uint16_t adc1_dma_buffer[3 * ADC_DMA_BUFFER_SIZE]; /* 3 channels: PA0, PA1, PC4 */
@@ -101,18 +107,18 @@ static uint16_t adc2_dma_buffer[3 * ADC_DMA_BUFFER_SIZE]; /* 3 channels: PA4, PA
 static uint16_t adc3_dma_buffer[4 * ADC_DMA_BUFFER_SIZE]; /* 4 channels: PC0, PC1, PC2, PC3 */
 
 /* Channel indices in DMA buffers */
-#define ADC1_CH0_BRAKE_PRESSURE1_IDX 0 /* PA0 - Channel 0 - Brake Pressure 1 */
-#define ADC1_CH1_BRAKE_PRESSURE2_IDX 1 /* PA1 - Channel 1 - Brake Pressure 2 */
+#define ADC1_CH0_BRAKE_PRESSURE2_IDX 0 /* PA0 - Channel 0 - Brake Pressure 2 (BP2) */
+#define ADC1_CH1_BRAKE_PRESSURE1_IDX 1 /* PA1 - Channel 1 - Brake Pressure 1 (BP1) */
 #define ADC1_CH14_BRAKE_INPUT_IDX 2    /* PC4 - Channel 14 */
 
 #define ADC2_CH4_CURRENT_SENSE_IDX 0 /* PA4 - Channel 4 */
 #define ADC2_CH6_SHUTDOWN_IN_IDX 1   /* PA6 - Channel 6 */
 #define ADC2_CH7_PRE_TIMING_IDX 2    /* PA7 - Channel 7 */
 
-#define ADC3_CH8_BSPD_INDICATOR_IDX 0 /* PC0 - Channel 8 - BSPD Indicator */
-#define ADC3_CH9_BSPD_RESET_IDX 1     /* PC1 - Channel 9 - BSPD Reset */
-#define ADC3_CH12_ACCEL_PEDAL1_IDX 2  /* PC2 - Channel 12 - APPS1 */
-#define ADC3_CH13_ACCEL_PEDAL2_IDX 3  /* PC3 - Channel 13 - APPS2 */
+#define ADC3_CH10_BSPD_INDICATOR_IDX 0 /* PC0 - Channel 10 - BSPD Indicator */
+#define ADC3_CH11_BSPD_RESET_IDX 1     /* PC1 - Channel 11 - BSPD Reset */
+#define ADC3_CH12_ACCEL_PEDAL2_IDX 2   /* PC2 - Channel 12 - APPS2 (Acceleration_Pedal_2) */
+#define ADC3_CH13_ACCEL_PEDAL1_IDX 3   /* PC3 - Channel 13 - APPS1 (Acceleration_Pedal_1) */
 
 /* Channel configurations */
 static ADC_ChannelConfigTypeDef brake_input_config;
@@ -335,9 +341,9 @@ uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef *hadc, uint32_t channel)
     buffer_ptr = adc1_dma_buffer;
     num_channels = 3;
     if (channel == ADC_CHANNEL_0)
-      channel_idx = ADC1_CH0_BRAKE_PRESSURE1_IDX;
+      channel_idx = ADC1_CH0_BRAKE_PRESSURE2_IDX;
     else if (channel == ADC_CHANNEL_1)
-      channel_idx = ADC1_CH1_BRAKE_PRESSURE2_IDX;
+      channel_idx = ADC1_CH1_BRAKE_PRESSURE1_IDX;
     else if (channel == ADC_CHANNEL_14)
       channel_idx = ADC1_CH14_BRAKE_INPUT_IDX;
     else
@@ -360,14 +366,14 @@ uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef *hadc, uint32_t channel)
   {
     buffer_ptr = adc3_dma_buffer;
     num_channels = 4;
-    if (channel == ADC_CHANNEL_8)
-      channel_idx = ADC3_CH8_BSPD_INDICATOR_IDX;
-    else if (channel == ADC_CHANNEL_9)
-      channel_idx = ADC3_CH9_BSPD_RESET_IDX;
+    if (channel == ADC_CHANNEL_10)
+      channel_idx = ADC3_CH10_BSPD_INDICATOR_IDX;
+    else if (channel == ADC_CHANNEL_11)
+      channel_idx = ADC3_CH11_BSPD_RESET_IDX;
     else if (channel == ADC_CHANNEL_12)
-      channel_idx = ADC3_CH12_ACCEL_PEDAL1_IDX;
+      channel_idx = ADC3_CH12_ACCEL_PEDAL2_IDX;
     else if (channel == ADC_CHANNEL_13)
-      channel_idx = ADC3_CH13_ACCEL_PEDAL2_IDX;
+      channel_idx = ADC3_CH13_ACCEL_PEDAL1_IDX;
     else
       return 0;
   }
@@ -594,8 +600,11 @@ void FEB_ADC_TickAPPS(void)
     }
   }
 
-  /* Sensor circuit faults — voltage is post-divider, in mV. */
-  bool short_circuit = (voltage1 < APPS_SHORT_CIRCUIT_DETECT_MV) || (voltage2 < APPS_SHORT_CIRCUIT_DETECT_MV);
+  /* Sensor circuit faults — voltage is post-divider, in mV. Per-sensor floors
+   * and ceilings (FSAE T.4.2.10/.13): out-of-range low = short/under-range,
+   * out-of-range high = open/over-range. APPS2's 0% sits near 0.4 V so its floor
+   * must be lower than APPS1's — hence per-sensor, not a single global value. */
+  bool short_circuit = (voltage1 < APPS1_SHORT_CIRCUIT_DETECT_MV) || (voltage2 < APPS2_SHORT_CIRCUIT_DETECT_MV);
   bool open_circuit = (voltage1 > APPS1_OPEN_CIRCUIT_DETECT_MV) || (voltage2 > APPS2_OPEN_CIRCUIT_DETECT_MV);
   apps_cache.short_circuit = short_circuit;
   apps_cache.open_circuit = open_circuit;
@@ -611,15 +620,18 @@ void FEB_ADC_TickAPPS(void)
     LOG_E(TAG_ADC, "APPS open circuit: V1=%.0fmV V2=%.0fmV", voltage1, voltage2);
   }
 
-  /* Map voltage → percent using current calibration, constrain, then deadzone. */
+  /* Map voltage → percent using current calibration and constrain to [0,100].
+   * The plausibility deviation below is computed on these constrained-but-NOT-
+   * deadzoned positions: ApplyDeadzone rescales [dz,100-dz]->[0,100] (~1.11x
+   * gain at dz=5), which would inflate a real channel disagreement and push
+   * borderline cases over the 10% limit. Deadzone is applied only to the torque
+   * command (acceleration) below, never to the plausibility comparison. */
   float position1 =
       FEB_ADC_MapRange(voltage1, apps1_calibration.min_voltage, apps1_calibration.max_voltage, 0.0f, 100.0f);
   float position2 =
       FEB_ADC_MapRange(voltage2, apps2_calibration.min_voltage, apps2_calibration.max_voltage, 0.0f, 100.0f);
   position1 = FEB_ADC_Constrain(position1, 0.0f, 100.0f);
   position2 = FEB_ADC_Constrain(position2, 0.0f, 100.0f);
-  position1 = FEB_ADC_ApplyDeadzone(position1, apps_deadzone_percent);
-  position2 = FEB_ADC_ApplyDeadzone(position2, apps_deadzone_percent);
 
   apps_cache.position1 = position1;
   apps_cache.position2 = position2;
@@ -632,14 +644,18 @@ void FEB_ADC_TickAPPS(void)
     /* Bench-mode bypass — only available outside drive state, so we don't
      * gate again here, just skip the dual-sensor logic. */
     apps_cache.position2 = position1;
-    apps_cache.acceleration = position1;
+    apps_cache.acceleration = FEB_ADC_ApplyDeadzone(position1, apps_deadzone_percent);
     apps_cache.plausible = true;
     apps_cache.implausibility_time = 0;
     apps_implaus_start_tick = 0;
   }
   else
   {
-    apps_cache.acceleration = (position1 + position2) / 2.0f;
+    /* FSAE-safe torque source: command from the LOWER of the two sensors so a
+     * single high-failing channel can never inflate torque during the up-to-
+     * 100 ms window before the deviation latch fires. Deadzone applied here
+     * (torque command only), not to the plausibility comparison above. */
+    apps_cache.acceleration = FEB_ADC_ApplyDeadzone(fminf(position1, position2), apps_deadzone_percent);
 
     /* FSAE T.4.2.3 minimum-separation check (line-to-line short detection).
      * The two APPS use different transfer functions, so their RAW pin-domain
@@ -664,7 +680,7 @@ void FEB_ADC_TickAPPS(void)
     bool above_gate = (fmaxf(position1, position2) > (float)APPS_SEPARATION_PEDAL_GATE_PERCENT);
     bool too_close = above_gate && (raw_separation < (float)APPS_MIN_SEPARATION_PERCENT);
 
-    /* FSAE EV.5.3 / T.4.2.3: implausible = persistent >10% disagreement OR a
+    /* FSAE T.4.2.3 / T.4.2.4: implausible = persistent >10% disagreement OR a
      * collapsed raw separation, sustained for >100 ms. */
     bool in_disagreement = (deviation > (float)APPS_PLAUSIBILITY_TOLERANCE);
     bool implausible_now = in_disagreement || too_close;
@@ -772,8 +788,8 @@ void FEB_ADC_AcknowledgeAPPSImplausibility(void)
    * asserted: a noisy short/open can intermittently map both channels below 5%
    * and "look like" a released pedal, clearing the latch and reopening a fresh
    * 100 ms drive window. Require the pedal low AND no live short/open circuit. */
-  if (apps_cache.position1 < 5.0f && apps_cache.position2 < 5.0f && !apps_cache.short_circuit &&
-      !apps_cache.open_circuit)
+  if (apps_cache.position1 < APPS_RELEASE_PERCENT && apps_cache.position2 < APPS_RELEASE_PERCENT &&
+      !apps_cache.short_circuit && !apps_cache.open_circuit)
   {
     if (active_faults & FAULT_APPS_IMPLAUSIBILITY)
     {
@@ -788,19 +804,20 @@ void FEB_ADC_AcknowledgeAPPSImplausibility(void)
 
 void FEB_ADC_AcknowledgeBrakeImplausibility(void)
 {
-  /* Brake plausibility is recomputed every read in FEB_ADC_GetBrakeData;
-   * here we only clear the latched fault bit and timer once travel is low. */
-  Brake_DataTypeDef brake_data;
-  if (FEB_ADC_GetBrakeData(&brake_data) != ADC_STATUS_OK)
-    return;
-  if (brake_data.brake_position < 15.0f)
+  /* FSAE EV.4.7.2.b: once the APPS/brake plausibility shutdown latches, it must
+   * stay active until the APPS signals less than 5% pedal travel, WITH OR
+   * WITHOUT brake operation. Gate the release on APPS travel, NOT on brake
+   * release (a driver lifting off the brake while still on the throttle must
+   * not restore torque). */
+  if (apps_cache.acceleration < APPS_RELEASE_PERCENT)
   {
     if (active_faults & FAULT_BRAKE_PLAUSIBILITY)
     {
-      LOG_I(TAG_ADC, "Brake plausibility cleared on release");
+      LOG_I(TAG_ADC, "EV.4.7 brake/APPS plausibility cleared (APPS < %.0f%%)", (double)APPS_RELEASE_PERCENT);
     }
     active_faults &= ~FAULT_BRAKE_PLAUSIBILITY;
     adc_runtime.brake_plausibility_timer = 0;
+    ev47_start_tick = 0;
   }
 }
 
@@ -847,10 +864,13 @@ ADC_StatusTypeDef FEB_ADC_GetBrakeData(Brake_DataTypeDef *brake_data)
    * from the pressure sensors, not the separate PC4 brake-input line. */
   brake_data->brake_pressed = (brake_data->brake_position > BRAKE_PRESSED_POSITION_PERCENT);
 
-  /* Check plausibility between pressure sensors. Both inputs are
-   * percentages, so the threshold must be a percentage too. */
+  /* Check plausibility between pressure sensors. Both inputs are percentages, so
+   * the threshold must be a percentage too. A latched BSE open/short sensor fault
+   * (T.4.3.4/.5, set in FEB_ADC_TickBrakeFaults) also makes the brake implausible
+   * so every consumer cuts torque consistently. */
   float pressure_diff = fabsf(brake_data->pressure1_percent - brake_data->pressure2_percent);
-  brake_data->plausible = (pressure_diff <= BRAKE_PRESSURE_PLAUSIBILITY_TOLERANCE_PERCENT);
+  brake_data->plausible = (pressure_diff <= BRAKE_PRESSURE_PLAUSIBILITY_TOLERANCE_PERCENT) &&
+                          ((active_faults & FAULT_BRAKE_SENSOR_FAULT) == 0);
 
   /* Check BOTS */
   brake_data->bots_active = (brake_data->brake_position > BOTS_ACTIVATION_PERCENT);
@@ -1065,48 +1085,105 @@ bool FEB_ADC_CheckAPPSPlausibility(void)
   return apps_cache.plausible;
 }
 
-bool FEB_ADC_CheckBrakePlausibility(void)
+void FEB_ADC_SetBrakeBypass(bool enabled)
 {
-  APPS_DataTypeDef apps_data;
-  Brake_DataTypeDef brake_data;
+  /* Mirrors the FEB_RMS bench brake bypass. When set, FEB_ADC_TickBrakeFaults
+   * skips BSE open/short and EV.4.7 detection so a deliberately-disconnected
+   * brake input on the bench can't latch a fault. */
+  brake_bypass_enabled = enabled;
+}
 
-  if (FEB_ADC_GetAPPSData(&apps_data) != ADC_STATUS_OK || FEB_ADC_GetBrakeData(&brake_data) != ADC_STATUS_OK)
-  {
-    return false;
-  }
-
-  /* FSAE EV.5.7: brake hard + throttle >25% latches BSPD until both
-   * conditions clear; latch persists for 100 ms before becoming a fault. */
-  bool brake_hard = (brake_data.pressure1_percent > BRAKE_PRESSURE_THRESHOLD_PERCENT) ||
-                    (brake_data.pressure2_percent > BRAKE_PRESSURE_THRESHOLD_PERCENT);
-  bool throttle_high = (apps_data.acceleration > 25.0f);
+void FEB_ADC_TickBrakeFaults(void)
+{
   uint32_t now = HAL_GetTick();
 
-  if (brake_hard && throttle_high)
+  if (brake_bypass_enabled)
   {
-    if (adc_runtime.brake_plausibility_timer == 0)
+    /* Bench bypass: don't detect, and don't let a prior latch persist. */
+    bse_fault_start_tick = 0;
+    ev47_start_tick = 0;
+    active_faults &= ~(FAULT_BRAKE_SENSOR_FAULT | FAULT_BRAKE_PLAUSIBILITY);
+    ADC_UpdateFaultEdges(active_faults);
+    return;
+  }
+
+  /* --- FSAE T.4.3.4/.5: BSE sensor open/short, latched after 100 ms. A lost
+   * shared 5 V supply reads both sensors ~0 mV (< UNDER), which would otherwise
+   * look like "no brake" and silently allow torque + disable BSPD. --- */
+  float bp1_mv = FEB_ADC_GetBrakePressure1Voltage() * 1000.0f;
+  float bp2_mv = FEB_ADC_GetBrakePressure2Voltage() * 1000.0f;
+  bool bse_bad = (bp1_mv < BRAKE_PRESSURE_1_UNDER_MV) || (bp1_mv > BRAKE_PRESSURE_1_OVER_MV) ||
+                 (bp2_mv < BRAKE_PRESSURE_2_UNDER_MV) || (bp2_mv > BRAKE_PRESSURE_2_OVER_MV);
+  if (bse_bad)
+  {
+    if (bse_fault_start_tick == 0)
     {
-      adc_runtime.brake_plausibility_timer = now;
-      if (adc_runtime.brake_plausibility_timer == 0)
-        adc_runtime.brake_plausibility_timer = 1;
+      bse_fault_start_tick = now;
+      if (bse_fault_start_tick == 0)
+        bse_fault_start_tick = 1; /* sentinel: 0 means "not started" */
     }
-    uint32_t elapsed = now - adc_runtime.brake_plausibility_timer;
-    if (elapsed > BRAKE_PLAUSIBILITY_TIME_MS)
+    if ((now - bse_fault_start_tick) > BRAKE_PLAUSIBILITY_TIME_MS)
     {
-      if ((active_faults & FAULT_BRAKE_PLAUSIBILITY) == 0)
+      if ((active_faults & FAULT_BRAKE_SENSOR_FAULT) == 0 && (now - last_bse_log_tick) >= APPS_LOG_RATE_LIMIT_MS)
       {
-        LOG_E(TAG_ADC, "Brake plausibility fault: brake hard + throttle >25%%");
+        last_bse_log_tick = now;
+        LOG_E(TAG_ADC, "BSE sensor fault (open/short): P1=%.0fmV P2=%.0fmV", (double)bp1_mv, (double)bp2_mv);
       }
-      active_faults |= FAULT_BRAKE_PLAUSIBILITY;
-      ADC_UpdateFaultEdges(active_faults);
-      return false;
+      active_faults |= FAULT_BRAKE_SENSOR_FAULT;
     }
   }
   else
   {
-    adc_runtime.brake_plausibility_timer = 0;
+    /* Self-healing hardware fault: clear once both sensors are back in range. */
+    bse_fault_start_tick = 0;
+    active_faults &= ~FAULT_BRAKE_SENSOR_FAULT;
   }
 
+  /* --- FSAE EV.4.7: brakes engaged + APPS > 25% must stop motor power
+   * effectively immediately (only a short debounce, NOT the 100 ms T.4.x
+   * grace). The latch is cleared by FEB_ADC_AcknowledgeBrakeImplausibility once
+   * APPS < 5%, with or without brake (EV.4.7.2.b). --- */
+  Brake_DataTypeDef brake_data;
+  bool brake_engaged = false;
+  if (FEB_ADC_GetBrakeData(&brake_data) == ADC_STATUS_OK)
+  {
+    brake_engaged = (brake_data.pressure1_percent > BRAKE_PRESSURE_THRESHOLD_PERCENT) ||
+                    (brake_data.pressure2_percent > BRAKE_PRESSURE_THRESHOLD_PERCENT);
+  }
+  bool throttle_high = (apps_cache.acceleration > 25.0f);
+
+  if (brake_engaged && throttle_high)
+  {
+    if (ev47_start_tick == 0)
+    {
+      ev47_start_tick = now;
+      if (ev47_start_tick == 0)
+        ev47_start_tick = 1; /* sentinel */
+    }
+    if ((now - ev47_start_tick) > EV47_PLAUSIBILITY_DEBOUNCE_MS)
+    {
+      if ((active_faults & FAULT_BRAKE_PLAUSIBILITY) == 0)
+      {
+        LOG_E(TAG_ADC, "EV.4.7 fault: brake engaged + APPS >25%% - cutting power");
+      }
+      active_faults |= FAULT_BRAKE_PLAUSIBILITY;
+    }
+  }
+  else
+  {
+    /* Conditions no longer co-occur: reset the debounce. The latch itself
+     * persists until APPS < 5% (FEB_ADC_AcknowledgeBrakeImplausibility). */
+    ev47_start_tick = 0;
+  }
+
+  ADC_UpdateFaultEdges(active_faults);
+}
+
+bool FEB_ADC_CheckBrakePlausibility(void)
+{
+  /* Detection + latching now live in FEB_ADC_TickBrakeFaults() (1 ms tick) so
+   * the EV.4.7 shutdown is effectively immediate. This entry point only reports
+   * the latched state, mirroring FEB_ADC_CheckAPPSPlausibility(). */
   return (active_faults & FAULT_BRAKE_PLAUSIBILITY) == 0;
 }
 
@@ -1166,6 +1243,11 @@ ADC_StatusTypeDef FEB_ADC_ClearFaults(uint32_t fault_mask)
   if (fault_mask & FAULT_BRAKE_PLAUSIBILITY)
   {
     adc_runtime.brake_plausibility_timer = 0;
+    ev47_start_tick = 0;
+  }
+  if (fault_mask & FAULT_BRAKE_SENSOR_FAULT)
+  {
+    bse_fault_start_tick = 0;
   }
   if (fault_mask & FAULT_BOTS_ACTIVE)
   {
@@ -1609,9 +1691,9 @@ static uint16_t GetAveragedADCValue(ADC_HandleTypeDef *hadc, uint32_t channel, u
     num_channels = 3;
     buffer_size = 3 * ADC_DMA_BUFFER_SIZE;
     if (channel == ADC_CHANNEL_0)
-      channel_idx = ADC1_CH0_BRAKE_PRESSURE1_IDX;
+      channel_idx = ADC1_CH0_BRAKE_PRESSURE2_IDX;
     else if (channel == ADC_CHANNEL_1)
-      channel_idx = ADC1_CH1_BRAKE_PRESSURE2_IDX;
+      channel_idx = ADC1_CH1_BRAKE_PRESSURE1_IDX;
     else if (channel == ADC_CHANNEL_14)
       channel_idx = ADC1_CH14_BRAKE_INPUT_IDX;
     else
@@ -1636,14 +1718,14 @@ static uint16_t GetAveragedADCValue(ADC_HandleTypeDef *hadc, uint32_t channel, u
     buffer_ptr = adc3_dma_buffer;
     num_channels = 4;
     buffer_size = 4 * ADC_DMA_BUFFER_SIZE;
-    if (channel == ADC_CHANNEL_8)
-      channel_idx = ADC3_CH8_BSPD_INDICATOR_IDX;
-    else if (channel == ADC_CHANNEL_9)
-      channel_idx = ADC3_CH9_BSPD_RESET_IDX;
+    if (channel == ADC_CHANNEL_10)
+      channel_idx = ADC3_CH10_BSPD_INDICATOR_IDX;
+    else if (channel == ADC_CHANNEL_11)
+      channel_idx = ADC3_CH11_BSPD_RESET_IDX;
     else if (channel == ADC_CHANNEL_12)
-      channel_idx = ADC3_CH12_ACCEL_PEDAL1_IDX;
+      channel_idx = ADC3_CH12_ACCEL_PEDAL2_IDX;
     else if (channel == ADC_CHANNEL_13)
-      channel_idx = ADC3_CH13_ACCEL_PEDAL2_IDX;
+      channel_idx = ADC3_CH13_ACCEL_PEDAL1_IDX;
     else
       return 0;
   }

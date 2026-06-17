@@ -52,3 +52,24 @@ void FEB_CAN_Diagnostics_TransmitAPPSData(void)
     LOG_E(TAG_CAN, "Failed to transmit APPS data: %s", FEB_CAN_StatusToString(status));
   }
 }
+
+void FEB_CAN_Diagnostics_TransmitPedalVoltages(void)
+{
+  // Raw sensor-side voltages (post on-board divider) in mV — same domain as the
+  // APPS/brake calibration thresholds in FEB_PINOUT.h. The Get*Voltage() getters
+  // return volts already corrected for the divider ratio; ×1000 yields mV.
+  struct feb_can_pcu_pedal_voltages_t msg = {0};
+  msg.acc1_mv = (uint16_t)(FEB_ADC_GetAccelPedal1Voltage() * 1000.0f);
+  msg.acc2_mv = (uint16_t)(FEB_ADC_GetAccelPedal2Voltage() * 1000.0f);
+  msg.brake1_mv = (uint16_t)(FEB_ADC_GetBrakePressure1Voltage() * 1000.0f);
+  msg.brake2_mv = (uint16_t)(FEB_ADC_GetBrakePressure2Voltage() * 1000.0f);
+
+  uint8_t data[FEB_CAN_PCU_PEDAL_VOLTAGES_LENGTH];
+  int packed = feb_can_pcu_pedal_voltages_pack(data, &msg, sizeof(data));
+  FEB_CAN_Status_t status =
+      FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_PCU_PEDAL_VOLTAGES_FRAME_ID, FEB_CAN_ID_STD, data, (uint8_t)packed);
+  if (status != FEB_CAN_OK)
+  {
+    LOG_E(TAG_CAN, "Failed to transmit pedal voltages: %s", FEB_CAN_StatusToString(status));
+  }
+}

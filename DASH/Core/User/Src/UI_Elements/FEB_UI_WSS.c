@@ -13,15 +13,15 @@
 
 static lv_obj_t *ui_Wheel_Speed_Text;
 
-static int16_t rear_wheel_speed = 0;
+static uint16_t rear_speed_mph = 0;
 
 static char buf[16];
 
 void FEB_UI_Update_WSS()
 {
-  rear_wheel_speed = FEB_CAN_SensorNodes_GetLastRearWheelSpeed();
+  rear_speed_mph = FEB_CAN_SensorNodes_GetLastRearWheelSpeed();
 
-  snprintf(buf, sizeof(buf), "%d", rear_wheel_speed);
+  snprintf(buf, sizeof(buf), "%u", rear_speed_mph);
   lv_label_set_text(ui_Wheel_Speed_Text, buf);
 }
 

@@ -18,6 +18,7 @@
 #include "FEB_CAN_Charger.h"
 #include "FEB_SM.h"
 #include "FEB_Const.h"
+#include "feb_time.h"
 #include "cmsis_os2.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -98,6 +99,9 @@ void FEB_Init(void)
 
   /* Initialize CAN state publisher */
   FEB_CAN_State_Init();
+
+  /* DWT microsecond clock — needed by the DRIVE shutdown-trip noise filter. */
+  FEB_Time_Init();
 
   /* Initialize state machine (sets relays to safe state, transitions to LV_POWER) */
   FEB_SM_Init();

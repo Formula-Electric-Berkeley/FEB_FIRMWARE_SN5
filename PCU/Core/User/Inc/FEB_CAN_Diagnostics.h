@@ -7,5 +7,6 @@
 
 void FEB_CAN_Diagnostics_TransmitBrakeData(void);
 void FEB_CAN_Diagnostics_TransmitAPPSData(void);
+void FEB_CAN_Diagnostics_TransmitPedalVoltages(void);
 
 #endif /* INC_FEB_CAN_DIAGNOSTICS_H_ */

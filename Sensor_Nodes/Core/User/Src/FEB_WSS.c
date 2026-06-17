@@ -8,13 +8,20 @@
 // =====================================================================
 // Configuration
 // =====================================================================
-#define WSS_PPR 84u                                       // mechanical pulses per revolution
+#define WSS_PPR 40u                                       // teeth (mechanical pulses) per revolution
 #define WSS_QUADRATURE_MULT 4u                            // 4x edges per pulse
-#define WSS_EDGES_PER_REV (WSS_PPR * WSS_QUADRATURE_MULT) // 336
+#define WSS_EDGES_PER_REV (WSS_PPR * WSS_QUADRATURE_MULT) // 160
 
 #define WSS_RING_LEN 16u     // power of two, used as ring buffer for edge timestamps
 #define WSS_STALE_US 200000u // 200 ms without an edge -> wheel considered stopped
-#define WSS_RPM_X10_MAX 65535u
+#define WSS_MPH_X100_MAX 65535u
+
+// Ground-speed conversion constants.  Rolling wheel: 85 mm diameter.
+//   circumference = pi * 85 mm = 267035.4 um  (round to 267035, error ~1.4e-6)
+//   1 m/s = 2.2369363 mph  ->  223694 = round(2.2369363 * 1e5); the /1000 below
+//   rescales (um/us = m/s) into 0.01 mph units.
+#define WSS_WHEEL_CIRC_UM 267035u
+#define WSS_MPH_PER_MPS_X1E5 223694u
 
 // Quadrature decode table indexed by ((last_cos << 3) | (last_sin << 2) | (cos_now << 1) | sin_now).
 static const int8_t QUAD_TABLE[16] = {0, +1, -1, 0, -1, 0, 0, +1, +1, 0, 0, -1, 0, -1, +1, 0};
@@ -26,7 +33,7 @@ typedef struct
   volatile uint8_t head;              // index of newest entry
   volatile uint8_t fill;              // count of valid entries (0..WSS_RING_LEN)
   // Signed accumulator of quadrature edges. Incremented in EXTI by +/-1 per
-  // valid transition (336 counts = one full revolution). 32-bit aligned so
+  // valid transition (160 counts = one full revolution). 32-bit aligned so
   // the main loop can read it without disabling interrupts.
   volatile int32_t pos_edges;
   uint8_t last_cos;
@@ -36,8 +43,8 @@ typedef struct
 static volatile WheelState wheel_left = {0};
 static volatile WheelState wheel_right = {0};
 
-uint16_t left_rpm_x10 = 0;
-uint16_t right_rpm_x10 = 0;
+uint16_t left_mph_x100 = 0;
+uint16_t right_mph_x100 = 0;
 int8_t left_dir = 0;
 int8_t right_dir = 0;
 
@@ -95,13 +102,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   }
 }
 
-// Compute RPM from the per-edge timestamp ring.  Algorithm:
+// Compute ground speed (0.01 mph units) from the per-edge timestamp ring.  Algorithm:
 //   - Snapshot up to WSS_RING_LEN of the most recent edges with IRQ off.
 //   - net_edges = sum(dir[]) over snapshot.  period_us = newest_ts - oldest_ts.
-//   - rpm = (|net_edges| / WSS_EDGES_PER_REV) * (60e6 / period_us).
+//   - revs = |net_edges| / WSS_EDGES_PER_REV; v = revs * circumference / period.
+//     Since circumference is in um and period in us, um/us = m/s directly.
 //   - sign = sign(net_edges); store as dir flag.
 //   - If newest edge older than WSS_STALE_US, wheel is stopped.
-static void compute_wheel_rpm(volatile WheelState *w, uint16_t *rpm_x10_out, int8_t *dir_out)
+static void compute_wheel_mph_x100(volatile WheelState *w, uint16_t *mph_x100_out, int8_t *dir_out)
 {
   uint8_t fill;
   uint8_t head;
@@ -123,7 +131,7 @@ static void compute_wheel_rpm(volatile WheelState *w, uint16_t *rpm_x10_out, int
 
   if (fill < 2u)
   {
-    *rpm_x10_out = 0;
+    *mph_x100_out = 0;
     *dir_out = 0;
     return;
   }
@@ -133,7 +141,7 @@ static void compute_wheel_rpm(volatile WheelState *w, uint16_t *rpm_x10_out, int
 
   if ((uint32_t)(now - newest_ts) > WSS_STALE_US)
   {
-    *rpm_x10_out = 0;
+    *mph_x100_out = 0;
     *dir_out = 0;
     return;
   }
@@ -141,7 +149,7 @@ static void compute_wheel_rpm(volatile WheelState *w, uint16_t *rpm_x10_out, int
   const uint32_t period_us = (uint32_t)(newest_ts - oldest_ts);
   if (period_us == 0u)
   {
-    *rpm_x10_out = 0;
+    *mph_x100_out = 0;
     *dir_out = 0;
     return;
   }
@@ -155,21 +163,22 @@ static void compute_wheel_rpm(volatile WheelState *w, uint16_t *rpm_x10_out, int
   const int8_t sign = (net_edges >= 0) ? (int8_t) + 1 : (int8_t)-1;
   const uint32_t abs_edges = (uint32_t)((net_edges >= 0) ? net_edges : -net_edges);
 
-  // rpm = abs_edges / EDGES_PER_REV * 60e6 / period_us
-  // rpm_x10 = abs_edges * 600e6 / (EDGES_PER_REV * period_us)
-  const uint64_t numer = (uint64_t)abs_edges * 600000000ull;
-  const uint64_t denom = (uint64_t)WSS_EDGES_PER_REV * (uint64_t)period_us;
-  const uint64_t rpm_x10 = (denom == 0ull) ? 0ull : (numer / denom);
+  // v_mps      = abs_edges * CIRC_UM / (EDGES_PER_REV * period_us)   [um/us = m/s]
+  // mph_x100   = v_mps * 223.69363
+  //            = abs_edges * CIRC_UM * 223694 / (EDGES_PER_REV * period_us * 1000)
+  const uint64_t numer = (uint64_t)abs_edges * (uint64_t)WSS_WHEEL_CIRC_UM * (uint64_t)WSS_MPH_PER_MPS_X1E5;
+  const uint64_t denom = (uint64_t)WSS_EDGES_PER_REV * (uint64_t)period_us * 1000ull;
+  const uint64_t mph_x100 = (denom == 0ull) ? 0ull : (numer / denom);
 
-  *rpm_x10_out = (rpm_x10 >= WSS_RPM_X10_MAX) ? (uint16_t)WSS_RPM_X10_MAX : (uint16_t)rpm_x10;
+  *mph_x100_out = (mph_x100 >= WSS_MPH_X100_MAX) ? (uint16_t)WSS_MPH_X100_MAX : (uint16_t)mph_x100;
   *dir_out = (abs_edges == 0u) ? (int8_t)0 : sign;
 }
 
 void WSS_Main(void)
 {
-  compute_wheel_rpm(&wheel_left, &left_rpm_x10, &left_dir);
-  compute_wheel_rpm(&wheel_right, &right_rpm_x10, &right_dir);
+  compute_wheel_mph_x100(&wheel_left, &left_mph_x100, &left_dir);
+  compute_wheel_mph_x100(&wheel_right, &right_mph_x100, &right_dir);
 
-  LOG_T(TAG_WSS, "L: pos=%ld rpm_x10=%u dir=%d | R: pos=%ld rpm_x10=%u dir=%d", (long)wheel_left.pos_edges,
-        (unsigned)left_rpm_x10, (int)left_dir, (long)wheel_right.pos_edges, (unsigned)right_rpm_x10, (int)right_dir);
+  LOG_T(TAG_WSS, "L: pos=%ld mph_x100=%u dir=%d | R: pos=%ld mph_x100=%u dir=%d", (long)wheel_left.pos_edges,
+        (unsigned)left_mph_x100, (int)left_dir, (long)wheel_right.pos_edges, (unsigned)right_mph_x100, (int)right_dir);
 }

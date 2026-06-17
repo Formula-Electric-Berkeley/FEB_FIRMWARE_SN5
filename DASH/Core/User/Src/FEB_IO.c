@@ -145,6 +145,26 @@ void FEB_IO_Update_GPIO(void)
 
   status = FEB_I2C_Master_Receive(&hi2c1, IOEXP_ADDR << 1, received_data, 2, HAL_MAX_DELAY);
 
+  // Warn once, at boot, about the very first IO-expander read so a dead/floating
+  // expander is loud on serial instead of silently shipping bad inputs onto CAN.
+  static bool first_read_checked = false;
+  if (!first_read_checked)
+  {
+    first_read_checked = true;
+    if (status == HAL_ERROR || status == HAL_TIMEOUT)
+    {
+      LOG_E(TAG_I2C, "IO expander 0x%02X first read FAILED (status=%d)", (unsigned int)IOEXP_ADDR, (int)status);
+    }
+    else if (received_data[0] == 0xFF && received_data[1] == 0xFF)
+    {
+      LOG_W(TAG_I2C, "IO expander first read = FF FF (inputs floating? check harness/connector)");
+    }
+    else
+    {
+      LOG_I(TAG_I2C, "IO expander first read OK: %02X %02X", received_data[0], received_data[1]);
+    }
+  }
+
   //   00010010 received_data
   //   00010000 (1 << 5)
   // & 00010000 -> (bool) -> true
