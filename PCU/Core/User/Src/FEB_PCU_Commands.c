@@ -32,6 +32,7 @@ static void print_pcu_help(void)
   FEB_Console_Printf("  PCU|brake    - Show brake sensor values and status\r\n");
   FEB_Console_Printf("  PCU|brake|bypass|<on|off>  - Bench brake/BSPD bypass (refused if BMS on bus)\r\n");
   FEB_Console_Printf("  PCU|rms      - Show RMS motor controller status\r\n");
+  FEB_Console_Printf("  PCU|rms|raw  - Dump every inverter frame seen (raw bytes + age)\r\n");
   FEB_Console_Printf("  PCU|rms|<enable|disable>   - Manually enable/disable inverter (bench)\r\n");
   FEB_Console_Printf("  PCU|tps      - Show TPS2482 voltage/current monitoring\r\n");
   FEB_Console_Printf("  PCU|bms      - Show BMS state information\r\n");
@@ -252,8 +253,55 @@ static const char *vsm_state_name(uint8_t s)
   }
 }
 
+/* Short names for the inverter broadcast block, indexed by frame-table slot
+ * (slot i == CAN ID 0x0A0 + i for the M160..M175 block). */
+static const char *rms_frame_name(int slot)
+{
+  static const char *const names[FEB_CAN_RMS_FRAME_BLOCK_N] = {
+      "M160 Temp1",   "M161 Temp2",      "M162 Temp3",    "M163 AnalogIn",  "M164 DigIn",  "M165 MotorPos",
+      "M166 Current", "M167 Voltage",    "M168 Flux",     "M169 InternalV", "M170 States", "M171 Faults",
+      "M172 Torque",  "M173 Modulation", "M174 Firmware", "M175 Diag",
+  };
+  if (slot >= 0 && slot < (int)FEB_CAN_RMS_FRAME_BLOCK_N)
+    return names[slot];
+  if (slot == FEB_CAN_RMS_FRAME_PARAM_RESP_IDX)
+    return "M194 ParamResp";
+  return "?";
+}
+
+/* Dump the raw per-ID capture table: every inverter frame we have received,
+ * with its latest payload, receive count, and age. This is the literal "show me
+ * everything coming from the inverter" view. */
+static void cmd_rms_raw(void)
+{
+  uint32_t now = HAL_GetTick();
+  FEB_Console_Printf("=== RMS Inverter Frames (raw) ===\r\n");
+  FEB_Console_Printf("  ID    Name            age(ms)  count  bytes\r\n");
+  int any = 0;
+  for (int slot = 0; slot < FEB_CAN_RMS_FRAME_TABLE_SIZE; slot++)
+  {
+    const RMS_Frame_Record_t *rec = &RMS_FRAMES[slot];
+    if (!rec->seen)
+      continue;
+    any = 1;
+    uint32_t id = (slot == FEB_CAN_RMS_FRAME_PARAM_RESP_IDX) ? FEB_CAN_M194_READ_WRITE_PARAM_RESPONSE_FRAME_ID
+                                                             : (FEB_CAN_RMS_FRAME_BASE_ID + (uint32_t)slot);
+    FEB_Console_Printf("  0x%03X %-15s %7lu %6lu  %02X %02X %02X %02X %02X %02X %02X %02X\r\n", (unsigned)id,
+                       rms_frame_name(slot), (unsigned long)(now - rec->last_rx_tick), (unsigned long)rec->count,
+                       rec->data[0], rec->data[1], rec->data[2], rec->data[3], rec->data[4], rec->data[5], rec->data[6],
+                       rec->data[7]);
+  }
+  if (!any)
+    FEB_Console_Printf("  (no inverter frames seen — check bus wiring / inverter power)\r\n");
+}
+
 static void cmd_rms(int argc, char *argv[])
 {
+  if (argc >= 2 && FEB_strcasecmp(argv[1], "raw") == 0)
+  {
+    cmd_rms_raw();
+    return;
+  }
   if (argc >= 2 && FEB_strcasecmp(argv[1], "enable") == 0)
   {
     if (FEB_RMS_CommandEnable())
@@ -297,6 +345,13 @@ static void cmd_rms(int argc, char *argv[])
     FEB_Console_Printf("  Enable Lockout:  %s\r\n", FEB_CAN_RMS_getEnableLockout() ? "LOCKED" : "clear");
     FEB_Console_Printf("  Command Mode:    %s\r\n", FEB_CAN_RMS_getCommandModeVsm() ? "VSM" : "CAN");
     FEB_Console_Printf("  Echoed Counter:  %u\r\n", FEB_CAN_RMS_getEchoRollingCounter());
+    FEB_Console_Printf("  Discharge State: %u   Run Mode: %s   Dir: %u   BMS Active: %u\r\n",
+                       RMS_MESSAGE.discharge_state, RMS_MESSAGE.run_mode ? "speed" : "torque",
+                       RMS_MESSAGE.direction_command, RMS_MESSAGE.bms_active);
+    FEB_Console_Printf("  Relays 1-6:      %u%u%u%u%u%u   PWM: %u kHz\r\n", (RMS_MESSAGE.relay_status >> 0) & 1u,
+                       (RMS_MESSAGE.relay_status >> 1) & 1u, (RMS_MESSAGE.relay_status >> 2) & 1u,
+                       (RMS_MESSAGE.relay_status >> 3) & 1u, (RMS_MESSAGE.relay_status >> 4) & 1u,
+                       (RMS_MESSAGE.relay_status >> 5) & 1u, RMS_MESSAGE.pwm_frequency);
   }
   FEB_Console_Printf("\r\n");
 
@@ -315,12 +370,28 @@ static void cmd_rms(int argc, char *argv[])
   }
   FEB_Console_Printf("\r\n");
 
-  /* Measured analog (M167 DC bus, M165 speed/angle). */
+  /* Measured analog (M165 motor, M166 current, M167 voltage, M16x temps). */
   FEB_Console_Printf("Measured:\r\n");
-  FEB_Console_Printf("  DC Bus Voltage:  %.1f V\r\n", FEB_CAN_RMS_getDCBusVoltage());
-  FEB_Console_Printf("  Motor Speed:     %d RPM\r\n", FEB_CAN_RMS_getMotorSpeed());
-  FEB_Console_Printf("  Motor Angle:     %d deg\r\n", FEB_CAN_RMS_getMotorAngle());
-  FEB_Console_Printf("  Feedback Torque: %.1f Nm\r\n", FEB_CAN_RMS_getTorqueFeedback());
+  FEB_Console_Printf("  DC Bus Voltage:  %.1f V   (out %.1f / Vab %.1f / Vbc %.1f V)\r\n",
+                     FEB_CAN_RMS_getDCBusVoltage(), RMS_MESSAGE.output_voltage / 10.0f,
+                     RMS_MESSAGE.vab_vd_voltage / 10.0f, RMS_MESSAGE.vbc_voltage / 10.0f);
+  FEB_Console_Printf("  Motor Speed:     %d RPM   Elec Freq: %.1f Hz\r\n", FEB_CAN_RMS_getMotorSpeed(),
+                     RMS_MESSAGE.electrical_freq / 10.0f);
+  FEB_Console_Printf("  Motor Angle:     %.1f deg\r\n", FEB_CAN_RMS_getMotorAngle() / 10.0f);
+  FEB_Console_Printf("  Feedback Torque: %.1f Nm   (inv cmd echo %.1f Nm)\r\n", FEB_CAN_RMS_getTorqueFeedback(),
+                     RMS_MESSAGE.inv_commanded_torque / 10.0f);
+  if (RMS_MESSAGE.current_rx_timestamp != 0)
+    FEB_Console_Printf("  Phase Currents:  A %.1f  B %.1f  C %.1f A   DC Bus: %.1f A\r\n",
+                       RMS_MESSAGE.phase_a_current / 10.0f, RMS_MESSAGE.phase_b_current / 10.0f,
+                       RMS_MESSAGE.phase_c_current / 10.0f, RMS_MESSAGE.dc_bus_current / 10.0f);
+  if (RMS_MESSAGE.temps_rx_timestamp != 0)
+  {
+    FEB_Console_Printf("  Module Temps:    A %.1f  B %.1f  C %.1f C   Gate %.1f C\r\n",
+                       RMS_MESSAGE.temp_module_a / 10.0f, RMS_MESSAGE.temp_module_b / 10.0f,
+                       RMS_MESSAGE.temp_module_c / 10.0f, RMS_MESSAGE.temp_gate_driver / 10.0f);
+    FEB_Console_Printf("  Motor/Ctrl Temp: motor %.1f C  control %.1f C\r\n", RMS_MESSAGE.temp_motor / 10.0f,
+                       RMS_MESSAGE.temp_control_board / 10.0f);
+  }
   FEB_Console_Printf("\r\n");
 
   /* One-line "why won't it enable" hint. */
