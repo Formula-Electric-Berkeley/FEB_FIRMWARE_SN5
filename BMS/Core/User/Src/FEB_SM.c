@@ -23,6 +23,7 @@
 #include "FEB_CAN_Heartbeat.h"
 #include "FEB_Const.h"
 #include "feb_log.h"
+#include "feb_time.h"
 #include "stm32f4xx_hal.h"
 #include <math.h>
 #include <stdbool.h>
@@ -52,8 +53,19 @@
 /* Precharge timeout - abort if not complete within this time */
 #define PRECHARGE_TIMEOUT_MS 10000
 
+/* Precharge minimum time - completing faster than this implies a bypassed
+ * precharge resistor (welded/shorted contactor inrush). */
+#define PRECHARGE_MIN_TIME_MS 2000
+
 /* Heartbeat freshness window for CAN-presence (BATTERY_FREE <-> LV_POWER) */
 #define HB_PRESENCE_TIMEOUT_MS 1000
+
+/* DRIVE shutdown-trip noise filter: when SHS_IN reads OPEN in DRIVE, take a
+ * burst of samples spread across ~1 ms and only fault if a majority read OPEN.
+ * Filters transient electrical noise that momentarily pulls SHS_IN low. */
+#define SHUTDOWN_TRIP_SAMPLE_COUNT 100u     /* samples per confirmation burst */
+#define SHUTDOWN_TRIP_SAMPLE_SPACING_US 10u /* ~10 us spacing -> ~1 ms window */
+#define SHUTDOWN_TRIP_MAJORITY 51u          /* >= this many OPEN => real trip  */
 
 /* ============================================================================
  * Internal State
@@ -801,6 +813,17 @@ static void PrechargeTransition(BMS_State_t next_state)
       float pack_voltage = FEB_ADBMS_Snapshot_Total_Voltage();
       if (pack_voltage > 0.0f && ivt_voltage >= PRECHARGE_THRESHOLD_PCT * pack_voltage)
       {
+        uint32_t precharge_elapsed = HAL_GetTick() - precharge_start_time;
+        if (precharge_elapsed < PRECHARGE_MIN_TIME_MS)
+        {
+          /* Completed implausibly fast: bypassed precharge resistor / contactor
+           * inrush. Fault instead of energizing. */
+          LOG_E(TAG_SM, "Precharge too fast (%lums < %dms), entering fault: IVT=%.1fV Pack=%.1fV",
+                (unsigned long)precharge_elapsed, PRECHARGE_MIN_TIME_MS, (double)ivt_voltage, (double)pack_voltage);
+          fault_begin(BMS_STATE_FAULT_BMS);
+          precharge_start_time = 0;
+          break;
+        }
         LOG_I(TAG_SM, "Precharge complete: IVT=%.1fV Pack=%.1fV", (double)ivt_voltage, (double)pack_voltage);
         precharge_start_time = 0;
         shutdown_open_count = 0; /* Reset debounce counter */
@@ -841,7 +864,6 @@ static void EnergizedTransition(BMS_State_t next_state)
     break;
 
   case BMS_STATE_DEFAULT:
-#if !FEB_BMS_DISABLE_ADBMS_CHECKS
     /* Safety: shutdown loop or AIR- opening while the bus is live is a hard
      * fault, not a graceful return to LV. Latch a BMS fault. */
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN || FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
@@ -850,7 +872,6 @@ static void EnergizedTransition(BMS_State_t next_state)
       EnergizedTransition(BMS_STATE_FAULT_BMS);
       break;
     }
-#endif
 
     /* Ready-to-drive gate (4->5): enter DRIVE only on a fresh R2D from DASH. */
     if (FEB_CAN_DASH_IsReadyToDrive(R2D_TIMEOUT_MS))
@@ -863,6 +884,37 @@ static void EnergizedTransition(BMS_State_t next_state)
   default:
     break;
   }
+}
+
+/* Confirm a shutdown-loop trip seen in DRIVE is real, not noise. Samples
+ * SHS_IN SHUTDOWN_TRIP_SAMPLE_COUNT times, ~SHUTDOWN_TRIP_SAMPLE_SPACING_US
+ * apart (~1 ms total), and returns true iff a majority read OPEN. Busy-waits
+ * on the microsecond clock (osDelay's 1 ms tick is too coarse for 10 us
+ * spacing); this only runs after a candidate OPEN, i.e. right before a
+ * would-be fault, so the ~1 ms block is acceptable. */
+static bool shutdown_trip_confirmed(void)
+{
+  uint32_t open_count = 0;
+
+  for (uint32_t i = 0; i < SHUTDOWN_TRIP_SAMPLE_COUNT; i++)
+  {
+    if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN)
+    {
+      open_count++;
+    }
+
+    /* Spin until the next sample slot; skip the wait after the last sample. */
+    if (i + 1 < SHUTDOWN_TRIP_SAMPLE_COUNT)
+    {
+      uint64_t next = FEB_Time_Us() + SHUTDOWN_TRIP_SAMPLE_SPACING_US;
+      while (FEB_Time_Us() < next)
+      {
+        /* busy-wait ~10 us */
+      }
+    }
+  }
+
+  return open_count >= SHUTDOWN_TRIP_MAJORITY;
 }
 
 static void DriveTransition(BMS_State_t next_state)
@@ -893,12 +945,24 @@ static void DriveTransition(BMS_State_t next_state)
 
   case BMS_STATE_DEFAULT:
     /* Safety: shutdown loop or AIR- opening while driving is a hard fault, not a
-     * graceful return to LV. Latch a BMS fault. */
-    if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN || FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
+     * graceful return to LV. AIR- (contactor feedback) faults immediately; the
+     * shutdown sense is majority-vote filtered against transient noise. */
+    if (FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
     {
-      LOG_E(TAG_SM, "Shutdown/AIR- open while driving, entering FAULT");
+      LOG_E(TAG_SM, "AIR- open while driving, entering FAULT");
       DriveTransition(BMS_STATE_FAULT_BMS);
       break;
+    }
+
+    if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN)
+    {
+      if (shutdown_trip_confirmed())
+      {
+        LOG_E(TAG_SM, "Shutdown open while driving (majority-confirmed), entering FAULT");
+        DriveTransition(BMS_STATE_FAULT_BMS);
+        break;
+      }
+      LOG_W(TAG_SM, "Shutdown momentary OPEN in DRIVE rejected as noise");
     }
 
     /* 5->10 (Brake Fault): BSPD reports a fault. No BSPD input on SN5 yet, so
@@ -1053,6 +1117,17 @@ static void ChargingPrechargeTransition(BMS_State_t next_state)
     float pack_voltage = FEB_ADBMS_Snapshot_Total_Voltage();
     if (pack_voltage > 0.0f && ivt_voltage >= PRECHARGE_THRESHOLD_PCT * pack_voltage)
     {
+      uint32_t precharge_elapsed = HAL_GetTick() - charger_precharge_start_time;
+      if (precharge_elapsed < PRECHARGE_MIN_TIME_MS)
+      {
+        /* Completed implausibly fast: bypassed precharge resistor / contactor
+         * inrush. Fault instead of charging. */
+        LOG_E(TAG_SM, "Charger precharge too fast (%lums < %dms), entering fault: IVT=%.1fV Pack=%.1fV",
+              (unsigned long)precharge_elapsed, PRECHARGE_MIN_TIME_MS, (double)ivt_voltage, (double)pack_voltage);
+        fault_begin(BMS_STATE_FAULT_CHARGING);
+        charger_precharge_start_time = 0;
+        break;
+      }
       charger_precharge_start_time = 0;
       ChargingPrechargeTransition(BMS_STATE_CHARGING);
     }

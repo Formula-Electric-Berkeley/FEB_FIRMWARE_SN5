@@ -46,8 +46,26 @@ void FEB_State_Update_RTD(void)
   bool inputs_fresh =
       FEB_CAN_PCU_IsBrakeDataFresh(RTD_INPUT_FRESHNESS_MS) && FEB_CAN_BMS_IsDataFresh(RTD_INPUT_FRESHNESS_MS);
 
-  // RTD requires: fresh CAN inputs, button 1 held, brake >10%, BMS energized
-  if (inputs_fresh && (brake_pressure > RTD_BRAKE_THRESHOLD) && (bms_state == BMS_STATE_ENERGIZED) && states.button_rtd)
+  // R2D may only ever be asserted while ENERGIZED or DRIVE. Any other state
+  // (boot, precharge, charging, fault, ...) forces R2D false so the car can
+  // never slip (back) into drive without a fresh handshake. Faults are terminal:
+  // clearing R2D here guarantees a fault can never lead to drive.
+  if (bms_state != BMS_STATE_ENERGIZED && bms_state != BMS_STATE_DRIVE)
+  {
+    rtd = false;
+    rtd_timer_armed = false;
+    rtd_toggle_complete = false;
+    return;
+  }
+
+  // Mirrored handshake: hold the RTD button + brake >10% for RTD_SAFETY_DURATION
+  // to toggle R2D. Works both ways:
+  //   ENERGIZED, R2D false -> toggles true  (enter drive)
+  //   DRIVE,     R2D true  -> toggles false (exit drive)
+  // rtd_toggle_complete latches one toggle per press: the arm condition must
+  // drop (button or brake released) before another toggle can occur, so a single
+  // continuous press can never bounce drive on and off.
+  if (inputs_fresh && (brake_pressure > RTD_BRAKE_THRESHOLD) && states.button_rtd)
   {
     if (!rtd_timer_armed)
     {
@@ -65,7 +83,7 @@ void FEB_State_Update_RTD(void)
     if (!rtd_toggle_complete)
     {
       rtd = !rtd;
-      FEB_IO_Play_Buzzer(BUZZER_DURATION_RTD_ENTER);
+      FEB_IO_Play_Buzzer(rtd ? BUZZER_DURATION_RTD_ENTER : BUZZER_DURATION_RTD_EXIT);
       rtd_toggle_complete = true;
     }
   }
@@ -73,11 +91,6 @@ void FEB_State_Update_RTD(void)
   {
     rtd_toggle_complete = false;
   }
-
-  // if (bms_state != BMS_STATE_DRIVE && bms_state != BMS_STATE_ENERGIZED)
-  // {
-  //   rtd = false; // just in case
-  // }
 }
 
 bool FEB_State_GetLastRTD(void)

@@ -11,9 +11,9 @@
  * The build system supplies FEB_SENSOR_NODE_VARIANT (=FEB_SN_VARIANT_FRONT or
  * =FEB_SN_VARIANT_REAR). Reporters #include this header and use the FEB_SN_*
  * aliases below; they never reference the underlying feb_can_*_front/_rear
- * symbols directly. The single exception is FEB_CAN_WSS.c, which keeps one
- * #if FEB_SN_IS_FRONT() because the FRONT and REAR DBC layouts genuinely
- * differ (FRONT carries dir flags, REAR does not).
+ * symbols directly. Every reporter, including FEB_CAN_WSS.c, is variant-agnostic:
+ * the FRONT and REAR WSS layouts are now identical (two uint16 @ 0.01 mph + dir
+ * flags), so it too uses the FEB_SN_* aliases with no #if branch.
  *
  ******************************************************************************
  */
@@ -120,9 +120,19 @@ extern const char FEB_SN_VARIANT_NAME[];
 #define feb_sn_mag_y_encode feb_can_magnetometer_data_magnetometer_y_encode
 #define feb_sn_mag_z_encode feb_can_magnetometer_data_magnetometer_z_encode
 
-/* ---------------- WSS (0x24 FRONT / 0x25 REAR) - layouts differ ---------------- */
+/* ---------------- WSS (0x24 FRONT / 0x25 REAR) ----------------
+ * FRONT/REAR layouts are identical (two uint16 @ 0.01 mph + dir flags), so the
+ * member/fn names are aliased and FEB_CAN_WSS.c is fully variant-agnostic. */
 #define FEB_SN_WSS_FRAME_ID FEB_CAN_WSS_FRONT_DATA_FRAME_ID
 #define FEB_SN_WSS_LENGTH FEB_CAN_WSS_FRONT_DATA_LENGTH
+#define feb_sn_wss_t feb_can_wss_front_data_t
+#define feb_sn_wss_pack feb_can_wss_front_data_pack
+#define feb_sn_wss_left_encode feb_can_wss_front_data_wss_left_front_encode
+#define feb_sn_wss_right_encode feb_can_wss_front_data_wss_right_front_encode
+#define feb_sn_wss_dir_flags_encode feb_can_wss_front_data_wss_dir_flags_encode
+#define feb_sn_wss_left wss_left_front
+#define feb_sn_wss_right wss_right_front
+#define feb_sn_wss_dir_flags wss_dir_flags
 
 /* ---------------- GPS pos (0x40 FRONT / 0x50 REAR) ---------------- */
 #define FEB_SN_GPS_POS_FRAME_ID FEB_CAN_GPS_POS_DATA_FRAME_ID
@@ -274,9 +284,19 @@ extern const char FEB_SN_VARIANT_NAME[];
 #define feb_sn_mag_y_encode feb_can_magnetometer_data_rear_magnetometer_y_encode
 #define feb_sn_mag_z_encode feb_can_magnetometer_data_rear_magnetometer_z_encode
 
-/* ---------------- WSS (REAR = 0x25) - layouts differ; FEB_CAN_WSS.c branches ---------------- */
+/* ---------------- WSS (REAR = 0x25) ----------------
+ * Layout matches FRONT (two uint16 @ 0.01 mph + dir flags); aliased members keep
+ * FEB_CAN_WSS.c variant-agnostic. */
 #define FEB_SN_WSS_FRAME_ID FEB_CAN_WSS_REAR_DATA_FRAME_ID
 #define FEB_SN_WSS_LENGTH FEB_CAN_WSS_REAR_DATA_LENGTH
+#define feb_sn_wss_t feb_can_wss_rear_data_t
+#define feb_sn_wss_pack feb_can_wss_rear_data_pack
+#define feb_sn_wss_left_encode feb_can_wss_rear_data_wss_left_rear_encode
+#define feb_sn_wss_right_encode feb_can_wss_rear_data_wss_right_rear_encode
+#define feb_sn_wss_dir_flags_encode feb_can_wss_rear_data_wss_dir_flags_encode
+#define feb_sn_wss_left wss_left_rear
+#define feb_sn_wss_right wss_right_rear
+#define feb_sn_wss_dir_flags wss_dir_flags
 
 /* ---------------- GPS pos (REAR = 0x50) ---------------- */
 #define FEB_SN_GPS_POS_FRAME_ID FEB_CAN_GPS_POS_DATA_REAR_FRAME_ID
