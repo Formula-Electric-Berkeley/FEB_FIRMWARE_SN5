@@ -28,10 +28,10 @@ extern "C"
 
 /**
  * @brief Maximum motor torque in tenths of Nm
- * @note RMS PM100DX typical max: 230 Nm = 2300 in tenths
+ * @note RMS PM100DX typical max: 220 Nm = 2200 in tenths
  *       Adjust based on your motor specifications
  */
-#define MAX_TORQUE 2300 /* 230.0 Nm in tenths */
+#define MAX_TORQUE 2200 /* 220.0 Nm in tenths */
 
 /**
  * @brief Reduced torque limit at low pack voltage
