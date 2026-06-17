@@ -105,6 +105,15 @@ extern "C"
   const char *DCU_CAN_Log_GetStreamTxId(void);
 
   /**
+   * @brief Emit a `signal` row (radio link quality) under the active stream.
+   *
+   * Schema: signal,<rssi>,<snr> — identical to the receiver's, so a host sees
+   * the same link-health rows from either board. No-op when not streaming.
+   * Intended to be called periodically (~2 Hz) from the radio task.
+   */
+  void DCU_CAN_Log_EmitSignal(int16_t rssi, int8_t snr);
+
+  /**
    * @brief Register the CSV-protocol `can-stream-on/off/status` handlers.
    *
    * Must be called after `FEB_CSV_Init`. Idempotent: re-registration fails

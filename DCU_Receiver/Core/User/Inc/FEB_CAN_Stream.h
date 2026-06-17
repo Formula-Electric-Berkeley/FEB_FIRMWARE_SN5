@@ -45,6 +45,20 @@ extern "C"
   void FEB_CAN_Stream_EmitFrame(uint8_t bus, uint32_t can_id, uint8_t dlc, const uint8_t *data);
 
   /**
+   * @brief Emit a `signal` row (radio link quality) if streaming is active.
+   *
+   * Schema: signal,<rssi>,<snr>, or signal,nan,nan when the link is down. Meant
+   * to be called periodically (~2 Hz) so a host watching the CAN stream also
+   * sees link health. No-op when streaming is off.
+   *
+   * @param valid false when no packet has arrived recently — emits nan,nan so
+   *              the UI can show "no link" instead of a stale reading.
+   * @param rssi  Last-packet RSSI in dBm (ignored when !valid).
+   * @param snr   Last-packet SNR in dB (ignored when !valid).
+   */
+  void FEB_CAN_Stream_EmitSignal(bool valid, int16_t rssi, int8_t snr);
+
+  /**
    * @brief Register the CSV-protocol can-stream-on/off/status handlers.
    *        Call after FEB_Console_Init. Idempotent.
    */

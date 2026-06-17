@@ -422,6 +422,15 @@ const char *DCU_CAN_Log_GetStreamTxId(void)
   return s_stream_tx_id;
 }
 
+void DCU_CAN_Log_EmitSignal(int16_t rssi, int8_t snr)
+{
+  if (!s_stream_active || s_stream_tx_id[0] == '\0')
+  {
+    return;
+  }
+  (void)FEB_Console_CsvEmitAs(s_stream_tx_id, "signal", "%d,%d", (int)rssi, (int)snr);
+}
+
 /* ============================================================================
  * CSV-protocol command handlers (dual-handler pattern — pair with
  * `dcu|can|stream|*` in DCU_Commands.c through the shared SetStream helper).

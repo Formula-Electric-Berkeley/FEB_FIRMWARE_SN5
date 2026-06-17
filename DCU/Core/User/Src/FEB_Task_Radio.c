@@ -36,6 +36,7 @@
 #define STREAM_LINGER_MS 15
 #define STREAM_TX_TIMEOUT_MS 1000
 #define STREAM_IDLE_RX_MS 20
+#define SIGNAL_INTERVAL_MS 500
 #define FWD_QUEUE_DEPTH 64U
 
 /* Role Selection - change for second device */
@@ -182,6 +183,11 @@ void StartRadioTask(void *argument)
 
   for (;;)
   {
+    /* NOTE: `signal` (RSSI/SNR) rows are intentionally NOT emitted on the DCU —
+     * it is the transmitter, so its last-packet RSSI/SNR is not a useful link
+     * metric. The receiver emits `signal` instead. DCU_CAN_Log_EmitSignal()
+     * remains available if this is ever revisited. */
+
     if (s_stream_mode)
     {
       /* CAN-over-radio TX. stream_pump blocks up to STREAM_LINGER_MS for work,

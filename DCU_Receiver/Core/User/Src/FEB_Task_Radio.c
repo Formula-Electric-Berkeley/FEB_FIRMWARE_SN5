@@ -21,7 +21,13 @@
 /* Configuration */
 #define PING_INTERVAL_MS 1000
 #define RX_TIMEOUT_MS 3000
-#define LISTEN_RX_TIMEOUT_MS 1000
+/* Kept at 500 ms so the listen loop ticks at least twice a second even when no
+ * packets arrive — that bounds the `signal` row cadence when the link is idle. */
+#define LISTEN_RX_TIMEOUT_MS 500
+#define SIGNAL_INTERVAL_MS 500
+/* If no radio packet arrives within this window, the link is considered down and
+ * the `signal` row reports nan,nan instead of a stale RSSI/SNR. */
+#define LINK_TIMEOUT_MS 1000
 #define MAX_INIT_RETRIES 5
 
 /* Role Selection - change for second device */
@@ -149,12 +155,26 @@ void StartRadioTask(void *argument)
   /* Main loop */
   uint8_t rx_buffer[255];
   uint8_t rx_len;
+  uint32_t last_signal_tick = osKernelGetTickCount();
+  /* Start "expired" so the link reads as down (nan) until the first packet. */
+  uint32_t last_rx_tick = osKernelGetTickCount() - pdMS_TO_TICKS(LINK_TIMEOUT_MS);
 #if (RADIO_ROLE == RADIO_ROLE_PING)
   uint32_t last_tick = osKernelGetTickCount();
 #endif
 
   for (;;)
   {
+    /* While a host is streaming CAN, also publish radio link quality (RSSI/SNR)
+     * as a `signal` row roughly every SIGNAL_INTERVAL_MS. Report nan,nan once no
+     * packet has been seen for LINK_TIMEOUT_MS so the UI shows "no link". */
+    uint32_t now_tick = osKernelGetTickCount();
+    if (FEB_CAN_Stream_IsStreaming() && (now_tick - last_signal_tick) >= pdMS_TO_TICKS(SIGNAL_INTERVAL_MS))
+    {
+      last_signal_tick = now_tick;
+      bool link_up = (now_tick - last_rx_tick) < pdMS_TO_TICKS(LINK_TIMEOUT_MS);
+      FEB_CAN_Stream_EmitSignal(link_up, FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
+    }
+
     if (s_listen_mode)
     {
       /* Listen-only mode: continuously receive, no TX. FEB_RFM95_Receive already
@@ -164,6 +184,7 @@ void StartRadioTask(void *argument)
       status = FEB_RFM95_Receive(rx_buffer, &rx_len, LISTEN_RX_TIMEOUT_MS);
       if (status == FEB_RFM95_OK)
       {
+        last_rx_tick = osKernelGetTickCount(); /* mark the link alive */
         LOG_I(TAG, "[listen] RX %u bytes, RSSI=%d, SNR=%d", rx_len, FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
         print_raw_packet(rx_buffer, rx_len, FEB_RFM95_GetRSSI(), FEB_RFM95_GetSNR());
         handle_radio_payload(rx_buffer, rx_len);

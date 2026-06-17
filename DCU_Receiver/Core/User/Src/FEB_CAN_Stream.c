@@ -72,6 +72,22 @@ void FEB_CAN_Stream_EmitFrame(uint8_t bus, uint32_t can_id, uint8_t dlc, const u
   }
 }
 
+void FEB_CAN_Stream_EmitSignal(bool valid, int16_t rssi, int8_t snr)
+{
+  if (!s_stream_active || s_stream_tx_id[0] == '\0')
+  {
+    return;
+  }
+  if (valid)
+  {
+    (void)FEB_Console_CsvEmitAs(s_stream_tx_id, "signal", "%d,%d", (int)rssi, (int)snr);
+  }
+  else
+  {
+    (void)FEB_Console_CsvEmitAs(s_stream_tx_id, "signal", "nan,nan");
+  }
+}
+
 void FEB_CAN_Stream_SetStream(bool on, const char *tx_id)
 {
   if (on)
