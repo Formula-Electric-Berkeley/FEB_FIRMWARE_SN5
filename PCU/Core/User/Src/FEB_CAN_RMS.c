@@ -162,27 +162,27 @@ void FEB_CAN_RMS_Init(void)
   RMS_MESSAGE.run_fault_hi = 0;
   RMS_MESSAGE.faults_rx_timestamp = 0;
 
-  LOG_I(TAG_CAN, "Sending RMS parameter safety commands");
-  for (int i = 0; i < 10; i++)
-  {
-    FEB_CAN_RMS_Transmit_ParamSafety();
-    HAL_Delay(10);
-  }
+  // LOG_I(TAG_CAN, "Sending RMS parameter safety commands");
+  // for (int i = 0; i < 10; i++)
+  // {
+  //   FEB_CAN_RMS_Transmit_ParamSafety();
+  //   HAL_Delay(10);
+  // }
 
-  LOG_I(TAG_CAN, "Sending RMS undervolt disable commands");
-  for (int i = 0; i < 10; i++)
-  {
-    FEB_CAN_RMS_Transmit_Disable_Undervolt();
-    HAL_Delay(10);
-  }
+  // LOG_I(TAG_CAN, "Sending RMS undervolt disable commands");
+  // for (int i = 0; i < 10; i++)
+  // {
+  //   FEB_CAN_RMS_Transmit_Disable_Undervolt();
+  //   HAL_Delay(10);
+  // }
 
-  LOG_I(TAG_CAN, "Sending RMS communication disable commands");
+  // LOG_I(TAG_CAN, "Sending RMS communication disable commands");
   // send disable command to remove lockout
-  for (int i = 0; i < 10; i++)
-  {
-    FEB_CAN_RMS_Transmit_CommDisable();
-    HAL_Delay(10);
-  }
+  // for (int i = 0; i < 10; i++)
+  // {
+  //   FEB_CAN_RMS_Transmit_CommDisable();
+  //   HAL_Delay(10);
+  // }
 
   // Select CAN msg to broadcast
   FEB_CAN_RMS_Transmit_ParamBroadcast();
@@ -319,12 +319,12 @@ static void send_rms_param(uint16_t address, uint8_t command, int16_t param_data
 
 void FEB_CAN_RMS_Transmit_Disable_Undervolt(void)
 {
-  send_rms_param(FAULT_CLEAR_ADDR_UNDERVOLT, 1u, FAULT_CLEAR_DATA, "undervolt disable");
+  send_rms_param(20u, 1u, 0, "undervolt disable");
 }
 
 void FEB_CAN_RMS_Transmit_ParamSafety(void)
 {
-  send_rms_param(FAULT_CLEAR_ADDR_PARAM_SAFETY, 1u, FAULT_CLEAR_DATA, "param safety");
+  send_rms_param(140u, 1u, 1u, "precharge bypass");
 }
 
 void FEB_CAN_RMS_Transmit_ParamBroadcast(void)
