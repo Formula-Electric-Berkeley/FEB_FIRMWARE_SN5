@@ -79,6 +79,14 @@ static volatile bool fault_pending = false;
 static volatile uint32_t fault_delay_start = 0;
 static volatile BMS_State_t pending_fault_type = BMS_STATE_BOOT;
 
+/* Recoverable shutdown/AIR- fault: a FAULT_BMS whose ONLY cause was the
+ * shutdown loop / AIR- opening can be left automatically once the loop is
+ * whole again. Tagged at the detection sites (fault_begin_shutdown); cleared
+ * for every other fault cause so they stay latched until power cycle. */
+static volatile bool fault_from_shutdown = false;
+static volatile uint16_t shutdown_recover_count = 0;
+#define SHUTDOWN_RECOVER_COUNT 50 /* consecutive healthy (~1 ms) reads before recovery */
+
 /* Non-blocking delay state for precharge->energized transition */
 static volatile bool energize_pending = false;
 static volatile uint32_t energize_delay_start = 0;
@@ -122,6 +130,8 @@ static bool imd_armed = false;
 
 static bool isFaultState(BMS_State_t state);
 static void fault_begin(BMS_State_t fault_type);
+static void fault_begin_shutdown(void);
+static void fault_recover(void);
 static bool fault_process(void);
 static void check_reset_button(void);
 static void evaluate_faults(void);
@@ -209,6 +219,11 @@ static void fault_begin(BMS_State_t fault_type)
     return;
   }
 
+  /* Fresh fault: default to non-recoverable. Only fault_begin_shutdown() tags
+   * the shutdown/AIR- cause as recoverable, after this returns. */
+  fault_from_shutdown = false;
+  shutdown_recover_count = 0;
+
   LOG_E(TAG_SM, "FAULT ENTRY: %s", FEB_CAN_State_GetStateName(fault_type));
 
   SM_Current_State = fault_type;
@@ -232,6 +247,56 @@ static void fault_begin(BMS_State_t fault_type)
   fault_pending = true;
   fault_delay_start = HAL_GetTick();
   pending_fault_type = fault_type;
+}
+
+/**
+ * @brief Latch a BMS fault caused specifically by the shutdown loop / AIR-
+ *        opening, and tag it recoverable.
+ * @note  fault_begin() clears fault_from_shutdown on a fresh entry, so the tag
+ *        is applied afterwards and only when THIS call actually latched the
+ *        fault (not when one was already pending/active).
+ */
+static void fault_begin_shutdown(void)
+{
+  bool already = fault_pending || isFaultState(SM_Current_State);
+  fault_begin(BMS_STATE_FAULT_BMS);
+  if (!already)
+  {
+    fault_from_shutdown = true;
+  }
+}
+
+/**
+ * @brief Leave a recoverable shutdown/AIR- fault back to LV_POWER.
+ * @note  Bypasses updateStateProtected()'s latch by setting the state field
+ *        directly (the same mechanism fault_begin() uses to enter). HV
+ *        contactors are left commanded open; the driver must redo precharge/RTD
+ *        to drive again.
+ */
+static void fault_recover(void)
+{
+  LOG_W(TAG_SM, "Shutdown/AIR- restored, recovering fault -> LV_POWER");
+
+  /* Re-close the BMS contribution to the shutdown loop and silence fault
+   * outputs (BMS indicator is the inverse of the relay pin). */
+  FEB_HW_BMS_Shutdown_Set(true);
+  FEB_HW_BMS_Indicator_Set(false);
+  FEB_HW_Buzzer_Set(false);
+  FEB_HW_Fault_Indicator_Set(false);
+
+  /* HV contactors stay open for the idle state. */
+  FEB_HW_AIR_Plus_Set(false);
+  FEB_HW_Precharge_Set(false);
+
+  /* Clear fault bookkeeping. */
+  fault_from_shutdown = false;
+  fault_pending = false;
+  shutdown_recover_count = 0;
+  shutdown_open_count = 0;
+
+  /* Leave the fault directly (bypasses the updateStateProtected latch). */
+  SM_Current_State = BMS_STATE_LV_POWER;
+  FEB_CAN_State_SetState(BMS_STATE_LV_POWER);
 }
 
 /**
@@ -869,7 +934,7 @@ static void EnergizedTransition(BMS_State_t next_state)
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN || FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
     {
       LOG_E(TAG_SM, "Shutdown/AIR- open while energized, entering FAULT");
-      EnergizedTransition(BMS_STATE_FAULT_BMS);
+      fault_begin_shutdown();
       break;
     }
 
@@ -950,7 +1015,7 @@ static void DriveTransition(BMS_State_t next_state)
     if (FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
     {
       LOG_E(TAG_SM, "AIR- open while driving, entering FAULT");
-      DriveTransition(BMS_STATE_FAULT_BMS);
+      fault_begin_shutdown();
       break;
     }
 
@@ -959,7 +1024,7 @@ static void DriveTransition(BMS_State_t next_state)
       if (shutdown_trip_confirmed())
       {
         LOG_E(TAG_SM, "Shutdown open while driving (majority-confirmed), entering FAULT");
-        DriveTransition(BMS_STATE_FAULT_BMS);
+        fault_begin_shutdown();
         break;
       }
       LOG_W(TAG_SM, "Shutdown momentary OPEN in DRIVE rejected as noise");
@@ -1247,7 +1312,27 @@ static void BMSFaultTransition(BMS_State_t next_state)
   switch (next_state)
   {
   case BMS_STATE_DEFAULT:
-    /* Perpetually fault until reset */
+    /* Recoverable shutdown/AIR- fault: once the loop is whole again (shutdown
+     * CLOSED and AIR- CLOSED, stable for SHUTDOWN_RECOVER_COUNT ticks) and the
+     * contactor-settle has finished, let the driver leave the fault back to
+     * LV_POWER without a power cycle. All other fault causes (fault_from_shutdown
+     * stays false) latch as before. If an independent condition is still active,
+     * evaluate_faults() re-latches a fresh non-recoverable fault next tick. */
+    if (fault_from_shutdown && !fault_pending && FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE &&
+        FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE)
+    {
+      if (++shutdown_recover_count >= SHUTDOWN_RECOVER_COUNT)
+      {
+        fault_recover();
+        break;
+      }
+    }
+    else
+    {
+      shutdown_recover_count = 0; /* any blip restarts the debounce */
+    }
+
+    /* Perpetually fault until reset (no-op while already latched). */
     FEB_HW_BMS_Indicator_Set(true);
     fault_begin(BMS_STATE_FAULT_BMS);
     break;
