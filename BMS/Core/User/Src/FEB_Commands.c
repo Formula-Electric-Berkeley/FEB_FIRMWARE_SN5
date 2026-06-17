@@ -87,6 +87,8 @@ static void subcmd_status(int argc, char *argv[])
   FEB_Console_Printf("Min Temp: %.1fC  Max Temp: %.1fC  Avg: %.1fC\r\n", FEB_ADBMS_GET_ACC_MIN_Temp(),
                      FEB_ADBMS_GET_ACC_MAX_Temp(), FEB_ADBMS_GET_ACC_AVG_Temp());
   FEB_Console_Printf("Balancing: %s\r\n", FEB_Cell_Balancing_Status() ? "ON" : "OFF");
+  FEB_Console_Printf("Cell delta: %.0fmV  Balance done: %s\r\n", FEB_ADBMS_GET_Cell_Voltage_Delta_mV(),
+                     FEB_Cell_Balance_Complete() ? "YES" : "NO");
   FEB_Console_Printf("Error Type: 0x%02X\r\n", FEB_ADBMS_Get_Error_Type());
 }
 
@@ -106,9 +108,13 @@ static void subcmd_cells(int argc, char *argv[])
     {
       float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
       float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
-      FEB_Console_Printf("  C%02d: %.3f/%.3f\r\n", cell + 1, v_c, v_s);
+      uint8_t bal = FEB_ADBMS_GET_Cell_Discharging(bank, cell);
+      FEB_Console_Printf("  C%02d: %.3f/%.3f%s\r\n", cell + 1, v_c, v_s, bal ? "  *BAL" : "");
     }
   }
+  FEB_Console_Printf("Balancing: %u cells active | delta %.0fmV | done: %s\r\n",
+                     (unsigned int)FEB_ADBMS_GET_Balancing_Cell_Count(), FEB_ADBMS_GET_Cell_Voltage_Delta_mV(),
+                     FEB_Cell_Balance_Complete() ? "YES" : "NO");
 }
 
 /* ============================================================================
@@ -802,9 +808,10 @@ static void cmd_bms(int argc, char *argv[]);
  * CSV-Mode Handlers (one per spec command, registered at top level)
  * ============================================================================ */
 
-/* Mandatory per spec. Emits voltage,<module>,<cell>,<primary>,<secondary>
+/* Mandatory per spec. Emits voltage,<module>,<cell>,<primary>,<secondary>,<balancing>
  * for every cell, then temp,<module>,<sensor>,<temp> for every sensor.
- * "module" is the 1-indexed bank number. */
+ * "module" is the 1-indexed bank number; "balancing" is 1 if the cell's discharge
+ * FET is active this balance cycle, else 0. */
 static void cmd_cell_stats_csv(int argc, char *argv[])
 {
   (void)argc;
@@ -816,7 +823,8 @@ static void cmd_cell_stats_csv(int argc, char *argv[])
     {
       float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
       float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
-      FEB_Console_CsvEmit("voltage", "%d,%d,%.3f,%.3f", bank + 1, cell + 1, v_c, v_s);
+      uint8_t bal = FEB_ADBMS_GET_Cell_Discharging(bank, cell);
+      FEB_Console_CsvEmit("voltage", "%d,%d,%.3f,%.3f,%d", bank + 1, cell + 1, v_c, v_s, bal);
     }
   }
   for (int bank = 0; bank < FEB_NBANKS; bank++)
@@ -858,13 +866,16 @@ static void cmd_status_csv(int argc, char *argv[])
     }
   }
 
-  /* Body fields: state,pack_v,min_c,max_c,min_s,max_s,min_t,max_t,avg_t,balancing,err_type */
-  FEB_Console_CsvEmit("status", "%s,%.2f,%.3f,%.3f,%.3f,%.3f,%.1f,%.1f,%.1f,%d,0x%02X",
+  /* Body fields: state,pack_v,min_c,max_c,min_s,max_s,min_t,max_t,avg_t,balancing,err_type,balance_done,delta_mV */
+  FEB_Console_CsvEmit("status", "%s,%.2f,%.3f,%.3f,%.3f,%.3f,%.1f,%.1f,%.1f,%d,0x%02X,%d,%.0f",
                       FEB_CAN_State_GetStateName(FEB_SM_Get_Current_State()), FEB_ADBMS_GET_ACC_Total_Voltage(), min_c,
                       max_c, min_s, max_s, FEB_ADBMS_GET_ACC_MIN_Temp(), FEB_ADBMS_GET_ACC_MAX_Temp(),
-                      FEB_ADBMS_GET_ACC_AVG_Temp(), FEB_Cell_Balancing_Status() ? 1 : 0, FEB_ADBMS_Get_Error_Type());
+                      FEB_ADBMS_GET_ACC_AVG_Temp(), FEB_Cell_Balancing_Status() ? 1 : 0, FEB_ADBMS_Get_Error_Type(),
+                      FEB_Cell_Balance_Complete() ? 1 : 0, FEB_ADBMS_GET_Cell_Voltage_Delta_mV());
 }
 
+/* Emits voltage,<module>,<cell>,<primary>,<secondary>,<balancing> per cell.
+ * "balancing" is 1 if the cell's discharge FET is active this cycle, else 0. */
 static void cmd_cells_csv(int argc, char *argv[])
 {
   (void)argc;
@@ -875,7 +886,8 @@ static void cmd_cells_csv(int argc, char *argv[])
     {
       float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
       float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
-      FEB_Console_CsvEmit("voltage", "%d,%d,%.3f,%.3f", bank + 1, cell + 1, v_c, v_s);
+      uint8_t bal = FEB_ADBMS_GET_Cell_Discharging(bank, cell);
+      FEB_Console_CsvEmit("voltage", "%d,%d,%.3f,%.3f,%d", bank + 1, cell + 1, v_c, v_s, bal);
     }
   }
 }

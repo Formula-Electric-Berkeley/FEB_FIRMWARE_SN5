@@ -823,6 +823,19 @@ uint8_t FEB_ADBMS_GET_Cell_Violations(uint8_t bank, uint16_t cell)
   return violations;
 }
 
+uint8_t FEB_ADBMS_GET_Cell_Discharging(uint8_t bank, uint16_t cell)
+{
+  if (bank >= FEB_NBANKS || cell >= FEB_NUM_CELLS_PER_BANK)
+  {
+    return 0;
+  }
+
+  osMutexAcquire(ADBMSMutexHandle, osWaitForever);
+  uint8_t discharging = FEB_ACC.banks[bank].cells[cell].discharging;
+  osMutexRelease(ADBMSMutexHandle);
+  return discharging;
+}
+
 bool FEB_ADBMS_Precharge_Complete(void)
 {
   // float voltage_V = (float)FEB_IVT_V1_Voltage() * 0.001f;
@@ -1045,6 +1058,63 @@ bool FEB_Cell_Balancing_Status(void)
   return false;
 }
 
+uint16_t FEB_ADBMS_GET_Balancing_Cell_Count(void)
+{
+  uint16_t count = 0;
+  osMutexAcquire(ADBMSMutexHandle, osWaitForever);
+  for (size_t i = 0; i < FEB_NBANKS; ++i)
+  {
+    for (size_t j = 0; j < FEB_NUM_CELLS_PER_BANK; ++j)
+    {
+      if (FEB_ACC.banks[i].cells[j].discharging)
+      {
+        count++;
+      }
+    }
+  }
+  osMutexRelease(ADBMSMutexHandle);
+  return count;
+}
+
+// Pack-wide max-min cell-voltage spread in mV (single source of truth for the
+// balancing delta). Returns -1.0f when no valid cell readings are available.
+float FEB_ADBMS_GET_Cell_Voltage_Delta_mV(void)
+{
+  float min_v = FLT_MAX;
+  float max_v = -FLT_MAX;
+
+  for (size_t i = 0; i < FEB_NBANKS; ++i)
+  {
+    for (size_t j = 0; j < FEB_NUM_CELLS_PER_BANK; ++j)
+    {
+      const float voltage = FEB_ADBMS_GET_Cell_Voltage(i, j) * 1000.0f;
+      if (voltage < 0)
+      {
+        continue; // getter returns -1000mV (-1.0V * 1000) for invalid/out-of-range
+      }
+      if (voltage < min_v)
+        min_v = voltage;
+      if (voltage > max_v)
+        max_v = voltage;
+    }
+  }
+
+  if (max_v < 0 || min_v > 1e8f)
+  {
+    return -1.0f; // no valid readings
+  }
+  return max_v - min_v;
+}
+
+// "Done balancing": valid readings AND pack converged below the slippage
+// threshold. Distinct from !FEB_Cell_Balancing_Status(), which also returns
+// false when balancing is blocked (too hot / no telemetry).
+bool FEB_Cell_Balance_Complete(void)
+{
+  const float delta_mV = FEB_ADBMS_GET_Cell_Voltage_Delta_mV();
+  return (delta_mV >= 0.0f && delta_mV < FEB_MIN_SLIPPAGE_V * 1000.0f);
+}
+
 void FEB_Stop_Balance()
 {
   LOG_D(TAG_BALANCE, "Stopping all cell discharge");
@@ -1052,6 +1122,18 @@ void FEB_Stop_Balance()
   // Reset balancing mask and cycle
   balancing_mask = 0x0000;
   balancing_cycle = 0;
+
+  // Clear the per-cell discharge flags so the console/CSV readout reflects the
+  // hardware (DCC=0 below) once balancing stops. Lock-free: this is reachable
+  // from the 1ms SM task (fault entry / balance transitions), which must never
+  // block on ADBMSMutexHandle; single-byte stores are atomic on Cortex-M4.
+  for (size_t i = 0; i < FEB_NBANKS; ++i)
+  {
+    for (size_t j = 0; j < FEB_NUM_CELLS_PER_BANK; ++j)
+    {
+      FEB_ACC.banks[i].cells[j].discharging = 0;
+    }
+  }
 
   for (uint8_t ic = 0; ic < FEB_NUM_IC; ic++)
   {
