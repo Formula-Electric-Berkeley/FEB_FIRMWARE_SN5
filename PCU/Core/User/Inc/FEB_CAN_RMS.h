@@ -115,9 +115,22 @@ extern RMS_Frame_Record_t RMS_FRAMES[FEB_CAN_RMS_FRAME_TABLE_SIZE];
 // Initialization and callback
 void FEB_CAN_RMS_Init(void);
 
-// Transmit functions — the PCU sends ONLY the M192 torque/enable command to the
-// inverter. There are deliberately no parameter (M193 / EEPROM) writes.
+// Transmit functions. M192 torque/enable is the only frame sent automatically.
+// M193 parameter writes are emitted ONLY from explicit console commands (never
+// at init): ClearFaults (param 20, transient) is always safe; PrechargeBypass
+// (param 140) is a persistent EEPROM write gated by `PCU|rms|eeprom|precharge`.
 void FEB_CAN_RMS_Transmit_UpdateTorque(int16_t torque, uint8_t enabled);
+
+// Clear the inverter's latched faults (M193 param 20, write 0).
+void FEB_CAN_RMS_Transmit_ClearFaults(void);
+
+// Enable/disable the inverter's internal precharge (M193 param 140, EEPROM).
+// bypass=true disables the inverter's own precharge; bypass=false restores it.
+void FEB_CAN_RMS_Transmit_PrechargeBypass(bool bypass);
+
+// Decode the most recent M194 parameter response (0x0C2). Returns false if no
+// response has been received. Used to confirm an M193 write took effect.
+bool FEB_CAN_RMS_GetLastParamResponse(uint16_t *addr, bool *write_ok, int16_t *data, uint32_t *age_ticks);
 
 // Accessor functions for console commands
 float FEB_CAN_RMS_getDCBusVoltage(void);

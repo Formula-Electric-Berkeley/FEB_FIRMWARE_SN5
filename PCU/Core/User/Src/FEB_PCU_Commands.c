@@ -34,6 +34,9 @@ static void print_pcu_help(void)
   FEB_Console_Printf("  PCU|rms      - Show RMS motor controller status\r\n");
   FEB_Console_Printf("  PCU|rms|raw  - Dump every inverter frame seen (raw bytes + age)\r\n");
   FEB_Console_Printf("  PCU|rms|<enable|disable>   - Manually enable/disable inverter (bench)\r\n");
+  FEB_Console_Printf("  PCU|rms|clearfault         - Clear inverter (RMS) latched faults\r\n");
+  FEB_Console_Printf("  PCU|rms|eeprom|precharge|<on|off>  - Enable/disable inverter internal precharge (EEPROM; "
+                     "disable inverter first)\r\n");
   FEB_Console_Printf("  PCU|tps      - Show TPS2482 voltage/current monitoring\r\n");
   FEB_Console_Printf("  PCU|bms      - Show BMS state information\r\n");
   FEB_Console_Printf("  PCU|bms|state|<drive|0-13|off>  - Sim BMS state (bench only, refused if BMS on bus)\r\n");
@@ -295,6 +298,67 @@ static void cmd_rms_raw(void)
     FEB_Console_Printf("  (no inverter frames seen — check bus wiring / inverter power)\r\n");
 }
 
+/* `PCU|rms|eeprom|...` — explicit, guarded inverter EEPROM parameter writes.
+ * Only `precharge` exists today; the namespace leaves room for more. */
+static void cmd_rms_eeprom(int argc, char *argv[])
+{
+  if (argc < 3 || FEB_strcasecmp(argv[1], "precharge") != 0)
+  {
+    FEB_Console_Printf("Usage: PCU|rms|eeprom|precharge|<on|off>\r\n");
+    FEB_Console_Printf("  on  = inverter runs its own precharge (normal)\r\n");
+    FEB_Console_Printf("  off = inverter internal precharge DISABLED (bypass)\r\n");
+    return;
+  }
+
+  bool precharge_on;
+  if (FEB_strcasecmp(argv[2], "on") == 0)
+    precharge_on = true;
+  else if (FEB_strcasecmp(argv[2], "off") == 0)
+    precharge_on = false;
+  else
+  {
+    FEB_Console_Printf("Invalid argument '%s' (expected on|off)\r\n", argv[2]);
+    return;
+  }
+
+  /* Guard: param 140 is a persistent EEPROM write — never do it while the
+   * inverter is commanded enabled. Require PCU|rms|disable first. */
+  if (RMS_CONTROL_MESSAGE.enabled)
+  {
+    FEB_Console_Printf("Refused: inverter is enabled. Run PCU|rms|disable first.\r\n");
+    return;
+  }
+
+  /* precharge ON -> bypass OFF (data 0); precharge OFF -> bypass ON (data 1). */
+  bool bypass = !precharge_on;
+  FEB_Console_Printf("Writing inverter EEPROM: precharge %s (param 140 = %d)...\r\n",
+                     precharge_on ? "ENABLED" : "DISABLED (bypass)", bypass ? 1 : 0);
+  FEB_CAN_RMS_Transmit_PrechargeBypass(bypass);
+
+  /* Poll briefly for the M194 write-success response (param 140, fresh). */
+  uint16_t addr = 0;
+  int16_t data = 0;
+  uint32_t age = 0;
+  bool write_ok = false;
+  bool got = false;
+  for (int i = 0; i < 20; i++)
+  {
+    HAL_Delay(5);
+    if (FEB_CAN_RMS_GetLastParamResponse(&addr, &write_ok, &data, &age) && addr == 140u && age <= 200u)
+    {
+      got = true;
+      break;
+    }
+  }
+
+  if (!got)
+    FEB_Console_Printf("No M194 response from inverter (is it powered / on the bus?)\r\n");
+  else if (write_ok)
+    FEB_Console_Printf("Inverter confirmed write OK (param 140 = %d)\r\n", data);
+  else
+    FEB_Console_Printf("Inverter reported write FAILURE (param 140)\r\n");
+}
+
 static void cmd_rms(int argc, char *argv[])
 {
   if (argc >= 2 && FEB_strcasecmp(argv[1], "raw") == 0)
@@ -314,6 +378,17 @@ static void cmd_rms(int argc, char *argv[])
   {
     FEB_RMS_CommandDisable();
     FEB_Console_Printf("Inverter DISABLED (forced off until PCU|rms|enable)\r\n");
+    return;
+  }
+  if (argc >= 2 && FEB_strcasecmp(argv[1], "clearfault") == 0)
+  {
+    FEB_CAN_RMS_Transmit_ClearFaults();
+    FEB_Console_Printf("Sent inverter fault-clear (M193 param 20). Re-check PCU|rms for fault state.\r\n");
+    return;
+  }
+  if (argc >= 2 && FEB_strcasecmp(argv[1], "eeprom") == 0)
+  {
+    cmd_rms_eeprom(argc - 1, argv + 1);
     return;
   }
 
@@ -624,8 +699,12 @@ static void cmd_brake_csv(int argc, char *argv[])
 
 static void cmd_rms_csv(int argc, char *argv[])
 {
-  (void)argc;
-  (void)argv;
+  if (argc >= 2 && FEB_strcasecmp(argv[1], "clearfault") == 0)
+  {
+    FEB_CAN_RMS_Transmit_ClearFaults();
+    FEB_Console_CsvEmit("clearfault", "1");
+    return;
+  }
   /* fields: dc_v,speed,angle,cmd_nm,fb_nm,vsm_state,enable_lockout,fault_active,enable_state */
   FEB_Console_CsvEmit("rms", "%.1f,%d,%d,%.1f,%.1f,%u,%d,%d,%d", FEB_CAN_RMS_getDCBusVoltage(),
                       FEB_CAN_RMS_getMotorSpeed(), FEB_CAN_RMS_getMotorAngle(), FEB_CAN_RMS_getTorqueCommand(),

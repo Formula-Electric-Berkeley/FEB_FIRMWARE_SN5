@@ -145,14 +145,15 @@ void FEB_CAN_RMS_Init(void)
   memset(&RMS_MESSAGE, 0, sizeof(RMS_MESSAGE));
   memset(RMS_FRAMES, 0, sizeof(RMS_FRAMES));
 
-  // NOTE: the PCU deliberately sends NO parameter (M193 / 0x0C1) writes. The RMS
+  // NOTE: the PCU sends NO parameter (M193 / 0x0C1) writes at init. The RMS
   // "Read/Write Parameter Command" writes the inverter's EEPROM (addresses
-  // 100..499), so a per-boot broadcast/undervolt write would touch EEPROM (or
-  // alter inverter config) on every power cycle. The broadcast set is persisted
-  // in the inverter's EEPROM and survives power cycles, so the inverter keeps
-  // broadcasting from its saved config without us rewriting it. If a fresh /
-  // EEPROM-wiped inverter shows no frames in `PCU|rms|raw`, reprovision its
-  // broadcast set once with an external tool.
+  // 100..499), so a per-boot broadcast/config write would touch EEPROM on every
+  // power cycle. The broadcast set is persisted in the inverter's EEPROM and
+  // survives power cycles, so the inverter keeps broadcasting from its saved
+  // config without us rewriting it. If a fresh / EEPROM-wiped inverter shows no
+  // frames in `PCU|rms|raw`, reprovision its broadcast set once with an external
+  // tool. The ONLY M193 writes the PCU emits are the explicit, console-driven
+  // commands below (fault-clear and precharge-bypass) — never automatically.
 
   // Command the inverter DISABLED before anything can enable it. The RMS powers
   // up in Inverter Enable Lockout and must see the command message with
@@ -377,6 +378,65 @@ void FEB_CAN_RMS_Transmit_UpdateTorque(int16_t torque, uint8_t enabled)
   }
 }
 
-/* There are intentionally NO parameter-write (M193 / 0x0C1) functions here. The
- * PCU must never write the inverter's EEPROM or config. Torque/enable via M192
- * (above) is the only thing the PCU transmits to the inverter. */
+/* M193 parameter writes are SCOPED, not banned. The PCU must never auto-write
+ * the inverter's EEPROM/config (no per-boot churn — see FEB_CAN_RMS_Init), but
+ * the two console commands below are deliberate, explicit exceptions:
+ *   - FEB_CAN_RMS_Transmit_ClearFaults: param 20 is a transient fault-clear
+ *     command (not in the 100..499 EEPROM range), so it persists nothing.
+ *   - FEB_CAN_RMS_Transmit_PrechargeBypass: param 140 IS a persistent EEPROM
+ *     write; it is gated behind `PCU|rms|eeprom|precharge` (inverter must be
+ *     disabled) and never runs at init. */
+static void send_rms_param(uint16_t address, uint8_t command, int16_t data, const char *tag)
+{
+  struct feb_can_m193_read_write_param_command_t msg = {0};
+  msg.vcu_inv_parameter_address_command = address;
+  msg.vcu_inv_read_write_command = command;
+  msg.vcu_inv_data_command = data;
+
+  uint8_t buf[FEB_CAN_M193_READ_WRITE_PARAM_COMMAND_LENGTH];
+  int packed = feb_can_m193_read_write_param_command_pack(buf, &msg, sizeof(buf));
+  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_M193_READ_WRITE_PARAM_COMMAND_FRAME_ID,
+                                            FEB_CAN_ID_STD, buf, (uint8_t)packed);
+  if (status != FEB_CAN_OK)
+    LOG_E(TAG_CAN, "Failed to transmit %s (M193): %s", tag, FEB_CAN_StatusToString(status));
+}
+
+void FEB_CAN_RMS_Transmit_ClearFaults(void)
+{
+  /* Cascadia fault-clear: write 0 to parameter address 20. Transient command,
+   * not an EEPROM parameter, so it is always safe to send. */
+  send_rms_param(20u, 1u, 0, "fault clear");
+}
+
+void FEB_CAN_RMS_Transmit_PrechargeBypass(bool bypass)
+{
+  /* Parameter address 140 = inverter internal-precharge bypass (EEPROM). data=1
+   * bypasses (disables) the inverter's own precharge; data=0 restores normal
+   * precharge. Persistent — caller must enforce the inverter-disabled guard. */
+  send_rms_param(140u, 1u, bypass ? 1 : 0, "precharge bypass");
+}
+
+bool FEB_CAN_RMS_GetLastParamResponse(uint16_t *addr, bool *write_ok, int16_t *data, uint32_t *age_ticks)
+{
+  const RMS_Frame_Record_t *rec = &RMS_FRAMES[FEB_CAN_RMS_FRAME_PARAM_RESP_IDX];
+  if (!rec->seen)
+    return false;
+
+  uint8_t buf[FEB_CAN_M194_READ_WRITE_PARAM_RESPONSE_LENGTH];
+  for (size_t i = 0; i < sizeof(buf); i++)
+    buf[i] = rec->data[i];
+
+  struct feb_can_m194_read_write_param_response_t resp = {0};
+  if (feb_can_m194_read_write_param_response_unpack(&resp, buf, sizeof(buf)) < 0)
+    return false;
+
+  if (addr)
+    *addr = resp.inv_parameter_address_response;
+  if (write_ok)
+    *write_ok = resp.inv_write_success != 0;
+  if (data)
+    *data = resp.inv_data_response;
+  if (age_ticks)
+    *age_ticks = HAL_GetTick() - rec->last_rx_tick;
+  return true;
+}
