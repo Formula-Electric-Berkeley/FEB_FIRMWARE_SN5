@@ -21,6 +21,7 @@
 #include "feb_string_utils.h"
 #include "FEB_ADBMS6830B.h"
 #include "ADBMS6830B_Registers.h"
+#include "FEB_CAN_Charger.h"
 #include "FEB_CAN_IVT.h"
 #include "FEB_CAN_PingPong.h"
 #include "FEB_CAN_State.h"
@@ -409,6 +410,63 @@ static void subcmd_gpio(int argc, char *argv[])
   FEB_Console_Printf("  TSMS Indicator:  %s\r\n", FEB_HW_TSMS_Indicator_Get() ? "ON" : "OFF");
 
   FEB_Console_Printf("\r\nHV Safe: %s\r\n", FEB_HW_Is_HV_Safe() ? "YES" : "NO");
+}
+
+/* ============================================================================
+ * Subcommand: charger - Latest charger telemetry + current command
+ * ============================================================================ */
+static void subcmd_charger(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  FEB_Charger_Snapshot_t s;
+  FEB_CAN_Charger_GetSnapshot(&s);
+
+  FEB_Console_Printf("\r\n=== Charger (HK-J-H650-12 GEN3) ===\r\n");
+
+  /* Charger -> BMS (Charger_Status, 0x18FF50E5). */
+  FEB_Console_Printf("Charger -> BMS:\r\n");
+  if (!s.ever_seen)
+  {
+    FEB_Console_Printf("  (no charger frames on bus)\r\n");
+  }
+  else
+  {
+    FEB_Console_Printf("  Link:          %s (age %lu ms, rx %lu)\r\n", s.present ? "PRESENT" : "TIMEOUT",
+                       (unsigned long)s.age_ms, (unsigned long)s.rx_count);
+    FEB_Console_Printf("  Output V:      %.1f V\r\n", s.op_voltage_dV / 10.0f);
+    FEB_Console_Printf("  Output I:      %.1f A\r\n", s.op_current_dA / 10.0f);
+    FEB_Console_Printf("  HW status:     %s\r\n", s.hw_status ? "FAIL" : "OK");
+    FEB_Console_Printf("  Temperature:   %s\r\n", s.temperature ? "FAULT" : "OK");
+    FEB_Console_Printf("  Input voltage: %s\r\n", s.input_voltage ? "FAULT" : "OK");
+    FEB_Console_Printf("  Charger state: %s\r\n", s.state ? "OFF" : "CHARGING");
+    FEB_Console_Printf("  Comm state:    %s\r\n", s.communication_state ? "TIMEOUT" : "OK");
+  }
+
+  /* BMS -> charger (Charger_Limits, 0x1806E5F4). */
+  FEB_Console_Printf("BMS -> Charger (command):\r\n");
+  FEB_Console_Printf("  SM state:      %s\r\n", FEB_CAN_State_GetStateName(FEB_SM_Get_Current_State()));
+  FEB_Console_Printf("  Target V:      %.1f V\r\n", s.cmd_voltage_dV / 10.0f);
+  FEB_Console_Printf("  Max I:         %.1f A\r\n", s.cmd_current_dA / 10.0f);
+  FEB_Console_Printf("  Control:       %s\r\n", s.control ? "STOP" : "START");
+  FEB_Console_Printf("  Trickle:       %s%s\r\n", s.trickle_active ? "ACTIVE" : "off",
+                     s.trickle_active ? (s.trickle_on ? " (on)" : " (rest)") : "");
+  FEB_Console_Printf("  Done charging: %s\r\n", s.done_charging ? "YES" : "NO");
+}
+static void cmd_charger_csv(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+  FEB_Charger_Snapshot_t s;
+  FEB_CAN_Charger_GetSnapshot(&s);
+  /* fields: present,age_ms,rx_count,out_v,out_a,hw,temp,inV,state,comm,cmd_v,cmd_a,control,trickle,done */
+  FEB_Console_CsvEmit("charger", "%d,%lu,%lu,%.1f,%.1f,%u,%u,%u,%u,%u,%.1f,%.1f,%u,%d,%d", s.present ? 1 : 0,
+                      (unsigned long)s.age_ms, (unsigned long)s.rx_count, s.op_voltage_dV / 10.0f,
+                      s.op_current_dA / 10.0f, (unsigned)s.hw_status, (unsigned)s.temperature,
+                      (unsigned)s.input_voltage, (unsigned)s.state, (unsigned)s.communication_state,
+                      s.cmd_voltage_dV / 10.0f, s.cmd_current_dA / 10.0f, (unsigned)s.control, s.trickle_active ? 1 : 0,
+                      s.done_charging ? 1 : 0);
 }
 
 /* ============================================================================
@@ -1388,6 +1446,11 @@ static const FEB_Console_Cmd_t bms_volts_cmd = {.name = "volts",
                                                 .handler = subcmd_volts,
                                                 .csv_handler = cmd_volts_csv,
                                                 .hidden = true};
+static const FEB_Console_Cmd_t bms_charger_cmd = {.name = "charger",
+                                                  .help = "Charger status (latest RX + command)",
+                                                  .handler = subcmd_charger,
+                                                  .csv_handler = cmd_charger_csv,
+                                                  .hidden = true};
 
 /* Per-board subcommand table. cmd_bms iterates this for `BMS|<sub>` dispatch.
  * Adding a subcommand: define its FEB_Console_Cmd_t above and append a pointer
@@ -1396,7 +1459,7 @@ static const FEB_Console_Cmd_t *const BMS_SUBCMDS[] = {
     &bms_status_cmd,     &bms_cells_cmd,  &bms_temps_cmd, &bms_therm_raw_cmd, &bms_state_cmd,   &bms_balance_cmd,
     &bms_gpio_cmd,       &bms_ivt_cmd,    &bms_tasks_cmd, &bms_mem_cmd,       &bms_cell_cmd,    &bms_spi_cmd,
     &bms_errors_cmd,     &bms_config_cmd, &bms_ping_cmd,  &bms_pong_cmd,      &bms_canstop_cmd, &bms_canstatus_cmd,
-    &bms_cell_stats_cmd, &bms_reg_cmd,    &bms_volts_cmd,
+    &bms_cell_stats_cmd, &bms_reg_cmd,    &bms_volts_cmd, &bms_charger_cmd,
 };
 #define BMS_SUBCMDS_COUNT (sizeof(BMS_SUBCMDS) / sizeof(BMS_SUBCMDS[0]))
 

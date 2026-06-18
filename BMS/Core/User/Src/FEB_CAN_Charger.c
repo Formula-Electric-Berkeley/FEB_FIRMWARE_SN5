@@ -3,6 +3,14 @@
  * @brief Charger CAN interface (ported from SN4 BMS, adapted to SN5)
  * @author Formula Electric @ Berkeley
  *
+ * Charger: Elcon / HK "TC" family, part HK-J-H650-12 GEN3 (170-650 VDC output).
+ * DBC vendored at common/FEB_CAN_Library_SN4/elcon.dbc (upstream
+ * https://github.com/karlding/elcon-charger-dbc, message names prefixed
+ * Charger_*) and fused into the generated CAN library, so the frames are packed
+ * and unpacked through feb_can.h rather than by hand:
+ *   - charger -> BMS : Charger_Status (0x18FF50E5)
+ *   - BMS  -> charger: Charger_Limits (0x1806E5F4)
+ *
  * Port of SN4 /BMS_REDO_withdrivers/Core/Src/FEB_CAN_Charger.c. Logic is
  * preserved; the transport is the SN5 feb_can_lib (extended-ID RX/TX,
  * FreeRTOS-safe TX queue) rather than SN4's raw HAL mailbox busy-wait, and
@@ -11,6 +19,8 @@
 
 #include "FEB_CAN_Charger.h"
 #include "feb_can_lib.h"
+#include "feb_can.h"
+#include "feb_log.h"
 #include "FEB_Const.h"
 #include "FEB_ADBMS6830B.h"
 #include "FEB_SM.h"
@@ -18,9 +28,7 @@
 #include "stm32f4xx_hal.h"
 #include "cmsis_compiler.h"
 
-/* Extended (29-bit) charger CAN IDs (CCS charger protocol). */
-#define FEB_CAN_ID_CHARGER_BMS 0x1806E5F4u /* BMS -> charger */
-#define FEB_CAN_ID_CHARGER_CCS 0x18FF50E5u /* charger -> BMS */
+#define TAG_CHARGER "[CHG]"
 
 typedef struct
 {
@@ -34,7 +42,12 @@ typedef struct
 {
   volatile uint16_t op_voltage_dV;
   volatile uint16_t op_current_dA;
-  volatile uint8_t status;
+  volatile uint8_t hw_status;           /* 0 OK, 1 FAIL */
+  volatile uint8_t temperature;         /* 0 OK, 1 FAULT */
+  volatile uint8_t input_voltage;       /* 0 OK, 1 FAULT */
+  volatile uint8_t state;               /* 0 CHARGING, 1 OFF */
+  volatile uint8_t communication_state; /* 0 OK, 1 TIMEOUT */
+  volatile uint32_t rx_count;
   volatile uint32_t last_rx_tick;
 } charger_to_bms_t;
 
@@ -57,14 +70,25 @@ static void FEB_CAN_Charger_Callback(FEB_CAN_Instance_t instance, uint32_t can_i
   (void)id_type;
   (void)user_data;
 
-  if (can_id != FEB_CAN_ID_CHARGER_CCS || length < 5)
+  if (can_id != FEB_CAN_CHARGER_STATUS_FRAME_ID)
   {
     return;
   }
 
-  rx_msg.op_voltage_dV = (uint16_t)((data[0] << 8) | data[1]);
-  rx_msg.op_current_dA = (uint16_t)((data[2] << 8) | data[3]);
-  rx_msg.status = data[4];
+  struct feb_can_charger_status_t s;
+  if (feb_can_charger_status_unpack(&s, data, length) != 0)
+  {
+    return; /* short / malformed frame */
+  }
+
+  rx_msg.op_voltage_dV = s.output_voltage;
+  rx_msg.op_current_dA = s.output_current;
+  rx_msg.hw_status = s.hw_status;
+  rx_msg.temperature = s.temperature;
+  rx_msg.input_voltage = s.input_voltage;
+  rx_msg.state = s.state;
+  rx_msg.communication_state = s.communication_state;
+  rx_msg.rx_count++;
   __DMB(); /* publish data before timestamp */
   rx_msg.last_rx_tick = HAL_GetTick();
 }
@@ -79,7 +103,7 @@ void FEB_CAN_Charger_Init(void)
 
   FEB_CAN_RX_Params_t params = {
       .instance = FEB_CAN_INSTANCE_1,
-      .can_id = FEB_CAN_ID_CHARGER_CCS,
+      .can_id = FEB_CAN_CHARGER_STATUS_FRAME_ID,
       .id_type = FEB_CAN_ID_EXT,
       .filter_type = FEB_CAN_FILTER_EXACT,
       .mask = 0,
@@ -108,6 +132,25 @@ int8_t FEB_CAN_Charging_Status(void)
   if (tx_msg.done_charging)
   {
     return 1;
+  }
+
+  /* Charger-reported faults (HK GEN3 Charger_Status flags). Only honoured when
+   * the charger frame is fresh. Hardware failure is a hard fault; the others
+   * are recoverable (stop and return to BATTERY_FREE, retried on re-plug or
+   * once charging conditions clear). These are charger telemetry, independent
+   * of the BMS primary/secondary measurement bypasses below. */
+  if (FEB_CAN_Charger_Received())
+  {
+    if (rx_msg.hw_status == FEB_CAN_CHARGER_STATUS_HW_STATUS_HW_STATUS_FAIL_CHOICE)
+    {
+      return -1;
+    }
+    if (rx_msg.temperature == FEB_CAN_CHARGER_STATUS_TEMPERATURE_TEMP_FAULT_CHOICE ||
+        rx_msg.input_voltage == FEB_CAN_CHARGER_STATUS_INPUT_VOLTAGE_INPUT_VOLTAGE_FAULT_CHOICE ||
+        rx_msg.communication_state == FEB_CAN_CHARGER_STATUS_COMMUNICATION_STATE_COMM_STATE_TIMEOUT_CHOICE)
+    {
+      return 1;
+    }
   }
 
   /* Lock-free snapshots only: this runs from the 1ms SM task and must never
@@ -175,20 +218,59 @@ void FEB_CAN_Charger_Stop_Charge(void)
 
 static void charger_can_transmit(void)
 {
-  uint8_t data[8];
-  data[0] = (uint8_t)(tx_msg.max_voltage_dV >> 8);
-  data[1] = (uint8_t)(tx_msg.max_voltage_dV & 0xFF);
-  data[2] = (uint8_t)(tx_msg.max_current_dA >> 8);
-  data[3] = (uint8_t)(tx_msg.max_current_dA & 0xFF);
-  data[4] = tx_msg.control;
-  data[5] = 0;
-  data[6] = 0;
-  data[7] = 0;
-  FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_CHARGER_BMS, FEB_CAN_ID_EXT, data, 8);
+  struct feb_can_charger_limits_t cmd = {
+      .max_voltage = tx_msg.max_voltage_dV,
+      .max_current = tx_msg.max_current_dA,
+      .control = tx_msg.control,
+  };
+  uint8_t data[FEB_CAN_CHARGER_LIMITS_LENGTH];
+  int packed = feb_can_charger_limits_pack(data, &cmd, sizeof(data));
+  if (packed < 0)
+  {
+    return;
+  }
+  FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_CHARGER_LIMITS_FRAME_ID, FEB_CAN_ID_EXT, data, (uint8_t)packed);
+}
+
+/* Edge-triggered logging of charger-reported faults so the reason behind a
+ * charge stop/fault is visible on the console without spamming each tick. */
+static void log_charger_faults(void)
+{
+  static uint8_t prev_hw = 0, prev_temp = 0, prev_in = 0, prev_comm = 0;
+
+  if (FEB_CAN_Charger_Received())
+  {
+    if (rx_msg.hw_status && !prev_hw)
+    {
+      LOG_E(TAG_CHARGER, "Charger reports HARDWARE FAILURE");
+    }
+    if (rx_msg.temperature && !prev_temp)
+    {
+      LOG_W(TAG_CHARGER, "Charger reports OVER-TEMPERATURE");
+    }
+    if (rx_msg.input_voltage && !prev_in)
+    {
+      LOG_W(TAG_CHARGER, "Charger reports INPUT-VOLTAGE FAULT");
+    }
+    if (rx_msg.communication_state && !prev_comm)
+    {
+      LOG_W(TAG_CHARGER, "Charger reports COMMUNICATION TIMEOUT");
+    }
+    prev_hw = rx_msg.hw_status;
+    prev_temp = rx_msg.temperature;
+    prev_in = rx_msg.input_voltage;
+    prev_comm = rx_msg.communication_state;
+  }
+  else
+  {
+    prev_hw = prev_temp = prev_in = prev_comm = 0;
+  }
 }
 
 void FEB_CAN_Charger_Process(void)
 {
+  log_charger_faults();
+
   /* Re-arm: a charger unplug (RX timeout) ends the session, so a later replug
    * starts a fresh one. Re-entry to charging still requires Charging_Status()
    * == 0, i.e. cells back below the soft limits. */
@@ -205,12 +287,10 @@ void FEB_CAN_Charger_Process(void)
      * via its own RX timeout. */
     if (FEB_CAN_Charger_Received())
     {
-      uint8_t stop[8] = {0};
-      stop[0] = (uint8_t)(FEB_CHARGE_TARGET_VOLTAGE_dV >> 8);
-      stop[1] = (uint8_t)(FEB_CHARGE_TARGET_VOLTAGE_dV & 0xFF);
-      /* max current = 0, control = 1 (stop) */
-      stop[4] = 1;
-      FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_ID_CHARGER_BMS, FEB_CAN_ID_EXT, stop, 8);
+      tx_msg.max_voltage_dV = FEB_CHARGE_TARGET_VOLTAGE_dV;
+      tx_msg.max_current_dA = 0; /* no current while stopped */
+      tx_msg.control = 1;        /* stop */
+      charger_can_transmit();
     }
     return;
   }
@@ -248,4 +328,36 @@ void FEB_CAN_Charger_Process(void)
   }
 
   charger_can_transmit();
+}
+
+/* ============================================================================
+ * Diagnostic snapshot (BMS|charger console command)
+ * ============================================================================ */
+
+void FEB_CAN_Charger_GetSnapshot(FEB_Charger_Snapshot_t *out)
+{
+  if (out == NULL)
+  {
+    return;
+  }
+
+  uint32_t last_tick = rx_msg.last_rx_tick;
+  out->ever_seen = (last_tick != 0);
+  out->present = FEB_CAN_Charger_Received();
+  out->age_ms = out->ever_seen ? (HAL_GetTick() - last_tick) : 0;
+  out->rx_count = rx_msg.rx_count;
+  out->op_voltage_dV = rx_msg.op_voltage_dV;
+  out->op_current_dA = rx_msg.op_current_dA;
+  out->hw_status = rx_msg.hw_status;
+  out->temperature = rx_msg.temperature;
+  out->input_voltage = rx_msg.input_voltage;
+  out->state = rx_msg.state;
+  out->communication_state = rx_msg.communication_state;
+
+  out->cmd_voltage_dV = tx_msg.max_voltage_dV;
+  out->cmd_current_dA = tx_msg.max_current_dA;
+  out->control = tx_msg.control;
+  out->trickle_active = trickle_enabled;
+  out->trickle_on = trickle_on;
+  out->done_charging = tx_msg.done_charging;
 }

@@ -142,6 +142,8 @@ _Static_assert((FEB_TEMP_ERROR_THRESH + 1) * FEB_TEMP_SCAN_PERIOD_MS <= FEB_TEMP
   ((FEB_NBANKS * FEB_NUM_CELLS_PER_BANK * FEB_CONFIG_CELL_HARD_MAX_VOLTAGE_mV) / 1000.0f)
 
 // ********************************** Charger CAN (SN4-derived) ******************
+// Charger: Elcon/HK HK-J-H650-12 GEN3 (170-650 VDC). Keep the target voltage
+// inside that window. Frames pack/unpack via the generated CAN lib (elcon.dbc).
 // Charger command (BMS -> charger) targets, in charger units (deci-amps / deci-volts).
 #define FEB_CHARGE_CURRENT_dA 40 // TUNE: 4.0 A nominal charge current
 #define FEB_TRICKLE_CHARGE_CURRENT_dA (FEB_CHARGE_CURRENT_dA / 2)
