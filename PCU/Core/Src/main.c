@@ -101,6 +101,7 @@ int main(void)
   MX_I2C1_Init();
   MX_CAN2_Init();
   MX_TIM1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   FEB_Main_Setup();
   /* USER CODE END 2 */

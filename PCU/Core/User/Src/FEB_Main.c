@@ -98,6 +98,11 @@ void FEB_Main_Setup(void)
   FEB_ADC_Init();
   FEB_ADC_Start(ADC_MODE_DMA);
 
+  // Start the ADC sampling trigger. All three ADCs were armed by FEB_ADC_Start
+  // in external-trigger mode and convert exactly one coherent scan per TIM2 TRGO
+  // (update) event @ ~10 kHz; without TIM2 running they never sample.
+  HAL_TIM_Base_Start(&htim2);
+
   // === CHECKPOINT 4: ADC ready ===
   LOG_I(TAG_MAIN, "[4/8] ADC initialized");
   HAL_Delay(50);
@@ -217,6 +222,13 @@ void FEB_1ms_Callback(void)
   static uint16_t apps_divider = 50;
   static uint16_t pedal_mv_divider = 75; // first fire at tick 25, then every 100
 
+  // Latch ONE time-coherent ADC snapshot for this control cycle. MUST run first
+  // so every consumer below (APPS plausibility, brake faults, RMS torque, CAN
+  // diagnostics, CLI) reads the same sampling instant — APPS1/APPS2, brake1/
+  // brake2 and APPS-vs-brake are then mutually coherent and a staggered-read can
+  // never inflate a plausibility deviation.
+  FEB_ADC_TickSample();
+
   // Refresh the APPS cache every 1 ms so the implausibility timer
   // accumulates correctly across all consumers (FEB_RMS_Torque,
   // FEB_CAN_Diagnostics_TransmitAPPSData, the CLI snapshot view).
@@ -255,7 +267,7 @@ void FEB_1ms_Callback(void)
   }
 
   apps_divider++;
-  if (apps_divider >= 100)
+  if (apps_divider >= 50)
   {
     apps_divider = 0;
     FEB_CAN_Diagnostics_TransmitAPPSData();

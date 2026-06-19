@@ -18,6 +18,7 @@
 #include "feb_string_utils.h"
 #include "adc.h"
 #include "usart.h"
+#include <math.h>
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct
@@ -172,7 +173,8 @@ static ADC_CalibrationTypeDef brake_pressure2_calibration = {
 #define VOLTAGE_DIVIDER_RATIO_ACCEL2 1.0f         /* APPS2: direct connection, no resistor divider */
 
 /* Private function prototypes -----------------------------------------------*/
-static uint16_t GetAveragedADCValue(ADC_HandleTypeDef *hadc, uint32_t channel, uint8_t samples);
+static uint16_t ADC_BoxcarRaw(ADC_HandleTypeDef *hadc, uint16_t *buffer_ptr, uint32_t num_channels,
+                              uint32_t channel_idx, uint8_t samples);
 static bool ADC_InDriveState(void);
 static void ADC_UpdateFaultEdges(uint32_t new_faults);
 static void ADC_StatsAccumulate(float p1, float p2, float deviation);
@@ -194,49 +196,42 @@ ADC_StatusTypeDef FEB_ADC_Init(void)
   brake_input_config.channel = ADC1_BRAKE_INPUT_CHANNEL;
   brake_input_config.filter.enabled = FILTER_BRAKE_INPUT_ENABLED;
   brake_input_config.filter.samples = FILTER_BRAKE_INPUT_SAMPLES;
-  brake_input_config.filter.alpha = FILTER_BRAKE_INPUT_ALPHA;
 
   /* Accelerator Pedal Sensor 1 Configuration */
   accel_pedal1_config.hadc = &hadc3;
   accel_pedal1_config.channel = ADC3_ACCEL_PEDAL_1_CHANNEL;
   accel_pedal1_config.filter.enabled = FILTER_ACCEL_PEDAL_ENABLED;
   accel_pedal1_config.filter.samples = FILTER_ACCEL_PEDAL_SAMPLES;
-  accel_pedal1_config.filter.alpha = FILTER_ACCEL_PEDAL_ALPHA;
 
   /* Accelerator Pedal Sensor 2 Configuration */
   accel_pedal2_config.hadc = &hadc3;
   accel_pedal2_config.channel = ADC3_ACCEL_PEDAL_2_CHANNEL;
   accel_pedal2_config.filter.enabled = FILTER_ACCEL_PEDAL_ENABLED;
   accel_pedal2_config.filter.samples = FILTER_ACCEL_PEDAL_SAMPLES;
-  accel_pedal2_config.filter.alpha = FILTER_ACCEL_PEDAL_ALPHA;
 
   /* Brake Pressure Sensor 1 Configuration */
   brake_pressure1_config.hadc = &hadc1;
   brake_pressure1_config.channel = ADC1_BRAKE_PRESSURE_1_CHANNEL;
   brake_pressure1_config.filter.enabled = FILTER_BRAKE_PRESSURE_ENABLED;
   brake_pressure1_config.filter.samples = FILTER_BRAKE_PRESSURE_SAMPLES;
-  brake_pressure1_config.filter.alpha = FILTER_BRAKE_PRESSURE_ALPHA;
 
   /* Brake Pressure Sensor 2 Configuration */
   brake_pressure2_config.hadc = &hadc1;
   brake_pressure2_config.channel = ADC1_BRAKE_PRESSURE_2_CHANNEL;
   brake_pressure2_config.filter.enabled = FILTER_BRAKE_PRESSURE_ENABLED;
   brake_pressure2_config.filter.samples = FILTER_BRAKE_PRESSURE_SAMPLES;
-  brake_pressure2_config.filter.alpha = FILTER_BRAKE_PRESSURE_ALPHA;
 
   /* Current Sensor Configuration */
   current_sense_config.hadc = &hadc2;
   current_sense_config.channel = ADC2_CURRENT_SENSE_CHANNEL;
   current_sense_config.filter.enabled = FILTER_CURRENT_SENSE_ENABLED;
   current_sense_config.filter.samples = FILTER_CURRENT_SENSE_SAMPLES;
-  current_sense_config.filter.alpha = FILTER_CURRENT_SENSE_ALPHA;
 
   /* Shutdown Circuit Monitoring Configuration */
   shutdown_in_config.hadc = &hadc2;
   shutdown_in_config.channel = ADC2_SHUTDOWN_IN_CHANNEL;
   shutdown_in_config.filter.enabled = FILTER_SHUTDOWN_ENABLED;
   shutdown_in_config.filter.samples = FILTER_SHUTDOWN_SAMPLES;
-  shutdown_in_config.filter.alpha = FILTER_SHUTDOWN_ALPHA;
 
   /* Clear DMA buffers */
   memset(adc1_dma_buffer, 0, sizeof(adc1_dma_buffer));
@@ -320,6 +315,138 @@ ADC_StatusTypeDef FEB_ADC_Stop(void)
   HAL_ADC_Stop_DMA(&hadc3);
 
   return ADC_STATUS_OK;
+}
+
+/* Coherent Snapshot ---------------------------------------------------------*/
+
+/* One time-coherent snapshot, published once per 1 ms control tick by
+ * FEB_ADC_TickSample() and read tear-free via FEB_ADC_GetCoherentSnapshot().
+ * Single-writer (1 ms TIM1 ISR, the highest priority among ADC consumers)
+ * seqlock: readers retry while the sequence is odd or changes mid-copy. */
+static ADC_CoherentSnapshot_t adc_snapshot = {0};
+static volatile uint32_t adc_snapshot_seq = 0;
+
+/* Staleness watchdog: if the summed DMA NDTR across all three ADCs stops
+ * advancing (TIM2 trigger or DMA stalled) the snapshot would silently freeze.
+ * Detect it and raise FAULT_ADC_TIMEOUT so it is visible and edge-counted. */
+static uint32_t adc_prev_ndtr_sum = 0xFFFFFFFFu;
+static uint32_t adc_stale_ticks = 0;
+#define ADC_STALE_FAULT_TICKS 5u /* ~5 ms with no new conversions => stalled */
+
+/* Boxcar-average the most-recent `samples` conversions for one channel by
+ * walking back from the DMA write pointer. Every ADC is launched by the same
+ * TIM2 TRGO edge, so the most-recent samples are time-coherent across ADCs.
+ * Mirrors the NDTR index math in FEB_ADC_GetRawValue, extended to N samples. */
+static uint16_t ADC_BoxcarRaw(ADC_HandleTypeDef *hadc, uint16_t *buffer_ptr, uint32_t num_channels,
+                              uint32_t channel_idx, uint8_t samples)
+{
+  if (samples < 1)
+    samples = 1;
+  if (samples > ADC_DMA_BUFFER_SIZE)
+    samples = ADC_DMA_BUFFER_SIZE;
+
+  uint32_t buffer_total = num_channels * ADC_DMA_BUFFER_SIZE;
+
+  if (hadc->DMA_Handle == NULL)
+    return buffer_ptr[channel_idx];
+
+  uint32_t ndtr = __HAL_DMA_GET_COUNTER(hadc->DMA_Handle);
+  if (ndtr == 0 || ndtr > buffer_total)
+    return buffer_ptr[channel_idx];
+
+  /* Most-recent fully-written slot for this channel (see FEB_ADC_GetRawValue). */
+  uint32_t last_written = (buffer_total - ndtr + buffer_total - 1) % buffer_total;
+  uint32_t offset = (last_written + buffer_total - channel_idx) % num_channels;
+  uint32_t latest = (last_written + buffer_total - offset) % buffer_total;
+
+  uint32_t sum = 0;
+  for (uint8_t i = 0; i < samples; i++)
+  {
+    uint32_t slot = (latest + buffer_total - (uint32_t)i * num_channels) % buffer_total;
+    sum += buffer_ptr[slot];
+  }
+  return (uint16_t)(sum / samples);
+}
+
+static uint32_t ADC_SumNDTR(void)
+{
+  uint32_t s = 0;
+  if (hadc1.DMA_Handle)
+    s += __HAL_DMA_GET_COUNTER(hadc1.DMA_Handle);
+  if (hadc2.DMA_Handle)
+    s += __HAL_DMA_GET_COUNTER(hadc2.DMA_Handle);
+  if (hadc3.DMA_Handle)
+    s += __HAL_DMA_GET_COUNTER(hadc3.DMA_Handle);
+  return s;
+}
+
+void FEB_ADC_TickSample(void)
+{
+  /* Per-class boxcar window (samples), shared within each plausibility pair so
+   * filtering can never manufacture an inter-sensor deviation. enabled=0 => 1. */
+  uint8_t n_apps = accel_pedal1_config.filter.enabled ? accel_pedal1_config.filter.samples : 1;
+  uint8_t n_brkp = brake_pressure1_config.filter.enabled ? brake_pressure1_config.filter.samples : 1;
+  uint8_t n_brki = brake_input_config.filter.enabled ? brake_input_config.filter.samples : 1;
+  uint8_t n_curr = current_sense_config.filter.enabled ? current_sense_config.filter.samples : 1;
+  uint8_t n_shdn = shutdown_in_config.filter.enabled ? shutdown_in_config.filter.samples : 1;
+
+  ADC_CoherentSnapshot_t s;
+  s.tick_ms = HAL_GetTick();
+
+  /* ADC1 (DMA2_S0): brake2 (idx0), brake1 (idx1), brake_input (idx2). */
+  s.brake2_raw = ADC_BoxcarRaw(&hadc1, adc1_dma_buffer, 3, ADC1_CH0_BRAKE_PRESSURE2_IDX, n_brkp);
+  s.brake1_raw = ADC_BoxcarRaw(&hadc1, adc1_dma_buffer, 3, ADC1_CH1_BRAKE_PRESSURE1_IDX, n_brkp);
+  s.brake_input_raw = ADC_BoxcarRaw(&hadc1, adc1_dma_buffer, 3, ADC1_CH14_BRAKE_INPUT_IDX, n_brki);
+
+  /* ADC2 (DMA2_S2): current (idx0), shutdown (idx1), pre-timing (idx2). */
+  s.current_raw = ADC_BoxcarRaw(&hadc2, adc2_dma_buffer, 3, ADC2_CH4_CURRENT_SENSE_IDX, n_curr);
+  s.shutdown_raw = ADC_BoxcarRaw(&hadc2, adc2_dma_buffer, 3, ADC2_CH6_SHUTDOWN_IN_IDX, n_shdn);
+  s.pretiming_raw = ADC_BoxcarRaw(&hadc2, adc2_dma_buffer, 3, ADC2_CH7_PRE_TIMING_IDX, 1);
+
+  /* ADC3 (DMA2_S1): bspd_ind (idx0), bspd_rst (idx1), apps2 (idx2), apps1 (idx3). */
+  s.bspd_ind_raw = ADC_BoxcarRaw(&hadc3, adc3_dma_buffer, 4, ADC3_CH10_BSPD_INDICATOR_IDX, 1);
+  s.bspd_rst_raw = ADC_BoxcarRaw(&hadc3, adc3_dma_buffer, 4, ADC3_CH11_BSPD_RESET_IDX, 1);
+  s.apps2_raw = ADC_BoxcarRaw(&hadc3, adc3_dma_buffer, 4, ADC3_CH12_ACCEL_PEDAL2_IDX, n_apps);
+  s.apps1_raw = ADC_BoxcarRaw(&hadc3, adc3_dma_buffer, 4, ADC3_CH13_ACCEL_PEDAL1_IDX, n_apps);
+
+  /* Publish atomically (seqlock): odd -> write payload -> even. */
+  adc_snapshot_seq++;
+  __DMB();
+  adc_snapshot = s;
+  __DMB();
+  adc_snapshot_seq++;
+
+  /* Staleness watchdog. NDTR steadily decrements while conversions flow; if the
+   * sum is unchanged for several ticks the trigger/DMA has stalled. */
+  uint32_t ndtr_sum = ADC_SumNDTR();
+  if (ndtr_sum != 0 && ndtr_sum == adc_prev_ndtr_sum)
+  {
+    if (adc_stale_ticks < 0xFFFFu)
+      adc_stale_ticks++;
+    if (adc_stale_ticks >= ADC_STALE_FAULT_TICKS)
+      active_faults |= FAULT_ADC_TIMEOUT;
+  }
+  else
+  {
+    adc_stale_ticks = 0;
+    active_faults &= ~FAULT_ADC_TIMEOUT;
+  }
+  adc_prev_ndtr_sum = ndtr_sum;
+}
+
+void FEB_ADC_GetCoherentSnapshot(ADC_CoherentSnapshot_t *out)
+{
+  if (!out)
+    return;
+  uint32_t s0, s1;
+  do
+  {
+    s0 = adc_snapshot_seq;
+    __DMB();
+    *out = adc_snapshot;
+    __DMB();
+    s1 = adc_snapshot_seq;
+  } while ((s0 & 1u) || (s0 != s1));
 }
 
 /* Raw ADC Reading Functions -------------------------------------------------*/
@@ -406,16 +533,6 @@ uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef *hadc, uint32_t channel)
   return buffer_ptr[latest];
 }
 
-uint16_t FEB_ADC_GetFilteredValue(ADC_HandleTypeDef *hadc, uint32_t channel, uint8_t samples)
-{
-  if (samples < 1)
-    samples = 1;
-  if (samples > ADC_DMA_BUFFER_SIZE)
-    samples = ADC_DMA_BUFFER_SIZE;
-
-  return GetAveragedADCValue(hadc, channel, samples);
-}
-
 float FEB_ADC_RawToVoltage(uint16_t raw_value)
 {
   return ((float)raw_value * ADC_VREF_VOLTAGE) / (float)ADC_MAX_VALUE;
@@ -428,112 +545,118 @@ uint32_t FEB_ADC_RawToMillivolts(uint16_t raw_value)
 
 /* Sensor-Specific Raw Functions ---------------------------------------------*/
 
+/* All sensor raw getters return the latest time-coherent snapshot value
+ * (boxcar-averaged in FEB_ADC_TickSample), so every consumer in a given control
+ * cycle observes the same sampling instant. */
+
 uint16_t FEB_ADC_GetBrakeInputRaw(void)
 {
-  return FEB_ADC_GetRawValue(&hadc1, ADC1_BRAKE_INPUT_CHANNEL);
+  ADC_CoherentSnapshot_t s;
+  FEB_ADC_GetCoherentSnapshot(&s);
+  return s.brake_input_raw;
 }
 
 uint16_t FEB_ADC_GetAccelPedal1Raw(void)
 {
-  return FEB_ADC_GetRawValue(&hadc3, ADC3_ACCEL_PEDAL_1_CHANNEL);
+  ADC_CoherentSnapshot_t s;
+  FEB_ADC_GetCoherentSnapshot(&s);
+  return s.apps1_raw;
 }
 
 uint16_t FEB_ADC_GetAccelPedal2Raw(void)
 {
-  return FEB_ADC_GetRawValue(&hadc3, ADC3_ACCEL_PEDAL_2_CHANNEL);
+  ADC_CoherentSnapshot_t s;
+  FEB_ADC_GetCoherentSnapshot(&s);
+  return s.apps2_raw;
 }
 
 uint16_t FEB_ADC_GetBrakePressure1Raw(void)
 {
-  return FEB_ADC_GetRawValue(&hadc1, ADC1_BRAKE_PRESSURE_1_CHANNEL);
+  ADC_CoherentSnapshot_t s;
+  FEB_ADC_GetCoherentSnapshot(&s);
+  return s.brake1_raw;
 }
 
 uint16_t FEB_ADC_GetBrakePressure2Raw(void)
 {
-  return FEB_ADC_GetRawValue(&hadc1, ADC1_BRAKE_PRESSURE_2_CHANNEL);
+  ADC_CoherentSnapshot_t s;
+  FEB_ADC_GetCoherentSnapshot(&s);
+  return s.brake2_raw;
 }
 
 uint16_t FEB_ADC_GetCurrentSenseRaw(void)
 {
-  return FEB_ADC_GetRawValue(&hadc2, ADC2_CURRENT_SENSE_CHANNEL);
+  ADC_CoherentSnapshot_t s;
+  FEB_ADC_GetCoherentSnapshot(&s);
+  return s.current_raw;
 }
 
 uint16_t FEB_ADC_GetShutdownInRaw(void)
 {
-  return FEB_ADC_GetRawValue(&hadc2, ADC2_SHUTDOWN_IN_CHANNEL);
+  ADC_CoherentSnapshot_t s;
+  FEB_ADC_GetCoherentSnapshot(&s);
+  return s.shutdown_raw;
 }
 
 uint16_t FEB_ADC_GetPreTimingTripRaw(void)
 {
-  return FEB_ADC_GetRawValue(&hadc2, ADC2_PRE_TIMING_TRIP_CHANNEL);
+  ADC_CoherentSnapshot_t s;
+  FEB_ADC_GetCoherentSnapshot(&s);
+  return s.pretiming_raw;
 }
 
 uint16_t FEB_ADC_GetBSPDIndicatorRaw(void)
 {
-  return FEB_ADC_GetRawValue(&hadc3, ADC3_BSPD_INDICATOR_CHANNEL);
+  ADC_CoherentSnapshot_t s;
+  FEB_ADC_GetCoherentSnapshot(&s);
+  return s.bspd_ind_raw;
 }
 
 uint16_t FEB_ADC_GetBSPDResetRaw(void)
 {
-  return FEB_ADC_GetRawValue(&hadc3, ADC3_BSPD_RESET_CHANNEL);
+  ADC_CoherentSnapshot_t s;
+  FEB_ADC_GetCoherentSnapshot(&s);
+  return s.bspd_rst_raw;
 }
 
 /* Sensor-Specific Voltage Functions -----------------------------------------*/
 
+/* Voltage getters convert the coherent-snapshot raw value (already boxcar-
+ * averaged in FEB_ADC_TickSample) — no per-call filtering. */
+
 float FEB_ADC_GetBrakeInputVoltage(void)
 {
-  uint16_t raw = brake_input_config.filter.enabled
-                     ? FEB_ADC_GetFilteredValue(&hadc1, ADC1_BRAKE_INPUT_CHANNEL, brake_input_config.filter.samples)
-                     : FEB_ADC_GetBrakeInputRaw();
-  return FEB_ADC_RawToVoltage(raw);
+  return FEB_ADC_RawToVoltage(FEB_ADC_GetBrakeInputRaw());
 }
 
 float FEB_ADC_GetAccelPedal1Voltage(void)
 {
-  uint16_t raw = accel_pedal1_config.filter.enabled
-                     ? FEB_ADC_GetFilteredValue(&hadc3, ADC3_ACCEL_PEDAL_1_CHANNEL, accel_pedal1_config.filter.samples)
-                     : FEB_ADC_GetAccelPedal1Raw();
-  return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO_ACCEL1;
+  return FEB_ADC_RawToVoltage(FEB_ADC_GetAccelPedal1Raw()) * VOLTAGE_DIVIDER_RATIO_ACCEL1;
 }
 
 float FEB_ADC_GetAccelPedal2Voltage(void)
 {
-  uint16_t raw = accel_pedal2_config.filter.enabled
-                     ? FEB_ADC_GetFilteredValue(&hadc3, ADC3_ACCEL_PEDAL_2_CHANNEL, accel_pedal2_config.filter.samples)
-                     : FEB_ADC_GetAccelPedal2Raw();
-  return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO_ACCEL2;
+  return FEB_ADC_RawToVoltage(FEB_ADC_GetAccelPedal2Raw()) * VOLTAGE_DIVIDER_RATIO_ACCEL2;
 }
 
 float FEB_ADC_GetBrakePressure1Voltage(void)
 {
-  uint16_t raw = brake_pressure1_config.filter.enabled ? FEB_ADC_GetFilteredValue(&hadc1, ADC1_BRAKE_PRESSURE_1_CHANNEL,
-                                                                                  brake_pressure1_config.filter.samples)
-                                                       : FEB_ADC_GetBrakePressure1Raw();
-  return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO_BRAKE;
+  return FEB_ADC_RawToVoltage(FEB_ADC_GetBrakePressure1Raw()) * VOLTAGE_DIVIDER_RATIO_BRAKE;
 }
 
 float FEB_ADC_GetBrakePressure2Voltage(void)
 {
-  uint16_t raw = brake_pressure2_config.filter.enabled ? FEB_ADC_GetFilteredValue(&hadc1, ADC1_BRAKE_PRESSURE_2_CHANNEL,
-                                                                                  brake_pressure2_config.filter.samples)
-                                                       : FEB_ADC_GetBrakePressure2Raw();
-  return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO_BRAKE;
+  return FEB_ADC_RawToVoltage(FEB_ADC_GetBrakePressure2Raw()) * VOLTAGE_DIVIDER_RATIO_BRAKE;
 }
 
 float FEB_ADC_GetCurrentSenseVoltage(void)
 {
-  uint16_t raw = current_sense_config.filter.enabled
-                     ? FEB_ADC_GetFilteredValue(&hadc2, ADC2_CURRENT_SENSE_CHANNEL, current_sense_config.filter.samples)
-                     : FEB_ADC_GetCurrentSenseRaw();
-  return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO;
+  return FEB_ADC_RawToVoltage(FEB_ADC_GetCurrentSenseRaw()) * VOLTAGE_DIVIDER_RATIO;
 }
 
 float FEB_ADC_GetShutdownInVoltage(void)
 {
-  uint16_t raw = shutdown_in_config.filter.enabled
-                     ? FEB_ADC_GetFilteredValue(&hadc2, ADC2_SHUTDOWN_IN_CHANNEL, shutdown_in_config.filter.samples)
-                     : FEB_ADC_GetShutdownInRaw();
-  return FEB_ADC_RawToVoltage(raw) * VOLTAGE_DIVIDER_RATIO;
+  return FEB_ADC_RawToVoltage(FEB_ADC_GetShutdownInRaw()) * VOLTAGE_DIVIDER_RATIO;
 }
 
 float FEB_ADC_GetPreTimingTripVoltage(void)
@@ -1441,32 +1564,25 @@ ADC_StatusTypeDef FEB_ADC_CaptureAPPSCalibration(uint8_t sensor, bool capture_ma
   return ADC_STATUS_OK;
 }
 
-void FEB_ADC_GetAPPSFilterConfig(bool *enabled, uint8_t *samples, float *alpha)
+void FEB_ADC_GetAPPSFilterConfig(bool *enabled, uint8_t *samples)
 {
   if (enabled)
     *enabled = accel_pedal1_config.filter.enabled ? true : false;
   if (samples)
     *samples = accel_pedal1_config.filter.samples;
-  if (alpha)
-    *alpha = accel_pedal1_config.filter.alpha;
 }
 
-ADC_StatusTypeDef FEB_ADC_SetAPPSFilter(bool enabled, uint8_t samples, float alpha)
+ADC_StatusTypeDef FEB_ADC_SetAPPSFilter(bool enabled, uint8_t samples)
 {
   if (samples < 1)
     samples = 1;
   if (samples > ADC_DMA_BUFFER_SIZE)
     samples = ADC_DMA_BUFFER_SIZE;
-  if (alpha < 0.0f)
-    alpha = 0.0f;
-  if (alpha > 1.0f)
-    alpha = 1.0f;
+  /* Both APPS channels share one boxcar window so group delay stays symmetric. */
   accel_pedal1_config.filter.enabled = enabled ? 1 : 0;
   accel_pedal1_config.filter.samples = samples;
-  accel_pedal1_config.filter.alpha = alpha;
   accel_pedal2_config.filter.enabled = enabled ? 1 : 0;
   accel_pedal2_config.filter.samples = samples;
-  accel_pedal2_config.filter.alpha = alpha;
   return ADC_STATUS_OK;
 }
 
@@ -1522,34 +1638,6 @@ void FEB_ADC_GetAPPSStats(float *p1_min, float *p1_max, float *p2_min, float *p2
 float FEB_ADC_GetAPPSRawSeparation(void)
 {
   return apps_latest_raw_separation;
-}
-
-/* Filter and Processing Functions -------------------------------------------*/
-
-ADC_StatusTypeDef FEB_ADC_ConfigureFilter(ADC_ChannelConfigTypeDef *config, bool enable, uint8_t samples, float alpha)
-{
-  if (!config)
-    return ADC_STATUS_ERROR;
-
-  config->filter.enabled = enable;
-  config->filter.samples = samples;
-  config->filter.alpha = alpha;
-
-  /* Clear filter buffer */
-  memset(config->filter.buffer, 0, sizeof(config->filter.buffer));
-  config->filter.buffer_index = 0;
-
-  return ADC_STATUS_OK;
-}
-
-float FEB_ADC_LowPassFilter(float new_value, float old_value, float alpha)
-{
-  if (alpha < 0.0f)
-    alpha = 0.0f;
-  if (alpha > 1.0f)
-    alpha = 1.0f;
-
-  return (alpha * new_value) + ((1.0f - alpha) * old_value);
 }
 
 /* Diagnostic and Debug Functions --------------------------------------------*/
@@ -1661,94 +1749,6 @@ float FEB_ADC_ApplyDeadzone(float value, float deadzone)
 }
 
 /* Private Functions ---------------------------------------------------------*/
-
-static uint16_t GetAveragedADCValue(ADC_HandleTypeDef *hadc, uint32_t channel, uint8_t samples)
-{
-  /* Input validation */
-  if (hadc == NULL)
-  {
-    return 0;
-  }
-
-  if (samples == 0 || samples > ADC_DMA_BUFFER_SIZE)
-  {
-    samples = ADC_DMA_BUFFER_SIZE; // Use max if invalid
-  }
-
-  /* Average multiple values from the DMA circular buffer */
-  /* No delays needed as DMA continuously updates the buffer */
-
-  uint32_t sum = 0;
-  uint32_t channel_idx = 0;
-  uint16_t *buffer_ptr = NULL;
-  uint32_t num_channels = 0;
-  uint32_t buffer_size = 0;
-
-  /* Determine buffer parameters */
-  if (hadc == &hadc1)
-  {
-    buffer_ptr = adc1_dma_buffer;
-    num_channels = 3;
-    buffer_size = 3 * ADC_DMA_BUFFER_SIZE;
-    if (channel == ADC_CHANNEL_0)
-      channel_idx = ADC1_CH0_BRAKE_PRESSURE2_IDX;
-    else if (channel == ADC_CHANNEL_1)
-      channel_idx = ADC1_CH1_BRAKE_PRESSURE1_IDX;
-    else if (channel == ADC_CHANNEL_14)
-      channel_idx = ADC1_CH14_BRAKE_INPUT_IDX;
-    else
-      return 0;
-  }
-  else if (hadc == &hadc2)
-  {
-    buffer_ptr = adc2_dma_buffer;
-    num_channels = 3;
-    buffer_size = 3 * ADC_DMA_BUFFER_SIZE;
-    if (channel == ADC_CHANNEL_4)
-      channel_idx = ADC2_CH4_CURRENT_SENSE_IDX;
-    else if (channel == ADC_CHANNEL_6)
-      channel_idx = ADC2_CH6_SHUTDOWN_IN_IDX;
-    else if (channel == ADC_CHANNEL_7)
-      channel_idx = ADC2_CH7_PRE_TIMING_IDX;
-    else
-      return 0;
-  }
-  else if (hadc == &hadc3)
-  {
-    buffer_ptr = adc3_dma_buffer;
-    num_channels = 4;
-    buffer_size = 4 * ADC_DMA_BUFFER_SIZE;
-    if (channel == ADC_CHANNEL_10)
-      channel_idx = ADC3_CH10_BSPD_INDICATOR_IDX;
-    else if (channel == ADC_CHANNEL_11)
-      channel_idx = ADC3_CH11_BSPD_RESET_IDX;
-    else if (channel == ADC_CHANNEL_12)
-      channel_idx = ADC3_CH12_ACCEL_PEDAL2_IDX;
-    else if (channel == ADC_CHANNEL_13)
-      channel_idx = ADC3_CH13_ACCEL_PEDAL1_IDX;
-    else
-      return 0;
-  }
-  else
-  {
-    return 0;
-  }
-
-  /* Average the last 'samples' readings from the circular buffer */
-  samples = (samples > ADC_DMA_BUFFER_SIZE) ? ADC_DMA_BUFFER_SIZE : samples;
-
-  for (uint8_t i = 0; i < samples; i++)
-  {
-    /* Each set of channels is stored sequentially */
-    uint32_t buffer_offset = (i * num_channels) + channel_idx;
-    if (buffer_offset < buffer_size)
-    {
-      sum += buffer_ptr[buffer_offset];
-    }
-  }
-
-  return (uint16_t)(sum / samples);
-}
 
 static bool ADC_InDriveState(void)
 {

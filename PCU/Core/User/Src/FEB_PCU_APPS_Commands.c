@@ -106,7 +106,7 @@ static void print_apps_help(void)
   FEB_Console_Printf("  PCU|apps|cal|<1|2>|<min_mv>|<max_mv>  - set range\r\n");
   FEB_Console_Printf("  PCU|apps|cal|capture|<1|2>|<min|max>  - capture current voltage\r\n");
   FEB_Console_Printf("  PCU|apps|cal|reset                    - restore defaults\r\n");
-  FEB_Console_Printf("  PCU|apps|filter [|<on|off>|samples|<n>|alpha|<f>]\r\n");
+  FEB_Console_Printf("  PCU|apps|filter [|<on|off>|samples|<n>]\r\n");
   FEB_Console_Printf("  PCU|apps|deadzone|<percent>           - 0..20%%\r\n");
   FEB_Console_Printf("  PCU|apps|mode|single|<on|off>         - bench-mode bypass (drive locked)\r\n");
   FEB_Console_Printf("  PCU|apps|sim|<percent>|sim|off        - simulate APPS, 30s window\r\n");
@@ -306,15 +306,13 @@ static void cmd_filter(int argc, char *argv[])
   {
     bool enabled;
     uint8_t samples;
-    float alpha;
-    FEB_ADC_GetAPPSFilterConfig(&enabled, &samples, &alpha);
-    FEB_Console_Printf("APPS filter: %s, samples=%u, alpha=%.3f\r\n", enabled ? "on" : "off", samples, (double)alpha);
+    FEB_ADC_GetAPPSFilterConfig(&enabled, &samples);
+    FEB_Console_Printf("APPS boxcar: %s, samples=%u\r\n", enabled ? "on" : "off", samples);
     return;
   }
   bool enabled;
   uint8_t samples;
-  float alpha;
-  FEB_ADC_GetAPPSFilterConfig(&enabled, &samples, &alpha);
+  FEB_ADC_GetAPPSFilterConfig(&enabled, &samples);
 
   if (FEB_strcasecmp(argv[1], "samples") == 0)
   {
@@ -329,37 +327,19 @@ static void cmd_filter(int argc, char *argv[])
       FEB_Console_Printf("Error: invalid sample count\r\n");
       return;
     }
-    FEB_ADC_SetAPPSFilter(enabled, (uint8_t)n, alpha);
-    FEB_ADC_GetAPPSFilterConfig(&enabled, &samples, &alpha);
-    FEB_Console_Printf("Filter samples=%u\r\n", samples);
-    return;
-  }
-  if (FEB_strcasecmp(argv[1], "alpha") == 0)
-  {
-    if (argc < 3)
-    {
-      FEB_Console_Printf("Usage: PCU|apps|filter|alpha|<0..1>\r\n");
-      return;
-    }
-    float a;
-    if (!parse_float(argv[2], &a))
-    {
-      FEB_Console_Printf("Error: invalid alpha\r\n");
-      return;
-    }
-    FEB_ADC_SetAPPSFilter(enabled, samples, a);
-    FEB_ADC_GetAPPSFilterConfig(&enabled, &samples, &alpha);
-    FEB_Console_Printf("Filter alpha=%.3f\r\n", (double)alpha);
+    FEB_ADC_SetAPPSFilter(enabled, (uint8_t)n);
+    FEB_ADC_GetAPPSFilterConfig(&enabled, &samples);
+    FEB_Console_Printf("Boxcar samples=%u\r\n", samples);
     return;
   }
   bool flag;
   if (parse_on_off(argv[1], &flag))
   {
-    FEB_ADC_SetAPPSFilter(flag, samples, alpha);
-    FEB_Console_Printf("Filter %s\r\n", flag ? "ON" : "OFF");
+    FEB_ADC_SetAPPSFilter(flag, samples);
+    FEB_Console_Printf("Boxcar %s\r\n", flag ? "ON" : "OFF");
     return;
   }
-  FEB_Console_Printf("Usage: PCU|apps|filter [|on|off|samples|<n>|alpha|<f>]\r\n");
+  FEB_Console_Printf("Usage: PCU|apps|filter [|on|off|samples|<n>]\r\n");
 }
 
 static void cmd_deadzone(int argc, char *argv[])
@@ -568,9 +548,8 @@ static void csv_apps(int argc, char *argv[])
   {
     bool enabled;
     uint8_t samples;
-    float alpha;
-    FEB_ADC_GetAPPSFilterConfig(&enabled, &samples, &alpha);
-    FEB_Console_CsvEmit("apps_filter", "%d,%u,%.3f", enabled ? 1 : 0, samples, (double)alpha);
+    FEB_ADC_GetAPPSFilterConfig(&enabled, &samples);
+    FEB_Console_CsvEmit("apps_filter", "%d,%u", enabled ? 1 : 0, samples);
     return;
   }
   if (FEB_strcasecmp(sub, "stream") == 0)

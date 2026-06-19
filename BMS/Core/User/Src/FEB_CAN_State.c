@@ -4,6 +4,7 @@
  */
 
 #include "FEB_CAN_State.h"
+#include "FEB_ADBMS6830B.h"
 #include "FEB_CAN_DASH.h"
 #include "FEB_SM.h"
 #include "feb_can_lib.h"
@@ -103,6 +104,74 @@ void FEB_CAN_State_Tick(void)
     feb_can_bms_state_pack(tx_data, &bms_state_msg, sizeof(tx_data));
 
     FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_STATE_FRAME_ID, FEB_CAN_ID_STD, tx_data, FEB_CAN_BMS_STATE_LENGTH);
+  }
+
+  /* Divider for 100ms period (called every 1ms) */
+  static uint16_t voltage_divider = 33;
+  voltage_divider++;
+
+  if (voltage_divider >= 100)
+  {
+    voltage_divider = 0;
+
+    float min_c = 999.0f, max_c = 0.0f;
+    float min_s = 999.0f, max_s = 0.0f;
+    for (int bank = 0; bank < 10; bank++)
+    {
+      for (int cell = 0; cell < 14; cell++)
+      {
+        float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
+        float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
+        if (v_c > 0)
+        {
+          if (v_c < min_c)
+            min_c = v_c;
+          if (v_c > max_c)
+            max_c = v_c;
+        }
+        if (v_s > 0)
+        {
+          if (v_s < min_s)
+            min_s = v_s;
+          if (v_s > max_s)
+            max_s = v_s;
+        }
+      }
+    }
+
+    /* Pack and send */
+    uint8_t tx_data[FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_LENGTH];
+    feb_can_bms_accumulator_voltage_pack(tx_data,
+                                         &((struct feb_can_bms_accumulator_voltage_t){
+                                             .total_pack_voltage = (int)(FEB_ADBMS_GET_ACC_Total_Voltage() * 10),
+                                             .min_cell_voltage = (int)(min_c * 10),
+                                             .max_cell_voltage = (int)(max_c * 10),
+                                             .send_time = HAL_GetTick()}),
+                                         sizeof(tx_data));
+
+    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                    FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_LENGTH);
+  }
+
+  /* Divider for 100ms period (called every 1ms) */
+  static uint16_t temp_divider = 66;
+  temp_divider++;
+
+  if (temp_divider >= 100)
+  {
+    temp_divider = 0;
+    /* Pack and send */
+    uint8_t tx_data[FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_LENGTH];
+    feb_can_bms_accumulator_temperature_pack(tx_data,
+                                             &((struct feb_can_bms_accumulator_temperature_t){
+                                                 .average_pack_temperature = (int)(FEB_ADBMS_GET_ACC_AVG_Temp() * 10),
+                                                 .max_cell_temperature = (int)(FEB_ADBMS_GET_ACC_MAX_Temp() * 10),
+                                                 .min_cell_temperature = (int)(FEB_ADBMS_GET_ACC_MIN_Temp() * 10),
+                                                 .send_time = HAL_GetTick()}),
+                                             sizeof(tx_data));
+
+    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                    FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_LENGTH);
   }
 }
 

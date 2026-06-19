@@ -90,37 +90,47 @@ extern "C"
 #define ADC_MAX_SAMPLING_TIME ADC_SAMPLETIME_480CYCLES
 
 /* DMA Buffer Sizes */
-#define ADC_DMA_BUFFER_SIZE 16  /* Size of DMA circular buffer */
+#define ADC_DMA_BUFFER_SIZE 16  /* Circular buffer depth (samples per channel) */
 #define ADC_AVERAGING_SAMPLES 8 /* Number of samples for averaging */
+
+/* TIM2 hardware trigger rate for all three ADCs. Each TIM2 TRGO edge launches
+ * one full scan per ADC, so this is the per-channel oversample rate and the
+ * basis for time-coherent sampling (APPS1/APPS2, brake1/brake2 and APPS-vs-brake
+ * all start on the same edge). The per-1ms control snapshot boxcar-averages
+ * roughly ADC_OVERSAMPLE_HZ/1000 of these samples. Configured in PCU.ioc
+ * (TIM2 PSC=89, ARR=99 on the 90 MHz APB1 timer clock => 10 kHz). */
+#define ADC_OVERSAMPLE_HZ 10000
 
 /* ========================================================================== */
 /*                         FILTER CONFIGURATION PARAMETERS                    */
 /* ========================================================================== */
 
-/* Default filter settings for different sensor types */
-#define FILTER_BRAKE_INPUT_ENABLED 1   /* Enable filtering for brake input */
-#define FILTER_BRAKE_INPUT_SAMPLES 8   /* Number of samples to average */
-#define FILTER_BRAKE_INPUT_ALPHA 0.75f /* Low-pass filter coefficient */
+/* Boxcar (moving-average) window per sensor class. ADC samples are hardware-
+ * triggered by TIM2 (ADC_OVERSAMPLE_HZ), so the most-recent N samples per
+ * channel are time-coherent across all three ADCs; the per-1ms snapshot
+ * (FEB_ADC_TickSample) averages the most-recent SAMPLES values. NO IIR / low-
+ * pass filtering is used — a boxcar is symmetric, so both members of a sensor
+ * pair (APPS1/2, brake1/2) share one window with identical group delay and
+ * filtering can never manufacture an artificial inter-sensor deviation. SAMPLES
+ * is clamped to [1, ADC_DMA_BUFFER_SIZE]; ENABLED=0 forces a single most-recent
+ * sample. */
+#define FILTER_BRAKE_INPUT_ENABLED 1 /* Enable averaging for brake input */
+#define FILTER_BRAKE_INPUT_SAMPLES 8 /* Boxcar window (samples) */
 
-#define FILTER_BRAKE_PRESSURE_ENABLED 1   /* Enable filtering for pressure sensors */
-#define FILTER_BRAKE_PRESSURE_SAMPLES 12  /* More samples for stable pressure reading */
-#define FILTER_BRAKE_PRESSURE_ALPHA 0.85f /* Higher alpha for smoother pressure */
+#define FILTER_BRAKE_PRESSURE_ENABLED 1  /* Enable averaging for pressure sensors */
+#define FILTER_BRAKE_PRESSURE_SAMPLES 12 /* Both brake sensors share this window */
 
-#define FILTER_ACCEL_PEDAL_ENABLED 1   /* Enable filtering for APPS */
-#define FILTER_ACCEL_PEDAL_SAMPLES 6   /* Moderate filtering for responsiveness */
-#define FILTER_ACCEL_PEDAL_ALPHA 0.65f /* Balance between response and smoothness */
+#define FILTER_ACCEL_PEDAL_ENABLED 1 /* Enable averaging for APPS */
+#define FILTER_ACCEL_PEDAL_SAMPLES 6 /* Both APPS sensors share this window */
 
-#define FILTER_CURRENT_SENSE_ENABLED 1  /* Enable filtering for current sensor */
-#define FILTER_CURRENT_SENSE_SAMPLES 16 /* Maximum filtering for noisy current */
-#define FILTER_CURRENT_SENSE_ALPHA 0.9f /* Heavy filtering for current measurement */
+#define FILTER_CURRENT_SENSE_ENABLED 1  /* Enable averaging for current sensor */
+#define FILTER_CURRENT_SENSE_SAMPLES 16 /* Maximum averaging for noisy current */
 
-#define FILTER_SHUTDOWN_ENABLED 1  /* Enable filtering for shutdown monitoring */
-#define FILTER_SHUTDOWN_SAMPLES 4  /* Light filtering for safety signals */
-#define FILTER_SHUTDOWN_ALPHA 0.7f /* Moderate smoothing */
+#define FILTER_SHUTDOWN_ENABLED 1 /* Enable averaging for shutdown monitoring */
+#define FILTER_SHUTDOWN_SAMPLES 4 /* Light averaging for safety signals */
 
-#define FILTER_BSPD_ENABLED 0  /* No filtering for digital BSPD signals */
-#define FILTER_BSPD_SAMPLES 1  /* Single sample for digital signals */
-#define FILTER_BSPD_ALPHA 1.0f /* No low-pass filtering */
+#define FILTER_BSPD_ENABLED 0 /* No averaging for digital BSPD signals */
+#define FILTER_BSPD_SAMPLES 1 /* Single sample for digital signals */
 
 /* ========================================================================== */
 /*                         SENSOR CALIBRATION PARAMETERS                      */
@@ -137,10 +147,10 @@ extern "C"
 /* Accelerator Pedal Calibration (APPS) - per-car values, post-divider
  * (sensor-side) mV: the domain FEB_ADC maps against (APPS1 = ADC pin x1.168,
  * APPS2 = pin x1.0; see VOLTAGE_DIVIDER_RATIO_ACCEL* in FEB_ADC.c). */
-#define APPS1_DEFAULT_MIN_VOLTAGE_MV 1333 /* APPS1 0% throttle */
-#define APPS1_DEFAULT_MAX_VOLTAGE_MV 2193 /* APPS1 100% throttle */
-#define APPS2_DEFAULT_MIN_VOLTAGE_MV 430  /* APPS2 0% throttle */
-#define APPS2_DEFAULT_MAX_VOLTAGE_MV 968  /* APPS2 100% throttle */
+#define APPS1_DEFAULT_MIN_VOLTAGE_MV 1375 /* APPS1 0% throttle */
+#define APPS1_DEFAULT_MAX_VOLTAGE_MV 2356 /* APPS1 100% throttle */
+#define APPS2_DEFAULT_MIN_VOLTAGE_MV 539  /* APPS2 0% throttle */
+#define APPS2_DEFAULT_MAX_VOLTAGE_MV 1320 /* APPS2 100% throttle */
 #define APPS_MIN_PHYSICAL_PERCENT 0.0f    /* Physical minimum: 0% throttle */
 #define APPS_MAX_PHYSICAL_PERCENT 100.0f  /* Physical maximum: 100% throttle */
 #define APPS_DEADZONE_PERCENT 5           /* Deadzone at pedal extremes (%) */

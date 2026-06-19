@@ -73,15 +73,15 @@ extern "C"
   } ADC_CalibrationTypeDef;
 
   /**
-   * @brief ADC Filter Configuration
+   * @brief ADC Boxcar (moving-average) Configuration
+   *
+   * No IIR/low-pass filtering: the per-1ms coherent snapshot averages the most-
+   * recent `samples` hardware-triggered conversions (a symmetric FIR boxcar).
    */
   typedef struct
   {
-    uint8_t enabled;                      /* Filter enable flag */
-    uint8_t samples;                      /* Number of samples to average */
-    float alpha;                          /* Low-pass filter coefficient (0-1) */
-    uint16_t buffer[ADC_DMA_BUFFER_SIZE]; /* Sample buffer */
-    uint8_t buffer_index;                 /* Current buffer index */
+    uint8_t enabled; /* Averaging enable flag (0 => single most-recent sample) */
+    uint8_t samples; /* Boxcar window length (samples to average) */
   } ADC_FilterTypeDef;
 
   /**
@@ -143,6 +143,32 @@ extern "C"
     uint32_t fault_time;  /* Time of fault detection */
   } BSPD_DataTypeDef;
 
+  /**
+   * @brief Time-coherent ADC snapshot — one instant across all three ADCs.
+   *
+   * Built once per 1ms control tick by FEB_ADC_TickSample() from the most-recent
+   * TIM2-triggered samples (boxcar-averaged per channel). Because every ADC is
+   * launched by the same TIM2 TRGO edge, all fields here represent the same
+   * sampling instant: APPS1/APPS2, brake1/brake2 and APPS-vs-brake are mutually
+   * coherent, so plausibility deviation reflects real sensor disagreement only.
+   * Published via a seqlock; read tear-free with FEB_ADC_GetCoherentSnapshot().
+   * All raw fields are 12-bit right-aligned counts (0..ADC_MAX_VALUE).
+   */
+  typedef struct
+  {
+    uint32_t tick_ms;         /* HAL_GetTick() when this snapshot was latched */
+    uint16_t apps1_raw;       /* ADC3 ch13 (PC3) */
+    uint16_t apps2_raw;       /* ADC3 ch12 (PC2) */
+    uint16_t brake1_raw;      /* ADC1 ch1  (PA1) */
+    uint16_t brake2_raw;      /* ADC1 ch0  (PA0) */
+    uint16_t brake_input_raw; /* ADC1 ch14 (PC4) */
+    uint16_t current_raw;     /* ADC2 ch4  (PA4) */
+    uint16_t shutdown_raw;    /* ADC2 ch6  (PA6) */
+    uint16_t pretiming_raw;   /* ADC2 ch7  (PA7) */
+    uint16_t bspd_ind_raw;    /* ADC3 ch10 (PC0) */
+    uint16_t bspd_rst_raw;    /* ADC3 ch11 (PC1) */
+  } ADC_CoherentSnapshot_t;
+
   /* ========================================================================== */
   /*                      INITIALIZATION FUNCTIONS                              */
   /* ========================================================================== */
@@ -184,15 +210,6 @@ extern "C"
    * @retval uint16_t: Raw ADC value (0-4095)
    */
   uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef *hadc, uint32_t channel);
-
-  /**
-   * @brief  Get filtered ADC value with averaging
-   * @param  hadc: ADC handle
-   * @param  channel: ADC channel
-   * @param  samples: Number of samples to average
-   * @retval uint16_t: Averaged ADC value
-   */
-  uint16_t FEB_ADC_GetFilteredValue(ADC_HandleTypeDef *hadc, uint32_t channel, uint8_t samples);
 
   /**
    * @brief  Convert raw ADC value to voltage
@@ -257,9 +274,27 @@ extern "C"
   /* ========================================================================== */
 
   /**
+   * @brief  Latch one time-coherent ADC snapshot. Must be called FIRST in the
+   *         1 ms control tick, before FEB_ADC_TickAPPS()/FEB_ADC_TickBrakeFaults()
+   *         and any consumer. Boxcar-averages the most-recent TIM2-triggered
+   *         samples for every channel and publishes them atomically (seqlock).
+   *         Every getter below then returns values from this single instant, so
+   *         APPS1/APPS2, brake1/brake2 and APPS-vs-brake are mutually coherent.
+   */
+  void FEB_ADC_TickSample(void);
+
+  /**
+   * @brief  Copy the latest coherent ADC snapshot tear-free (seqlock reader).
+   *         Safe from task or ISR context.
+   * @param  out: destination (ignored if NULL)
+   */
+  void FEB_ADC_GetCoherentSnapshot(ADC_CoherentSnapshot_t *out);
+
+  /**
    * @brief  Update the single APPS cache. Must be called from a periodic
-   *         tick (1 ms in PCU). All APPS getters read from this cache so
-   *         the implausibility timer accumulates correctly across consumers.
+   *         tick (1 ms in PCU), right after FEB_ADC_TickSample(). All APPS
+   *         getters read from this cache so the implausibility timer
+   *         accumulates correctly across consumers.
    */
   void FEB_ADC_TickAPPS(void);
 
@@ -502,16 +537,16 @@ extern "C"
   ADC_StatusTypeDef FEB_ADC_CaptureAPPSCalibration(uint8_t sensor, bool capture_max);
 
   /**
-   * @brief  Get the current APPS filter configuration (shared by both APPS
-   *         channels).
+   * @brief  Get the current APPS boxcar-averaging config (shared by both APPS
+   *         channels). No IIR coefficient — averaging is a symmetric FIR boxcar.
    */
-  void FEB_ADC_GetAPPSFilterConfig(bool *enabled, uint8_t *samples, float *alpha);
+  void FEB_ADC_GetAPPSFilterConfig(bool *enabled, uint8_t *samples);
 
   /**
-   * @brief  Update the APPS filter configuration. samples is clamped to
-   *         [1, ADC_DMA_BUFFER_SIZE]; alpha is clamped to [0, 1].
+   * @brief  Update the APPS boxcar-averaging config. samples (the boxcar
+   *         window) is clamped to [1, ADC_DMA_BUFFER_SIZE].
    */
-  ADC_StatusTypeDef FEB_ADC_SetAPPSFilter(bool enabled, uint8_t samples, float alpha);
+  ADC_StatusTypeDef FEB_ADC_SetAPPSFilter(bool enabled, uint8_t samples);
 
   /**
    * @brief  Set the APPS deadzone percentage (clamped to [0, 20]).
@@ -540,38 +575,6 @@ extern "C"
    *         full scale. Drives the FSAE T.4.2.3 line-to-line short detection.
    */
   float FEB_ADC_GetAPPSRawSeparation(void);
-
-  /* ========================================================================== */
-  /*                       FILTER AND PROCESSING FUNCTIONS                     */
-  /* ========================================================================== */
-
-  /**
-   * @brief  Configure filter for specific channel
-   * @param  config: Channel configuration
-   * @param  enable: Enable/disable filter
-   * @param  samples: Number of samples for averaging
-   * @param  alpha: Low-pass filter coefficient
-   * @retval ADC_StatusTypeDef: Operation status
-   */
-  ADC_StatusTypeDef FEB_ADC_ConfigureFilter(ADC_ChannelConfigTypeDef *config, bool enable, uint8_t samples,
-                                            float alpha);
-
-  /**
-   * @brief  Apply median filter to remove outliers
-   * @param  values: Array of values
-   * @param  count: Number of values
-   * @retval float: Median filtered value
-   */
-  float FEB_ADC_MedianFilter(float *values, uint8_t count);
-
-  /**
-   * @brief  Apply low-pass filter
-   * @param  new_value: New input value
-   * @param  old_value: Previous filtered value
-   * @param  alpha: Filter coefficient (0-1)
-   * @retval float: Filtered value
-   */
-  float FEB_ADC_LowPassFilter(float new_value, float old_value, float alpha);
 
   /* ========================================================================== */
   /*                      DIAGNOSTIC AND DEBUG FUNCTIONS                       */
