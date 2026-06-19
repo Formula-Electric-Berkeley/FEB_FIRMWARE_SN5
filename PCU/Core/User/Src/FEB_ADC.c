@@ -18,6 +18,7 @@
 #include "feb_string_utils.h"
 #include "adc.h"
 #include "usart.h"
+#include <math.h>
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct

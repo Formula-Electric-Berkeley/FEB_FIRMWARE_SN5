@@ -267,7 +267,7 @@ void FEB_1ms_Callback(void)
   }
 
   apps_divider++;
-  if (apps_divider >= 100)
+  if (apps_divider >= 50)
   {
     apps_divider = 0;
     FEB_CAN_Diagnostics_TransmitAPPSData();

@@ -147,10 +147,10 @@ extern "C"
 /* Accelerator Pedal Calibration (APPS) - per-car values, post-divider
  * (sensor-side) mV: the domain FEB_ADC maps against (APPS1 = ADC pin x1.168,
  * APPS2 = pin x1.0; see VOLTAGE_DIVIDER_RATIO_ACCEL* in FEB_ADC.c). */
-#define APPS1_DEFAULT_MIN_VOLTAGE_MV 1360 /* APPS1 0% throttle */
-#define APPS1_DEFAULT_MAX_VOLTAGE_MV 2200 /* APPS1 100% throttle */
-#define APPS2_DEFAULT_MIN_VOLTAGE_MV 450  /* APPS2 0% throttle */
-#define APPS2_DEFAULT_MAX_VOLTAGE_MV 940  /* APPS2 100% throttle */
+#define APPS1_DEFAULT_MIN_VOLTAGE_MV 1375 /* APPS1 0% throttle */
+#define APPS1_DEFAULT_MAX_VOLTAGE_MV 2356 /* APPS1 100% throttle */
+#define APPS2_DEFAULT_MIN_VOLTAGE_MV 539  /* APPS2 0% throttle */
+#define APPS2_DEFAULT_MAX_VOLTAGE_MV 1320 /* APPS2 100% throttle */
 #define APPS_MIN_PHYSICAL_PERCENT 0.0f    /* Physical minimum: 0% throttle */
 #define APPS_MAX_PHYSICAL_PERCENT 100.0f  /* Physical maximum: 100% throttle */
 #define APPS_DEADZONE_PERCENT 5           /* Deadzone at pedal extremes (%) */
