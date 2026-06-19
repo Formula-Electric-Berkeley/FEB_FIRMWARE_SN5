@@ -296,6 +296,10 @@ static void FEB_CAN_RMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
     RMS_MESSAGE.run_mode = m170.inv_inverter_run_mode;
     RMS_MESSAGE.direction_command = m170.inv_direction_command;
     RMS_MESSAGE.bms_active = m170.inv_bms_active;
+    RMS_MESSAGE.start_mode_active = m170.inv_start_mode_active;
+    RMS_MESSAGE.bms_torque_limiting = m170.inv_bms_torque_limiting;
+    RMS_MESSAGE.max_speed_limiting = m170.inv_max_speed_limiting;
+    RMS_MESSAGE.low_speed_limiting = m170.inv_low_speed_limiting;
     RMS_MESSAGE.states_rx_timestamp = tick;
     break;
   }
@@ -320,10 +324,77 @@ static void FEB_CAN_RMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
     RMS_MESSAGE.torque_timer_rx_timestamp = tick;
     break;
   }
+  case FEB_CAN_M163_ANALOG_INPUT_VOLTAGES_FRAME_ID:
+  {
+    struct feb_can_m163_analog_input_voltages_t m163;
+    feb_can_m163_analog_input_voltages_unpack(&m163, data, length);
+    RMS_MESSAGE.analog_in[0] = m163.inv_analog_input_1;
+    RMS_MESSAGE.analog_in[1] = m163.inv_analog_input_2;
+    RMS_MESSAGE.analog_in[2] = m163.inv_analog_input_3;
+    RMS_MESSAGE.analog_in[3] = m163.inv_analog_input_4;
+    RMS_MESSAGE.analog_in[4] = m163.inv_analog_input_5;
+    RMS_MESSAGE.analog_in[5] = m163.inv_analog_input_6;
+    RMS_MESSAGE.analog_rx_timestamp = tick;
+    break;
+  }
+  case FEB_CAN_M164_DIGITAL_INPUT_STATUS_FRAME_ID:
+  {
+    struct feb_can_m164_digital_input_status_t m164;
+    feb_can_m164_digital_input_status_unpack(&m164, data, length);
+    RMS_MESSAGE.digital_in = (uint8_t)((m164.inv_digital_input_1 & 1u) | ((m164.inv_digital_input_2 & 1u) << 1) |
+                                       ((m164.inv_digital_input_3 & 1u) << 2) | ((m164.inv_digital_input_4 & 1u) << 3) |
+                                       ((m164.inv_digital_input_5 & 1u) << 4) | ((m164.inv_digital_input_6 & 1u) << 5) |
+                                       ((m164.inv_digital_input_7 & 1u) << 6) | ((m164.inv_digital_input_8 & 1u) << 7));
+    RMS_MESSAGE.digital_rx_timestamp = tick;
+    break;
+  }
+  case FEB_CAN_M168_FLUX_ID_IQ_INFO_FRAME_ID:
+  {
+    struct feb_can_m168_flux_id_iq_info_t m168;
+    feb_can_m168_flux_id_iq_info_unpack(&m168, data, length);
+    RMS_MESSAGE.flux_command = m168.inv_flux_command;
+    RMS_MESSAGE.flux_feedback = m168.inv_flux_feedback;
+    RMS_MESSAGE.i_d = m168.inv_id;
+    RMS_MESSAGE.i_q = m168.inv_iq;
+    RMS_MESSAGE.flux_rx_timestamp = tick;
+    break;
+  }
+  case FEB_CAN_M169_INTERNAL_VOLTAGES_FRAME_ID:
+  {
+    struct feb_can_m169_internal_voltages_t m169;
+    feb_can_m169_internal_voltages_unpack(&m169, data, length);
+    RMS_MESSAGE.ref_voltage_1_5 = m169.inv_reference_voltage_1_5;
+    RMS_MESSAGE.ref_voltage_2_5 = m169.inv_reference_voltage_2_5;
+    RMS_MESSAGE.ref_voltage_5_0 = m169.inv_reference_voltage_5_0;
+    RMS_MESSAGE.ref_voltage_12_0 = m169.inv_reference_voltage_12_0;
+    RMS_MESSAGE.intv_rx_timestamp = tick;
+    break;
+  }
+  case FEB_CAN_M173_MODULATION_AND_FLUX_INFO_FRAME_ID:
+  {
+    struct feb_can_m173_modulation_and_flux_info_t m173;
+    feb_can_m173_modulation_and_flux_info_unpack(&m173, data, length);
+    RMS_MESSAGE.modulation_index = m173.inv_modulation_index;
+    RMS_MESSAGE.flux_weakening_output = m173.inv_flux_weakening_output;
+    RMS_MESSAGE.id_command = m173.inv_id_command;
+    RMS_MESSAGE.iq_command = m173.inv_iq_command;
+    RMS_MESSAGE.mod_rx_timestamp = tick;
+    break;
+  }
+  case FEB_CAN_M174_FIRMWARE_INFO_FRAME_ID:
+  {
+    struct feb_can_m174_firmware_info_t m174;
+    feb_can_m174_firmware_info_unpack(&m174, data, length);
+    RMS_MESSAGE.fw_eeprom_version = m174.inv_project_code_eep_ver;
+    RMS_MESSAGE.fw_sw_version = m174.inv_sw_version;
+    RMS_MESSAGE.fw_date_mmdd = m174.inv_date_code_mmdd;
+    RMS_MESSAGE.fw_date_yyyy = m174.inv_date_code_yyyy;
+    RMS_MESSAGE.fw_rx_timestamp = tick;
+    break;
+  }
   default:
-    /* Other inverter frames (analog/digital in, flux, internal V, modulation,
-     * firmware, diag, param response) are captured raw above and visible via
-     * `PCU|rms|raw`; no engineering decode needed today. */
+    /* Diagnostic data (M175) and the param response (M194) are captured raw
+     * above and visible via `PCU|rms|raw`; no engineering decode needed. */
     break;
   }
 }
@@ -439,4 +510,242 @@ bool FEB_CAN_RMS_GetLastParamResponse(uint16_t *addr, bool *write_ok, int16_t *d
   if (age_ticks)
     *age_ticks = HAL_GetTick() - rec->last_rx_tick;
   return true;
+}
+
+/* Send an M193 parameter command and block (bare-metal poll) for the M194 whose
+ * echoed address matches `addr`. Correlates by watching the param-response
+ * frame counter advance, snapshotting the 8 bytes, and re-checking the counter
+ * to reject torn ISR writes. Returns false on timeout or unrecognized address
+ * (the inverter echoes address 0 for an unknown parameter). */
+static bool rms_param_request(uint16_t addr, uint8_t rw, int16_t data, uint32_t timeout_ms,
+                              struct feb_can_m194_read_write_param_response_t *out)
+{
+  RMS_Frame_Record_t *rec = &RMS_FRAMES[FEB_CAN_RMS_FRAME_PARAM_RESP_IDX];
+  uint32_t prev_count = rec->count;
+
+  send_rms_param(addr, rw, data, rw ? "param write" : "param read");
+
+  uint32_t start = HAL_GetTick();
+  while ((HAL_GetTick() - start) < timeout_ms)
+  {
+    uint32_t c = rec->count;
+    if (c != prev_count)
+    {
+      uint8_t buf[FEB_CAN_M194_READ_WRITE_PARAM_RESPONSE_LENGTH];
+      for (size_t i = 0; i < sizeof(buf); i++)
+        buf[i] = rec->data[i];
+      if (rec->count != c)
+        continue; /* torn read mid-ISR; retry */
+
+      struct feb_can_m194_read_write_param_response_t resp = {0};
+      if (feb_can_m194_read_write_param_response_unpack(&resp, buf, sizeof(buf)) >= 0)
+      {
+        if (resp.inv_parameter_address_response == addr)
+        {
+          if (out)
+            *out = resp;
+          return true;
+        }
+        if (resp.inv_parameter_address_response == 0u && addr != 0u)
+          return false; /* inverter reports address unrecognized — definitive */
+      }
+      prev_count = c; /* a response for some other address; keep waiting for ours */
+    }
+    HAL_Delay(1);
+  }
+  return false;
+}
+
+bool FEB_CAN_RMS_ReadParam(uint16_t addr, int16_t *out_value, uint32_t timeout_ms)
+{
+  struct feb_can_m194_read_write_param_response_t resp;
+  if (!rms_param_request(addr, 0u, 0, timeout_ms, &resp))
+    return false;
+  if (out_value)
+    *out_value = resp.inv_data_response;
+  return true;
+}
+
+bool FEB_CAN_RMS_WriteParam(uint16_t addr, int16_t value, bool *out_write_ok, uint32_t timeout_ms)
+{
+  struct feb_can_m194_read_write_param_response_t resp;
+  if (!rms_param_request(addr, 1u, value, timeout_ms, &resp))
+    return false;
+  if (out_write_ok)
+    *out_write_ok = resp.inv_write_success != 0;
+  return true;
+}
+
+/* ===========================================================================
+ * Datasheet lookup tables — Cascadia "CAN Protocol" V6.3.
+ * Fault bit names: pp.28-29 (0x0AB Fault Codes). Parameter names: pp.39-53.
+ * NULL fault names are Reserved bits. Gen3/Gen5 splits noted where they differ.
+ * =========================================================================== */
+
+/* POST faults — bits 0..15 (POST Fault Lo), 16..31 (POST Fault Hi). */
+static const char *const RMS_POST_FAULT_LO[16] = {
+    "Hardware Gate/Desaturation", "HW Over-current",       "Accelerator Shorted",     "Accelerator Open",
+    "Current Sensor Low",         "Current Sensor High",   "Module Temp Low",         "Module Temp High",
+    "Control PCB Temp Low",       "Control PCB Temp High", "Gate Drive PCB Temp Low", "Gate Drive PCB Temp High",
+    "5V Sense Voltage Low",       "5V Sense Voltage High", "12V Sense Voltage Low",   "12V Sense Voltage High"};
+static const char *const RMS_POST_FAULT_HI[16] = {
+    "2.5V Sense Voltage Low",  "2.5V Sense Voltage High",  "1.5V Sense Voltage Low", "1.5V Sense Voltage High",
+    "DC Bus Voltage High",     "DC Bus Voltage Low",       "Pre-charge Timeout",     "Pre-charge Voltage Failure",
+    "EEPROM Checksum Invalid", "EEPROM Data Out of Range", "EEPROM Update Required", "HW DC Bus Over-Voltage (init)",
+    "Gate Driver Init (Gen5)", NULL /*Reserved*/,          "Brake Shorted",          "Brake Open"};
+/* RUN faults — bits 32..47 (RUN Fault Lo), 48..63 (RUN Fault Hi). */
+static const char *const RMS_RUN_FAULT_LO[16] = {
+    "Motor Over-speed",           "Over-current",           "Over-voltage",      "Inverter Over-temperature",
+    "Accelerator Input Shorted",  "Accelerator Input Open", "Direction Command", "Inverter Response Time-out",
+    "Hardware Gate/Desaturation", "Hardware Over-current",  "Under-voltage",     "CAN Command Message Lost",
+    "Motor Over-temperature",     NULL /*Reserved*/,        NULL /*Reserved*/,   NULL /*Reserved*/};
+static const char *const RMS_RUN_FAULT_HI[16] = {"Brake Input Shorted",
+                                                 "Brake Input Open",
+                                                 "Module A Over-temperature",
+                                                 "Module B Over-temperature",
+                                                 "Module C Over-temperature",
+                                                 "PCB Over-temperature",
+                                                 "Gate Drive Board 1 Over-temp",
+                                                 "Gate Drive Board 2 Over-temp",
+                                                 "Gate Drive Board 3 Over-temp",
+                                                 "Current Sensor Fault",
+                                                 "Gate Driver Over-Voltage (Gen5)",
+                                                 "HW DC Bus Over-Voltage (Gen3)",
+                                                 "HW DC Bus Over-voltage (Gen5)",
+                                                 NULL /*Reserved*/,
+                                                 "Resolver Not Connected",
+                                                 NULL /*Reserved*/};
+
+const char *FEB_CAN_RMS_FaultName(uint8_t bit)
+{
+  if (bit < 16)
+    return RMS_POST_FAULT_LO[bit];
+  if (bit < 32)
+    return RMS_POST_FAULT_HI[bit - 16];
+  if (bit < 48)
+    return RMS_RUN_FAULT_LO[bit - 32];
+  if (bit < 64)
+    return RMS_RUN_FAULT_HI[bit - 48];
+  return NULL;
+}
+
+/* Documented parameter addresses (Command 0-99 + User EEPROM 100-499), sorted by
+ * address. Used to label reads and to drive `readall`. */
+static const FEB_RMS_Param_t RMS_PARAMS[] = {
+    {1, "Relay Command"},
+    {10, "Flux Command"},
+    {11, "Resolver PWM Delay Cmd"},
+    {12, "Gamma Adjust GUI Cmd"},
+    {20, "Fault Clear"},
+    {21, "Set PWM Frequency"},
+    {22, "AIN Pull-up Control"},
+    {23, "Shudder Comp Gain Ctrl"},
+    {30, "OBD2 Enable Command"},
+    {31, "Diag Data Trigger"},
+    {100, "Iq Limit"},
+    {101, "Id Limit"},
+    {102, "DC Voltage Limit"},
+    {103, "DC Voltage Hysteresis"},
+    {104, "DC Under-voltage Limit"},
+    {106, "Vehicle Flux Command"},
+    {107, "Ia Offset"},
+    {108, "Ib Offset"},
+    {109, "Ic Offset"},
+    {111, "Motor Over-speed"},
+    {112, "Inverter Over-Temp Limit"},
+    {113, "Motor Over-Temp Limit"},
+    {114, "Zero Torque Temp"},
+    {115, "Full Torque Temp"},
+    {120, "ACCEL Pedal Low"},
+    {121, "ACCEL Pedal Min"},
+    {122, "ACCEL Coast Low"},
+    {123, "ACCEL Coast High"},
+    {124, "ACCEL Pedal Max"},
+    {125, "ACCEL Pedal High"},
+    {126, "REGEN Fade Speed"},
+    {127, "Break Speed"},
+    {128, "Max Speed"},
+    {129, "Motor Torque Limit"},
+    {130, "REGEN Torque Limit"},
+    {131, "Braking Torque Limit"},
+    {132, "Accel Pedal Flipped"},
+    {140, "Pre-charge Bypassed"},
+    {141, "CAN ID Offset"},
+    {142, "Inverter Run Mode"},
+    {143, "Inverter Command Mode"},
+    {144, "CAN Extended Msg ID"},
+    {145, "CAN Term Resistor Present"},
+    {146, "CAN Command Msg Active"},
+    {147, "CAN Bit Rate"},
+    {148, "CAN Active Messages Lo"},
+    {149, "Key Switch Mode"},
+    {150, "Motor Parameter Set"},
+    {151, "Resolver PWM Delay"},
+    {152, "Gamma Adjust"},
+    {154, "Sin Offset"},
+    {155, "Cos Offset"},
+    {156, "Sin ADC Offset"},
+    {157, "Cos ADC Offset"},
+    {158, "CAN Diag Data Tx Active"},
+    {159, "CAN Inv Enable Switch Active"},
+    {160, "Kp Speed"},
+    {161, "Ki Speed"},
+    {162, "Kd Speed"},
+    {163, "Klp Speed"},
+    {164, "Kp Torque"},
+    {165, "Ki Torque"},
+    {166, "Kd Torque"},
+    {167, "Klp Torque"},
+    {168, "Torque Rate Limit"},
+    {169, "Speed Rate Limit"},
+    {170, "Relay Output State"},
+    {171, "CAN J1939 Option Active"},
+    {172, "CAN Timeout"},
+    {173, "Discharge Enable"},
+    {174, "Serial Number"},
+    {177, "CAN OBD2 Enable"},
+    {178, "CAN BMS Limit Enable"},
+    {187, "Shudder Comp Enable"},
+    {188, "Kp Shudder"},
+    {189, "TCLAMP Shudder"},
+    {190, "Shudder Filter Frequency"},
+    {191, "Shudder Speed Fade"},
+    {192, "Shudder Speed Low"},
+    {193, "Shudder Speed High"},
+    {203, "RTD Selection"},
+    {204, "Analog Output Func Select"},
+    {233, "CAN Slave Cmd ID"},
+    {234, "CAN Slave Dir"},
+    {235, "CAN Fast Msg Rate"},
+    {236, "CAN Slow Msg Rate"},
+    {237, "CAN Active Messages Hi"},
+    {238, "CAN Debounce Counter Max"},
+    {239, "CAN Debounce Up Count"},
+    {240, "CAN Debounce Down Count"},
+    {241, "PWM Frequency"},
+    {242, "PWM High Current Limit"},
+    {243, "PWM High Current Speed Limit"},
+    {244, "High Current PWM Frequency"},
+    {245, "PWM High Speed Limit/Stall PWM"},
+    {246, "High Speed PWM Freq/Min Cont PWM"},
+    {247, "Maximum Continuous PWM"},
+    {248, "Continuous PWM Dwell Time"},
+    {250, "PWM Mode Configuration"},
+    {251, "Self-Sense Assist Enabled"},
+};
+#define RMS_PARAMS_COUNT (sizeof(RMS_PARAMS) / sizeof(RMS_PARAMS[0]))
+
+const char *FEB_CAN_RMS_ParamName(uint16_t addr)
+{
+  for (size_t i = 0; i < RMS_PARAMS_COUNT; i++)
+    if (RMS_PARAMS[i].addr == addr)
+      return RMS_PARAMS[i].name;
+  return NULL;
+}
+
+const FEB_RMS_Param_t *FEB_CAN_RMS_ParamTable(size_t *count)
+{
+  if (count)
+    *count = RMS_PARAMS_COUNT;
+  return RMS_PARAMS;
 }

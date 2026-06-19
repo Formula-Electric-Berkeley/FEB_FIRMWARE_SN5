@@ -104,6 +104,48 @@ typedef struct RMS_MESSAGE_TYPE
   volatile int16_t inv_commanded_torque;       // inverter-echoed commanded torque (tenths of Nm)
   volatile uint32_t power_on_timer;            // INV_Power_On_Timer (units of 3 ms)
   volatile uint32_t torque_timer_rx_timestamp; // 0 = never received an M172 frame
+
+  /* M170 extra limiting / mode bits (0x0AA) */
+  volatile uint8_t start_mode_active;   // INV_Start_Mode_Active
+  volatile uint8_t bms_torque_limiting; // INV_BMS_Torque_Limiting
+  volatile uint8_t max_speed_limiting;  // INV_Max_Speed_Limiting
+  volatile uint8_t low_speed_limiting;  // INV_Low_Speed_Limiting
+
+  /* Analog inputs (M163 / 0x0A3) — hundredths of V (0..10.23 V) */
+  volatile uint16_t analog_in[6];
+  volatile uint32_t analog_rx_timestamp;
+
+  /* Digital inputs (M164 / 0x0A4) — bits 0..7 = DIN1..DIN8 */
+  volatile uint8_t digital_in;
+  volatile uint32_t digital_rx_timestamp;
+
+  /* Flux / Id / Iq (M168 / 0x0A8) */
+  volatile int16_t flux_command;  // thousandths of Wb
+  volatile int16_t flux_feedback; // thousandths of Wb
+  volatile int16_t i_d;           // tenths of A (D-axis)
+  volatile int16_t i_q;           // tenths of A (Q-axis)
+  volatile uint32_t flux_rx_timestamp;
+
+  /* Internal reference voltages (M169 / 0x0A9) — hundredths of V */
+  volatile int16_t ref_voltage_1_5;
+  volatile int16_t ref_voltage_2_5;
+  volatile int16_t ref_voltage_5_0;  // transducer supply
+  volatile int16_t ref_voltage_12_0; // 12 V input
+  volatile uint32_t intv_rx_timestamp;
+
+  /* Modulation index & flux weakening (M173 / 0x0AD) */
+  volatile int16_t modulation_index;      // raw; actual = raw / 100
+  volatile int16_t flux_weakening_output; // tenths of A
+  volatile int16_t id_command;            // tenths of A
+  volatile int16_t iq_command;            // tenths of A
+  volatile uint32_t mod_rx_timestamp;
+
+  /* Firmware info (M174 / 0x0AE) */
+  volatile uint16_t fw_eeprom_version;
+  volatile uint16_t fw_sw_version;
+  volatile uint16_t fw_date_mmdd;
+  volatile uint16_t fw_date_yyyy;
+  volatile uint32_t fw_rx_timestamp;
 } RMS_MESSAGE_TYPE;
 
 // Global variable - defined in FEB_CAN_RMS.c
@@ -131,6 +173,32 @@ void FEB_CAN_RMS_Transmit_PrechargeBypass(bool bypass);
 // Decode the most recent M194 parameter response (0x0C2). Returns false if no
 // response has been received. Used to confirm an M193 write took effect.
 bool FEB_CAN_RMS_GetLastParamResponse(uint16_t *addr, bool *write_ok, int16_t *data, uint32_t *age_ticks);
+
+// Generic parameter access (M193 command -> M194 response). Each call sends the
+// command then blocks (bare-metal poll) up to timeout_ms for the M194 whose
+// echoed address matches `addr`. Returns false on timeout or unrecognized
+// address (the inverter echoes address 0 for an unknown parameter).
+//  - Reads are always safe.
+//  - EEPROM writes (addresses 100..499) require the motor disabled — the
+//    inverter rejects them otherwise; the caller enforces the guard.
+bool FEB_CAN_RMS_ReadParam(uint16_t addr, int16_t *out_value, uint32_t timeout_ms);
+bool FEB_CAN_RMS_WriteParam(uint16_t addr, int16_t value, bool *out_write_ok, uint32_t timeout_ms);
+
+// Datasheet lookups (Cascadia "CAN Protocol" V6.3).
+// FaultName: M171 fault bit 0..63 — POST Lo/Hi = bits 0..31, RUN Lo/Hi = bits
+// 32..63. Returns NULL for reserved/undocumented bits.
+const char *FEB_CAN_RMS_FaultName(uint8_t bit);
+
+// ParamName: human name for a CAN parameter address (command or EEPROM), or NULL.
+const char *FEB_CAN_RMS_ParamName(uint16_t addr);
+
+// Documented parameter table, sorted by address (used by `readall`).
+typedef struct
+{
+  uint16_t addr;
+  const char *name;
+} FEB_RMS_Param_t;
+const FEB_RMS_Param_t *FEB_CAN_RMS_ParamTable(size_t *count);
 
 // Accessor functions for console commands
 float FEB_CAN_RMS_getDCBusVoltage(void);

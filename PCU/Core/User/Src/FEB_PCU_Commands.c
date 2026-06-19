@@ -31,12 +31,15 @@ static void print_pcu_help(void)
   FEB_Console_Printf("  PCU|apps     - APPS summary (use PCU|apps alone for sub-commands)\r\n");
   FEB_Console_Printf("  PCU|brake    - Show brake sensor values and status\r\n");
   FEB_Console_Printf("  PCU|brake|bypass|<on|off>  - Bench brake/BSPD bypass (refused if BMS on bus)\r\n");
-  FEB_Console_Printf("  PCU|rms      - Show RMS motor controller status\r\n");
+  FEB_Console_Printf("  PCU|rms      - Full RMS inverter telemetry (state/volts/current/temps/fw)\r\n");
   FEB_Console_Printf("  PCU|rms|raw  - Dump every inverter frame seen (raw bytes + age)\r\n");
   FEB_Console_Printf("  PCU|rms|<enable|disable>   - Manually enable/disable inverter (bench)\r\n");
   FEB_Console_Printf("  PCU|rms|clearfault         - Clear inverter (RMS) latched faults\r\n");
-  FEB_Console_Printf("  PCU|rms|eeprom|precharge|<on|off>  - Enable/disable inverter internal precharge (EEPROM; "
-                     "disable inverter first)\r\n");
+  FEB_Console_Printf("  PCU|rms|faults             - Decode active inverter faults by name\r\n");
+  FEB_Console_Printf("  PCU|rms|eeprom|read|<id>           - Read any inverter parameter (dec or 0xHEX)\r\n");
+  FEB_Console_Printf("  PCU|rms|eeprom|write|<id>|<value>  - Write a parameter (disable inverter first)\r\n");
+  FEB_Console_Printf("  PCU|rms|eeprom|readall             - Read all documented EEPROM params\r\n");
+  FEB_Console_Printf("  PCU|rms|eeprom|precharge|<on|off>  - Alias for param 140 (off = bypass precharge)\r\n");
   FEB_Console_Printf("  PCU|tps      - Show TPS2482 voltage/current monitoring\r\n");
   FEB_Console_Printf("  PCU|bms      - Show BMS state information\r\n");
   FEB_Console_Printf("  PCU|bms|state|<drive|0-13|off>  - Sim BMS state (bench only, refused if BMS on bus)\r\n");
@@ -256,6 +259,84 @@ static const char *vsm_state_name(uint8_t s)
   }
 }
 
+/* Decode the M170 INV_Inverter_State enum (datasheet 0x0AA). */
+static const char *inverter_state_name(uint8_t s)
+{
+  switch (s)
+  {
+  case 0:
+    return "Power up";
+  case 1:
+    return "Stop";
+  case 2:
+    return "Open Loop";
+  case 3:
+    return "Closed Loop";
+  case 8:
+    return "Idle Run";
+  case 9:
+    return "Idle Stop";
+  default:
+    return "Internal";
+  }
+}
+
+/* Decode the M170 INV_Inverter_Discharge_State (datasheet 0x0AA). */
+static const char *discharge_state_name(uint8_t s)
+{
+  switch (s)
+  {
+  case 0:
+    return "Disabled";
+  case 1:
+    return "Enabled";
+  case 2:
+    return "Speed Check";
+  case 3:
+    return "Active";
+  case 4:
+    return "Complete";
+  default:
+    return "?";
+  }
+}
+
+/* Parse a decimal or 0xHEX integer token. Returns false on empty/garbage. */
+static bool parse_long(const char *s, long *out)
+{
+  if (s == NULL || *s == '\0')
+    return false;
+  char *end = NULL;
+  long v = strtol(s, &end, 0);
+  if (end == s || *end != '\0')
+    return false;
+  *out = v;
+  return true;
+}
+
+/* Walk the four M171 fault words, printing each active bit by datasheet name.
+ * Returns the number of active fault bits found. */
+static int print_active_faults(void)
+{
+  const uint16_t words[4] = {FEB_CAN_RMS_getPostFaultLo(), FEB_CAN_RMS_getPostFaultHi(), FEB_CAN_RMS_getRunFaultLo(),
+                             FEB_CAN_RMS_getRunFaultHi()};
+  static const char *const wname[4] = {"POSTlo", "POSThi", "RUNlo", "RUNhi"};
+  int n = 0;
+  for (int w = 0; w < 4; w++)
+  {
+    for (int b = 0; b < 16; b++)
+    {
+      if (words[w] & (1u << b))
+      {
+        const char *name = FEB_CAN_RMS_FaultName((uint8_t)(w * 16 + b));
+        FEB_Console_Printf("    [%s b%-2d] %s\r\n", wname[w], b, name ? name : "(reserved)");
+        n++;
+      }
+    }
+  }
+  return n;
+}
+
 /* Short names for the inverter broadcast block, indexed by frame-table slot
  * (slot i == CAN ID 0x0A0 + i for the M160..M175 block). */
 static const char *rms_frame_name(int slot)
@@ -298,65 +379,146 @@ static void cmd_rms_raw(void)
     FEB_Console_Printf("  (no inverter frames seen — check bus wiring / inverter power)\r\n");
 }
 
-/* `PCU|rms|eeprom|...` — explicit, guarded inverter EEPROM parameter writes.
- * Only `precharge` exists today; the namespace leaves room for more. */
+#define RMS_PARAM_TIMEOUT_MS 60u
+
+static void eeprom_print_one(uint16_t addr, int16_t value)
+{
+  const char *name = FEB_CAN_RMS_ParamName(addr);
+  FEB_Console_Printf("  %3u (0x%03X)  %-30s = %6d  (0x%04X)\r\n", addr, addr, name ? name : "(undocumented)", value,
+                     (uint16_t)value);
+}
+
+/* `PCU|rms|eeprom|...` — generic inverter parameter access over UART (M193/M194):
+ *   read|<id>            read any parameter (id decimal or 0xHEX). Always safe.
+ *   write|<id>|<value>   write a parameter (16-bit; decimal/0xHEX/signed). Guarded:
+ *                        inverter must be disabled — EEPROM (100..499) is rejected
+ *                        by the inverter while the motor runs, and writes persist.
+ *   readall              read every documented EEPROM parameter (100..499).
+ *   precharge|<on|off>   convenience alias for param 140 (off = bypass precharge).
+ */
 static void cmd_rms_eeprom(int argc, char *argv[])
 {
-  if (argc < 3 || FEB_strcasecmp(argv[1], "precharge") != 0)
-  {
-    FEB_Console_Printf("Usage: PCU|rms|eeprom|precharge|<on|off>\r\n");
-    FEB_Console_Printf("  on  = inverter runs its own precharge (normal)\r\n");
-    FEB_Console_Printf("  off = inverter internal precharge DISABLED (bypass)\r\n");
-    return;
-  }
+  const char *sub = (argc >= 2) ? argv[1] : "";
 
-  bool precharge_on;
-  if (FEB_strcasecmp(argv[2], "on") == 0)
-    precharge_on = true;
-  else if (FEB_strcasecmp(argv[2], "off") == 0)
-    precharge_on = false;
-  else
+  if (FEB_strcasecmp(sub, "read") == 0)
   {
-    FEB_Console_Printf("Invalid argument '%s' (expected on|off)\r\n", argv[2]);
-    return;
-  }
-
-  /* Guard: param 140 is a persistent EEPROM write — never do it while the
-   * inverter is commanded enabled. Require PCU|rms|disable first. */
-  if (RMS_CONTROL_MESSAGE.enabled)
-  {
-    FEB_Console_Printf("Refused: inverter is enabled. Run PCU|rms|disable first.\r\n");
-    return;
-  }
-
-  /* precharge ON -> bypass OFF (data 0); precharge OFF -> bypass ON (data 1). */
-  bool bypass = !precharge_on;
-  FEB_Console_Printf("Writing inverter EEPROM: precharge %s (param 140 = %d)...\r\n",
-                     precharge_on ? "ENABLED" : "DISABLED (bypass)", bypass ? 1 : 0);
-  FEB_CAN_RMS_Transmit_PrechargeBypass(bypass);
-
-  /* Poll briefly for the M194 write-success response (param 140, fresh). */
-  uint16_t addr = 0;
-  int16_t data = 0;
-  uint32_t age = 0;
-  bool write_ok = false;
-  bool got = false;
-  for (int i = 0; i < 20; i++)
-  {
-    HAL_Delay(5);
-    if (FEB_CAN_RMS_GetLastParamResponse(&addr, &write_ok, &data, &age) && addr == 140u && age <= 200u)
+    long id;
+    if (argc < 3 || !parse_long(argv[2], &id) || id < 0 || id > 0xFFFF)
     {
-      got = true;
-      break;
+      FEB_Console_Printf("Usage: PCU|rms|eeprom|read|<id>   (id decimal or 0xHEX)\r\n");
+      return;
     }
+    int16_t value;
+    if (FEB_CAN_RMS_ReadParam((uint16_t)id, &value, RMS_PARAM_TIMEOUT_MS))
+      eeprom_print_one((uint16_t)id, value);
+    else
+      FEB_Console_Printf("Param %ld read FAILED (no response / address unrecognized)\r\n", id);
+    return;
   }
 
-  if (!got)
-    FEB_Console_Printf("No M194 response from inverter (is it powered / on the bus?)\r\n");
-  else if (write_ok)
-    FEB_Console_Printf("Inverter confirmed write OK (param 140 = %d)\r\n", data);
-  else
-    FEB_Console_Printf("Inverter reported write FAILURE (param 140)\r\n");
+  if (FEB_strcasecmp(sub, "readall") == 0)
+  {
+    size_t n;
+    const FEB_RMS_Param_t *tbl = FEB_CAN_RMS_ParamTable(&n);
+    FEB_Console_Printf("=== RMS EEPROM Parameters (documented, 100..499) ===\r\n");
+    int read = 0, miss = 0;
+    for (size_t i = 0; i < n; i++)
+    {
+      if (tbl[i].addr < 100u || tbl[i].addr > 499u)
+        continue; /* skip 0..99 command params */
+      int16_t value;
+      if (FEB_CAN_RMS_ReadParam(tbl[i].addr, &value, RMS_PARAM_TIMEOUT_MS))
+      {
+        eeprom_print_one(tbl[i].addr, value);
+        read++;
+      }
+      else
+      {
+        FEB_Console_Printf("  %3u (0x%03X)  %-30s = (no response)\r\n", tbl[i].addr, tbl[i].addr, tbl[i].name);
+        miss++;
+      }
+    }
+    FEB_Console_Printf("Read %d params, %d no-response. (undocumented addresses: PCU|rms|eeprom|read|<id>)\r\n", read,
+                       miss);
+    return;
+  }
+
+  if (FEB_strcasecmp(sub, "write") == 0 || FEB_strcasecmp(sub, "precharge") == 0)
+  {
+    uint16_t addr;
+    int16_t value;
+    if (FEB_strcasecmp(sub, "precharge") == 0)
+    {
+      if (argc < 3 || (FEB_strcasecmp(argv[2], "on") != 0 && FEB_strcasecmp(argv[2], "off") != 0))
+      {
+        FEB_Console_Printf("Usage: PCU|rms|eeprom|precharge|<on|off>  (off = bypass inverter precharge)\r\n");
+        return;
+      }
+      /* precharge on -> bypass 0 (normal); off -> bypass 1 (disabled). */
+      addr = 140u;
+      value = (FEB_strcasecmp(argv[2], "off") == 0) ? 1 : 0;
+    }
+    else
+    {
+      long id, v;
+      if (argc < 4 || !parse_long(argv[2], &id) || id < 0 || id > 0xFFFF || !parse_long(argv[3], &v) || v < -32768 ||
+          v > 0xFFFF)
+      {
+        FEB_Console_Printf("Usage: PCU|rms|eeprom|write|<id>|<value>   (decimal or 0xHEX)\r\n");
+        return;
+      }
+      addr = (uint16_t)id;
+      value = (int16_t)v;
+    }
+
+    /* Guard: EEPROM writes are persistent and the inverter only accepts them
+     * with the motor disabled (datasheet p.38). Require PCU|rms|disable first. */
+    if (RMS_CONTROL_MESSAGE.enabled)
+    {
+      FEB_Console_Printf("Refused: inverter is enabled. Run PCU|rms|disable first.\r\n");
+      return;
+    }
+    if (addr < 100u || addr > 499u)
+      FEB_Console_Printf("Note: address %u is outside EEPROM range (100..499) — a command/transient param.\r\n", addr);
+
+    const char *name = FEB_CAN_RMS_ParamName(addr);
+    FEB_Console_Printf("Writing param %u (0x%03X) %s = %d (0x%04X)...\r\n", addr, addr, name ? name : "(undocumented)",
+                       value, (uint16_t)value);
+    bool ok = false;
+    if (FEB_CAN_RMS_WriteParam(addr, value, &ok, RMS_PARAM_TIMEOUT_MS))
+      FEB_Console_Printf(ok ? "Inverter confirmed write OK\r\n" : "Inverter reported write FAILURE\r\n");
+    else
+      FEB_Console_Printf("No M194 response from inverter (is it powered / on the bus?)\r\n");
+    return;
+  }
+
+  FEB_Console_Printf("Usage: PCU|rms|eeprom|<read|write|readall|precharge>\r\n");
+  FEB_Console_Printf("  read|<id>            read any parameter (id decimal or 0xHEX)\r\n");
+  FEB_Console_Printf("  write|<id>|<value>   write a parameter (inverter must be disabled)\r\n");
+  FEB_Console_Printf("  readall              read all documented EEPROM params (100..499)\r\n");
+  FEB_Console_Printf("  precharge|<on|off>   alias for param 140 (off = bypass precharge)\r\n");
+}
+
+/* `PCU|rms|faults` — decode the M171 fault words to named active faults. */
+static void cmd_rms_faults(void)
+{
+  FEB_Console_Printf("=== RMS Faults (M171) ===\r\n");
+  if (!FEB_CAN_RMS_FaultsSeen())
+  {
+    FEB_Console_Printf("  (no M171 broadcast — inverter silent on bus)\r\n");
+    return;
+  }
+  FEB_Console_Printf("  POST lo=0x%04X hi=0x%04X   RUN lo=0x%04X hi=0x%04X\r\n", (unsigned)FEB_CAN_RMS_getPostFaultLo(),
+                     (unsigned)FEB_CAN_RMS_getPostFaultHi(), (unsigned)FEB_CAN_RMS_getRunFaultLo(),
+                     (unsigned)FEB_CAN_RMS_getRunFaultHi());
+  if (!FEB_CAN_RMS_HasActiveFault())
+  {
+    FEB_Console_Printf("  Active faults: NONE\r\n");
+    return;
+  }
+  FEB_Console_Printf("  Active faults:\r\n");
+  print_active_faults();
+  FEB_Console_Printf("  (clear with PCU|rms|clearfault once the condition is resolved)\r\n");
 }
 
 static void cmd_rms(int argc, char *argv[])
@@ -391,6 +553,11 @@ static void cmd_rms(int argc, char *argv[])
     cmd_rms_eeprom(argc - 1, argv + 1);
     return;
   }
+  if (argc >= 2 && FEB_strcasecmp(argv[1], "faults") == 0)
+  {
+    cmd_rms_faults();
+    return;
+  }
 
   FEB_Console_Printf("=== RMS Inverter Status ===\r\n\r\n");
 
@@ -414,23 +581,29 @@ static void cmd_rms(int argc, char *argv[])
   else
   {
     uint8_t vsm = FEB_CAN_RMS_getVsmState();
+    uint8_t istate = FEB_CAN_RMS_getInverterState();
     FEB_Console_Printf("  VSM State:       %u (%s)\r\n", vsm, vsm_state_name(vsm));
-    FEB_Console_Printf("  Inverter State:  %u\r\n", FEB_CAN_RMS_getInverterState());
+    FEB_Console_Printf("  Inverter State:  %u (%s)\r\n", istate, inverter_state_name(istate));
     FEB_Console_Printf("  Enable State:    %s\r\n", FEB_CAN_RMS_getEnableState() ? "ENABLED" : "DISABLED");
     FEB_Console_Printf("  Enable Lockout:  %s\r\n", FEB_CAN_RMS_getEnableLockout() ? "LOCKED" : "clear");
-    FEB_Console_Printf("  Command Mode:    %s\r\n", FEB_CAN_RMS_getCommandModeVsm() ? "VSM" : "CAN");
-    FEB_Console_Printf("  Echoed Counter:  %u\r\n", FEB_CAN_RMS_getEchoRollingCounter());
-    FEB_Console_Printf("  Discharge State: %u   Run Mode: %s   Dir: %u   BMS Active: %u\r\n",
-                       RMS_MESSAGE.discharge_state, RMS_MESSAGE.run_mode ? "speed" : "torque",
-                       RMS_MESSAGE.direction_command, RMS_MESSAGE.bms_active);
-    FEB_Console_Printf("  Relays 1-6:      %u%u%u%u%u%u   PWM: %u kHz\r\n", (RMS_MESSAGE.relay_status >> 0) & 1u,
+    FEB_Console_Printf("  Command Mode:    %s   Run Mode: %s\r\n", FEB_CAN_RMS_getCommandModeVsm() ? "VSM" : "CAN",
+                       RMS_MESSAGE.run_mode ? "speed" : "torque");
+    FEB_Console_Printf("  Direction:       %s   Discharge: %u (%s)\r\n",
+                       RMS_MESSAGE.direction_command ? "forward" : "reverse/stopped", RMS_MESSAGE.discharge_state,
+                       discharge_state_name(RMS_MESSAGE.discharge_state));
+    FEB_Console_Printf("  Echoed Counter:  %u   PWM: %u kHz   Start Mode: %u\r\n", FEB_CAN_RMS_getEchoRollingCounter(),
+                       RMS_MESSAGE.pwm_frequency, RMS_MESSAGE.start_mode_active);
+    FEB_Console_Printf("  Relays 1-6:      %u%u%u%u%u%u\r\n", (RMS_MESSAGE.relay_status >> 0) & 1u,
                        (RMS_MESSAGE.relay_status >> 1) & 1u, (RMS_MESSAGE.relay_status >> 2) & 1u,
                        (RMS_MESSAGE.relay_status >> 3) & 1u, (RMS_MESSAGE.relay_status >> 4) & 1u,
-                       (RMS_MESSAGE.relay_status >> 5) & 1u, RMS_MESSAGE.pwm_frequency);
+                       (RMS_MESSAGE.relay_status >> 5) & 1u);
+    FEB_Console_Printf("  BMS Active: %u   BMS Trq Limit: %u   Max-Spd Limit: %u   Low-Spd Limit: %u\r\n",
+                       RMS_MESSAGE.bms_active, RMS_MESSAGE.bms_torque_limiting, RMS_MESSAGE.max_speed_limiting,
+                       RMS_MESSAGE.low_speed_limiting);
   }
   FEB_Console_Printf("\r\n");
 
-  /* Fault codes (M171). Bitfields — see PM100 manual for decode. */
+  /* Fault codes (M171), decoded to names from the datasheet. */
   FEB_Console_Printf("Faults (M171):\r\n");
   if (!FEB_CAN_RMS_FaultsSeen())
   {
@@ -438,36 +611,93 @@ static void cmd_rms(int argc, char *argv[])
   }
   else
   {
-    FEB_Console_Printf("  POST lo=0x%04X hi=0x%04X  RUN lo=0x%04X hi=0x%04X  -> %s\r\n",
+    FEB_Console_Printf("  POST lo=0x%04X hi=0x%04X  RUN lo=0x%04X hi=0x%04X\r\n",
                        (unsigned)FEB_CAN_RMS_getPostFaultLo(), (unsigned)FEB_CAN_RMS_getPostFaultHi(),
-                       (unsigned)FEB_CAN_RMS_getRunFaultLo(), (unsigned)FEB_CAN_RMS_getRunFaultHi(),
-                       FEB_CAN_RMS_HasActiveFault() ? "ACTIVE" : "NONE");
+                       (unsigned)FEB_CAN_RMS_getRunFaultLo(), (unsigned)FEB_CAN_RMS_getRunFaultHi());
+    if (!FEB_CAN_RMS_HasActiveFault())
+      FEB_Console_Printf("  Active: NONE\r\n");
+    else
+    {
+      FEB_Console_Printf("  Active:\r\n");
+      print_active_faults();
+    }
   }
   FEB_Console_Printf("\r\n");
 
-  /* Measured analog (M165 motor, M166 current, M167 voltage, M16x temps). */
-  FEB_Console_Printf("Measured:\r\n");
-  FEB_Console_Printf("  DC Bus Voltage:  %.1f V   (out %.1f / Vab %.1f / Vbc %.1f V)\r\n",
+  /* Voltages (M167 bus/output + M169 internal references). */
+  FEB_Console_Printf("Voltages:\r\n");
+  FEB_Console_Printf("  DC Bus: %.1f V   Output: %.1f V   Vab/Vd: %.1f V   Vbc/Vq: %.1f V\r\n",
                      FEB_CAN_RMS_getDCBusVoltage(), RMS_MESSAGE.output_voltage / 10.0f,
                      RMS_MESSAGE.vab_vd_voltage / 10.0f, RMS_MESSAGE.vbc_voltage / 10.0f);
-  FEB_Console_Printf("  Motor Speed:     %d RPM   Elec Freq: %.1f Hz\r\n", FEB_CAN_RMS_getMotorSpeed(),
-                     RMS_MESSAGE.electrical_freq / 10.0f);
-  FEB_Console_Printf("  Motor Angle:     %.1f deg\r\n", FEB_CAN_RMS_getMotorAngle() / 10.0f);
-  FEB_Console_Printf("  Feedback Torque: %.1f Nm   (inv cmd echo %.1f Nm)\r\n", FEB_CAN_RMS_getTorqueFeedback(),
-                     RMS_MESSAGE.inv_commanded_torque / 10.0f);
+  if (RMS_MESSAGE.intv_rx_timestamp != 0)
+    FEB_Console_Printf("  Internal: 1.5V=%.2f  2.5V=%.2f  5V=%.2f  12V=%.2f\r\n", RMS_MESSAGE.ref_voltage_1_5 / 100.0f,
+                       RMS_MESSAGE.ref_voltage_2_5 / 100.0f, RMS_MESSAGE.ref_voltage_5_0 / 100.0f,
+                       RMS_MESSAGE.ref_voltage_12_0 / 100.0f);
+  FEB_Console_Printf("\r\n");
+
+  /* Currents (M166 phase/DC + M168 Id/Iq). */
+  FEB_Console_Printf("Currents:\r\n");
   if (RMS_MESSAGE.current_rx_timestamp != 0)
-    FEB_Console_Printf("  Phase Currents:  A %.1f  B %.1f  C %.1f A   DC Bus: %.1f A\r\n",
-                       RMS_MESSAGE.phase_a_current / 10.0f, RMS_MESSAGE.phase_b_current / 10.0f,
-                       RMS_MESSAGE.phase_c_current / 10.0f, RMS_MESSAGE.dc_bus_current / 10.0f);
+    FEB_Console_Printf("  Phase A %.1f  B %.1f  C %.1f A   DC Bus %.1f A\r\n", RMS_MESSAGE.phase_a_current / 10.0f,
+                       RMS_MESSAGE.phase_b_current / 10.0f, RMS_MESSAGE.phase_c_current / 10.0f,
+                       RMS_MESSAGE.dc_bus_current / 10.0f);
+  if (RMS_MESSAGE.flux_rx_timestamp != 0)
+    FEB_Console_Printf("  Id %.1f A   Iq %.1f A   Flux cmd %.3f Wb   fb %.3f Wb\r\n", RMS_MESSAGE.i_d / 10.0f,
+                       RMS_MESSAGE.i_q / 10.0f, RMS_MESSAGE.flux_command / 1000.0f,
+                       RMS_MESSAGE.flux_feedback / 1000.0f);
+  FEB_Console_Printf("\r\n");
+
+  /* Motor + modulation (M165 + M173). */
+  FEB_Console_Printf("Motor:\r\n");
+  FEB_Console_Printf("  Speed: %d RPM   Elec Freq: %.1f Hz   Angle: %.1f deg\r\n", FEB_CAN_RMS_getMotorSpeed(),
+                     RMS_MESSAGE.electrical_freq / 10.0f, FEB_CAN_RMS_getMotorAngle() / 10.0f);
+  FEB_Console_Printf("  Cmd Torque: %.1f Nm   Feedback: %.1f Nm   (inv echo %.1f Nm)\r\n",
+                     FEB_CAN_RMS_getTorqueCommand(), FEB_CAN_RMS_getTorqueFeedback(),
+                     RMS_MESSAGE.inv_commanded_torque / 10.0f);
+  if (RMS_MESSAGE.mod_rx_timestamp != 0)
+    FEB_Console_Printf("  Modulation Idx: %.2f   Flux-Weakening Out: %.1f A   Id/Iq cmd: %.1f/%.1f A\r\n",
+                       RMS_MESSAGE.modulation_index / 100.0f, RMS_MESSAGE.flux_weakening_output / 10.0f,
+                       RMS_MESSAGE.id_command / 10.0f, RMS_MESSAGE.iq_command / 10.0f);
+  if (RMS_MESSAGE.torque_timer_rx_timestamp != 0)
+    FEB_Console_Printf("  Power-on Timer: %.1f s\r\n", RMS_MESSAGE.power_on_timer * 0.003f);
+  FEB_Console_Printf("\r\n");
+
+  /* Temperatures (M160..M162). */
   if (RMS_MESSAGE.temps_rx_timestamp != 0)
   {
-    FEB_Console_Printf("  Module Temps:    A %.1f  B %.1f  C %.1f C   Gate %.1f C\r\n",
+    FEB_Console_Printf("Temps (C):\r\n");
+    FEB_Console_Printf("  Module A %.1f  B %.1f  C %.1f   Gate %.1f   Control %.1f\r\n",
                        RMS_MESSAGE.temp_module_a / 10.0f, RMS_MESSAGE.temp_module_b / 10.0f,
-                       RMS_MESSAGE.temp_module_c / 10.0f, RMS_MESSAGE.temp_gate_driver / 10.0f);
-    FEB_Console_Printf("  Motor/Ctrl Temp: motor %.1f C  control %.1f C\r\n", RMS_MESSAGE.temp_motor / 10.0f,
+                       RMS_MESSAGE.temp_module_c / 10.0f, RMS_MESSAGE.temp_gate_driver / 10.0f,
                        RMS_MESSAGE.temp_control_board / 10.0f);
+    FEB_Console_Printf("  Motor %.1f   RTD1 %.1f  RTD2 %.1f  RTD3 %.1f  RTD4 %.1f  RTD5 %.1f\r\n",
+                       RMS_MESSAGE.temp_motor / 10.0f, RMS_MESSAGE.temp_rtd1 / 10.0f, RMS_MESSAGE.temp_rtd2 / 10.0f,
+                       RMS_MESSAGE.temp_rtd3 / 10.0f, RMS_MESSAGE.temp_rtd4 / 10.0f, RMS_MESSAGE.temp_rtd5 / 10.0f);
+    FEB_Console_Printf("\r\n");
   }
-  FEB_Console_Printf("\r\n");
+
+  /* Digital / analog I/O (M163 / M164). */
+  if (RMS_MESSAGE.digital_rx_timestamp != 0 || RMS_MESSAGE.analog_rx_timestamp != 0)
+  {
+    FEB_Console_Printf("I/O:\r\n");
+    if (RMS_MESSAGE.digital_rx_timestamp != 0)
+      FEB_Console_Printf("  Digital In 1-8: %u%u%u%u%u%u%u%u\r\n", (RMS_MESSAGE.digital_in >> 0) & 1u,
+                         (RMS_MESSAGE.digital_in >> 1) & 1u, (RMS_MESSAGE.digital_in >> 2) & 1u,
+                         (RMS_MESSAGE.digital_in >> 3) & 1u, (RMS_MESSAGE.digital_in >> 4) & 1u,
+                         (RMS_MESSAGE.digital_in >> 5) & 1u, (RMS_MESSAGE.digital_in >> 6) & 1u,
+                         (RMS_MESSAGE.digital_in >> 7) & 1u);
+    if (RMS_MESSAGE.analog_rx_timestamp != 0)
+      FEB_Console_Printf("  Analog In 1-6:  %.2f %.2f %.2f %.2f %.2f %.2f V\r\n", RMS_MESSAGE.analog_in[0] / 100.0f,
+                         RMS_MESSAGE.analog_in[1] / 100.0f, RMS_MESSAGE.analog_in[2] / 100.0f,
+                         RMS_MESSAGE.analog_in[3] / 100.0f, RMS_MESSAGE.analog_in[4] / 100.0f,
+                         RMS_MESSAGE.analog_in[5] / 100.0f);
+    FEB_Console_Printf("\r\n");
+  }
+
+  /* Firmware info (M174). */
+  if (RMS_MESSAGE.fw_rx_timestamp != 0)
+    FEB_Console_Printf("Firmware: SW v%u   EEPROM/Project v%u   Date %04u-%04u\r\n\r\n", RMS_MESSAGE.fw_sw_version,
+                       RMS_MESSAGE.fw_eeprom_version, RMS_MESSAGE.fw_date_yyyy, RMS_MESSAGE.fw_date_mmdd);
 
   /* One-line "why won't it enable" hint. */
   FEB_Console_Printf("Diagnosis: ");
@@ -699,12 +929,86 @@ static void cmd_brake_csv(int argc, char *argv[])
 
 static void cmd_rms_csv(int argc, char *argv[])
 {
-  if (argc >= 2 && FEB_strcasecmp(argv[1], "clearfault") == 0)
+  const char *sub = (argc >= 2) ? argv[1] : "";
+
+  if (FEB_strcasecmp(sub, "clearfault") == 0)
   {
     FEB_CAN_RMS_Transmit_ClearFaults();
     FEB_Console_CsvEmit("clearfault", "1");
     return;
   }
+
+  if (FEB_strcasecmp(sub, "faults") == 0)
+  {
+    /* summary: postlo,posthi,runlo,runhi,active — then one `fault,bit,name` row each. */
+    FEB_Console_CsvEmit("faults", "0x%04X,0x%04X,0x%04X,0x%04X,%d", (unsigned)FEB_CAN_RMS_getPostFaultLo(),
+                        (unsigned)FEB_CAN_RMS_getPostFaultHi(), (unsigned)FEB_CAN_RMS_getRunFaultLo(),
+                        (unsigned)FEB_CAN_RMS_getRunFaultHi(), FEB_CAN_RMS_HasActiveFault() ? 1 : 0);
+    const uint16_t words[4] = {FEB_CAN_RMS_getPostFaultLo(), FEB_CAN_RMS_getPostFaultHi(), FEB_CAN_RMS_getRunFaultLo(),
+                               FEB_CAN_RMS_getRunFaultHi()};
+    for (int w = 0; w < 4; w++)
+      for (int b = 0; b < 16; b++)
+        if (words[w] & (1u << b))
+        {
+          const char *name = FEB_CAN_RMS_FaultName((uint8_t)(w * 16 + b));
+          FEB_Console_CsvEmit("fault", "%d,%s", w * 16 + b, name ? name : "reserved");
+        }
+    return;
+  }
+
+  if (FEB_strcasecmp(sub, "eeprom") == 0)
+  {
+    const char *op = (argc >= 3) ? argv[2] : "";
+    if (FEB_strcasecmp(op, "read") == 0)
+    {
+      long id;
+      if (argc < 4 || !parse_long(argv[3], &id) || id < 0 || id > 0xFFFF)
+      {
+        FEB_Console_CsvEmit("error", "usage,read|<id>");
+        return;
+      }
+      int16_t value = 0;
+      bool ok = FEB_CAN_RMS_ReadParam((uint16_t)id, &value, RMS_PARAM_TIMEOUT_MS);
+      FEB_Console_CsvEmit("eeprom", "%ld,%d,%d", id, ok ? 1 : 0, ok ? value : 0);
+      return;
+    }
+    if (FEB_strcasecmp(op, "readall") == 0)
+    {
+      size_t n;
+      const FEB_RMS_Param_t *tbl = FEB_CAN_RMS_ParamTable(&n);
+      for (size_t i = 0; i < n; i++)
+      {
+        if (tbl[i].addr < 100u || tbl[i].addr > 499u)
+          continue;
+        int16_t value = 0;
+        bool ok = FEB_CAN_RMS_ReadParam(tbl[i].addr, &value, RMS_PARAM_TIMEOUT_MS);
+        FEB_Console_CsvEmit("eeprom", "%u,%d,%d", (unsigned)tbl[i].addr, ok ? 1 : 0, ok ? value : 0);
+      }
+      return;
+    }
+    if (FEB_strcasecmp(op, "write") == 0)
+    {
+      long id, v;
+      if (argc < 5 || !parse_long(argv[3], &id) || id < 0 || id > 0xFFFF || !parse_long(argv[4], &v) || v < -32768 ||
+          v > 0xFFFF)
+      {
+        FEB_Console_CsvEmit("error", "usage,write|<id>|<value>");
+        return;
+      }
+      if (RMS_CONTROL_MESSAGE.enabled)
+      {
+        FEB_Console_CsvEmit("error", "inverter_enabled");
+        return;
+      }
+      bool ok = false;
+      bool resp = FEB_CAN_RMS_WriteParam((uint16_t)id, (int16_t)v, &ok, RMS_PARAM_TIMEOUT_MS);
+      FEB_Console_CsvEmit("eeprom_write", "%ld,%d", id, (resp && ok) ? 1 : 0);
+      return;
+    }
+    FEB_Console_CsvEmit("error", "usage,eeprom|<read|write|readall>");
+    return;
+  }
+
   /* fields: dc_v,speed,angle,cmd_nm,fb_nm,vsm_state,enable_lockout,fault_active,enable_state */
   FEB_Console_CsvEmit("rms", "%.1f,%d,%d,%.1f,%.1f,%u,%d,%d,%d", FEB_CAN_RMS_getDCBusVoltage(),
                       FEB_CAN_RMS_getMotorSpeed(), FEB_CAN_RMS_getMotorAngle(), FEB_CAN_RMS_getTorqueCommand(),
