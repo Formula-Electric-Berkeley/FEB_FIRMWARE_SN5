@@ -9,7 +9,10 @@
  */
 
 #include "ADBMS6830B_Registers.h"
+#include "feb_log.h"
 #include <string.h>
+
+#define TAG_ADBMS_LIB "[ADBMS]"
 
 /*============================================================================
  * Global State
@@ -121,7 +124,7 @@ uint16_t ADBMS_CalcPEC15(const uint8_t *data, uint8_t len)
   return (remainder << 1); /* CRC15 LSB is always 0 */
 }
 
-uint16_t ADBMS_CalcPEC10(const uint8_t *data, uint8_t len)
+uint16_t ADBMS_CalcPEC10(const uint8_t *data, uint8_t len, bool is_rx)
 {
   uint16_t remainder = 16; /* PEC seed */
   const uint16_t polynomial = 0x8F;
@@ -142,6 +145,27 @@ uint16_t ADBMS_CalcPEC10(const uint8_t *data, uint8_t len)
     }
   }
 
+  /* The 6-bit command-counter field is always part of the PEC10 stream: on RX
+   * it carries the CC echoed by the chip (upper 6 bits of data[len], folded in
+   * here); on TX it is implicitly zero. Either way the 6 division steps below
+   * MUST run, or TX write PECs will not match what the chip computes and every
+   * WRxxx command is silently rejected. */
+  if (is_rx)
+  {
+    remainder ^= (uint16_t)((data[len] & 0xFC) << 2);
+  }
+  for (uint8_t bit = 0; bit < 6; bit++)
+  {
+    if (remainder & 0x200)
+    {
+      remainder = (remainder << 1) ^ polynomial;
+    }
+    else
+    {
+      remainder <<= 1;
+    }
+  }
+
   return remainder & 0x3FF; /* 10-bit result */
 }
 
@@ -149,14 +173,24 @@ uint16_t ADBMS_CalcPEC10(const uint8_t *data, uint8_t len)
  * Internal: Wake-Up Sequence
  *============================================================================*/
 
-/* Track last activity to avoid unnecessary wakeups */
-static uint32_t s_last_activity_ms = 0;
-#define ADBMS_SLEEP_THRESHOLD_MS 4 /* Wake if idle > 4ms (t_IDLE is ~5.4ms) */
+/* Wake-up ripples down the daisy chain one IC per pulse/byte: an IC's isoSPI
+ * port must itself be up before it can forward anything to the next IC. Two
+ * grades of wake exist:
+ *   - _adbms_wakeup(): SLEEP-grade (ports powered down). One CS pulse per IC
+ *     with t_WAKE between pulses. Slow; init/recovery only (ADBMS_WakeUp).
+ *   - _ensure_awake(): IDLE-grade, run unconditionally before every command
+ *     burst. The isoSPI ports drop to IDLE after t_IDLE (~4.3 ms) of bus
+ *     silence, and measurement bursts are tens of ms apart, so every burst
+ *     must assume an idle chain. One dummy byte per IC: each byte's clock
+ *     time (~11 us at ~700 kHz SCK) exceeds t_READY (10 us), so every hop is
+ *     ready before the next byte reaches it. Dummy 0xFF bytes are not valid
+ *     commands - the command counter is unaffected. A host-side idle timer
+ *     is deliberately NOT used: preemption between the check and the
+ *     transmit would defeat it. */
+static uint32_t s_last_activity_ms = 0; /* diagnostic only (poll bookkeeping) */
 
 static void _adbms_wakeup(void)
 {
-  /* isoSPI daisy chain: each IC consumes one pulse and propagates the next.
-   * Send num_ics pulses to wake the entire chain. */
   uint8_t num_pulses = g_adbms.num_ics > 0 ? g_adbms.num_ics : 1;
   for (uint8_t i = 0; i < num_pulses; i++)
   {
@@ -169,20 +203,68 @@ static void _adbms_wakeup(void)
   s_last_activity_ms = ADBMS_Platform_GetTickMs();
 }
 
-/**
- * @brief Conditionally wake the IC if it may have entered sleep
- *
- * Only performs wakeup if idle time exceeds the sleep threshold.
- * This avoids the 1.4ms overhead on every transaction.
- */
 static void _ensure_awake(void)
 {
-  uint32_t now = ADBMS_Platform_GetTickMs();
-  if ((now - s_last_activity_ms) >= ADBMS_SLEEP_THRESHOLD_MS)
+  uint8_t dummy = 0xFF;
+  uint8_t num_ics = g_adbms.num_ics > 0 ? g_adbms.num_ics : 1;
+  for (uint8_t i = 0; i < num_ics; i++)
   {
-    _adbms_wakeup();
+    ADBMS_Platform_CS_Low();
+    ADBMS_Platform_SPI_Write(&dummy, 1);
+    ADBMS_Platform_CS_High();
   }
-  s_last_activity_ms = now;
+  s_last_activity_ms = ADBMS_Platform_GetTickMs();
+}
+
+/*============================================================================
+ * Internal: Command Counter (host-side mirror)
+ *
+ * Every IC increments its 6-bit command counter on each valid state-changing
+ * command (actions and writes; reads and polls do not count) and echoes it in
+ * the DPEC bytes of every register read. Mirroring the expected value lets us
+ * catch dropped commands and chip resets that PEC validation alone misses.
+ * One mirror for the chain (all ICs see the same commands); per-IC drift is
+ * detected edge-triggered so a stable offset logs once, not at 10 Hz.
+ *============================================================================*/
+
+static uint8_t s_expected_cc = 0;
+static bool s_cc_drifting[ADBMS_MAX_ICS] = {0};
+
+static void _cc_advance(void)
+{
+  s_expected_cc = (uint8_t)((s_expected_cc + 1u) & 0x3Fu);
+}
+
+static void _cc_reset(void)
+{
+  s_expected_cc = 0;
+  memset((void *)s_cc_drifting, 0, sizeof(s_cc_drifting));
+}
+
+static void _cc_check_ic(uint8_t ic, uint8_t received_cc)
+{
+  g_adbms.ics[ic].status.cc_last = received_cc;
+  if (received_cc == s_expected_cc)
+  {
+    if (s_cc_drifting[ic])
+    {
+      LOG_D(TAG_ADBMS_LIB, "CC drift IC%u cleared (cc=%u)", (unsigned)ic, (unsigned)received_cc);
+      s_cc_drifting[ic] = false;
+    }
+    return;
+  }
+  if (!s_cc_drifting[ic])
+  {
+    LOG_W(TAG_ADBMS_LIB, "CC drift IC%u: cc=%u expected=%u (missed/extra command)", (unsigned)ic,
+          (unsigned)received_cc, (unsigned)s_expected_cc);
+    s_cc_drifting[ic] = true;
+  }
+  /* Resync to the chip so a single glitch doesn't flag every later read.
+   * Only resync from IC0 to keep one coherent chain-wide reference. */
+  if (ic == 0)
+  {
+    s_expected_cc = received_cc;
+  }
 }
 
 /*============================================================================
@@ -218,6 +300,17 @@ static ADBMS_Error_t _transmit_action(uint16_t cmd_code)
     return ADBMS_ERR_SPI;
   }
 
+  /* Action commands increment the chip's command counter; SRST and RSTCC
+   * reset it to zero instead. Keep the host mirror in step. */
+  if (cmd_code == SRST || cmd_code == RSTCC)
+  {
+    _cc_reset();
+  }
+  else
+  {
+    _cc_advance();
+  }
+
   return ADBMS_OK;
 }
 
@@ -247,35 +340,31 @@ static ADBMS_Error_t _transmit_read(uint16_t cmd_code, uint8_t bytes_per_ic, uin
     return ADBMS_ERR_SPI;
   }
 
-  /* Parse received data for each IC */
+  /* Parse received data for each IC. On a daisy-chain READ the device nearest
+   * the host shifts its registers out first, so the first frame in the buffer
+   * is IC0 (write order is the opposite - see _transmit_write). */
   ADBMS_Error_t result = ADBMS_OK;
   uint8_t *ptr = s_rx_buf;
 
-  for (uint8_t i = 0; i < g_adbms.num_ics; i++)
+  for (uint8_t ic = 0; ic < g_adbms.num_ics; ic++)
   {
-    /* Map buffer position to IC index: first in buffer = last IC */
-    uint8_t ic = g_adbms.num_ics - 1 - i;
-
     g_adbms.ics[ic].status.tx_count++;
 
     /* Data is bytes_per_ic long */
     uint8_t *data = ptr;
     ptr += bytes_per_ic;
 
-    /* PEC-10 encoding (per ADBMS6830B datasheet, Table 67):
-     * The 10-bit PEC is packed into 2 bytes as follows:
-     *   Byte 0: PEC[9:2] (upper 8 bits of PEC)
-     *   Byte 1: PEC[1:0] in bits 7:6, CC[5:0] in bits 5:0
-     *
-     * CC = Command Counter (6 bits), increments with each command.
-     * Current implementation extracts PEC only; CC is not validated.
-     * TODO: Add CC validation for enhanced communication integrity.
-     */
-    uint16_t received_pec = ((uint16_t)ptr[0] << 2) | (ptr[1] >> 6);
+    /* On-wire DPEC layout (matches ADI reference + field-proven SN5 driver):
+     *   Byte 0: CC[5:0] in bits 7:2, PEC[9:8] in bits 1:0
+     *   Byte 1: PEC[7:0]
+     * The chip computes PEC10 over the data bytes PLUS the 6-bit CC field, so
+     * validation must fold the received CC in (is_rx=true). */
+    uint16_t received_pec = ((uint16_t)(ptr[0] & 0x03) << 8) | ptr[1];
+    uint8_t received_cc = (uint8_t)(ptr[0] >> 2) & 0x3F;
     ptr += ADBMS_PEC10_SIZE;
 
-    /* Verify PEC */
-    uint16_t calc_pec = ADBMS_CalcPEC10(data, bytes_per_ic);
+    /* Verify PEC (data[bytes_per_ic] is the CC byte, contiguous in s_rx_buf) */
+    uint16_t calc_pec = ADBMS_CalcPEC10(data, bytes_per_ic, true);
     if (calc_pec != received_pec)
     {
       g_adbms.ics[ic].status.pec_error_count++;
@@ -285,6 +374,7 @@ static ADBMS_Error_t _transmit_read(uint16_t cmd_code, uint8_t bytes_per_ic, uin
     else
     {
       g_adbms.ics[ic].status.comm_ok = true;
+      _cc_check_ic(ic, received_cc);
       /* Copy to destination if provided */
       if (dest_offsets != NULL && dest_offsets[ic] != NULL)
       {
@@ -325,11 +415,14 @@ static ADBMS_Error_t _transmit_write(uint16_t cmd_code, uint8_t bytes_per_ic, co
       memset(ptr, 0, bytes_per_ic);
     }
 
-    /* Calculate and append PEC-10 */
-    uint16_t pec = ADBMS_CalcPEC10(ptr, bytes_per_ic);
+    /* Calculate and append PEC-10. On-wire DPEC layout: byte 0 carries
+     * PEC[9:8] in bits 1:0 (bits 7:2 are the CC field, zero on host writes),
+     * byte 1 carries PEC[7:0]. The chip validates the PEC over data + the
+     * zero CC field (is_rx=false runs those trailing CRC steps). */
+    uint16_t pec = ADBMS_CalcPEC10(ptr, bytes_per_ic, false);
     ptr += bytes_per_ic;
-    *ptr++ = (pec >> 2) & 0xFF;
-    *ptr++ = (pec << 6) & 0xC0;
+    *ptr++ = (uint8_t)(pec >> 8) & 0x03;
+    *ptr++ = (uint8_t)(pec & 0xFF);
   }
 
   uint16_t tx_len = 4 + g_adbms.num_ics * (bytes_per_ic + ADBMS_PEC10_SIZE);
@@ -344,6 +437,9 @@ static ADBMS_Error_t _transmit_write(uint16_t cmd_code, uint8_t bytes_per_ic, co
   {
     return ADBMS_ERR_SPI;
   }
+
+  /* Register writes increment the chip's command counter. */
+  _cc_advance();
 
   return ADBMS_OK;
 }
@@ -896,11 +992,70 @@ ADBMS_Error_t ADBMS_ReadAllStatus(void)
 
 ADBMS_Error_t ADBMS_WriteConfig(void)
 {
-  ADBMS_Error_t err;
-  err = ADBMS_WriteRegister(ADBMS_REG_CFGA);
-  if (err != ADBMS_OK)
-    return err;
-  return ADBMS_WriteRegister(ADBMS_REG_CFGB);
+  /* Write CFGA/CFGB, then read both back and verify what the chain actually
+   * holds. A silently-missed config write is dangerous: a stale CFGB leaves
+   * discharge FETs on while the firmware reports them off. Retry once on
+   * mismatch, then warn loudly and report the error.
+   *
+   * The register mirror is shared between the intended (written) value and
+   * the read-back, so snapshot the intent before reading back. */
+  uint8_t intended_cfga[ADBMS_MAX_ICS][6];
+  uint8_t intended_cfgb[ADBMS_MAX_ICS][6];
+  for (uint8_t ic = 0; ic < g_adbms.num_ics; ic++)
+  {
+    memcpy(intended_cfga[ic], g_adbms.ics[ic].memory.cfga.raw, 6);
+    memcpy(intended_cfgb[ic], g_adbms.ics[ic].memory.cfgb.raw, 6);
+  }
+
+  for (uint8_t attempt = 0;; attempt++)
+  {
+    ADBMS_Error_t err = ADBMS_WriteRegister(ADBMS_REG_CFGA);
+    if (err != ADBMS_OK)
+      return err;
+    err = ADBMS_WriteRegister(ADBMS_REG_CFGB);
+    if (err != ADBMS_OK)
+      return err;
+
+    err = ADBMS_ReadRegister(ADBMS_REG_CFGA);
+    ADBMS_Error_t err_b = ADBMS_ReadRegister(ADBMS_REG_CFGB);
+
+    int8_t bad_ic = -1;
+    if (err == ADBMS_OK && err_b == ADBMS_OK)
+    {
+      for (uint8_t ic = 0; ic < g_adbms.num_ics; ic++)
+      {
+        if (memcmp(intended_cfga[ic], g_adbms.ics[ic].memory.cfga.raw, 6) != 0 ||
+            memcmp(intended_cfgb[ic], g_adbms.ics[ic].memory.cfgb.raw, 6) != 0)
+        {
+          bad_ic = (int8_t)ic;
+          break;
+        }
+      }
+    }
+    else
+    {
+      bad_ic = 0; /* read-back itself failed: cannot prove the write landed */
+    }
+
+    if (bad_ic < 0)
+    {
+      /* Mirror holds the verified chip state == intent. */
+      return ADBMS_OK;
+    }
+
+    /* Restore intent into the mirror so the retry rewrites what we meant. */
+    for (uint8_t ic = 0; ic < g_adbms.num_ics; ic++)
+    {
+      memcpy(g_adbms.ics[ic].memory.cfga.raw, intended_cfga[ic], 6);
+      memcpy(g_adbms.ics[ic].memory.cfgb.raw, intended_cfgb[ic], 6);
+    }
+
+    if (attempt >= 1)
+    {
+      LOG_W(TAG_ADBMS_LIB, "Config write unverified on IC%d after retry", bad_ic);
+      return ADBMS_ERR_PEC;
+    }
+  }
 }
 
 ADBMS_Error_t ADBMS_ReadConfig(void)
@@ -2168,6 +2323,10 @@ ADBMS_Error_t ADBMS_PollAux2ADC(uint32_t timeout_ms)
 
     if (rx_byte == 0xFF)
     {
+      /* CAUTION: 0xFF also is what a dead or asleep chain returns (the bus
+       * idles high), so "conversion complete" here is only trustworthy in
+       * combination with the PEC-validated register read that follows -
+       * a dead chain fails that read and is caught there. */
       s_last_activity_ms = ADBMS_Platform_GetTickMs();
       return ADBMS_OK; /* Conversion complete */
     }

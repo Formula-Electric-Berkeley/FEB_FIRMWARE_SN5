@@ -1463,8 +1463,11 @@ uint16_t ADBMS_CalcPEC15(const uint8_t *data, uint8_t len);
  * @brief Calculate PEC-10 for register data
  * @param data Data bytes
  * @param len Number of bytes
+ * @param is_rx True when validating a received frame: folds the 6-bit command
+ *        counter (upper 6 bits of data[len]) into the CRC, matching the chip's
+ *        DPEC computation. False for TX (CC field is implicitly zero).
  * @return 10-bit PEC value
  */
-uint16_t ADBMS_CalcPEC10(const uint8_t *data, uint8_t len);
+uint16_t ADBMS_CalcPEC10(const uint8_t *data, uint8_t len, bool is_rx);
 
 #endif /* ADBMS6830B_REGISTERS_H */
