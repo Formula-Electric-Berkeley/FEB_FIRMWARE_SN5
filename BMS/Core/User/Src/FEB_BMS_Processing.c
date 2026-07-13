@@ -62,6 +62,7 @@ static ProcConfig_t s_cfg = {
 static volatile bool s_req_clear_error = false;
 static volatile bool s_req_mode_pending = false;
 static volatile BMS_OpMode_t s_req_mode = BMS_MODE_NORMAL;
+static volatile bool s_req_stop_balance = false;
 
 /*============================================================================
  * Error helpers (operate directly on g_bms_pack; only called from proc task)
@@ -163,6 +164,27 @@ static void _drain_pending_requests(void)
     g_bms_pack.mode = mode;
     s_req_mode_pending = false;
     _stage_mode_thresholds(mode);
+  }
+
+  if (s_req_stop_balance)
+  {
+    s_req_stop_balance = false;
+    /* Stage DCC=0 for every IC here, in processing-task context: the
+     * requesters (1 ms SM fault path, console) must neither mutate driver
+     * memory nor block. The acquisition task performs the actual CFGB write. */
+    for (uint8_t ic = 0; ic < BMS_TOTAL_ICS; ic++)
+    {
+      ADBMS_SetDischarge(ic, 0x0000);
+
+      uint8_t bank = ic / BMS_ICS_PER_BANK;
+      uint8_t ic_in_bank = ic % BMS_ICS_PER_BANK;
+      for (uint8_t cell = 0; cell < BMS_CELLS_PER_IC; cell++)
+      {
+        g_bms_pack.banks[bank].ics[ic_in_bank].cells[cell].is_discharging = 0;
+      }
+    }
+    ADBMS_RequestWrite(ADBMS_REG_CFGB);
+    LOG_D(TAG_PROC, "Balance stop staged (DCC=0 all ICs)");
   }
 }
 
@@ -267,12 +289,14 @@ static void _process_voltages(bool voltage_data_fresh)
   float pack_total = 0.0f;
   float pack_min = FLT_MAX;
   float pack_max = -FLT_MAX;
+  uint16_t pack_valid_cells = 0;
 
   for (uint8_t bank = 0; bank < BMS_NUM_BANKS; bank++)
   {
     float bank_total = 0.0f;
     float bank_min = FLT_MAX;
     float bank_max = -FLT_MAX;
+    bool bank_has_valid_ic = false;
 
     for (uint8_t ic_idx = 0; ic_idx < BMS_ICS_PER_BANK; ic_idx++)
     {
@@ -280,11 +304,23 @@ static void _process_voltages(bool voltage_data_fresh)
 
       /* Pull PEC/comm info straight off the driver (it's a snapshot counter). */
       ADBMS_ICStatus_t *status = ADBMS_GetStatus(global_ic);
+      bool ic_valid = (status != NULL) && status->comm_ok;
       if (status != NULL)
       {
         g_bms_pack.banks[bank].ics[ic_idx].comm_ok = status->comm_ok;
         g_bms_pack.banks[bank].ics[ic_idx].pec_errors = status->pec_error_count;
       }
+
+      /* PEC-failed / never-read ICs contribute NOTHING: their register mirror
+       * is stale (or never written), and folding it into min/max/total is how
+       * a dead link once produced 0.000 V cells, false UV faults, and a
+       * 4-volt "delta". Cell values keep their previous reading (NAN if never
+       * read - see BMS_App_Init seeding). */
+      if (!ic_valid)
+      {
+        continue;
+      }
+      bank_has_valid_ic = true;
 
       for (uint8_t cell = 0; cell < BMS_CELLS_PER_IC; cell++)
       {
@@ -340,13 +376,17 @@ static void _process_voltages(bool voltage_data_fresh)
           bank_min = c->voltage_C_V;
         if (c->voltage_C_V > bank_max)
           bank_max = c->voltage_C_V;
+        pack_valid_cells++;
       }
     }
 
-    g_bms_pack.banks[bank].total_voltage_V = bank_total;
-    g_bms_pack.banks[bank].min_voltage_V = bank_min;
-    g_bms_pack.banks[bank].max_voltage_V = bank_max;
-    g_bms_pack.banks[bank].voltage_valid = 1;
+    if (bank_has_valid_ic)
+    {
+      g_bms_pack.banks[bank].total_voltage_V = bank_total;
+      g_bms_pack.banks[bank].min_voltage_V = bank_min;
+      g_bms_pack.banks[bank].max_voltage_V = bank_max;
+    }
+    g_bms_pack.banks[bank].voltage_valid = bank_has_valid_ic ? 1 : 0;
 
     pack_total += bank_total;
     if (bank_min < pack_min)
@@ -355,11 +395,24 @@ static void _process_voltages(bool voltage_data_fresh)
       pack_max = bank_max;
   }
 
-  g_bms_pack.pack_voltage_V = pack_total;
-  g_bms_pack.pack_min_cell_V = pack_min;
-  g_bms_pack.pack_max_cell_V = pack_max;
-  g_bms_pack.voltage_read_count++;
-  g_bms_pack.voltage_valid = true;
+  /* Pack validity requires EVERY cell to have reported this pass: a pack min
+   * computed from a subset can hide the lowest cell in the pack. */
+  if (pack_valid_cells == BMS_TOTAL_CELLS)
+  {
+    g_bms_pack.pack_voltage_V = pack_total;
+    g_bms_pack.pack_min_cell_V = pack_min;
+    g_bms_pack.pack_max_cell_V = pack_max;
+    g_bms_pack.voltage_read_count++;
+    g_bms_pack.voltage_valid = true;
+    _clear_error(BMS_ERR_SRC_COMM);
+  }
+  else
+  {
+    g_bms_pack.voltage_valid = false;
+    _raise_error(BMS_ERR_SRC_COMM, BMS_APP_ERR_COMM, 0, 0, 0);
+    LOG_W(TAG_PROC, "Voltage pass incomplete: %u/%u cells valid", (unsigned)pack_valid_cells,
+          (unsigned)BMS_TOTAL_CELLS);
+  }
 }
 
 /*============================================================================
@@ -623,16 +676,23 @@ void BMS_Proc_RunFrame(void)
   {
     _process_voltages(true);
   }
-  else if (cv_tick == 0)
+  else
   {
+    /* Not fresh: never-read (boot) or stale-after-fresh (acquisition stalled,
+     * chain died). Either way the cached data must not be trusted, and a
+     * stall after first success is a fault - the old behavior of merely
+     * skipping the pass let "was fresh, then went dark" ride forever. */
     g_bms_pack.voltage_valid = false;
+    if (cv_tick != 0)
+    {
+      _raise_error(BMS_ERR_SRC_COMM, BMS_APP_ERR_COMM, 0, 0, 0);
+      LOG_W(TAG_PROC, "Voltage data stale: last read %lums ago", (unsigned long)(now_ms - cv_tick));
+    }
   }
 
-  /* STATD carries hardware UV/OV flags - surface them as comm freshness. */
-  if (statd_tick != 0)
-  {
-    _clear_error(BMS_ERR_SRC_COMM);
-  }
+  /* NOTE: BMS_ERR_SRC_COMM is cleared only by a complete, PEC-valid voltage
+   * pass (_process_voltages) - a fresh STATD read alone must not clear it. */
+  (void)statd_tick;
 
   if (t_fresh)
   {
@@ -656,18 +716,10 @@ void BMS_Proc_RequestDischarge(uint8_t ic_index, uint16_t cell_mask)
 
 void BMS_Proc_RequestStopBalancing(void)
 {
-  for (uint8_t ic = 0; ic < BMS_TOTAL_ICS; ic++)
-  {
-    ADBMS_SetDischarge(ic, 0x0000);
-
-    uint8_t bank = ic / BMS_ICS_PER_BANK;
-    uint8_t ic_in_bank = ic % BMS_ICS_PER_BANK;
-    for (uint8_t cell = 0; cell < BMS_CELLS_PER_IC; cell++)
-    {
-      g_bms_pack.banks[bank].ics[ic_in_bank].cells[cell].is_discharging = 0;
-    }
-  }
-  ADBMS_RequestWrite(ADBMS_REG_CFGB);
+  /* Pure flag - callable from the 1 ms SM fault path and the console task.
+   * All driver-memory mutation and write staging happens in the processing
+   * task (_drain_pending_requests); the acquisition task does the bus write. */
+  s_req_stop_balance = true;
 }
 
 void BMS_Proc_RequestSetMode(BMS_OpMode_t mode)

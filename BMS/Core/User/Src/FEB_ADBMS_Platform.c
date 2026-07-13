@@ -11,6 +11,8 @@
 #include "main.h"
 #include "spi.h"
 #include "cmsis_os.h"
+#include "FreeRTOS.h"
+#include "task.h"
 #include "stm32f4xx_hal.h"
 #include "feb_log.h"
 
@@ -147,6 +149,21 @@ void ADBMS_Platform_DelayMs(uint32_t ms)
 uint32_t ADBMS_Platform_GetTickMs(void)
 {
   return HAL_GetTick();
+}
+
+/**
+ * @brief Short critical sections for coherent frame assembly (see library
+ * header). FreeRTOS: disables preemption + maskable interrupts; keep the
+ * protected region to a few microseconds.
+ */
+void ADBMS_Platform_EnterCritical(void)
+{
+  taskENTER_CRITICAL();
+}
+
+void ADBMS_Platform_ExitCritical(void)
+{
+  taskEXIT_CRITICAL();
 }
 
 /*============================================================================

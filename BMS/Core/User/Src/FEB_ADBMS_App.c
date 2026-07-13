@@ -76,6 +76,30 @@ BMS_AppError_t BMS_App_Init(void)
 
   memset(&g_bms_pack, 0, sizeof(g_bms_pack));
 
+  /* Seed all measurements with NAN = "never read successfully". A 0.0 seed
+   * reads as a real 0 V cell / 0 C sensor and poisons min/max/delta when a
+   * register group never passes PEC. NAN fails every comparison, so limit
+   * checks and balancing selection skip these cells until real data lands. */
+  for (uint8_t bank = 0; bank < BMS_NUM_BANKS; bank++)
+  {
+    for (uint8_t ic = 0; ic < BMS_ICS_PER_BANK; ic++)
+    {
+      for (uint8_t cell = 0; cell < BMS_CELLS_PER_IC; cell++)
+      {
+        g_bms_pack.banks[bank].ics[ic].cells[cell].voltage_C_V = NAN;
+        g_bms_pack.banks[bank].ics[ic].cells[cell].voltage_S_V = NAN;
+      }
+      g_bms_pack.banks[bank].ics[ic].internal_temp_C = NAN;
+    }
+    for (uint8_t s = 0; s < BMS_TEMP_TOTAL_SENSORS; s++)
+    {
+      g_bms_pack.banks[bank].temp_sensors_C[s] = NAN;
+    }
+  }
+  g_bms_pack.pack_min_temp_C = NAN;
+  g_bms_pack.pack_max_temp_C = NAN;
+  g_bms_pack.pack_avg_temp_C = NAN;
+
   FEB_ADBMS_Platform_Init();
 
   ADBMS_Error_t err = ADBMS_Init(BMS_TOTAL_ICS);
@@ -171,8 +195,10 @@ BMS_AppError_t BMS_App_Init(void)
 
 void BMS_App_StopBalancing(void)
 {
+  /* No logging here: reachable from the 1 ms SM fault path, and LOG_*
+   * blocks on the log mutex. The processing task logs when it stages the
+   * stop; that context may block freely. */
   BMS_Proc_RequestStopBalancing();
-  LOG_I(TAG_APP, "Balancing stop requested");
 }
 
 bool BMS_App_IsBalancingNeeded(void)
@@ -217,14 +243,14 @@ float BMS_App_GetMaxCellVoltage(void)
 float BMS_App_GetCellVoltage(uint8_t bank, uint8_t ic, uint8_t cell)
 {
   if (bank >= BMS_NUM_BANKS || ic >= BMS_ICS_PER_BANK || cell >= BMS_CELLS_PER_IC)
-    return 0.0f;
+    return NAN; /* not 0.0: a fake 0 V reads as a dead cell to consumers */
   return g_bms_pack.banks[bank].ics[ic].cells[cell].voltage_C_V;
 }
 
 float BMS_App_GetCellVoltageS(uint8_t bank, uint8_t ic, uint8_t cell)
 {
   if (bank >= BMS_NUM_BANKS || ic >= BMS_ICS_PER_BANK || cell >= BMS_CELLS_PER_IC)
-    return 0.0f;
+    return NAN;
   return g_bms_pack.banks[bank].ics[ic].cells[cell].voltage_S_V;
 }
 
@@ -244,14 +270,14 @@ float BMS_App_GetAvgTemp(void)
 float BMS_App_GetTempSensor(uint8_t bank, uint8_t sensor_idx)
 {
   if (bank >= BMS_NUM_BANKS || sensor_idx >= BMS_TEMP_TOTAL_SENSORS)
-    return 0.0f;
+    return NAN;
   return g_bms_pack.banks[bank].temp_sensors_C[sensor_idx];
 }
 
 float BMS_App_GetICTemp(uint8_t bank, uint8_t ic)
 {
   if (bank >= BMS_NUM_BANKS || ic >= BMS_ICS_PER_BANK)
-    return 0.0f;
+    return NAN;
   return g_bms_pack.banks[bank].ics[ic].internal_temp_C;
 }
 

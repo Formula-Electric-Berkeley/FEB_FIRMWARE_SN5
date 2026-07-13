@@ -107,10 +107,19 @@ extern "C"
   /**
    * @brief Run one specific job immediately (bypassing the schedule).
    *
-   * Used for the CLI "force read" and during initial boot.
+   * ACQUISITION-TASK CONTEXT ONLY (boot prime, scheduler): this drives the
+   * SPI bus directly. Other tasks must use BMS_Acq_RequestJobRun().
    * @return OK or first error encountered.
    */
   ADBMS_Error_t BMS_Acq_RunJobNow(BMS_Acq_Job_t job);
+
+  /**
+   * @brief Request a one-shot job run from any task (console diagnostics).
+   *
+   * Atomic; the acquisition task executes the job on its next scheduler
+   * tick (<= ~5 ms later), keeping it the sole SPI bus owner.
+   */
+  void BMS_Acq_RequestJobRun(BMS_Acq_Job_t job);
 
   /**
    * @brief Drain pending register-group writes immediately.

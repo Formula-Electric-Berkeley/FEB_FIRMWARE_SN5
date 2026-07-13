@@ -194,11 +194,33 @@ ADBMS_Error_t BMS_Acq_RunJobNow(BMS_Acq_Job_t job)
   return err;
 }
 
+/* One-shot job requests from other tasks (console diagnostics). The
+ * acquisition task is the sole bus owner, so requesters set a bit here and
+ * the scheduler runs the job in its own context on the next tick. */
+static volatile uint32_t s_job_request_mask = 0;
+
+void BMS_Acq_RequestJobRun(BMS_Acq_Job_t job)
+{
+  if ((unsigned)job >= BMS_ACQ_JOB_COUNT)
+    return;
+  __atomic_fetch_or(&s_job_request_mask, (1u << (unsigned)job), __ATOMIC_SEQ_CST);
+}
+
 void BMS_Acq_ServiceScheduler(void)
 {
   /* Writes have priority: drain before any scheduled reads so the
    * control path (e.g. discharge mask changes) has minimum latency. */
   BMS_Acq_DrainPendingWrites();
+
+  /* One-shot requests next (console diagnostics run at most one tick late). */
+  uint32_t requested = __atomic_exchange_n(&s_job_request_mask, 0u, __ATOMIC_SEQ_CST);
+  for (uint8_t j = 0; requested != 0 && j < BMS_ACQ_JOB_COUNT; j++)
+  {
+    if (requested & (1u << j))
+    {
+      (void)BMS_Acq_RunJobNow((BMS_Acq_Job_t)j);
+    }
+  }
 
   uint32_t now = osKernelGetTickCount();
   for (uint8_t j = 0; j < BMS_ACQ_JOB_COUNT; j++)

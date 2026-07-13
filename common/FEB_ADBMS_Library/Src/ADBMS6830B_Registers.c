@@ -107,6 +107,14 @@ __attribute__((weak)) uint32_t ADBMS_Platform_GetTickMs(void)
   return 0;
 }
 
+__attribute__((weak)) void ADBMS_Platform_EnterCritical(void)
+{
+}
+
+__attribute__((weak)) void ADBMS_Platform_ExitCritical(void)
+{
+}
+
 /*============================================================================
  * PEC Calculation Functions
  *============================================================================*/
@@ -402,6 +410,12 @@ static ADBMS_Error_t _transmit_write(uint16_t cmd_code, uint8_t bytes_per_ic, co
   /* Note: Data is sent in reverse order (last IC first on wire) */
   memcpy(s_tx_buf, cmd_frame, 4);
 
+  /* Frame assembly copies from the shared register mirror, which other tasks
+   * stage into (e.g. discharge masks from the processing task). Assemble
+   * under a short critical section so a concurrent staging write cannot tear
+   * the serialized frame (a torn CFGB = wrong discharge FETs, valid PEC). */
+  ADBMS_Platform_EnterCritical();
+
   uint8_t *ptr = s_tx_buf + 4;
   for (int ic = g_adbms.num_ics - 1; ic >= 0; ic--)
   {
@@ -424,6 +438,8 @@ static ADBMS_Error_t _transmit_write(uint16_t cmd_code, uint8_t bytes_per_ic, co
     *ptr++ = (uint8_t)(pec >> 8) & 0x03;
     *ptr++ = (uint8_t)(pec & 0xFF);
   }
+
+  ADBMS_Platform_ExitCritical();
 
   uint16_t tx_len = 4 + g_adbms.num_ics * (bytes_per_ic + ADBMS_PEC10_SIZE);
 

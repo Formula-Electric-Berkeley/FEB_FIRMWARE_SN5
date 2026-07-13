@@ -27,6 +27,7 @@
 #include "task.h"
 #include "cmsis_os.h"
 #include <ctype.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -117,8 +118,16 @@ static void cmd_bms_cells(int argc, char *argv[])
       for (uint8_t cell = 0; cell < BMS_CELLS_PER_IC; cell++)
       {
         const BMS_CellData_t *c = &ic_data->cells[cell];
-        FEB_Console_Printf("  C%02d: %.3fV (S:%.3fV)%s\r\n", cell + 1, (double)c->voltage_C_V, (double)c->voltage_S_V,
-                           c->is_discharging ? " [BAL]" : "");
+        if (isnan(c->voltage_C_V) && isnan(c->voltage_S_V))
+        {
+          /* Never read successfully (PEC failing since boot) */
+          FEB_Console_Printf("  C%02d: --/--%s\r\n", cell + 1, c->is_discharging ? " [BAL]" : "");
+        }
+        else
+        {
+          FEB_Console_Printf("  C%02d: %.3fV (S:%.3fV)%s\r\n", cell + 1, (double)c->voltage_C_V, (double)c->voltage_S_V,
+                             c->is_discharging ? " [BAL]" : "");
+        }
       }
     }
   }
@@ -532,8 +541,10 @@ static void cmd_bms_jobs(int argc, char *argv[])
       FEB_Console_Printf("idx out of range\r\n");
       return;
     }
-    ADBMS_Error_t err = BMS_Acq_RunJobNow((BMS_Acq_Job_t)idx);
-    FEB_Console_Printf("job[%d] run -> %d\r\n", idx, err);
+    /* Request-only: the acquisition task is the sole SPI owner. Running the
+     * job here would interleave frames with the 10 Hz scheduler traffic. */
+    BMS_Acq_RequestJobRun((BMS_Acq_Job_t)idx);
+    FEB_Console_Printf("job[%d] queued (runs on next scheduler tick; see jobs stats)\r\n", idx);
   }
   else
   {

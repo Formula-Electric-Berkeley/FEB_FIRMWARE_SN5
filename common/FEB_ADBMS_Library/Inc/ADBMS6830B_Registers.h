@@ -481,6 +481,17 @@ void ADBMS_Platform_DelayMs(uint32_t ms);
  */
 uint32_t ADBMS_Platform_GetTickMs(void);
 
+/**
+ * @brief Short critical section (disable/restore task+interrupt preemption).
+ *
+ * Used to guarantee coherent frame assembly from the shared register mirror
+ * while other tasks may be staging into it (e.g. discharge masks). Weak
+ * no-op defaults exist for bare-metal ports; the FreeRTOS platform maps
+ * these to taskENTER_CRITICAL/taskEXIT_CRITICAL. Keep sections to a few us.
+ */
+void ADBMS_Platform_EnterCritical(void);
+void ADBMS_Platform_ExitCritical(void);
+
 /*============================================================================
  * Initialization & Control
  *============================================================================*/
