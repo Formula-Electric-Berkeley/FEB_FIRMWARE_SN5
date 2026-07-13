@@ -35,6 +35,12 @@
 /* Logging tag */
 #define TAG_BMS "[BMS]"
 
+/* The rewrite's topology (BMS_HW_Config.h) and the legacy constants that the
+ * SM/CAN consumers still use (FEB_Const.h) must describe the same accumulator
+ * or per-cell telemetry silently truncates. */
+_Static_assert(BMS_NUM_BANKS *BMS_ICS_PER_BANK *BMS_CELLS_PER_IC == FEB_NBANKS * FEB_NUM_CELLS_PER_BANK,
+               "BMS_HW_Config.h topology must match FEB_Const.h accumulator constants");
+
 /* External task handles for stack monitoring */
 extern osThreadId_t uartRxTaskHandle;
 extern osThreadId_t ADBMSTaskHandle;

@@ -15,10 +15,12 @@
 /*============================================================================
  * Pack Topology
  *
- * Current: 1 bank with 1 IC
- * Future:  2 banks with 4 ICs per bank
+ * SN5 accumulator: 10 banks, one ADBMS6830B per bank, 14 cells per IC,
+ * all ICs on a single isoSPI daisy chain (IC0 = nearest the host).
+ * For single-IC bench bring-up, set BMS_NUM_BANKS to 1 locally - never
+ * commit that change (the car has 10; chain-depth bugs only show at 10).
  *============================================================================*/
-#define BMS_NUM_BANKS 1    /**< Number of battery banks */
+#define BMS_NUM_BANKS 10   /**< Number of battery banks */
 #define BMS_ICS_PER_BANK 1 /**< ADBMS6830B ICs per bank */
 #define BMS_TOTAL_ICS (BMS_NUM_BANKS * BMS_ICS_PER_BANK)
 #define BMS_CELLS_PER_IC 14 /**< Active cells monitored per IC (of 16 possible) */

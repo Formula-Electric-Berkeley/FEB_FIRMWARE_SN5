@@ -12,6 +12,7 @@ One README per library:
 - [FEB_TPS_Library](FEB_TPS_Library/README.md) — TPS2482 power-monitor driver (`feb_tps`)
 - [FEB_Time_Library](FEB_Time_Library/README.md) — 64-bit microsecond monotonic clock (`feb_time`)
 - [FEB_RTOS_Utils](FEB_RTOS_Utils/README.md) — RTOS fail-fast helper macros (`feb_rtos_utils`)
+- [FEB_ADBMS_Library](FEB_ADBMS_Library/AUDIT.md) — ADBMS6830B cell-monitor driver (`feb_adbms`); AUDIT.md tracks datasheet verification status
 
 ## Available Libraries
 
@@ -27,6 +28,7 @@ One README per library:
 | `feb_rtos_utils` | RTOS | `REQUIRE_RTOS_HANDLE` fail-fast macro |
 | `feb_can` | CAN | FreeRTOS-safe CAN with registration/callback pattern |
 | `feb_tps` | TPS2482 | Power monitoring IC driver |
+| `feb_adbms` | ADBMS6830B | Cell-monitor register/transaction driver (isoSPI daisy chain, PEC, CC, wake) |
 | `feb_io` | Umbrella | Links `feb_uart`, `feb_log`, `feb_console`, `feb_commands`, `feb_string_utils`, `feb_time`, `feb_version` |
 
 ## Quick Integration Guide

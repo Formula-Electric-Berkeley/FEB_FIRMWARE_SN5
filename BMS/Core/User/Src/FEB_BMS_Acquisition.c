@@ -48,6 +48,9 @@ static Job_t s_jobs[BMS_ACQ_JOB_COUNT] = {
     [BMS_ACQ_JOB_SERIAL_ID] = {.name = "SID_CHECK", .period_ms = 60000, .enabled = true, .run = _job_serial_id},
 };
 
+/* The library's static SPI buffers are sized for ADBMS_MAX_ICS. */
+_Static_assert(BMS_TOTAL_ICS <= ADBMS_MAX_ICS, "chain longer than the library's ADBMS_MAX_ICS buffers");
+
 static uint32_t s_consecutive_pec_errors = 0;
 
 /* Runtime-configurable cell-ADC options (used by _job_cell_voltages).
