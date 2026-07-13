@@ -92,4 +92,10 @@ bool FEB_SM_Is_HV_Active(void);
  */
 bool FEB_SM_Is_Drive_Ready(void);
 
+/**
+ * @brief Check if IMD fault monitoring is armed
+ * @return true once the IMD status latch has been seen high (operator reset)
+ */
+bool FEB_SM_IMD_Armed(void);
+
 #endif /* INC_FEB_SM_H_ */

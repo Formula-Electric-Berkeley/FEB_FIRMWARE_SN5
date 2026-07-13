@@ -6,6 +6,8 @@
 #ifndef FEB_CAN_STATE_H
 #define FEB_CAN_STATE_H
 
+#include <stdbool.h>
+
 /**
  * @brief Initialize the DASH CAN state publisher
  */
@@ -22,5 +24,12 @@ void FEB_CAN_State_Tick(void);
  * @note Call from CAN RX task after DASH_CAN_Init() completes
  */
 void FEB_CAN_State_SetReady(void);
+
+/**
+ * @brief Returns true once FEB_CAN_State_SetReady() has been called.
+ * @note  Used by the TX task to gate publishing while the RX task is still
+ *        installing CAN filters at startup (avoids a race during init).
+ */
+bool FEB_CAN_State_IsReady(void);
 
 #endif /* FEB_CAN_STATE_H */

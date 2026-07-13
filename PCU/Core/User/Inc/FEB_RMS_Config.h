@@ -28,10 +28,10 @@ extern "C"
 
 /**
  * @brief Maximum motor torque in tenths of Nm
- * @note RMS PM100DX typical max: 230 Nm = 2300 in tenths
+ * @note RMS PM100DX typical max: 220 Nm = 2200 in tenths
  *       Adjust based on your motor specifications
  */
-#define MAX_TORQUE 2300 /* 230.0 Nm in tenths */
+#define MAX_TORQUE 2200 /* 220.0 Nm in tenths */
 
 /**
  * @brief Reduced torque limit at low pack voltage
@@ -56,6 +56,20 @@ extern "C"
  *       Example: 4200 = 420.0V
  */
 #define LOW_PACK_VOLTAGE 4200 /* 420.0V in decivolts */
+
+/**
+ * @brief Low pack voltage threshold in volts (for IVT-measured comparisons)
+ * @note Same threshold as LOW_PACK_VOLTAGE, expressed in volts since the IVT
+ *       getters return volts. Below this, torque is limited to MAX_TORQUE_LOW_V.
+ */
+#define LOW_PACK_VOLTAGE_V 420.0f
+
+/**
+ * @brief IVT-measured pack current limit in Amps for the protective torque derate
+ * @note Backstop to the power cap: above this measured current, torque is scaled
+ *       down proportionally. Bench-tune to avoid oscillation before trusting.
+ */
+#define IVT_CURRENT_LIMIT_A PEAK_CURRENT
 
 /**
  * @brief Initial/nominal pack voltage in decivolts

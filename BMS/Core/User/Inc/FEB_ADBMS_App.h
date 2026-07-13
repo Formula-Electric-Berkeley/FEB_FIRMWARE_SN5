@@ -331,4 +331,41 @@ void FEB_ADBMS_Update_Error_Type(uint8_t error_type);
  */
 uint8_t FEB_ADBMS_Get_Error_Type(void);
 
+/*----------------------------------------------------------------------------
+ * Fault flags consumed by the hardened state machine (FEB_SM.c). Values must
+ * stay bit-compatible with the old FEB_ADBMS6830B.h defines; they alias the
+ * BMS_ErrorSource_t bits latched by FEB_BMS_Processing.
+ *   VOLTAGE <- BMS_ERR_SRC_VOLTAGE, TEMP <- BMS_ERR_SRC_TEMP,
+ *   SENSOR  <- BMS_ERR_SRC_COMM (monitor telemetry unreliable/lost)
+ *---------------------------------------------------------------------------*/
+#define ADBMS_FAULT_FLAG_VOLTAGE (1u << 0)
+#define ADBMS_FAULT_FLAG_TEMP (1u << 1)
+#define ADBMS_FAULT_FLAG_SENSOR (1u << 2)
+
+/** @brief Latched cell V/T/comm fault flags (ADBMS_FAULT_FLAG_*). */
+uint32_t FEB_ADBMS_Get_Fault_Flags(void);
+
+/** @brief Kernel tick (ms) of last completed processing pass (0 = never).
+ *  Consumed by the SM boot-grace / data-staleness checks. */
+uint32_t FEB_ADBMS_Get_Last_Update_Tick(void);
+
+/* Lock-free pack scalars for the 1 ms SM task (plain atomic reads). */
+float FEB_ADBMS_Snapshot_Total_Voltage(void);
+float FEB_ADBMS_Snapshot_Max_Cell_Voltage(void);
+/** Returns NAN until the first valid temperature scan — consumers gate on
+ *  `!(x < limit)` so NaN fails closed, matching the old semantics. */
+float FEB_ADBMS_Snapshot_Max_Temp(void);
+
+/* Per-cell / pack-temp getters used by CAN telemetry and the charger.
+ * `cell` is the cell index within the bank (spans all ICs in the bank). */
+float FEB_ADBMS_GET_Cell_Voltage(uint8_t bank, uint16_t cell);
+float FEB_ADBMS_GET_Cell_Voltage_S(uint8_t bank, uint16_t cell);
+float FEB_ADBMS_GET_ACC_MIN_Temp(void);
+float FEB_ADBMS_GET_ACC_MAX_Temp(void);
+float FEB_ADBMS_GET_ACC_AVG_Temp(void);
+
+/** @brief True when voltage data is valid AND the pack delta is below the
+ *  balance hysteresis — the "done balancing" signal for SM/console. */
+bool FEB_Cell_Balance_Complete(void);
+
 #endif /* FEB_ADBMS_APP_H */

@@ -48,10 +48,22 @@ void FEB_HW_Precharge_Set(bool closed);
 void FEB_HW_BMS_Shutdown_Set(bool closed);
 
 /**
+ * @brief Read back the actual BMS shutdown relay pin level (PC1)
+ * @return true if the pin is high (relay commanded closed)
+ */
+bool FEB_HW_BMS_Shutdown_Get(void);
+
+/**
  * @brief Set BMS indicator output
  * @param on true = indicator on, false = indicator off
  */
 void FEB_HW_BMS_Indicator_Set(bool on);
+
+/**
+ * @brief Read back the actual BMS indicator pin level (PC0)
+ * @return true if the indicator output is driven on
+ */
+bool FEB_HW_BMS_Indicator_Get(void);
 
 /**
  * @brief Set fault indicator LED
@@ -64,6 +76,12 @@ void FEB_HW_Fault_Indicator_Set(bool on);
  * @param on true = buzzer on, false = buzzer off
  */
 void FEB_HW_Buzzer_Set(bool on);
+
+/**
+ * @brief Set the Tractive System Status Indicator (TSSI_IN, PB2)
+ * @param green true = high (green / healthy), false = low (red / fault)
+ */
+void FEB_HW_TSSI_Set(bool green);
 
 /* ============================================================================
  * Sense Input Functions
@@ -100,10 +118,15 @@ FEB_Relay_State_t FEB_HW_Shutdown_Sense(void);
 FEB_Relay_State_t FEB_HW_IMD_Sense(void);
 
 /**
- * @brief Read TSMS shutdown sense input
- * @return FEB_RELAY_STATE_CLOSE if TSMS active, FEB_RELAY_STATE_OPEN otherwise
+ * @brief Drive the TSMS indicator light output (PC11)
  */
-FEB_Relay_State_t FEB_HW_TSMS_Sense(void);
+void FEB_HW_TSMS_Indicator_Set(bool on);
+
+/**
+ * @brief Read back the commanded TSMS indicator light state
+ * @return true if the indicator output is driven on
+ */
+bool FEB_HW_TSMS_Indicator_Get(void);
 
 /**
  * @brief Read BMS reset button state

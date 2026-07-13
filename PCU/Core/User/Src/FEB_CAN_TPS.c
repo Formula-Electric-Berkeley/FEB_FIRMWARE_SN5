@@ -181,16 +181,16 @@ void FEB_CAN_TPS_Update(I2C_HandleTypeDef *hi2c, uint8_t *i2c_addresses, uint8_t
  */
 void FEB_CAN_TPS_Transmit(void)
 {
-  uint8_t data[8] = {0};
+  struct feb_can_pcu_tps_t msg = {0};
+  msg.voltage = TPS_MESSAGE.bus_voltage_mv;
+  msg.current = (uint16_t)TPS_MESSAGE.current_ma;
 
-  /* Pack voltage (bytes 0-1) and current (bytes 2-3)
-   * Note: Uses host byte order (little-endian on ARM Cortex-M).
-   * Receivers must expect little-endian format. */
-  memcpy(&data[0], &TPS_MESSAGE.bus_voltage_mv, sizeof(uint16_t));
-  memcpy(&data[2], &TPS_MESSAGE.current_ma, sizeof(int16_t));
+  uint8_t data[FEB_CAN_PCU_TPS_LENGTH];
+  int packed = feb_can_pcu_tps_pack(data, &msg, sizeof(data));
 
   /* Transmit CAN message */
-  FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_PCU_TPS_FRAME_ID, FEB_CAN_ID_STD, data, 4);
+  FEB_CAN_Status_t status =
+      FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_PCU_TPS_FRAME_ID, FEB_CAN_ID_STD, data, (uint8_t)packed);
   if (status != FEB_CAN_OK)
   {
     LOG_E(TAG_TPS, "Failed to transmit TPS data: %s", FEB_CAN_StatusToString(status));

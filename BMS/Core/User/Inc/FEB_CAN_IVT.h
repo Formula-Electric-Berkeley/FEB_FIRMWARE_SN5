@@ -3,12 +3,20 @@
  * @brief IVT (Isabellenhutte) Current/Voltage Sensor CAN Interface
  * @author Formula Electric @ Berkeley
  *
- * Receives IVT-S sensor data over CAN:
+ * The IVT we use is the ISAscale IVT-MODULAR (IVT-MOD, or just IVT for short),
+ * Isabellenhutte's modular high-accuracy current/voltage/temperature sensor.
+ *
+ * Receives IVT sensor data over CAN:
  * - 0x521: Current
  * - 0x522: Voltage 1 (pack voltage, used for precharge monitoring)
  * - 0x523: Voltage 2
  * - 0x524: Voltage 3
  * - 0x525: Temperature
+ *
+ * The frame IDs and byte layout live in the shared CAN library
+ * (common/FEB_CAN_Library_SN4, message defs IVTCurrent / IVTVoltage1-3 /
+ * IVTTemperature) and are consumed here via the generated FEB_CAN_IVT_*_FRAME_ID
+ * macros and feb_can_ivt_*_unpack() functions from feb_can.h.
  *
  * The IVT sensor provides high-accuracy current and voltage measurements
  * for battery management and motor control systems.
@@ -19,22 +27,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-
-/* ============================================================================
- * IVT CAN Message IDs (Isabellenhutte IVT-S standard)
- * ============================================================================ */
-
-#define FEB_CAN_ID_IVT_COMMAND 0x411
-#define FEB_CAN_ID_IVT_DEBUG 0x510
-#define FEB_CAN_ID_IVT_RESPONSE 0x511
-#define FEB_CAN_ID_IVT_CURRENT 0x521
-#define FEB_CAN_ID_IVT_VOLTAGE_1 0x522
-#define FEB_CAN_ID_IVT_VOLTAGE_2 0x523
-#define FEB_CAN_ID_IVT_VOLTAGE_3 0x524
-#define FEB_CAN_ID_IVT_TEMPERATURE 0x525
-#define FEB_CAN_ID_IVT_POWER 0x526
-#define FEB_CAN_ID_IVT_CURRENT_COUNTER 0x527
-#define FEB_CAN_ID_IVT_ENERGY_COUNTER 0x528
 
 /* ============================================================================
  * IVT Data Structure

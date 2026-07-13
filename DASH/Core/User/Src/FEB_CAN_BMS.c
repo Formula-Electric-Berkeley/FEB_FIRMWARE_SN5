@@ -32,7 +32,7 @@ typedef struct
 } BMS_CAN_Data_t;
 
 static BMS_CAN_Data_t bms_data = {
-    .state = 0, .cell_max_temperature = 67, .accumulator_total_voltage = 67, .last_rx_tick = 0};
+    .state = 0, .cell_max_temperature = 0, .accumulator_total_voltage = 0, .last_rx_tick = 0};
 
 //  FEB_CAN_BMS_GETLAST
 //
@@ -48,30 +48,37 @@ static BMS_CAN_Data_t bms_data = {
 static void rx_callback_bms_state(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                   const uint8_t *data, uint8_t length, void *user_data)
 {
-  FEB_Console_Printf("BMS State: %X", data[0]);
-  bms_data.state = data[0] >> 3;
-  __DMB();
-  bms_data.last_rx_tick = HAL_GetTick();
+  struct feb_can_bms_state_t msg;
+  if (feb_can_bms_state_unpack(&msg, data, length) == 0)
+  {
+    bms_data.state = (BMS_State_t)msg.bms_state; /* low 5 bits of byte 0; codegen owns the layout */
+    __DMB();
+    bms_data.last_rx_tick = HAL_GetTick();
+  }
 }
 
 static void rx_callback_bms_temperature(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                         const uint8_t *data, uint8_t length, void *user_data)
 {
-  int16_t temp;
-  memcpy(&temp, &data[4], sizeof(int16_t));
-  bms_data.cell_max_temperature = temp;
-  __DMB();
-  bms_data.last_rx_tick = HAL_GetTick();
+  struct feb_can_bms_accumulator_temperature_t msg;
+  if (feb_can_bms_accumulator_temperature_unpack(&msg, data, length) == 0)
+  {
+    bms_data.cell_max_temperature = msg.max_cell_temperature;
+    __DMB();
+    bms_data.last_rx_tick = HAL_GetTick();
+  }
 }
 
 static void rx_callback_bms_voltage(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                     const uint8_t *data, uint8_t length, void *user_data)
 {
-  uint16_t voltage;
-  memcpy(&voltage, &data[0], sizeof(uint16_t));
-  bms_data.accumulator_total_voltage = voltage;
-  __DMB();
-  bms_data.last_rx_tick = HAL_GetTick();
+  struct feb_can_bms_accumulator_voltage_t msg;
+  if (feb_can_bms_accumulator_voltage_unpack(&msg, data, length) == 0)
+  {
+    bms_data.accumulator_total_voltage = msg.total_pack_voltage;
+    __DMB();
+    bms_data.last_rx_tick = HAL_GetTick();
+  }
 }
 
 /* ============================================================================
@@ -84,7 +91,7 @@ void FEB_CAN_BMS_Init(void)
   FEB_Console_Printf("Initializing BMS CAN");
 
   FEB_CAN_RX_Params_t rx_params_bms_state = {
-      .instance = FEB_CAN_INSTANCE_1,
+      .instance = FEB_CAN_INSTANCE_2,
       .can_id = FEB_CAN_BMS_STATE_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,
@@ -95,7 +102,7 @@ void FEB_CAN_BMS_Init(void)
   };
 
   FEB_CAN_RX_Params_t rx_params_bms_temperature = {
-      .instance = FEB_CAN_INSTANCE_1,
+      .instance = FEB_CAN_INSTANCE_2,
       .can_id = FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,
@@ -106,7 +113,7 @@ void FEB_CAN_BMS_Init(void)
   };
 
   FEB_CAN_RX_Params_t rx_params_bms_voltage = {
-      .instance = FEB_CAN_INSTANCE_1,
+      .instance = FEB_CAN_INSTANCE_2,
       .can_id = FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,
@@ -119,6 +126,13 @@ void FEB_CAN_BMS_Init(void)
   FEB_CAN_RX_Register(&rx_params_bms_state);
   FEB_CAN_RX_Register(&rx_params_bms_temperature);
   FEB_CAN_RX_Register(&rx_params_bms_voltage);
+}
+
+bool FEB_CAN_BMS_GetLastHVState()
+{
+  return ((bms_data.state == BMS_STATE_DRIVE) || (bms_data.state == BMS_STATE_ENERGIZED) ||
+          (bms_data.state == BMS_STATE_PRECHARGE) || (bms_data.state == BMS_STATE_CHARGER_PRECHARGE) ||
+          (bms_data.state == BMS_STATE_CHARGING) || (bms_data.state == BMS_STATE_BALANCE));
 }
 
 BMS_State_t FEB_CAN_BMS_GetLastState(void)

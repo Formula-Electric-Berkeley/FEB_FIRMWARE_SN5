@@ -1,4 +1,6 @@
 #include "FEB_Main.h"
+#include "FEB_ADC.h"
+#include "FEB_PCU_APPS_Commands.h"
 #include "main.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -96,6 +98,11 @@ void FEB_Main_Setup(void)
   FEB_ADC_Init();
   FEB_ADC_Start(ADC_MODE_DMA);
 
+  // Start the ADC sampling trigger. All three ADCs were armed by FEB_ADC_Start
+  // in external-trigger mode and convert exactly one coherent scan per TIM2 TRGO
+  // (update) event @ ~10 kHz; without TIM2 running they never sample.
+  HAL_TIM_Base_Start(&htim2);
+
   // === CHECKPOINT 4: ADC ready ===
   LOG_I(TAG_MAIN, "[4/8] ADC initialized");
   HAL_Delay(50);
@@ -109,13 +116,19 @@ void FEB_Main_Setup(void)
     LOG_I(TAG_MAIN, "[5/8] RMS initialized");
     HAL_Delay(50);
 
-    // Clear RMS lockout (2-second blocking sequence - runs once at startup)
-    FEB_RMS_Process();
+    // NOTE: FEB_CAN_RMS_Init() already commanded the inverter DISABLED (lockout-
+    // safe). The inverter stays disabled until FEB_RMS_Torque() enables it on a
+    // clean 0->1 edge once BMS drive state is reached.
 
     FEB_CAN_BMS_Init();
 
     // === CHECKPOINT 6: BMS ready ===
     LOG_I(TAG_MAIN, "[6/8] BMS initialized");
+    HAL_Delay(50);
+
+    // IVT current/voltage sensor RX (pack voltage + current for RMS limiting)
+    FEB_CAN_IVT_Init();
+    LOG_I(TAG_MAIN, "[6/8] IVT initialized");
     HAL_Delay(50);
   }
   else
@@ -159,11 +172,19 @@ void FEB_Main_Setup(void)
 void FEB_Main_Loop(void)
 {
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
+  PCU_APPS_StreamProcess();
 
-  // TPS power monitoring (rate limited to 10Hz to prevent CAN queue overflow)
+  // BMS heartbeat: flag is set by CAN RX ISR; transmit here in task context to avoid
+  // combining with ISR diagnostic TX and saturating the 3 hardware CAN mailboxes.
+  if (can_init_success)
+  {
+    FEB_CAN_BMS_ProcessHeartbeat();
+  }
+
+  // TPS power monitoring (rate limited to 4 Hz to keep CAN traffic low)
   static uint32_t last_tps_tick = 0;
   uint32_t now = HAL_GetTick();
-  if (now - last_tps_tick >= 100)
+  if (now - last_tps_tick >= 250)
   {
     last_tps_tick = now;
     FEB_CAN_TPS_Update(&hi2c1, &tps_i2c_address, 1);
@@ -187,13 +208,37 @@ void FEB_Main_Loop(void)
  * Handle periodic tasks driven by the 1 ms system tick.
  *
  * Processes the BMS heartbeat on every invocation, triggers the RMS torque
- * update at a 10 ms cadence, and transmits brake and APPS diagnostics at a
- * 20 ms cadence.
+ * update at a 10 ms cadence, and transmits brake, APPS, and raw pedal-voltage
+ * diagnostics at a 10 Hz cadence.
  */
 void FEB_1ms_Callback(void)
 {
   static uint16_t torque_divider = 0;
-  static uint16_t diagnostics_divider = 0;
+  static uint16_t brake_divider = 0;
+  // Diagnostics are throttled hard (brake/APPS/pedal-mV @ 10 Hz) to keep CAN
+  // traffic low; the dividers are offset (brake @ 0 ms, pedal-mV @ 25 ms, APPS @
+  // 50 ms) so the three never fire in the same tick. The software TX FIFO in
+  // feb_can absorbs any residual bursting.
+  static uint16_t apps_divider = 50;
+  static uint16_t pedal_mv_divider = 75; // first fire at tick 25, then every 100
+
+  // Latch ONE time-coherent ADC snapshot for this control cycle. MUST run first
+  // so every consumer below (APPS plausibility, brake faults, RMS torque, CAN
+  // diagnostics, CLI) reads the same sampling instant — APPS1/APPS2, brake1/
+  // brake2 and APPS-vs-brake are then mutually coherent and a staggered-read can
+  // never inflate a plausibility deviation.
+  FEB_ADC_TickSample();
+
+  // Refresh the APPS cache every 1 ms so the implausibility timer
+  // accumulates correctly across all consumers (FEB_RMS_Torque,
+  // FEB_CAN_Diagnostics_TransmitAPPSData, the CLI snapshot view).
+  FEB_ADC_TickAPPS();
+
+  // Brake fault detection at 1 ms: BSE sensor open/short (T.4.3.4/.5, 100 ms
+  // latch) and the EV.4.7 brake+throttle check (short debounce, ~immediate).
+  // Runs even if CAN init failed — it is local, ADC-only safety logic. Must
+  // follow FEB_ADC_TickAPPS() so apps_cache.acceleration is fresh for EV.4.7.
+  FEB_ADC_TickBrakeFaults();
 
   // Skip CAN-dependent operations if CAN init failed
   if (!can_init_success)
@@ -201,20 +246,38 @@ void FEB_1ms_Callback(void)
     return;
   }
 
-  FEB_CAN_BMS_ProcessHeartbeat();
+  // BMS heartbeat is processed in FEB_Main_Loop, not here, to avoid combining
+  // its TX with RMS + diagnostics and saturating all 3 hardware CAN mailboxes.
 
+  // Torque command to the RMS — control signal, kept relatively fast (50 Hz).
+  // Well within the inverter command timeout; drop to >= 10 (100 Hz) if needed.
   torque_divider++;
-  if (torque_divider >= 10)
+  if (torque_divider >= 20)
   {
     torque_divider = 0;
     FEB_RMS_Torque();
   }
 
-  diagnostics_divider++;
-  if (diagnostics_divider >= 20)
+  // Brake + APPS diagnostics — telemetry only, 10 Hz is plenty.
+  brake_divider++;
+  if (brake_divider >= 100)
   {
-    diagnostics_divider = 0;
+    brake_divider = 0;
     FEB_CAN_Diagnostics_TransmitBrakeData();
+  }
+
+  apps_divider++;
+  if (apps_divider >= 50)
+  {
+    apps_divider = 0;
     FEB_CAN_Diagnostics_TransmitAPPSData();
+  }
+
+  // Raw pedal sensor voltages (mV) — telemetry only, 10 Hz.
+  pedal_mv_divider++;
+  if (pedal_mv_divider >= 100)
+  {
+    pedal_mv_divider = 0;
+    FEB_CAN_Diagnostics_TransmitPedalVoltages();
   }
 }

@@ -1,0 +1,404 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * File Name          : freertos.c
+  * Description        : Code for freertos applications
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2026 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+
+/* Includes ------------------------------------------------------------------*/
+#include "FreeRTOS.h"
+#include "task.h"
+#include "main.h"
+#include "cmsis_os.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include "FEB_Task_Radio.h"
+#include "feb_rtos_utils.h"
+#include "feb_uart.h"
+#include "feb_can_lib.h"
+#include "FEB_Main.h"
+#include "DCU_SD.h"
+#include "DCU_CAN_Log.h"
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+typedef StaticSemaphore_t osStaticMutexDef_t;
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+/* USER CODE BEGIN Variables */
+
+/* USER CODE END Variables */
+/* Definitions for uartRxTask */
+osThreadId_t uartRxTaskHandle;
+const osThreadAttr_t uartRxTask_attributes = {
+  .name = "uartRxTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for radioTask */
+osThreadId_t radioTaskHandle;
+const osThreadAttr_t radioTask_attributes = {
+  .name = "radioTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityHigh,
+};
+/* Definitions for sdTask */
+osThreadId_t sdTaskHandle;
+const osThreadAttr_t sdTask_attributes = {
+  .name = "sdTask",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityBelowNormal,
+};
+/* Definitions for canDispatchTask */
+osThreadId_t canDispatchTaskHandle;
+const osThreadAttr_t canDispatchTask_attributes = {
+  .name = "canDispatchTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityAboveNormal,
+};
+/* Definitions for canLogTask */
+osThreadId_t canLogTaskHandle;
+const osThreadAttr_t canLogTask_attributes = {
+  .name = "canLogTask",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityBelowNormal,
+};
+/* Definitions for rxDataQueue */
+osMessageQueueId_t rxDataQueueHandle;
+const osMessageQueueAttr_t rxDataQueue_attributes = {
+  .name = "rxDataQueue"
+};
+/* Definitions for uartRxQueue */
+osMessageQueueId_t uartRxQueueHandle;
+const osMessageQueueAttr_t uartRxQueue_attributes = {
+  .name = "uartRxQueue"
+};
+/* Definitions for sdRequestQueue */
+osMessageQueueId_t sdRequestQueueHandle;
+const osMessageQueueAttr_t sdRequestQueue_attributes = {
+  .name = "sdRequestQueue"
+};
+/* Definitions for canTxQueue */
+osMessageQueueId_t canTxQueueHandle;
+const osMessageQueueAttr_t canTxQueue_attributes = {
+  .name = "canTxQueue"
+};
+/* Definitions for canRxQueue */
+osMessageQueueId_t canRxQueueHandle;
+const osMessageQueueAttr_t canRxQueue_attributes = {
+  .name = "canRxQueue"
+};
+/* Definitions for canLogQueue */
+osMessageQueueId_t canLogQueueHandle;
+const osMessageQueueAttr_t canLogQueue_attributes = {
+  .name = "canLogQueue"
+};
+/* Definitions for rxTimeoutTimer */
+osTimerId_t rxTimeoutTimerHandle;
+const osTimerAttr_t rxTimeoutTimer_attributes = {
+  .name = "rxTimeoutTimer"
+};
+/* Definitions for spiMutex */
+osMutexId_t spiMutexHandle;
+osStaticMutexDef_t spiMutexCtrlBlock;
+const osMutexAttr_t spiMutex_attributes = {
+  .name = "spiMutex",
+  .cb_mem = &spiMutexCtrlBlock,
+  .cb_size = sizeof(spiMutexCtrlBlock),
+};
+/* Definitions for uartTxMutex */
+osMutexId_t uartTxMutexHandle;
+const osMutexAttr_t uartTxMutex_attributes = {
+  .name = "uartTxMutex"
+};
+/* Definitions for logMutex */
+osMutexId_t logMutexHandle;
+const osMutexAttr_t logMutex_attributes = {
+  .name = "logMutex"
+};
+/* Definitions for canTxMutex */
+osMutexId_t canTxMutexHandle;
+const osMutexAttr_t canTxMutex_attributes = {
+  .name = "canTxMutex"
+};
+/* Definitions for canRxMutex */
+osMutexId_t canRxMutexHandle;
+const osMutexAttr_t canRxMutex_attributes = {
+  .name = "canRxMutex"
+};
+/* Definitions for uartTxSem */
+osSemaphoreId_t uartTxSemHandle;
+const osSemaphoreAttr_t uartTxSem_attributes = {
+  .name = "uartTxSem"
+};
+/* Definitions for canTxMailboxSem */
+osSemaphoreId_t canTxMailboxSemHandle;
+const osSemaphoreAttr_t canTxMailboxSem_attributes = {
+  .name = "canTxMailboxSem"
+};
+/* Definitions for radioEvents */
+osEventFlagsId_t radioEventsHandle;
+const osEventFlagsAttr_t radioEvents_attributes = {
+  .name = "radioEvents"
+};
+
+/* Private function prototypes -----------------------------------------------*/
+/* USER CODE BEGIN FunctionPrototypes */
+
+/* USER CODE END FunctionPrototypes */
+
+void StartUartRxTask(void *argument);
+void RadioTask(void *argument);
+void StartSdTask(void *argument);
+void StartCanDispatchTask(void *argument);
+void StartCanLogTask(void *argument);
+void rxTimeoutCallback(void *argument);
+
+void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+/**
+  * @brief  FreeRTOS initialization
+  * @param  None
+  * @retval None
+  */
+void MX_FREERTOS_Init(void) {
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+  /* Create the mutex(es) */
+  /* creation of spiMutex */
+  spiMutexHandle = osMutexNew(&spiMutex_attributes);
+
+  /* creation of uartTxMutex */
+  uartTxMutexHandle = osMutexNew(&uartTxMutex_attributes);
+
+  /* creation of logMutex */
+  logMutexHandle = osMutexNew(&logMutex_attributes);
+
+  /* creation of canTxMutex */
+  canTxMutexHandle = osMutexNew(&canTxMutex_attributes);
+
+  /* creation of canRxMutex */
+  canRxMutexHandle = osMutexNew(&canRxMutex_attributes);
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* Create the semaphores(s) */
+  /* creation of uartTxSem */
+  uartTxSemHandle = osSemaphoreNew(1, 0, &uartTxSem_attributes);
+
+  /* creation of canTxMailboxSem */
+  canTxMailboxSemHandle = osSemaphoreNew(3, 3, &canTxMailboxSem_attributes);
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* Create the timer(s) */
+  /* creation of rxTimeoutTimer */
+  rxTimeoutTimerHandle = osTimerNew(rxTimeoutCallback, osTimerOnce, NULL, &rxTimeoutTimer_attributes);
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* Create the queue(s) */
+  /* creation of rxDataQueue */
+  rxDataQueueHandle = osMessageQueueNew (4, 64, &rxDataQueue_attributes);
+
+  /* creation of uartRxQueue */
+  uartRxQueueHandle = osMessageQueueNew (8, sizeof(FEB_UART_RxQueueMsg_t), &uartRxQueue_attributes);
+
+  /* creation of sdRequestQueue */
+  sdRequestQueueHandle = osMessageQueueNew (4, 4, &sdRequestQueue_attributes);
+
+  /* creation of canTxQueue */
+  canTxQueueHandle = osMessageQueueNew (32, sizeof(FEB_CAN_Message_t), &canTxQueue_attributes);
+
+  /* creation of canRxQueue */
+  canRxQueueHandle = osMessageQueueNew (128, sizeof(FEB_CAN_Message_t), &canRxQueue_attributes);
+
+  /* creation of canLogQueue */
+  canLogQueueHandle = osMessageQueueNew (256, sizeof(DCU_CAN_Frame_t), &canLogQueue_attributes);
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of uartRxTask */
+  uartRxTaskHandle = osThreadNew(StartUartRxTask, NULL, &uartRxTask_attributes);
+
+  /* creation of radioTask */
+  radioTaskHandle = osThreadNew(RadioTask, NULL, &radioTask_attributes);
+
+  /* creation of sdTask */
+  sdTaskHandle = osThreadNew(StartSdTask, NULL, &sdTask_attributes);
+
+  /* creation of canDispatchTask */
+  canDispatchTaskHandle = osThreadNew(StartCanDispatchTask, NULL, &canDispatchTask_attributes);
+
+  /* creation of canLogTask */
+  canLogTaskHandle = osThreadNew(StartCanLogTask, NULL, &canLogTask_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  REQUIRE_RTOS_HANDLE(spiMutexHandle);
+  REQUIRE_RTOS_HANDLE(uartTxMutexHandle);
+  REQUIRE_RTOS_HANDLE(logMutexHandle);
+  REQUIRE_RTOS_HANDLE(uartTxSemHandle);
+  REQUIRE_RTOS_HANDLE(uartRxQueueHandle);
+  REQUIRE_RTOS_HANDLE(rxTimeoutTimerHandle);
+  REQUIRE_RTOS_HANDLE(rxDataQueueHandle);
+  REQUIRE_RTOS_HANDLE(uartRxTaskHandle);
+  REQUIRE_RTOS_HANDLE(radioTaskHandle);
+  REQUIRE_RTOS_HANDLE(sdTaskHandle);
+  REQUIRE_RTOS_HANDLE(sdRequestQueueHandle);
+  REQUIRE_RTOS_HANDLE(canTxMutexHandle);
+  REQUIRE_RTOS_HANDLE(canRxMutexHandle);
+  REQUIRE_RTOS_HANDLE(canTxMailboxSemHandle);
+  REQUIRE_RTOS_HANDLE(canTxQueueHandle);
+  REQUIRE_RTOS_HANDLE(canRxQueueHandle);
+  REQUIRE_RTOS_HANDLE(canLogQueueHandle);
+  REQUIRE_RTOS_HANDLE(canDispatchTaskHandle);
+  REQUIRE_RTOS_HANDLE(canLogTaskHandle);
+  /* USER CODE END RTOS_THREADS */
+
+  /* creation of radioEvents */
+  radioEventsHandle = osEventFlagsNew(&radioEvents_attributes);
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  REQUIRE_RTOS_HANDLE(radioEventsHandle);
+  /* Initialize FEB libraries after FreeRTOS objects are created */
+  FEB_Init();
+  /* USER CODE END RTOS_EVENTS */
+
+}
+
+/* USER CODE BEGIN Header_StartUartRxTask */
+/**
+  * @brief  Function implementing the uartRxTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartUartRxTask */
+__weak void StartUartRxTask(void *argument)
+{
+  /* USER CODE BEGIN StartUartRxTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartUartRxTask */
+}
+
+/* USER CODE BEGIN Header_RadioTask */
+/**
+* @brief Function implementing the radioTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_RadioTask */
+void RadioTask(void *argument)
+{
+  /* USER CODE BEGIN RadioTask */
+  StartRadioTask(argument);
+  /* USER CODE END RadioTask */
+}
+
+/* USER CODE BEGIN Header_StartSdTask */
+/**
+* @brief Function implementing the sdTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartSdTask */
+__weak void StartSdTask(void *argument)
+{
+  /* USER CODE BEGIN StartSdTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartSdTask */
+}
+
+/* USER CODE BEGIN Header_StartCanDispatchTask */
+/**
+* @brief Function implementing the canDispatchTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartCanDispatchTask */
+__weak void StartCanDispatchTask(void *argument)
+{
+  /* USER CODE BEGIN StartCanDispatchTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartCanDispatchTask */
+}
+
+/* USER CODE BEGIN Header_StartCanLogTask */
+/**
+* @brief Function implementing the canLogTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartCanLogTask */
+__weak void StartCanLogTask(void *argument)
+{
+  /* USER CODE BEGIN StartCanLogTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartCanLogTask */
+}
+
+/* rxTimeoutCallback function */
+void rxTimeoutCallback(void *argument)
+{
+  /* USER CODE BEGIN rxTimeoutCallback */
+  (void)argument;
+  /* Timer not used - FEB_RFM95 handles timeouts internally via osEventFlagsWait */
+  /* USER CODE END rxTimeoutCallback */
+}
+
+/* Private application code --------------------------------------------------*/
+/* USER CODE BEGIN Application */
+
+/* USER CODE END Application */
+

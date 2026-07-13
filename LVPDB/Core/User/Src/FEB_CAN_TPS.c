@@ -41,10 +41,13 @@ void FEB_CAN_TPS_Init(void) {}
 void FEB_CAN_TPS_Tick(int16_t *tps_current_raw, uint16_t *tps_bus_voltage_raw, size_t length)
 {
   uint8_t tx_data[8] = {0};
-  memcpy(&tx_data[0], &tps_bus_voltage_raw[0], sizeof(uint16_t));
-  memcpy(&tx_data[2], &tps_bus_voltage_raw[3], sizeof(uint16_t));
+  feb_can_lvpdb_lv_24v_bus_and_12v_bus_voltages_pack(
+      tx_data,
+      &((struct feb_can_lvpdb_lv_24v_bus_and_12v_bus_voltages_t){.lv_24v_voltage = tps_bus_voltage_raw[0],
+                                                                 .lv_12v_voltage = tps_bus_voltage_raw[3]}),
+      sizeof(tx_data));
   FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_LVPDB_LV_24V_BUS_AND_12V_BUS_VOLTAGES_FRAME_ID, FEB_CAN_ID_STD, tx_data,
-                  4); // Voltages for LV (24V), BM_L (12V)
+                  FEB_CAN_LVPDB_LV_24V_BUS_AND_12V_BUS_VOLTAGES_LENGTH); // Voltages for LV (24V), BM_L (12V)
 
   memset(tx_data, 0, sizeof(tx_data));
   memcpy(&tx_data[0], &tps_current_raw[0], sizeof(uint16_t));

@@ -16,8 +16,7 @@
 #define TAG_TPS "[TPS]"
 
 /* ========================== External FreeRTOS handles (from CubeMX) ========================== */
-/* NOTE: These are created in CubeMX .ioc and defined in freertos.c */
-extern osMutexId_t tpsDataMutexHandle;
+/* NOTE: Created in CubeMX .ioc and defined in freertos.c */
 extern osMutexId_t tpsI2cMutexHandle;
 
 /* TPS2482 configuration */
@@ -78,9 +77,7 @@ void StartTPSTask(void *argument)
       .log_func = tps_log_callback,
       .log_level = FEB_TPS_LOG_INFO,
 #if FEB_TPS_USE_FREERTOS
-      .data_mutex = tpsDataMutexHandle,
       .i2c_mutex = tpsI2cMutexHandle,
-      .poll_interval_ms = 100,
 #endif
   };
   FEB_TPS_Status_t init_status = FEB_TPS_Init(&lib_cfg);

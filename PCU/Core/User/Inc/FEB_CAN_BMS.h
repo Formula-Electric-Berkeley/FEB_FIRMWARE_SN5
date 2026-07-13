@@ -62,5 +62,7 @@ void FEB_CAN_BMS_Init(void);
 void FEB_CAN_HEARTBEAT_Transmit(void);
 void FEB_CAN_BMS_ProcessHeartbeat(void);
 bool FEB_CAN_BMS_InDriveState(void);
+bool FEB_CAN_BMS_IsSilent(void);
+bool FEB_CAN_BMS_SetStateSim(bool enabled, FEB_SM_ST_t state);
 
 #endif /* INC_FEB_CAN_BMS_H_ */

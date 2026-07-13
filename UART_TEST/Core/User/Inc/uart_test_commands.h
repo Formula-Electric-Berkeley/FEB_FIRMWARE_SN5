@@ -11,12 +11,14 @@
  * console system.
  *
  * Commands:
- *   - hello : Print a greeting message
  *   - blink : LED blink placeholder (not implemented on this board)
+ *
+ * The system `hello` / `commands` are registered via
+ * FEB_Commands_RegisterSystem() and cover CSV discovery.
  *
  * Usage:
  *   Call UART_TEST_RegisterCommands() after FEB_Console_Init() to add
- *   these custom commands to the console.
+ *   these board-specific commands to the console.
  *
  ******************************************************************************
  */
@@ -35,7 +37,6 @@ extern "C"
    * Command Descriptors
    * ============================================================================ */
 
-  extern const FEB_Console_Cmd_t uart_test_cmd_hello;
   extern const FEB_Console_Cmd_t uart_test_cmd_blink;
 
   /* ============================================================================

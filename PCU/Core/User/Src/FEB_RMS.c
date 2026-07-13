@@ -2,17 +2,19 @@
 #include "FEB_ADC.h"
 #include "FEB_CAN_BMS.h"
 #include "FEB_CAN_RMS.h"
+#include "FEB_CAN_IVT.h"
 #include "FEB_RMS_Config.h"
 #include "feb_log.h"
 #include "FEB_Regen.h"
 #include "main.h"
+#include <math.h>
 
 /* Safe min macro with proper parentheses */
 #define min(x1, x2) (((x1) < (x2)) ? (x1) : (x2))
 
 /* Regen brake position threshold (from FEB_Regen.h) */
 #ifndef REGEN_BRAKE_POS_THRESH
-#define REGEN_BRAKE_POS_THRESH 0.20f /* 20% brake position to activate regen */
+#define REGEN_BRAKE_POS_THRESH 20.0f /* 20% brake position to activate regen */
 #endif
 
 /* Global RMS control data */
@@ -21,17 +23,46 @@ APPS_DataTypeDef APPS_Data;
 extern Brake_DataTypeDef Brake_Data;
 bool DRIVE_STATE;
 
-void FEB_RMS_Setup(void)
+static uint32_t last_rms_implaus_log_tick = 0;
+
+/* Bench brake bypass (runtime): treat the brake as released+plausible and skip
+ * the BSPD check. Bus-guarded — refused/auto-cancelled when a real BMS is on
+ * the bus (see FEB_RMS_SetBrakeBypass and the auto-cancel in FEB_RMS_Torque). */
+static bool brake_bypass_active = false;
+
+/* Sticky manual inverter-off latch set by `PCU|rms|disable`. While set, the
+ * auto state machine will not re-arm the inverter; only `PCU|rms|enable`
+ * (FEB_RMS_CommandEnable) clears it. */
+static bool rms_force_disable = false;
+
+/* Drive gate for inverter commanding. Bench use is covered at runtime by the
+ * BMS-state sim (`PCU|bms|state|drive`), which makes FEB_CAN_BMS_InDriveState()
+ * return true — there is no compile-time override. */
+static inline bool FEB_RMS_DriveAllowed(void)
 {
-  RMS_CONTROL_MESSAGE.enabled = 0;
-  RMS_CONTROL_MESSAGE.torque = 0.0;
-  LOG_I(TAG_RMS, "RMS control initialized");
+  return FEB_CAN_BMS_InDriveState();
+}
+
+bool FEB_RMS_SetBrakeBypass(bool enabled)
+{
+  /* Mirror the BMS-state sim guard: refuse to engage while a real BMS is
+   * broadcasting, so the bypass can never be on in a real vehicle. */
+  if (enabled && !FEB_CAN_BMS_IsSilent())
+    return false;
+  brake_bypass_active = enabled;
+  FEB_ADC_SetBrakeBypass(enabled);
+  return true;
+}
+
+bool FEB_RMS_GetBrakeBypass(void)
+{
+  return brake_bypass_active;
 }
 
 void FEB_RMS_Process(void)
 {
   // Require BMS to be in drive state before enabling inverter
-  if (!FEB_CAN_BMS_InDriveState())
+  if (!FEB_RMS_DriveAllowed())
   {
     LOG_W(TAG_RMS, "Cannot enable RMS: BMS not in drive state (state=%d)", BMS_MESSAGE.state);
     return;
@@ -54,6 +85,28 @@ void FEB_RMS_Disable(void)
   DRIVE_STATE = false;
 }
 
+/* Manual console control of the inverter enable line. Disable is a sticky,
+ * always-allowed fail-safe; enable clears the latch and re-runs the normal
+ * drive-gated enable path (so it still requires BMS drive / the sim). */
+void FEB_RMS_CommandDisable(void)
+{
+  rms_force_disable = true;
+  LOG_W(TAG_RMS, "Inverter force-disabled by console");
+  FEB_RMS_Disable();
+}
+
+bool FEB_RMS_CommandEnable(void)
+{
+  rms_force_disable = false;
+  FEB_RMS_Process();
+  return RMS_CONTROL_MESSAGE.enabled != 0;
+}
+
+bool FEB_RMS_IsForceDisabled(void)
+{
+  return rms_force_disable;
+}
+
 /**
  * @brief Calculate current derating factor based on pack voltage
  *
@@ -69,21 +122,28 @@ void FEB_RMS_Disable(void)
  */
 float FEB_Get_Peak_Current_Delimiter()
 {
-  // Skip voltage-based limiting if we've never received RMS data
-  if (RMS_MESSAGE.last_rx_timestamp == 0)
+  // Pack voltage for limiting: prefer the IVT (measured terminal voltage, sags
+  // under load); fall back to the inverter's M167 DC bus voltage if the IVT is
+  // stale; if neither is available, don't limit torque.
+  float accumulator_voltage;
+  if (FEB_CAN_IVT_IsDataFresh(FEB_CAN_IVT_DATA_TIMEOUT_MS))
+  {
+    accumulator_voltage = FEB_CAN_IVT_GetVoltage();
+  }
+  else if (RMS_MESSAGE.last_rx_timestamp != 0)
+  {
+    accumulator_voltage = RMS_MESSAGE.DC_Bus_Voltage_V;
+  }
+  else
   {
     static uint32_t last_no_data_log = 0;
     if (HAL_GetTick() - last_no_data_log >= 5000)
     {
       last_no_data_log = HAL_GetTick();
-      LOG_W(TAG_RMS, "No RMS voltage data received yet");
+      LOG_W(TAG_RMS, "No pack voltage data (IVT + RMS) received yet");
     }
     return 1.0f; // Don't limit torque without real data
   }
-
-  // Convert RMS voltage format: decivolts with 50V offset
-  // Formula: actual_voltage = (HV_Bus_Voltage - 50) / 10
-  float accumulator_voltage = (RMS_MESSAGE.HV_Bus_Voltage - 50.0f) / 10.0f;
 
   // Start derating when voltage = MIN_PACK_VOLTAGE_V + expected_drop_at_peak_current
   // With R_acc = 1Ω and PEAK_CURRENT = 60A: start_derating = 400V + 60V = 460V
@@ -129,16 +189,18 @@ float FEB_RMS_GetMaxTorque(void)
   float motor_speed = RMS_MESSAGE.Motor_Speed * RPM_TO_RAD_S;
   float peak_current_limited = PEAK_CURRENT * FEB_Get_Peak_Current_Delimiter();
 
-  // Cap power to peak_current * MIN_PACK_VOLTAGE_V (e.g., 60A * 400V = 24kW)
-  float power_capped = peak_current_limited * MIN_PACK_VOLTAGE_V;
+  // Measured pack voltage/current from the IVT (terminal values, sag under load).
+  // The getters return 0.0 when stale, so gate every use on freshness.
+  bool ivt_fresh = FEB_CAN_IVT_IsDataFresh(FEB_CAN_IVT_DATA_TIMEOUT_MS);
+  float pack_voltage_v = ivt_fresh ? FEB_CAN_IVT_GetVoltage() : MIN_PACK_VOLTAGE_V;
 
-  // Select torque limit based on pack voltage
+  // Cap power to peak_current * measured pack voltage (constant-power budget).
+  float power_capped = peak_current_limited * pack_voltage_v;
+
+  // Select torque limit based on the measured (IVT) pack voltage. Only trip when
+  // the IVT is fresh — a stale getter reads 0.0 and would look like a brownout.
   uint16_t minimum_torque = MAX_TORQUE;
-  if (BMS_MESSAGE.last_rx_timestamp == 0)
-  {
-    // No BMS data yet, use default max torque
-  }
-  else if (BMS_MESSAGE.voltage < LOW_PACK_VOLTAGE)
+  if (ivt_fresh && FEB_CAN_IVT_GetVoltage() < LOW_PACK_VOLTAGE_V)
   {
     minimum_torque = MAX_TORQUE_LOW_V;
     // Rate-limit this warning to once per second
@@ -150,15 +212,36 @@ float FEB_RMS_GetMaxTorque(void)
     }
   }
 
-  // Below minimum speed threshold: use constant torque mode
-  // Prevents division by zero and handles stopped/negative rotation
+  // Below minimum speed threshold: use constant torque mode (prevents division by
+  // zero and handles stopped/negative rotation). Otherwise limit by power.
+  float maxTorque;
   if (motor_speed < MIN_MOTOR_SPEED_RAD_S)
   {
-    return minimum_torque;
+    maxTorque = (float)minimum_torque;
+  }
+  else
+  {
+    maxTorque = min((float)minimum_torque, (power_capped) / motor_speed);
   }
 
-  // Above minimum speed: limit by power (constant power mode)
-  float maxTorque = min(minimum_torque, (power_capped) / motor_speed);
+  // Measured-current protective limit: if the pack is already sourcing more than
+  // IVT_CURRENT_LIMIT_A, scale torque down proportionally. Mirrors the BMS
+  // measured-current check (FEB_SM.c). Conservative backstop — bench-tune.
+  if (ivt_fresh)
+  {
+    float ivt_current = fabsf(FEB_CAN_IVT_GetCurrent());
+    if (ivt_current > IVT_CURRENT_LIMIT_A)
+    {
+      maxTorque *= (IVT_CURRENT_LIMIT_A / ivt_current);
+      static uint32_t last_overcurrent_log = 0;
+      if (HAL_GetTick() - last_overcurrent_log >= 1000)
+      {
+        last_overcurrent_log = HAL_GetTick();
+        LOG_W(TAG_RMS, "IVT overcurrent %.1fA > %.1fA, derating torque", (double)ivt_current,
+              (double)IVT_CURRENT_LIMIT_A);
+      }
+    }
+  }
 
   return maxTorque;
 }
@@ -166,80 +249,105 @@ float FEB_RMS_GetMaxTorque(void)
 /**
  * @brief Main torque control function - reads sensors and commands motor
  *
- * Implements FSAE EV.5.6 and EV.5.7 safety rules:
- * - Cuts torque if brake is pressed while throttle > 25%
- * - Enforces APPS plausibility checks
- * - Requires pedal release to clear faults
+ * Implements FSAE T.4.2 / T.4.3 / EV.4.7 safety rules:
+ * - Cuts torque if brakes engaged while APPS > 25% (EV.4.7)
+ * - Enforces APPS plausibility + BSE open/short checks (T.4.2 / T.4.3)
+ * - Requires APPS < 5% to clear the EV.4.7 / implausibility latch (EV.4.7.2.b)
  *
  * Called periodically from main loop
  */
 void FEB_RMS_Torque(void)
 {
-  // Try to enable RMS if BMS enters drive state
-  if (!DRIVE_STATE && FEB_CAN_BMS_InDriveState())
+  // Try to enable RMS if BMS enters drive state (unless a manual disable is latched)
+  if (!DRIVE_STATE && FEB_RMS_DriveAllowed() && !rms_force_disable)
   {
     FEB_RMS_Process();
   }
 
   // Auto-disable RMS if BMS leaves drive state or communication is lost
-  if (DRIVE_STATE && !FEB_CAN_BMS_InDriveState())
+  if (DRIVE_STATE && !FEB_RMS_DriveAllowed())
   {
     LOG_W(TAG_RMS, "BMS left drive state or timeout, disabling RMS");
     FEB_RMS_Disable();
   }
 
-  // Read latest sensor data
+  // Read latest sensor data from the cache (updated every 1 ms by
+  // FEB_ADC_TickAPPS). Plausibility and fault state are owned by FEB_ADC;
+  // this consumer must not write back into the cached structs.
   FEB_ADC_GetAPPSData(&APPS_Data);
   FEB_ADC_GetBrakeData(&Brake_Data);
-  Brake_Data.plausible = true; // OVERRIDE: Bypass brake plausibility check
 
-  // Check plausibility and safety conditions (require BMS in drive state)
-  bool bms_in_drive = FEB_CAN_BMS_InDriveState();
-  bool sensors_plausible = bms_in_drive && DRIVE_STATE;
+  // Bench brake bypass auto-cancels the instant a real BMS appears on the bus,
+  // so it can never stay engaged on a vehicle (mirrors the BMS-state sim guard).
+  if (brake_bypass_active && !FEB_CAN_BMS_IsSilent())
+  {
+    brake_bypass_active = false;
+    FEB_ADC_SetBrakeBypass(false);
+    LOG_W(TAG_RMS, "Brake bypass cancelled: BMS active on CAN bus");
+  }
+
+  // Effective brake state used for gating and mode select below. With the bench
+  // brake bypass on, the brake is assumed disconnected: treat it as released and
+  // plausible so the accelerator alone commands torque (no regen/coast
+  // diversion), and skip the BSPD check so a floating brake input can't latch a
+  // fault. Otherwise run the BSPD/brake-plausibility check so faults latch.
+  // brake_plausible folds in: the brake-pressure disagreement + latched BSE
+  // open/short fault (both via Brake_Data.plausible) AND the EV.4.7 brake+throttle
+  // latch (FEB_ADC_CheckBrakePlausibility). Detection/latching run in the 1 ms
+  // FEB_ADC_TickBrakeFaults; this just reads the result.
+  bool brake_plausible = Brake_Data.plausible && FEB_ADC_CheckBrakePlausibility();
+  float brake_position = Brake_Data.brake_position;
+  if (brake_bypass_active)
+  {
+    brake_plausible = true;
+    brake_position = 0.0f;
+  }
+
+  // Check plausibility and safety conditions (require BMS in drive state).
+  // Gate on FEB_ADC_CheckAPPSPlausibility() (not the raw APPS_Data.plausible
+  // cache field): it folds in the latched implausibility AND the hardware
+  // short-/open-circuit faults, so a single-channel short or open cuts torque
+  // immediately instead of only via the (oscillating) dual-channel latch.
+  bool bms_in_drive = FEB_RMS_DriveAllowed();
+  bool apps_plausible = FEB_ADC_CheckAPPSPlausibility();
+  bool sensors_plausible = bms_in_drive && DRIVE_STATE && apps_plausible && brake_plausible;
 
   // Log any safety violations
   if (!sensors_plausible)
   {
-    if (Brake_Data.brake_position > BRAKE_POSITION_THRESHOLD)
+    uint32_t now_rms = HAL_GetTick();
+    if (!apps_plausible && (now_rms - last_rms_implaus_log_tick) >= 1000)
     {
-      LOG_W(TAG_RMS, "Brake pressed (%.1f%%), cutting torque", Brake_Data.brake_position);
+      last_rms_implaus_log_tick = now_rms;
+      float v1_mv = 0.0f, v2_mv = 0.0f;
+      FEB_ADC_GetAPPSCacheSnapshot(NULL, NULL, NULL, &v1_mv, &v2_mv, NULL, NULL, NULL);
+      LOG_E(TAG_RMS, "APPS implausible, cutting torque (V1=%.0fmV V2=%.0fmV)", v1_mv, v2_mv);
     }
-    if (!APPS_Data.plausible)
+    if (!brake_plausible)
     {
-      LOG_E(TAG_RMS, "APPS implausible, cutting torque");
-    }
-    if (!Brake_Data.plausible)
-    {
-      LOG_E(TAG_RMS, "Brake sensor implausible, cutting torque");
-    }
-    if (!DRIVE_STATE)
-    {
-      // LOG_W(TAG_RMS, "Not in drive state, cutting torque");
+      LOG_E(TAG_RMS, "Brake sensor implausible, cutting torque (P1=%.1f%%/%.0fmV P2=%.1f%%/%.0fmV in=%.0fmV)",
+            Brake_Data.pressure1_percent, FEB_ADC_GetBrakePressure1Voltage() * 1000.0f, Brake_Data.pressure2_percent,
+            FEB_ADC_GetBrakePressure2Voltage() * 1000.0f, FEB_ADC_GetBrakeInputVoltage() * 1000.0f);
     }
   }
 
-  // Reset plausibility if pedals are released
-  if (APPS_Data.position1 < 5.0f && APPS_Data.position2 < 5.0f && Brake_Data.brake_position < 15.0f)
-  {
-    if (!APPS_Data.plausible || !Brake_Data.plausible)
-    {
-      LOG_I(TAG_RMS, "Pedals released, resetting plausibility flags");
-    }
-    APPS_Data.plausible = true;
-    Brake_Data.plausible = true;
-  }
+  // Release-and-reset (FSAE T.4.2.4 / EV.4.7.2.b): both the APPS implausibility
+  // latch and the EV.4.7 brake/APPS latch clear only when APPS travel < 5% (the
+  // APPS latch additionally requires both channels low and no live short/open).
+  FEB_ADC_AcknowledgeAPPSImplausibility();
+  FEB_ADC_AcknowledgeBrakeImplausibility();
 
   // Determine operating mode: regen braking vs acceleration
-  if (Brake_Data.brake_position > REGEN_BRAKE_POS_THRESH && sensors_plausible)
+  if (brake_position > REGEN_BRAKE_POS_THRESH && sensors_plausible)
   {
     // REGEN MODE: Brake is pressed and sensors are plausible
     float filtered_regen = FEB_Regen_GetFilteredTorque();
 
     // Apply brake position scaling and negative sign (SN3 style)
     // torque_command = -1 * 10 * brake% * filtered_regen / 100
-    RMS_CONTROL_MESSAGE.torque = (int16_t)(-10.0f * Brake_Data.brake_position * filtered_regen / 100.0f);
+    RMS_CONTROL_MESSAGE.torque = (int16_t)(-10.0f * brake_position * filtered_regen / 100.0f);
   }
-  else if (Brake_Data.brake_position < BRAKE_POSITION_THRESHOLD && sensors_plausible)
+  else if (brake_position < BRAKE_POSITION_THRESHOLD && sensors_plausible)
   {
     // ACCELERATION MODE: No brake and sensors are plausible
     // Calculate commanded torque: acceleration (0-100%) * max_torque

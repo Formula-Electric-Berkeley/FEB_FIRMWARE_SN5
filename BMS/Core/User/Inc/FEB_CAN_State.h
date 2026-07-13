@@ -12,6 +12,10 @@
  * @brief BMS state machine states (aligned with SN4)
  * @note Values match CAN bms_state signal (5-bit, 0-31 valid range)
  * @note Values must match FEB_SM_ST_t in PCU/Core/User/Inc/FEB_CAN_BMS.h
+ * @note SN5 keeps an extra CHARGER_PRECHARGE (7) state that the spec diagram
+ *       does not show, so diagram state numbers >= 7 (Charging, Balance, the
+ *       fault states) are offset by +1 here. Do NOT renumber to "match" the
+ *       diagram: PCU mirrors these exact values and compares state == DRIVE (5).
  */
 typedef enum
 {
@@ -71,11 +75,11 @@ const char *FEB_CAN_State_GetStateName(BMS_State_t state);
 
 /**
  * @brief Process automatic state transitions based on R2D signal
- * @note Call from 1ms timer callback
  *
- * Handles:
- * - ENERGIZED -> DRIVE when R2D active
- * - DRIVE -> ENERGIZED when R2D inactive/timeout
+ * @warning DO NOT CALL. The ENERGIZED<->DRIVE R2D logic now lives in
+ *          FEB_SM.c (EnergizedTransition / DriveTransition). Calling this would
+ *          double-drive those transitions. Retained only to avoid touching the
+ *          generated wiring; remove once confirmed unused everywhere.
  */
 void FEB_CAN_State_ProcessTransitions(void);
 

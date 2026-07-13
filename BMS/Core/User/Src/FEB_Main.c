@@ -15,7 +15,10 @@
 #include "FEB_Commands.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
+#include "FEB_CAN_Charger.h"
 #include "FEB_SM.h"
+#include "FEB_Const.h"
+#include "feb_time.h"
 #include "cmsis_os2.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -29,7 +32,7 @@ extern DMA_HandleTypeDef hdma_usart2_rx;
 extern DMA_HandleTypeDef hdma_usart2_tx;
 
 /* UART buffers */
-static uint8_t uart_tx_buf[512];
+static uint8_t uart_tx_buf[1024];
 static uint8_t uart_rx_buf[256];
 
 /* External FreeRTOS handles from .ioc-generated code */
@@ -97,13 +100,20 @@ void FEB_Init(void)
   /* Initialize CAN state publisher */
   FEB_CAN_State_Init();
 
+  /* DWT microsecond clock — needed by the DRIVE shutdown-trip noise filter. */
+  FEB_Time_Init();
+
   /* Initialize state machine (sets relays to safe state, transitions to LV_POWER) */
   FEB_SM_Init();
 
   /* Log after all subsystems initialized */
   LOG_I(TAG_MAIN, "BMS initialization complete");
 
-  /* Startup banner */
+  /* Startup banner. NOTE: FEB_Init() runs pre-scheduler (MX_FREERTOS_Init ->
+   * before osKernelStart), where the DMA UART TX path blocks on a FreeRTOS
+   * semaphore once the TX ring fills — which can never be serviced before the
+   * scheduler runs, hanging the boot. Keep this pre-scheduler output small.
+   * Bench-mode override warnings are emitted post-scheduler in StartUartRxTask. */
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("========================================\r\n");
   FEB_Console_Printf("        BMS Console Ready\r\n");
@@ -111,6 +121,37 @@ void FEB_Init(void)
   FEB_Console_Printf("Use | as delimiter: BMS|status\r\n");
   FEB_Console_Printf("Type 'help' for available commands\r\n");
   FEB_Console_Printf("\r\n");
+}
+
+/* Emit the bench-mode override warnings. Called once from a task AFTER the
+ * scheduler is running — never from FEB_Init() (see banner note above). */
+static void log_bench_overrides(void)
+{
+#if FEB_BMS_DISABLE_ADBMS_CHECKS
+  LOG_W(TAG_MAIN, "ALL ADBMS CHECKS DISABLED (FEB_BMS_DISABLE_ADBMS_CHECKS=1)");
+  LOG_W(TAG_MAIN, "Bench mode: voltage/temp enforcement AND the cell-monitor");
+  LOG_W(TAG_MAIN, "data-timeout fault are BYPASSED. Do NOT run a real pack.");
+  LOG_W(TAG_MAIN, "Pack voltage FORCED to %.1fV for bench precharge", (double)FEB_BMS_BENCH_PACK_VOLTAGE_V);
+  LOG_W(TAG_MAIN, "Shutdown/AIR- backouts and contactor-feedback fault DISABLED");
+#endif
+#if FEB_BMS_DISABLE_TEMP_CHECKS
+  LOG_W(TAG_MAIN, "TEMPERATURE ENFORCEMENT DISABLED (FEB_BMS_DISABLE_TEMP_CHECKS=1)");
+  LOG_W(TAG_MAIN, "Bench mode: temp faults, charging temp limits, and balance");
+  LOG_W(TAG_MAIN, "thermal gates are BYPASSED. Do NOT run a real pack.");
+#endif
+#if FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS
+  LOG_W(TAG_MAIN, "PRIMARY (C-ADC) CELL-VOLTAGE ENFORCEMENT DISABLED "
+                  "(FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS=1)");
+  LOG_W(TAG_MAIN, "Charging pack/cell over-voltage limits are also BYPASSED.");
+#endif
+#if FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS
+  LOG_W(TAG_MAIN, "SECONDARY (S-ADC) CELL-VOLTAGE ENFORCEMENT DISABLED "
+                  "(FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS=1)");
+#endif
+#if FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS && FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS
+  LOG_W(TAG_MAIN, "Bench mode: cell voltage faults will NEVER latch. Do NOT run a real pack.");
+#endif
+  (void)0; /* keep a statement when all blocks compile out */
 }
 
 /* ============================================================================
@@ -122,6 +163,10 @@ void StartUartRxTask(void *argument)
   (void)argument;
 
   /* FEB_Init() is called from main() before kernel starts */
+
+  /* Bench-mode warnings, emitted now that the scheduler is running (a full TX
+   * ring here blocks-and-drains safely, unlike pre-scheduler in FEB_Init). */
+  log_bench_overrides();
 
   char line_buf[FEB_UART_QUEUE_LINE_SIZE];
   size_t line_len;
@@ -155,12 +200,14 @@ void StartSMTask(void *argument)
     /* CAN state publishing (every 100ms via internal divider in function) */
     FEB_CAN_State_Tick();
 
-    /* PingPong tick every 100ms */
+    /* PingPong + charger command tick every 100ms */
     pingpong_divider++;
     if (pingpong_divider >= 100)
     {
       pingpong_divider = 0;
       FEB_CAN_PingPong_Tick();
+      /* Charger command TX + trickle logic (no-op unless in CHARGING) */
+      FEB_CAN_Charger_Process();
     }
   }
 }

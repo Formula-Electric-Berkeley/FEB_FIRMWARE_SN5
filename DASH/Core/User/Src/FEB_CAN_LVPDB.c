@@ -9,6 +9,7 @@
 #include "FEB_CAN_LVPDB.h"
 #include "feb_can.h"
 #include "feb_can_lib.h"
+#include "feb_log.h"
 #include "stm32f4xx_hal.h"
 #include <stdbool.h>
 
@@ -49,15 +50,15 @@ static void rx_callback_lv_voltages(FEB_CAN_Instance_t instance, uint32_t can_id
 void FEB_CAN_LVPDB_Init(void)
 {
   FEB_CAN_RX_Params_t rx_params = {
-      .instance = FEB_CAN_INSTANCE_1,
+      .instance = FEB_CAN_INSTANCE_2,
       .can_id = FEB_CAN_LVPDB_LV_24V_BUS_AND_12V_BUS_VOLTAGES_FRAME_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_EXACT,
-      .mask = 0x7FF,
       .fifo = FEB_CAN_FIFO_0,
       .callback = rx_callback_lv_voltages,
       .user_data = NULL,
   };
+
   FEB_CAN_RX_Register(&rx_params);
 }
 

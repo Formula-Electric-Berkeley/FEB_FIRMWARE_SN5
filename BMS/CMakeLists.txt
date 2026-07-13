@@ -24,6 +24,18 @@ add_compile_definitions(
     $<$<CONFIG:Debug>:DEBUG>
 )
 
+# ── Bench-mode override (NEVER for a real pack / scrutineering) ───────
+# Sanctioned, *uncommitted* way to disable ADBMS safety checks for bench
+# bring-up with no functional cell monitor attached:
+#     cmake --preset Debug -DBMS_BENCH_MODE=ON   (or pass -DBMS_BENCH_MODE=ON)
+# The in-source default in FEB_Const.h MUST stay 0 — scripts/check-bench-flags.sh
+# enforces that — so this build flag is the only approved way to flip it.
+option(BMS_BENCH_MODE "Disable ADBMS safety checks for bench bring-up (NEVER for a real pack)" OFF)
+if(BMS_BENCH_MODE)
+    add_compile_definitions(FEB_BMS_DISABLE_ADBMS_CHECKS=1)
+    message(WARNING "BMS_BENCH_MODE=ON: ADBMS safety checks DISABLED — bench only, NEVER a real pack")
+endif()
+
 # ══════════════════════════════════════════════════════════════════════
 #  SOURCE COLLECTION
 # ══════════════════════════════════════════════════════════════════════
@@ -105,7 +117,11 @@ add_executable(${PROJECT_NAME} ${ALL_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_tps feb_rtos_utils feb_uart feb_log feb_console feb_adbms)
+target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_version feb_tps feb_rtos_utils feb_time feb_adbms)
+
+# Embed version + build provenance (reads VERSION + git, generates feb_build_info.c)
+include(${CMAKE_SOURCE_DIR}/cmake/FEB_Version.cmake)
+feb_apply_version(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Enable floating-point printf/scanf for newlib-nano
 target_link_options(${PROJECT_NAME} PRIVATE

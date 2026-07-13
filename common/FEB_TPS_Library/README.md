@@ -1,29 +1,34 @@
 # FEB TPS2482 Library
 
-Common library for TPS2482 power monitoring ICs used across Formula Electric @ Berkeley boards.
+Minimal driver for TPS2482 power monitors used across Formula Electric @ Berkeley boards.
+
+## Design
+
+Each call talks directly to the chip — no measurement caching, no I²C
+retries, no peripheral resets. If the bus is healthy, reads succeed; if it
+isn't, the call returns `FEB_TPS_ERR_I2C` and the caller decides what to do.
+
+In FreeRTOS builds an optional `i2c_mutex` serializes bus access across
+tasks. In bare-metal builds the mutex field is unused.
 
 ## Features
 
-- **Multi-device support** - Up to 8 TPS2482 devices per board
-- **FreeRTOS auto-detection** - Thread-safe I2C access with mutex protection when FreeRTOS is detected
-- **Correct sign-magnitude conversion** - Properly handles TPS2482's sign-magnitude current format
-- **Per-device calibration** - Configure different shunt resistors and current ranges per device
-- **GPIO integration** - Optional EN/Power-Good/Alert pin control
-- **Flexible measurement API** - Float, scaled integer, or raw register access
-- **Injectable logging** - Provide your own logging callback for debug output
+- Up to `FEB_TPS_MAX_DEVICES` devices (default 8)
+- FreeRTOS auto-detection — same source builds on both runtimes
+- Sign-magnitude current / shunt-voltage conversion
+- Per-device shunt resistor and current range
+- Optional EN / Power-Good GPIO wrappers
+- Float, scaled-integer, or raw register access
+- CONFIG + CAL readback verification on registration
+- Injectable logging callback
 
 ## Logging
 
-The library supports injectable logging via a user-provided callback function. This allows routing debug messages to FEB_UART, printf, or any other output without creating a hard dependency.
-
-### Enable Logging
-
 ```c
 #include "feb_tps.h"
-#include "feb_log.h"  // For LOG_* macros
+#include "feb_log.h"
 
-// Callback to route TPS messages to FEB_UART
-static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg) {
+static void tps_log(FEB_TPS_LogLevel_t level, const char *msg) {
     switch (level) {
         case FEB_TPS_LOG_ERROR: LOG_E(TAG_TPS, "%s", msg); break;
         case FEB_TPS_LOG_WARN:  LOG_W(TAG_TPS, "%s", msg); break;
@@ -33,39 +38,24 @@ static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg) {
     }
 }
 
-void setup(void) {
-    // Initialize with logging
-    FEB_TPS_LibConfig_t cfg = {
-        .log_func = tps_log_callback,
-        .log_level = FEB_TPS_LOG_INFO,  // Show INFO and above
-    };
-    FEB_TPS_Init(&cfg);
-
-    // ... register devices
-}
+FEB_TPS_LibConfig_t cfg = {
+    .log_func = tps_log,
+    .log_level = FEB_TPS_LOG_INFO,
+};
+FEB_TPS_Init(&cfg);
 ```
 
-### Log Levels
+Pass `NULL` to `FEB_TPS_Init()` for silent operation.
 
-| Level | Value | Description |
-|-------|-------|-------------|
-| `FEB_TPS_LOG_NONE` | 0 | No logging |
-| `FEB_TPS_LOG_ERROR` | 1 | Errors only (I2C failures) |
-| `FEB_TPS_LOG_WARN` | 2 | Warnings and errors |
-| `FEB_TPS_LOG_INFO` | 3 | Informational (device registration) |
-| `FEB_TPS_LOG_DEBUG` | 4 | Debug (enable/disable GPIO) |
+| Level | Value |
+|-------|-------|
+| `FEB_TPS_LOG_NONE`  | 0 |
+| `FEB_TPS_LOG_ERROR` | 1 |
+| `FEB_TPS_LOG_WARN`  | 2 |
+| `FEB_TPS_LOG_INFO`  | 3 |
+| `FEB_TPS_LOG_DEBUG` | 4 |
 
-### Silent Mode (Default)
-
-Pass `NULL` to `FEB_TPS_Init()` for no logging output:
-
-```c
-FEB_TPS_Init(NULL);  // Silent mode - no debug output
-```
-
-## Quick Start
-
-### Single Device (PCU, BMS)
+## Quick Start — single device (PCU, BMS)
 
 ```c
 #include "feb_tps.h"
@@ -73,236 +63,155 @@ FEB_TPS_Init(NULL);  // Silent mode - no debug output
 static FEB_TPS_Handle_t tps;
 
 void setup(void) {
-    // Initialize library
-    FEB_TPS_Status_t status = FEB_TPS_Init(NULL);
-    if (status != FEB_TPS_OK) {
-        // Handle initialization error
-        return;
-    }
+    FEB_TPS_Init(NULL);
 
-    // Configure and register device
     FEB_TPS_DeviceConfig_t cfg = {
         .hi2c = &hi2c1,
-        .i2c_addr = FEB_TPS_ADDR(FEB_TPS_PIN_GND, FEB_TPS_PIN_GND),  // 0x40
-        .r_shunt_ohms = 0.012f,  // 12 mOhm
-        .i_max_amps = 4.0f,      // 4A fuse
+        .i2c_addr = FEB_TPS_ADDR(FEB_TPS_PIN_GND, FEB_TPS_PIN_GND),  /* 0x40 */
+        .r_shunt_ohms = 0.012f,
+        .i_max_amps = 4.0f,
         .name = "PCU",
     };
-    status = FEB_TPS_DeviceRegister(&cfg, &tps);
-    if (status != FEB_TPS_OK) {
-        // Handle registration error
-        printf("TPS init failed: %s\n", FEB_TPS_StatusToString(status));
-        return;
-    }
+    if (FEB_TPS_DeviceRegister(&cfg, &tps) != FEB_TPS_OK) { /* handle error */ }
 }
 
 void loop(void) {
-    FEB_TPS_Measurement_t data;
-    if (FEB_TPS_Poll(tps, &data) == FEB_TPS_OK) {
-        float voltage = data.bus_voltage_v;
-        float current = data.current_a;
-        float power = data.power_w;
+    FEB_TPS_Measurement_t m;
+    if (FEB_TPS_Poll(tps, &m) == FEB_TPS_OK) {
+        /* m.bus_voltage_v, m.current_a, m.power_w */
     }
 }
 ```
 
-### Multiple Devices (LVPDB)
+## Multi-device (LVPDB)
+
+Register each chip and poll them in a per-board loop. The library does not
+expose batch-poll helpers — write the loop where the indexing into your
+own per-rail arrays is obvious:
 
 ```c
-#include "feb_tps.h"
-
-#define NUM_DEVICES 7
-static FEB_TPS_Handle_t tps_handles[NUM_DEVICES];
-
-void setup(void) {
-    FEB_TPS_Status_t status = FEB_TPS_Init(NULL);
-    if (status != FEB_TPS_OK) {
-        printf("TPS library init failed: %s\n", FEB_TPS_StatusToString(status));
-        return;
+for (uint8_t i = 0; i < NUM_DEVICES; i++) {
+    if (tps_handles[i] == NULL) continue;
+    uint16_t bv;
+    int16_t cur;
+    int16_t sv;
+    if (FEB_TPS_PollRaw(tps_handles[i], &bv, &cur, &sv) == FEB_TPS_OK) {
+        bus_voltage_raw[i] = bv;
+        current_raw[i] = cur;
+        shunt_voltage_raw[i] = sv;
     }
-
-    // Register each device with its specific configuration
-    for (int i = 0; i < NUM_DEVICES; i++) {
-        FEB_TPS_DeviceConfig_t cfg = {
-            .hi2c = &hi2c1,
-            .i2c_addr = device_addresses[i],
-            .r_shunt_ohms = R_SHUNT,
-            .i_max_amps = device_fuse_max[i],
-            .en_gpio_port = en_ports[i],
-            .en_gpio_pin = en_pins[i],
-            .name = device_names[i],
-        };
-        status = FEB_TPS_DeviceRegister(&cfg, &tps_handles[i]);
-        if (status != FEB_TPS_OK) {
-            printf("TPS device %d init failed: %s\n", i, FEB_TPS_StatusToString(status));
-        }
-    }
-}
-
-void loop(void) {
-    // Poll all devices at once
-    // Note: current and shunt_v are now sign-corrected int16_t
-    uint16_t bus_v[NUM_DEVICES];
-    int16_t current[NUM_DEVICES], shunt_v[NUM_DEVICES];
-    FEB_TPS_PollAllRaw(bus_v, current, shunt_v, NUM_DEVICES);
 }
 ```
 
-## I2C Address Calculation
+## I²C Address Calculation
 
-Use the `FEB_TPS_ADDR(A1, A0)` macro with pin options:
+Use `FEB_TPS_ADDR(A1, A0)`:
 
-| Pin Setting | Constant | Value |
-|-------------|----------|-------|
-| GND | `FEB_TPS_PIN_GND` | 0x00 |
-| VS  | `FEB_TPS_PIN_VS`  | 0x01 |
-| SDA | `FEB_TPS_PIN_SDA` | 0x02 |
-| SCL | `FEB_TPS_PIN_SCL` | 0x03 |
+| Pin | Constant | Value |
+|-----|----------|-------|
+| GND | `FEB_TPS_PIN_GND` | 0 |
+| VS  | `FEB_TPS_PIN_VS`  | 1 |
+| SDA | `FEB_TPS_PIN_SDA` | 2 |
+| SCL | `FEB_TPS_PIN_SCL` | 3 |
 
-Examples:
 ```c
-// A1=GND, A0=GND -> 0x40
-FEB_TPS_ADDR(FEB_TPS_PIN_GND, FEB_TPS_PIN_GND)
-
-// A1=VS, A0=GND -> 0x44
-FEB_TPS_ADDR(FEB_TPS_PIN_VS, FEB_TPS_PIN_GND)
-
-// A1=SCL, A0=SDA -> 0x4E
-FEB_TPS_ADDR(FEB_TPS_PIN_SCL, FEB_TPS_PIN_SDA)
+FEB_TPS_ADDR(FEB_TPS_PIN_GND, FEB_TPS_PIN_GND)  /* 0x40 */
+FEB_TPS_ADDR(FEB_TPS_PIN_VS,  FEB_TPS_PIN_GND)  /* 0x44 */
+FEB_TPS_ADDR(FEB_TPS_PIN_SCL, FEB_TPS_PIN_SDA)  /* 0x4E */
 ```
 
 ## API Reference
 
-### Initialization
+### Lifecycle
 
 | Function | Description |
 |----------|-------------|
-| `FEB_TPS_Init(config)` | Initialize library (pass NULL for defaults) |
-| `FEB_TPS_DeInit()` | Deinitialize library and all devices |
-| `FEB_TPS_DeviceRegister(config, handle)` | Register a TPS2482 device |
-| `FEB_TPS_DeviceUnregister(handle)` | Unregister a device |
+| `FEB_TPS_Init(config)` | Initialize. NULL = silent, no mutex. In FreeRTOS, `config->i2c_mutex` is required. |
+| `FEB_TPS_IsInitialized()` | True if `Init` has succeeded. |
+| `FEB_TPS_DeviceRegister(config, handle)` | Write CONFIG + CAL, read both back, compare. |
 
-### Measurement (Single Device)
-
-| Function | Description |
-|----------|-------------|
-| `FEB_TPS_Poll(handle, measurement)` | Read all values (float) |
-| `FEB_TPS_PollScaled(handle, scaled)` | Read all values (integer, for CAN) |
-| `FEB_TPS_PollBusVoltage(handle, voltage)` | Read bus voltage only |
-| `FEB_TPS_PollCurrent(handle, current)` | Read current only |
-| `FEB_TPS_PollRaw(handle, bus_v, current, shunt_v)` | Read raw registers |
-
-### Measurement (Batch)
+### Measurement
 
 | Function | Description |
 |----------|-------------|
-| `FEB_TPS_PollAll(measurements, count)` | Poll all devices (float) |
-| `FEB_TPS_PollAllScaled(scaled, count)` | Poll all devices (integer) |
-| `FEB_TPS_PollAllRaw(bus_v, current, shunt_v, count)` | Poll all devices (raw) |
+| `FEB_TPS_Poll(handle, measurement)` | Read all four registers, return floats. |
+| `FEB_TPS_PollScaled(handle, scaled)` | Same but in mV / mA / µV / mW. |
+| `FEB_TPS_PollRaw(handle, bv, cur, sv)` | Raw registers; current and shunt sign-corrected. Any output may be NULL. |
 
-### GPIO Control
-
-| Function | Description |
-|----------|-------------|
-| `FEB_TPS_Enable(handle, enable)` | Control EN pin |
-| `FEB_TPS_ReadPowerGood(handle, state)` | Read PG pin status |
-| `FEB_TPS_ReadAlert(handle, active)` | Read Alert pin status |
-| `FEB_TPS_EnableAll(enable)` | Enable/disable all devices |
-
-### Utility
+### GPIO
 
 | Function | Description |
 |----------|-------------|
-| `FEB_TPS_StatusToString(status)` | Convert status code to string |
-| `FEB_TPS_GetDeviceName(handle)` | Get device name |
-| `FEB_TPS_SignMagnitude(raw)` | Convert raw register to signed |
-| `FEB_TPS_GetCurrentLSB(handle)` | Get device's current LSB value |
-| `FEB_TPS_ReadID(handle, id)` | Read device unique ID |
+| `FEB_TPS_Enable(handle, enable)` | Drive EN pin. Errors if no EN GPIO configured. |
+| `FEB_TPS_ReadPowerGood(handle, state)` | Read PG pin. Errors if no PG GPIO configured. |
+
+### Diagnostics
+
+| Function | Description |
+|----------|-------------|
+| `FEB_TPS_ReadID(handle, id)` | Read device ID register (0xFF). |
+| `FEB_TPS_GetCurrentLSB(handle)` | A/bit (`i_max / 32768`). |
+| `FEB_TPS_GetDeviceName(handle)` | Returns the name passed at registration, or "Unknown". |
+| `FEB_TPS_StatusToString(status)` | Map status enum to string. |
+| `FEB_TPS_SignMagnitude(raw)` | Inline sign-magnitude → int16. |
 
 ## Data Structures
 
-### FEB_TPS_Measurement_t (Floating Point)
-
 ```c
 typedef struct {
-    float bus_voltage_v;        // Bus voltage in Volts
-    float current_a;            // Current in Amps (signed)
-    float shunt_voltage_mv;     // Shunt voltage in millivolts
-    float power_w;              // Power in Watts
-    // Raw values also included for CAN/debugging
+    float bus_voltage_v;
+    float current_a;            /* signed */
+    float shunt_voltage_mv;     /* signed */
+    float power_w;
+    /* Raw register values (sign-corrected for current and shunt) */
+    uint16_t bus_voltage_raw;
+    int16_t current_raw;
+    int16_t shunt_voltage_raw;
+    uint16_t power_raw;
 } FEB_TPS_Measurement_t;
-```
 
-### FEB_TPS_MeasurementScaled_t (Integer for CAN)
-
-```c
 typedef struct {
-    uint32_t bus_voltage_mv;    // Bus voltage in millivolts
-    int32_t current_ma;         // Current in milliamps
-    int32_t shunt_voltage_uv;   // Shunt voltage in microvolts
-    uint32_t power_mw;          // Power in milliwatts (supports high-power: 24V @ 20A = 480W)
+    uint32_t bus_voltage_mv;
+    int32_t current_ma;
+    int32_t shunt_voltage_uv;
+    uint32_t power_mw;          /* 32-bit handles 24 V @ 20 A = 480 000 mW */
 } FEB_TPS_MeasurementScaled_t;
 ```
 
-> **Note:** The wider integer types (32-bit) are used to support high-power applications
-> without overflow. For example, 24V @ 20A = 480W = 480,000 mW, which would overflow
-> a 16-bit unsigned integer (max 65,535).
-
 ## Board Usage
 
-### PCU
-- Single TPS2482 at 0x40 (A0=GND, A1=GND)
-- 12 mOhm shunt, 4A max
-- Rate-limited polling at 10 Hz
-
-### BMS
-- Single TPS2482 at 0x40
-- 2 mOhm shunt, 5A max
-- FreeRTOS task at 1 Hz
-
-### LVPDB
-- 7 TPS2482 devices with different I2C addresses
-- Per-device EN/PG/Alert GPIO control
-- Batch polling for efficiency
+| Board | Devices | Pattern |
+|-------|---------|---------|
+| BMS    | 1 @ 0x40, 2 mΩ, 5 A | FreeRTOS task at 1 Hz, `Poll` directly |
+| PCU    | 1 @ 0x40, 12 mΩ, 4 A | bare-metal, `PollScaled` for CAN |
+| LVPDB  | 7 across 0x40-0x4F, 2 mΩ, per-rail max | bare-metal, `PollRaw` per device |
 
 ## Configuration
 
-Edit `feb_tps_config.h` to customize:
+`feb_tps_config.h`:
 
 ```c
-// Maximum number of registered devices (default: 8)
-#define FEB_TPS_MAX_DEVICES 8
-
-// FreeRTOS detection (auto-detected, or manually override)
-// #define FEB_TPS_USE_FREERTOS 1
+#define FEB_TPS_MAX_DEVICES 8        /* slot count */
+#define FEB_TPS_I2C_TIMEOUT_MS 100   /* timeout per HAL call */
+/* #define FEB_TPS_USE_FREERTOS 1    -- usually auto-detected */
 ```
 
 ## Sign-Magnitude Format
 
-The TPS2482 uses sign-magnitude format for current and shunt voltage registers:
-- Bit 15 = sign (0 = positive, 1 = negative)
-- Bits 14:0 = magnitude
+TPS2482 current and shunt voltage registers are sign-magnitude (bit 15 =
+sign, bits 14:0 = magnitude). The library handles this automatically;
+`FEB_TPS_SignMagnitude()` is exposed inline for callers that read raw
+registers themselves.
 
-Use `FEB_TPS_SignMagnitude()` for manual conversion:
+## Status Codes
 
-```c
-uint16_t raw = 0x8064;  // Negative 100
-int16_t signed_val = FEB_TPS_SignMagnitude(raw);  // Returns -100
-```
+- `FEB_TPS_OK`
+- `FEB_TPS_ERR_INVALID_ARG`
+- `FEB_TPS_ERR_I2C` — HAL_I2C call returned non-OK
+- `FEB_TPS_ERR_NOT_INIT` — `FEB_TPS_Init` not called, or device not yet registered
+- `FEB_TPS_ERR_CONFIG_MISMATCH` — CONFIG or CAL readback differed from write
+- `FEB_TPS_ERR_MAX_DEVICES` — `FEB_TPS_MAX_DEVICES` already registered
 
-## Error Handling
+## See also
 
-```c
-FEB_TPS_Status_t status = FEB_TPS_Poll(handle, &data);
-if (status != FEB_TPS_OK) {
-    LOG_E("TPS error: %s", FEB_TPS_StatusToString(status));
-}
-```
-
-Status codes:
-- `FEB_TPS_OK` - Success
-- `FEB_TPS_ERR_INVALID_ARG` - Invalid argument
-- `FEB_TPS_ERR_I2C` - I2C communication error
-- `FEB_TPS_ERR_NOT_INIT` - Library/device not initialized
-- `FEB_TPS_ERR_CONFIG_MISMATCH` - Config readback mismatch
-- `FEB_TPS_ERR_MAX_DEVICES` - Maximum device count exceeded
+- [`common/README.md`](../README.md) — library index

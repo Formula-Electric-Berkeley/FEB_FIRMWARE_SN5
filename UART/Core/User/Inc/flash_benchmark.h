@@ -37,10 +37,10 @@ extern "C"
 
 #define FLASH_BENCH_SECTOR_7_ADDR 0x08060000U
 #define FLASH_BENCH_SECTOR_7_SIZE (128U * 1024U)
-#define FLASH_BENCH_SECTOR_7_NUM  7U
+#define FLASH_BENCH_SECTOR_7_NUM 7U
 
   /* Benchmark parameters */
-#define FLASH_BENCH_READ_SIZE  1024U
+#define FLASH_BENCH_READ_SIZE 1024U
 #define FLASH_BENCH_WRITE_SIZE 256U
 
   /* ============================================================================
@@ -151,8 +151,7 @@ extern "C"
    * @param timing Pointer to timing result
    * @return Status code
    */
-  FlashBench_Status_t FlashBench_Write(uint32_t addr, const uint8_t *data, uint32_t size,
-                                       FlashBench_Timing_t *timing);
+  FlashBench_Status_t FlashBench_Write(uint32_t addr, const uint8_t *data, uint32_t size, FlashBench_Timing_t *timing);
 
   /**
    * @brief Get sector info by number
@@ -201,8 +200,8 @@ extern "C"
    * @param stats Output statistics result
    * @return Status code
    */
-  FlashBench_Status_t FlashBench_RunWithStats(uint32_t sector_num, uint32_t iterations,
-                                              uint8_t write_pattern, FlashBench_StatsResult_t *stats);
+  FlashBench_Status_t FlashBench_RunWithStats(uint32_t sector_num, uint32_t iterations, uint8_t write_pattern,
+                                              FlashBench_StatsResult_t *stats);
 
 #ifdef __cplusplus
 }

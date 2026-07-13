@@ -73,15 +73,15 @@ extern "C"
   } ADC_CalibrationTypeDef;
 
   /**
-   * @brief ADC Filter Configuration
+   * @brief ADC Boxcar (moving-average) Configuration
+   *
+   * No IIR/low-pass filtering: the per-1ms coherent snapshot averages the most-
+   * recent `samples` hardware-triggered conversions (a symmetric FIR boxcar).
    */
   typedef struct
   {
-    uint8_t enabled;                      /* Filter enable flag */
-    uint8_t samples;                      /* Number of samples to average */
-    float alpha;                          /* Low-pass filter coefficient (0-1) */
-    uint16_t buffer[ADC_DMA_BUFFER_SIZE]; /* Sample buffer */
-    uint8_t buffer_index;                 /* Current buffer index */
+    uint8_t enabled; /* Averaging enable flag (0 => single most-recent sample) */
+    uint8_t samples; /* Boxcar window length (samples to average) */
   } ADC_FilterTypeDef;
 
   /**
@@ -108,10 +108,15 @@ extern "C"
     float position2;              /* APPS2 position (0-100%) */
     float acceleration;           /* Average position */
     bool plausible;               /* Plausibility check status */
-    uint32_t implausibility_time; /* Time of implausibility detection */
+    uint32_t implausibility_time; /* Elapsed ms since the persistent disagreement started (0 when plausible) */
     bool short_circuit;           /* Short circuit detected */
     bool open_circuit;            /* Open circuit detected */
   } APPS_DataTypeDef;
+
+  /* Runtime flag replacing the old SINGLE_APPS_MODE compile-time #define.
+   * Default false = dual-sensor plausibility enforced. Toggle only via
+   * FEB_ADC_SetSingleSensorMode (refused while in drive state). */
+  extern bool FEB_APPS_SingleSensorMode;
 
   /**
    * @brief Brake System Data
@@ -137,6 +142,32 @@ extern "C"
     bool fault;           /* BSPD fault status */
     uint32_t fault_time;  /* Time of fault detection */
   } BSPD_DataTypeDef;
+
+  /**
+   * @brief Time-coherent ADC snapshot — one instant across all three ADCs.
+   *
+   * Built once per 1ms control tick by FEB_ADC_TickSample() from the most-recent
+   * TIM2-triggered samples (boxcar-averaged per channel). Because every ADC is
+   * launched by the same TIM2 TRGO edge, all fields here represent the same
+   * sampling instant: APPS1/APPS2, brake1/brake2 and APPS-vs-brake are mutually
+   * coherent, so plausibility deviation reflects real sensor disagreement only.
+   * Published via a seqlock; read tear-free with FEB_ADC_GetCoherentSnapshot().
+   * All raw fields are 12-bit right-aligned counts (0..ADC_MAX_VALUE).
+   */
+  typedef struct
+  {
+    uint32_t tick_ms;         /* HAL_GetTick() when this snapshot was latched */
+    uint16_t apps1_raw;       /* ADC3 ch13 (PC3) */
+    uint16_t apps2_raw;       /* ADC3 ch12 (PC2) */
+    uint16_t brake1_raw;      /* ADC1 ch1  (PA1) */
+    uint16_t brake2_raw;      /* ADC1 ch0  (PA0) */
+    uint16_t brake_input_raw; /* ADC1 ch14 (PC4) */
+    uint16_t current_raw;     /* ADC2 ch4  (PA4) */
+    uint16_t shutdown_raw;    /* ADC2 ch6  (PA6) */
+    uint16_t pretiming_raw;   /* ADC2 ch7  (PA7) */
+    uint16_t bspd_ind_raw;    /* ADC3 ch10 (PC0) */
+    uint16_t bspd_rst_raw;    /* ADC3 ch11 (PC1) */
+  } ADC_CoherentSnapshot_t;
 
   /* ========================================================================== */
   /*                      INITIALIZATION FUNCTIONS                              */
@@ -179,15 +210,6 @@ extern "C"
    * @retval uint16_t: Raw ADC value (0-4095)
    */
   uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef *hadc, uint32_t channel);
-
-  /**
-   * @brief  Get filtered ADC value with averaging
-   * @param  hadc: ADC handle
-   * @param  channel: ADC channel
-   * @param  samples: Number of samples to average
-   * @retval uint16_t: Averaged ADC value
-   */
-  uint16_t FEB_ADC_GetFilteredValue(ADC_HandleTypeDef *hadc, uint32_t channel, uint8_t samples);
 
   /**
    * @brief  Convert raw ADC value to voltage
@@ -252,11 +274,77 @@ extern "C"
   /* ========================================================================== */
 
   /**
-   * @brief  Get normalized accelerator pedal position
+   * @brief  Latch one time-coherent ADC snapshot. Must be called FIRST in the
+   *         1 ms control tick, before FEB_ADC_TickAPPS()/FEB_ADC_TickBrakeFaults()
+   *         and any consumer. Boxcar-averages the most-recent TIM2-triggered
+   *         samples for every channel and publishes them atomically (seqlock).
+   *         Every getter below then returns values from this single instant, so
+   *         APPS1/APPS2, brake1/brake2 and APPS-vs-brake are mutually coherent.
+   */
+  void FEB_ADC_TickSample(void);
+
+  /**
+   * @brief  Copy the latest coherent ADC snapshot tear-free (seqlock reader).
+   *         Safe from task or ISR context.
+   * @param  out: destination (ignored if NULL)
+   */
+  void FEB_ADC_GetCoherentSnapshot(ADC_CoherentSnapshot_t *out);
+
+  /**
+   * @brief  Update the single APPS cache. Must be called from a periodic
+   *         tick (1 ms in PCU), right after FEB_ADC_TickSample(). All APPS
+   *         getters read from this cache so the implausibility timer
+   *         accumulates correctly across consumers.
+   */
+  void FEB_ADC_TickAPPS(void);
+
+  /**
+   * @brief  Copy a snapshot of the cached APPS data.
+   *
+   * The cache is filled by FEB_ADC_TickAPPS(). Existing callers (RMS torque
+   * loop, CAN diagnostics, plausibility checks) still work unchanged through
+   * this entry point.
+   *
    * @param  apps_data: Pointer to APPS data structure
    * @retval ADC_StatusTypeDef: Operation status
    */
   ADC_StatusTypeDef FEB_ADC_GetAPPSData(APPS_DataTypeDef *apps_data);
+
+  /**
+   * @brief  Read the APPS cache plus auxiliary debug fields atomically.
+   *
+   * Any of the output pointers may be NULL — only requested fields are
+   * written. Used by the PCU CLI to assemble an `apps|raw` view.
+   */
+  void FEB_ADC_GetAPPSCacheSnapshot(APPS_DataTypeDef *out, uint16_t *raw1, uint16_t *raw2, float *v1_mv, float *v2_mv,
+                                    uint32_t *fault_bitmask, uint32_t *implaus_elapsed_ms, float *latest_deviation);
+
+  /**
+   * @brief  Acknowledge an APPS implausibility latch when both pedals are
+   *         below 5%. No-op if either pedal is still above the release
+   *         threshold. Implements FSAE T.4.2.4 release-and-reset semantics.
+   */
+  void FEB_ADC_AcknowledgeAPPSImplausibility(void);
+
+  /**
+   * @brief  Acknowledge the EV.4.7 brake/APPS plausibility latch once APPS
+   *         travel is below APPS_RELEASE_PERCENT (5%), with or without brake
+   *         (FSAE EV.4.7.2.b). No-op otherwise.
+   */
+  void FEB_ADC_AcknowledgeBrakeImplausibility(void);
+
+  /**
+   * @brief  Per-1ms brake fault tick: BSE sensor open/short detection (FSAE
+   *         T.4.3.4/.5, 100 ms latch) and the EV.4.7 brake+throttle plausibility
+   *         check (short debounce). Call right after FEB_ADC_TickAPPS().
+   */
+  void FEB_ADC_TickBrakeFaults(void);
+
+  /**
+   * @brief  Mirror the FEB_RMS bench brake bypass into FEB_ADC so brake fault
+   *         detection is suppressed while the bypass is engaged.
+   */
+  void FEB_ADC_SetBrakeBypass(bool enabled);
 
   /**
    * @brief  Get brake system data
@@ -388,37 +476,105 @@ extern "C"
    */
   ADC_StatusTypeDef FEB_ADC_ClearFaults(uint32_t fault_mask);
 
+  /**
+   * @brief  Get the current active fault bitmask (snapshot).
+   */
+  uint32_t FEB_ADC_GetActiveFaults(void);
+
+  /**
+   * @brief  Get the lifetime hit count for a single fault bit (rising-edge
+   *         counted). `fault_bit` must be one of the FAULT_* defines from
+   *         FEB_ADC.c (use FEB_ADC_FaultBitFromName to look up by name).
+   */
+  uint32_t FEB_ADC_GetFaultHitCount(uint32_t fault_bit);
+
+  /**
+   * @brief  Look up a fault bit by name string (e.g. "APPS_IMPLAUSIBILITY").
+   * @retval Bit value, or 0 if the name is not recognised.
+   */
+  uint32_t FEB_ADC_FaultBitFromName(const char *name);
+
+  /**
+   * @brief  Get the human-readable name of a single fault bit.
+   * @retval Pointer to a static string. Returns "UNKNOWN" if no match.
+   */
+  const char *FEB_ADC_FaultBitName(uint32_t fault_bit);
+
+  /**
+   * @brief  Inject a fault for bench testing. Refused while in drive state.
+   */
+  ADC_StatusTypeDef FEB_ADC_InjectFault(uint32_t fault_bit);
+
+  /**
+   * @brief  Clear a fault by name. Safety-related faults are refused while
+   *         in drive state.
+   */
+  ADC_StatusTypeDef FEB_ADC_ClearFaultsByName(const char *name);
+
   /* ========================================================================== */
-  /*                       FILTER AND PROCESSING FUNCTIONS                     */
+  /*                           DEBUG / RUNTIME OVERRIDES                        */
   /* ========================================================================== */
 
   /**
-   * @brief  Configure filter for specific channel
-   * @param  config: Channel configuration
-   * @param  enable: Enable/disable filter
-   * @param  samples: Number of samples for averaging
-   * @param  alpha: Low-pass filter coefficient
-   * @retval ADC_StatusTypeDef: Operation status
+   * @brief  Enable/disable single-APPS mode at runtime. Refused (returns
+   *         ADC_STATUS_ERROR) while in drive state.
    */
-  ADC_StatusTypeDef FEB_ADC_ConfigureFilter(ADC_ChannelConfigTypeDef *config, bool enable, uint8_t samples,
-                                            float alpha);
+  ADC_StatusTypeDef FEB_ADC_SetSingleSensorMode(bool enabled);
 
   /**
-   * @brief  Apply median filter to remove outliers
-   * @param  values: Array of values
-   * @param  count: Number of values
-   * @retval float: Median filtered value
+   * @brief  Inject a simulated APPS percentage. Active for at most 30 s, then
+   *         auto-clears. Refused while in drive state. Pass enabled=false to
+   *         clear immediately.
    */
-  float FEB_ADC_MedianFilter(float *values, uint8_t count);
+  ADC_StatusTypeDef FEB_ADC_SetAPPSSimulation(bool enabled, float percent);
 
   /**
-   * @brief  Apply low-pass filter
-   * @param  new_value: New input value
-   * @param  old_value: Previous filtered value
-   * @param  alpha: Filter coefficient (0-1)
-   * @retval float: Filtered value
+   * @brief  Capture the current APPS voltage as either the min (0%) or max
+   *         (100%) calibration point for one sensor.
+   * @param  sensor: 1 or 2
+   * @param  capture_max: true to capture as max, false to capture as min
    */
-  float FEB_ADC_LowPassFilter(float new_value, float old_value, float alpha);
+  ADC_StatusTypeDef FEB_ADC_CaptureAPPSCalibration(uint8_t sensor, bool capture_max);
+
+  /**
+   * @brief  Get the current APPS boxcar-averaging config (shared by both APPS
+   *         channels). No IIR coefficient — averaging is a symmetric FIR boxcar.
+   */
+  void FEB_ADC_GetAPPSFilterConfig(bool *enabled, uint8_t *samples);
+
+  /**
+   * @brief  Update the APPS boxcar-averaging config. samples (the boxcar
+   *         window) is clamped to [1, ADC_DMA_BUFFER_SIZE].
+   */
+  ADC_StatusTypeDef FEB_ADC_SetAPPSFilter(bool enabled, uint8_t samples);
+
+  /**
+   * @brief  Set the APPS deadzone percentage (clamped to [0, 20]).
+   */
+  ADC_StatusTypeDef FEB_ADC_SetAPPSDeadzone(float percent);
+
+  /**
+   * @brief  Get the APPS deadzone percentage.
+   */
+  float FEB_ADC_GetAPPSDeadzone(void);
+
+  /**
+   * @brief  Reset the running APPS statistics.
+   */
+  void FEB_ADC_ResetAPPSStats(void);
+
+  /**
+   * @brief  Get a snapshot of the running APPS statistics.
+   *         All output pointers may be NULL.
+   */
+  void FEB_ADC_GetAPPSStats(float *p1_min, float *p1_max, float *p2_min, float *p2_max, float *p1_avg, float *p2_avg,
+                            float *dev_max, uint32_t *samples);
+
+  /**
+   * @brief  Latest RAW pin-domain separation |raw1-raw2| as a percentage of ADC
+   *         full scale. Drives the FSAE T.4.2.3 line-to-line short detection.
+   */
+  float FEB_ADC_GetAPPSRawSeparation(void);
 
   /* ========================================================================== */
   /*                      DIAGNOSTIC AND DEBUG FUNCTIONS                       */

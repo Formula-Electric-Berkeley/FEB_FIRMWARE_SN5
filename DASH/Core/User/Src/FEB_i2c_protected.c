@@ -74,3 +74,14 @@ HAL_StatusTypeDef FEB_I2C_Mem_Read(I2C_HandleTypeDef *hi2c, uint16_t DevAddress,
 
   return status;
 }
+
+HAL_StatusTypeDef FEB_I2C_IsDeviceReady(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint32_t Trials, uint32_t Timeout)
+{
+  HAL_StatusTypeDef status;
+
+  osMutexAcquire(FEB_I2C_MutexHandle, osWaitForever);
+  status = HAL_I2C_IsDeviceReady(hi2c, DevAddress, Trials, Timeout);
+  osMutexRelease(FEB_I2C_MutexHandle);
+
+  return status;
+}

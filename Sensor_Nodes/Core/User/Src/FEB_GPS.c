@@ -85,7 +85,7 @@ int FEB_GPS_Init(void)
   FEB_GPS_SetEnabled(true);
 
   gps_initialized = true;
-  LOG_I(TAG_GPS, "GPS initialized");
+  LOG_T(TAG_GPS, "GPS initialized");
 
   return 0;
 }
@@ -107,7 +107,7 @@ void FEB_GPS_DeInit(void)
   FEB_UART_DeInit(FEB_UART_INSTANCE_2);
 
   gps_initialized = false;
-  LOG_I(TAG_GPS, "GPS deinitialized");
+  LOG_T(TAG_GPS, "GPS deinitialized");
 }
 
 /**
@@ -142,7 +142,7 @@ static void gps_rx_line_callback(const char *line, size_t len)
   }
 
   /* Log raw NMEA sentence */
-  LOG_D(TAG_GPS, "RX: %.*s", (int)len, line);
+  LOG_T(TAG_GPS, "RX: %.*s", (int)len, line);
 
   /* Feed the NMEA sentence to LwGPS parser */
   /* Append \r because lwgps requires it to commit parsed data from temp storage */
@@ -165,7 +165,7 @@ static void gps_rx_line_callback(const char *line, size_t len)
     return;
   }
 
-  LOG_D(TAG_GPS, "Parsed %d statement(s)", result);
+  LOG_T(TAG_GPS, "Parsed %d statement(s)", result);
 
   /* Track previous timestamp to detect actual data updates */
   static uint8_t prev_hours = 0xFF, prev_minutes = 0xFF, prev_seconds = 0xFF;
@@ -215,21 +215,21 @@ static void gps_rx_line_callback(const char *line, size_t len)
   /* Log fix status changes */
   if (gps_data.has_fix && !gps_had_fix)
   {
-    LOG_I(TAG_GPS, "Fix acquired: mode=%d, sats=%d", gps_data.fix_mode, gps_data.sats_in_use);
+    LOG_T(TAG_GPS, "Fix acquired: mode=%d, sats=%d", gps_data.fix_mode, gps_data.sats_in_use);
   }
   else if (!gps_data.has_fix && gps_had_fix)
   {
-    LOG_I(TAG_GPS, "Fix lost");
+    LOG_T(TAG_GPS, "Fix lost");
   }
   gps_had_fix = gps_data.has_fix;
 
   /* Log detailed position data */
-  LOG_D(TAG_GPS, "Pos: lat=%.6f, lon=%.6f, alt=%.1fm", gps_data.latitude, gps_data.longitude, gps_data.altitude);
-  LOG_D(TAG_GPS, "Fix: type=%d, mode=%d, valid=%d, sats=%d/%d", gps_data.fix, gps_data.fix_mode, gps_data.valid,
+  LOG_T(TAG_GPS, "Pos: lat=%.6f, lon=%.6f, alt=%.1fm", gps_data.latitude, gps_data.longitude, gps_data.altitude);
+  LOG_T(TAG_GPS, "Fix: type=%d, mode=%d, valid=%d, sats=%d/%d", gps_data.fix, gps_data.fix_mode, gps_data.valid,
         gps_data.sats_in_use, gps_data.sats_in_view);
-  LOG_D(TAG_GPS, "DOP: h=%.2f, v=%.2f, p=%.2f", gps_data.hdop, gps_data.vdop, gps_data.pdop);
-  LOG_D(TAG_GPS, "Motion: speed=%.1f km/h, course=%.1f deg", gps_data.speed_kmh, gps_data.course);
-  LOG_D(TAG_GPS, "Time: %02d:%02d:%02d UTC, Date: %02d/%02d/20%02d", gps_data.hours, gps_data.minutes, gps_data.seconds,
+  LOG_T(TAG_GPS, "DOP: h=%.2f, v=%.2f, p=%.2f", gps_data.hdop, gps_data.vdop, gps_data.pdop);
+  LOG_T(TAG_GPS, "Motion: speed=%.1f km/h, course=%.1f deg", gps_data.speed_kmh, gps_data.course);
+  LOG_T(TAG_GPS, "Time: %02d:%02d:%02d UTC, Date: %02d/%02d/20%02d", gps_data.hours, gps_data.minutes, gps_data.seconds,
         gps_data.month, gps_data.day, gps_data.year);
 }
 
@@ -291,7 +291,7 @@ int FEB_GPS_SendPMTKCommand(const char *cmd)
   /* Calculate checksum */
   uint8_t checksum = pmtk_checksum(cmd);
 
-  LOG_D(TAG_GPS, "TX: $%s*%02X", cmd, checksum);
+  LOG_T(TAG_GPS, "TX: $%s*%02X", cmd, checksum);
 
   /* Format and send: $<cmd>*XX\r\n */
   int result = FEB_UART_Printf(FEB_UART_INSTANCE_2, "$%s*%02X\r\n", cmd, checksum);
@@ -325,7 +325,7 @@ int FEB_GPS_SetUpdateRate(uint8_t hz)
     return -1;
   }
 
-  LOG_I(TAG_GPS, "Setting update rate to %d Hz (%d ms)", hz, period_ms);
+  LOG_T(TAG_GPS, "Setting update rate to %d Hz (%d ms)", hz, period_ms);
 
   char cmd[32];
   snprintf(cmd, sizeof(cmd), "PMTK220,%u", period_ms);
@@ -341,7 +341,7 @@ int FEB_GPS_SetUpdateRate(uint8_t hz)
  */
 int FEB_GPS_ConfigureOutput(bool gga, bool gsa, bool gsv, bool rmc)
 {
-  LOG_I(TAG_GPS, "Configuring output: GGA=%d, GSA=%d, GSV=%d, RMC=%d", gga, gsa, gsv, rmc);
+  LOG_T(TAG_GPS, "Configuring output: GGA=%d, GSA=%d, GSV=%d, RMC=%d", gga, gsa, gsv, rmc);
 
   char cmd[64];
 
@@ -359,7 +359,7 @@ int FEB_GPS_ConfigureOutput(bool gga, bool gsa, bool gsv, bool rmc)
  */
 void FEB_GPS_SetEnabled(bool enable)
 {
-  LOG_I(TAG_GPS, "GPS %s", enable ? "enabled" : "disabled");
+  LOG_T(TAG_GPS, "GPS %s", enable ? "enabled" : "disabled");
 
   HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, enable ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
@@ -370,7 +370,7 @@ void FEB_GPS_SetEnabled(bool enable)
     memset(&gps_data, 0, sizeof(gps_data));
     gps_data_updated = false;
     gps_had_fix = false;
-    LOG_D(TAG_GPS, "Cleared GPS data and fix state");
+    LOG_T(TAG_GPS, "Cleared GPS data and fix state");
   }
 }
 

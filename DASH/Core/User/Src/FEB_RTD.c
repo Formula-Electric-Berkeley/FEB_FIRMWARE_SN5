@@ -2,60 +2,95 @@
 #include "FEB_CAN_BMS.h"
 #include "FEB_CAN_PCU.h"
 #include "FEB_IO.h"
+#include "feb_can_latest.h"
 #include "stm32f4xx_hal.h"
 #include <stdint.h>
 #include <stdio.h>
 
 static bool rtd = false;
 
-static uint32_t rtd_button_press_start_tick = 0;
+static bool rtd_timer_armed = false;
+static uint32_t rtd_trying_to_toggle_start_tick = 0;
+static bool rtd_toggle_complete = false;
 
-// Minimum brake pressure required for RTD activation (safety interlock)
-#define RTD_BRAKE_THRESHOLD 25
-static bool previous_rtd_button = false;
+// Minimum brake required for RTD activation (safety interlock).
+// brake_position is centi-percent (0-10000 = 0-100%); 1000 = 10% brake.
+#define RTD_BRAKE_THRESHOLD 1000
 
-static Buzzing_State_t buzzing_state =
-    NOT_BUZZED; // Here to ensure FEB_IO_Play_Buzzer() is not spammed and only called once
+// Any RTD input older than this is treated as missing — RTD will not arm on
+// stale CAN data. Matches BMS_STATE_TIMEOUT_MS.
+#define RTD_INPUT_FRESHNESS_MS 1000
 
 void FEB_State_Update_RTD(void)
 {
   // MARK: Start buzzer code
-  // to react to BMS entering and exiting drive state
+  // Chime only on the normal R2D enter/exit (ENERGIZED <-> DRIVE). A fault that
+  // drops us out of DRIVE (DRIVE -> FAULT_*) must NOT buzz.
   static BMS_State_t previous_bms_state = BMS_STATE_BOOT;
   BMS_State_t bms_state = FEB_CAN_BMS_GetLastState();
-  if (previous_bms_state == BMS_STATE_ENERGIZED && bms_state == BMS_STATE_DRIVE && buzzing_state != BUZZED_ENTER_RTD)
+  if (previous_bms_state == BMS_STATE_ENERGIZED && bms_state == BMS_STATE_DRIVE)
   {
     FEB_IO_Play_Buzzer(BUZZER_DURATION_RTD_ENTER);
-    buzzing_state = BUZZED_ENTER_RTD;
   }
-  else if (previous_bms_state == BMS_STATE_DRIVE && bms_state == BMS_STATE_ENERGIZED &&
-           buzzing_state != BUZZED_EXIT_RTD)
+  else if (previous_bms_state == BMS_STATE_DRIVE && bms_state == BMS_STATE_ENERGIZED)
   {
     FEB_IO_Play_Buzzer(BUZZER_DURATION_RTD_EXIT);
-    buzzing_state = BUZZED_EXIT_RTD;
   }
   previous_bms_state = bms_state;
 
   // MARK: Signal enter rtd code
   // Send the ready to drive message over CAN when all the conditions are met
-  IO_State_t states = FEB_IO_GetLastIOStates();
-  uint16_t brake_pressure = FEB_CAN_PCU_GetLastBreakPosition();
-  int8_t inv_enabled = FEB_CAN_PCU_GetLastRMSEnabled();
+  IO_States_t states = FEB_IO_GetLastIOStates();
+  uint16_t brake_pressure = FEB_CAN_PCU_GetLastBrakePosition();
 
-  if (previous_rtd_button == false && states.button_rtd)
+  bool inputs_fresh =
+      FEB_CAN_PCU_IsBrakeDataFresh(RTD_INPUT_FRESHNESS_MS) && FEB_CAN_BMS_IsDataFresh(RTD_INPUT_FRESHNESS_MS);
+
+  // R2D may only ever be asserted while ENERGIZED or DRIVE. Any other state
+  // (boot, precharge, charging, fault, ...) forces R2D false so the car can
+  // never slip (back) into drive without a fresh handshake. Faults are terminal:
+  // clearing R2D here guarantees a fault can never lead to drive.
+  if (bms_state != BMS_STATE_ENERGIZED && bms_state != BMS_STATE_DRIVE)
   {
-    rtd_button_press_start_tick = HAL_GetTick();
+    rtd = false;
+    rtd_timer_armed = false;
+    rtd_toggle_complete = false;
+    return;
   }
 
-  // RTD requires: button held, brake applied, and inverter enabled
-  if (states.button_rtd && rtd_button_press_start_tick + RTD_BUTTON_HOLD_DURATION < HAL_GetTick() &&
-      brake_pressure >= RTD_BRAKE_THRESHOLD && inv_enabled == 1)
+  // Mirrored handshake: hold the RTD button + brake >10% for RTD_SAFETY_DURATION
+  // to toggle R2D. Works both ways:
+  //   ENERGIZED, R2D false -> toggles true  (enter drive)
+  //   DRIVE,     R2D true  -> toggles false (exit drive)
+  // rtd_toggle_complete latches one toggle per press: the arm condition must
+  // drop (button or brake released) before another toggle can occur, so a single
+  // continuous press can never bounce drive on and off.
+  if (inputs_fresh && (brake_pressure > RTD_BRAKE_THRESHOLD) && states.button_rtd)
   {
-    // FEB_IO_Play_Buzzer(BUZZER_DURATION_RTD_ENTER);
-    rtd = true;
+    if (!rtd_timer_armed)
+    {
+      rtd_timer_armed = true;
+      rtd_trying_to_toggle_start_tick = HAL_GetTick();
+    }
+  }
+  else
+  {
+    rtd_timer_armed = false;
   }
 
-  previous_rtd_button = states.button_rtd;
+  if (rtd_timer_armed && (HAL_GetTick() - rtd_trying_to_toggle_start_tick >= RTD_SAFETY_DURATION))
+  {
+    if (!rtd_toggle_complete)
+    {
+      rtd = !rtd;
+      FEB_IO_Play_Buzzer(rtd ? BUZZER_DURATION_RTD_ENTER : BUZZER_DURATION_RTD_EXIT);
+      rtd_toggle_complete = true;
+    }
+  }
+  else
+  {
+    rtd_toggle_complete = false;
+  }
 }
 
 bool FEB_State_GetLastRTD(void)

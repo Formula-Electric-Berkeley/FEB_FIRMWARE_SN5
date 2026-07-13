@@ -4,37 +4,59 @@
 #include "FEB_SN_Commands.h"
 #include "FEB_WSS.h"
 #include "main.h"
+#include "tim.h"
+
 #include <string.h>
 #include "FEB_Main.h"
+#include "FEB_SN_Config.h"
 #include "FEB_CAN_IMU.h"
-// Common libraries
+#include "FEB_CAN_Magnetometer.h"
+#include "FEB_CAN_WSS.h"
+#include "FEB_CAN_GPS.h"
+#include "FEB_CAN_Fusion.h"
+#include "FEB_CAN_Sensors.h"
+#include "FEB_Fusion.h"
+#include "FEB_LinearPotentiometer.h"
+#include "FEB_CAN_LinearPotentiometer.h"
+#include "FEB_SN_PingPong.h"
+#include "FEB_CAN_IRTSSensorConfig.h"
+
 #include "feb_uart.h"
 #include "feb_log.h"
 #include "feb_console.h"
+#include "feb_can_lib.h"
 
 #define TAG_MAIN "[MAIN]"
+
+/* Tick periods (all millisecond-based off HAL_GetTick).
+ *
+ * The IMU/mag/Fusion pipeline is capped at 10 Hz on purpose. FEB_CAN_Fusion_Tick
+ * emits 5 CAN frames per call; at the old 1 kHz that was 5000 frames/s, which
+ * alone exceeds the ~4000 frames/s ceiling of the 500 kbps bus and permanently
+ * filled the 16-deep TX FIFO — starving lower-rate frames (notably WSS, which
+ * appeared to "stop after one send"). 10 Hz drops Fusion to 50 frames/s and
+ * leaves the bus comfortable. Fusion still uses a µs-accurate dt from TIM5. */
+#define TICK_PERIOD_IMU_MS 100u   /* 10 Hz: IMU + mag sample + Fusion update + IMU/mag/fusion CAN */
+#define TICK_PERIOD_WSS_MS 20u    /* 50 Hz: WSS computation + CAN */
+#define TICK_PERIOD_LP_MS 20u     /* 50 Hz: linear potentiometer sample + CAN */
+#define TICK_PERIOD_GPS_MS 200u   /* 5  Hz: GPS frames (six per tick) */
+#define TICK_PERIOD_TEMP_MS 1000u /* 1  Hz: temperatures */
+#define TICK_PERIOD_PING_MS 100u  /* 10 Hz: CAN ping/pong test service */
 
 static bool gps_ready = false;
 
 extern UART_HandleTypeDef huart2;
 extern DMA_HandleTypeDef hdma_usart2_tx;
 extern DMA_HandleTypeDef hdma_usart2_rx;
+extern CAN_HandleTypeDef hcan1;
+extern CAN_HandleTypeDef hcan2;
 
 static uint8_t uart_tx_buf[1024];
 static uint8_t uart_rx_buf[256];
 
-void FEB_Update()
-{
-  read_Acceleration();
-  read_Angular_Rate();
-  read_Magnetic_Field_Data();
-  WSS_Main();
-  FEB_CAN_IMU_Tick();
-}
-
 void FEB_Init(void)
 {
-  // Initialize UART library first (before any LOG calls)
+  /* UART first (logging depends on it). */
   FEB_UART_Config_t uart_cfg = {
       .huart = &huart2,
       .hdma_tx = &hdma_usart2_tx,
@@ -45,13 +67,11 @@ void FEB_Init(void)
       .rx_buffer_size = sizeof(uart_rx_buf),
       .get_tick_ms = HAL_GetTick,
   };
-  int uart_result = FEB_UART_Init(FEB_UART_INSTANCE_1, &uart_cfg);
-  if (uart_result != FEB_UART_OK)
+  if (FEB_UART_Init(FEB_UART_INSTANCE_1, &uart_cfg) != FEB_UART_OK)
   {
     Error_Handler();
   }
 
-  // Initialize logging system
   FEB_Log_Config_t log_cfg = {
       .uart_instance = FEB_UART_INSTANCE_1,
       .level = FEB_LOG_TRACE,
@@ -61,30 +81,62 @@ void FEB_Init(void)
   };
   FEB_Log_Init(&log_cfg);
 
-  // Initialize console with default commands
   FEB_Console_Init(true);
   FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
 
-  // Register Sensor Node specific commands
   SN_RegisterCommands();
 
-  FEB_Console_Printf("Sensor Node Starting\r\n");
+  FEB_Console_Printf("Sensor Node (%s) Starting\r\n", FEB_SN_VARIANT_NAME);
 
-  // Initialize sensors
-  int imu_result = lsm6dsox_init();
-  if (imu_result != 0)
+  /* Free-running 1 MHz µs counter for Fusion dt and WSS edge timestamps. */
+  HAL_TIM_Base_Start(&htim5);
+
+#if FEB_SN_HAS_IMU
+  if (lsm6dsox_init() != 0)
   {
-    LOG_E(TAG_MAIN, "IMU init failed: %d", imu_result);
+    LOG_E(TAG_MAIN, "IMU init failed");
   }
   else
   {
     FEB_Console_Printf("IMU initialized\r\n");
   }
+#else
+  FEB_Console_Printf("IMU absent on this variant\r\n");
+#endif
 
+#if FEB_SN_HAS_MAG
   lis3mdl_init();
   FEB_Console_Printf("Magnetometer initialized\r\n");
+#else
+  FEB_Console_Printf("Magnetometer absent on this variant\r\n");
+#endif
 
-  // Initialize GPS
+#if FEB_SN_HAS_FUSION
+  FEB_Fusion_Init();
+  FEB_Console_Printf("Fusion orientation filter initialized\r\n");
+#if FEB_SN_HAS_IMU
+  FEB_Console_Printf("Auto-calibrating gyro (1 s, keep car still)...\r\n");
+  FEB_Fusion_AutoCalibrate_Gyro();
+  FEB_Console_Printf("Gyro auto-cal done. Mag will refine online during driving.\r\n");
+#endif
+#endif
+
+#if FEB_SN_HAS_WSS
+  FEB_WSS_Init();
+  FEB_Console_Printf("WSS initialized\r\n");
+#else
+  FEB_Console_Printf("WSS absent on this variant\r\n");
+#endif
+
+#if FEB_SN_HAS_LINEAR_POTENTIOMETER
+  FEB_LinearPotentiometer_Init();
+  FEB_CAN_LinearPotentiometer_Init();
+  FEB_Console_Printf("Linear potentiometers initialized\r\n");
+#else
+  FEB_Console_Printf("Linear potentiometers absent on this variant\r\n");
+#endif
+
+#if FEB_SN_HAS_GPS
   int gps_result = FEB_GPS_Init();
   if (gps_result != 0)
   {
@@ -93,7 +145,7 @@ void FEB_Init(void)
   }
   else
   {
-    int cfg_result = FEB_GPS_ConfigureOutput(true, true, false, true); // GGA, GSA, RMC (no GSV)
+    int cfg_result = FEB_GPS_ConfigureOutput(true, true, false, true); /* GGA, GSA, RMC */
     if (cfg_result < 0)
     {
       LOG_W(TAG_MAIN, "GPS config output failed: %d", cfg_result);
@@ -105,18 +157,218 @@ void FEB_Init(void)
     }
     gps_ready = true;
   }
+#else
+  FEB_Console_Printf("GPS absent on this variant\r\n");
+  gps_ready = false;
+#endif
 
-  FEB_Console_Printf("Sensor Node Setup Complete\r\n");
+  FEB_CAN_Config_t can_cfg = {
+      .hcan1 = &hcan1,
+      .hcan2 = &hcan2,
+      .get_tick_ms = HAL_GetTick,
+  };
+  FEB_CAN_Init(&can_cfg);
+  FEB_Console_Printf("CAN initialized\r\n");
+
+  FEB_SN_PingPong_Init();
+  FEB_Console_Printf("CAN ping/pong ready (SN|ping|<1-4>, SN|pong|<1-4>)\r\n");
+
+  FEB_CAN_IRTSSensorConfig_Init();
+  FEB_Console_Printf("IRTS sensor config ready (SN|IRTS|send)\r\n");
+
+  FEB_Console_Printf("Sensor Node (%s) Setup Complete\r\n", FEB_SN_VARIANT_NAME);
+}
+
+/* ----------------------------------------------------------------------------
+ * CAN bus health logging (DEBUG).
+ *
+ * The feb_can library records error/recovery counters plus a snapshot of the
+ * controller ESR (TEC/REC/LEC) on every error IRQ, but nothing on this board
+ * ever surfaced them — so when the bus died there was zero signal. Poll them
+ * once per main-loop iteration and emit a single LOG_D line only when a counter
+ * changes (throttled to ~4/s), so a healthy bus stays quiet while a dying bus is
+ * immediately visible. LEC is the key discriminator: stuff/bit/crc => bit-timing
+ * (clock) trouble; ack => nobody on the bus is acknowledging. */
+static void can_health_log(void)
+{
+  static const char *const LEC_NAME[8] = {
+      "none", "stuff", "form", "ack", "bit-rec", "bit-dom", "crc", "sw",
+  };
+
+  static bool primed = false;
+  static uint32_t last_log_ms = 0;
+  static uint32_t p_errcb = 0, p_busoff = 0, p_ewg = 0, p_hal = 0, p_txovf = 0, p_rxovf = 0;
+
+  const uint32_t errcb = FEB_CAN_GetErrorCallbackCount();
+  const uint32_t busoff = FEB_CAN_GetBusOffCount();
+  const uint32_t ewg = FEB_CAN_GetEwgRecoveryCount();
+  const uint32_t hal = FEB_CAN_GetHalErrorCount();
+  const uint32_t txovf = FEB_CAN_GetTxQueueOverflowCount();
+  const uint32_t rxovf = FEB_CAN_GetRxQueueOverflowCount();
+
+  if (!primed)
+  {
+    p_errcb = errcb;
+    p_busoff = busoff;
+    p_ewg = ewg;
+    p_hal = hal;
+    p_txovf = txovf;
+    p_rxovf = rxovf;
+    primed = true;
+    return;
+  }
+
+  if (errcb == p_errcb && busoff == p_busoff && ewg == p_ewg && hal == p_hal && txovf == p_txovf && rxovf == p_rxovf)
+  {
+    return; /* nothing changed — stay quiet */
+  }
+
+  /* Throttle to ~4 lines/s so an error storm can't flood the console; the next
+   * iteration still sees the change (we don't resync prev) and logs once the
+   * window opens, always showing the latest cumulative totals. */
+  const uint32_t now = HAL_GetTick();
+  if ((uint32_t)(now - last_log_ms) < 250u)
+  {
+    return;
+  }
+
+  const uint32_t esr = FEB_CAN_GetLastErrorEsr();
+  const uint32_t lec = (esr >> 4) & 0x7u;
+  const uint32_t tec = (esr >> 16) & 0xFFu;
+  const uint32_t rec = (esr >> 24) & 0xFFu;
+
+  LOG_D(TAG_CAN, "health busoff=%lu ewg=%lu errcb=%lu hal=%lu txovf=%lu rxovf=%lu | TEC=%lu REC=%lu LEC=%s code=0x%lX",
+        (unsigned long)busoff, (unsigned long)ewg, (unsigned long)errcb, (unsigned long)hal, (unsigned long)txovf,
+        (unsigned long)rxovf, (unsigned long)tec, (unsigned long)rec, LEC_NAME[lec],
+        (unsigned long)FEB_CAN_GetLastErrorCode());
+
+  last_log_ms = now;
+  p_errcb = errcb;
+  p_busoff = busoff;
+  p_ewg = ewg;
+  p_hal = hal;
+  p_txovf = txovf;
+  p_rxovf = rxovf;
 }
 
 void FEB_Main_Loop(void)
 {
-  FEB_Update();
+  static uint32_t t_imu_ms = 0;
+  static uint32_t t_wss_ms = 0;
+  static uint32_t t_lp_ms = 0;
+  static uint32_t t_gps_ms = 0;
+  static uint32_t t_temp_ms = 0;
+  static uint32_t t_ping_ms = 0;
+  static uint32_t prev_fusion_us = 0;
+  static bool fusion_dt_primed = false;
 
+  const uint32_t now_ms = HAL_GetTick();
+
+  /* Drain UART RX every iteration so console + GPS NMEA never starve. */
   FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
+#if FEB_SN_HAS_GPS
   if (gps_ready)
   {
     FEB_GPS_Process();
   }
-  HAL_Delay(100);
+#endif
+
+  /* Keep the bare-metal CAN TX FIFO draining and run any pending bus-off
+   * recovery (this is the *only* place bus-off recovery runs). Matches the
+   * pattern used by PCU/BMS/DASH. */
+  FEB_CAN_TX_Process();
+  FEB_CAN_TX_ProcessPeriodic();
+
+  /* Surface CAN bus health (bus-off / error-passive / TX drops) at DEBUG. */
+  can_health_log();
+
+  /* 10 Hz: sample IMU+mag, run Fusion with µs-accurate dt, publish fusion + raw
+   * IMU/mag CAN frames. Capped at 10 Hz so the 500 kbps bus isn't flooded
+   * (Fusion alone is 5 frames/tick). dt comes from TIM5 (1 MHz free-running)
+   * so it tracks real elapsed time despite the 1 ms HAL_GetTick gate. Each
+   * sample/Tick is independently compile-gated so the loop stays uniform across
+   * variants. */
+  if ((uint32_t)(now_ms - t_imu_ms) >= TICK_PERIOD_IMU_MS)
+  {
+    const uint32_t now_us = __HAL_TIM_GET_COUNTER(&htim5);
+    float dt = (float)TICK_PERIOD_IMU_MS / 1000.0f;
+    if (fusion_dt_primed)
+    {
+      dt = (float)((uint32_t)(now_us - prev_fusion_us)) / 1.0e6f;
+    }
+    prev_fusion_us = now_us;
+    fusion_dt_primed = true;
+
+#if FEB_SN_HAS_IMU
+    read_Acceleration();
+    read_Angular_Rate();
+#endif
+#if FEB_SN_HAS_MAG
+    read_Magnetic_Field_Data();
+#endif
+#if FEB_SN_HAS_FUSION
+    FEB_Fusion_Update(dt);
+#else
+    (void)dt;
+#endif
+
+    FEB_CAN_Fusion_Tick();
+    FEB_CAN_IMU_Tick();
+    FEB_CAN_Magnetometer_Tick();
+
+    t_imu_ms = now_ms;
+  }
+
+  /* 50 Hz: recompute wheel RPM from per-edge timestamp ring, transmit. */
+  if ((uint32_t)(now_ms - t_wss_ms) >= TICK_PERIOD_WSS_MS)
+  {
+#if FEB_SN_HAS_WSS
+    WSS_Main();
+#endif
+    FEB_CAN_WSS_Tick();
+    t_wss_ms = now_ms;
+  }
+
+  /* 50 Hz: sample both linear potentiometers (ADC) and publish suspension
+   * position (0x1E FRONT / 0x1F REAR). The reporter Tick self-gates on the
+   * variant flag, so it is called unconditionally like the other reporters. */
+  if ((uint32_t)(now_ms - t_lp_ms) >= TICK_PERIOD_LP_MS)
+  {
+#if FEB_SN_HAS_LINEAR_POTENTIOMETER
+    read_LinearPotentiometer();
+#endif
+    FEB_CAN_LinearPotentiometer_Tick();
+    t_lp_ms = now_ms;
+  }
+
+  /* 5 Hz: GPS frames (six per tick: pos, altitude, motion, time, date, status). */
+  if ((uint32_t)(now_ms - t_gps_ms) >= TICK_PERIOD_GPS_MS)
+  {
+    FEB_CAN_GPS_Tick();
+    t_gps_ms = now_ms;
+  }
+
+  /* 1 Hz: sensor die temperatures. */
+  if ((uint32_t)(now_ms - t_temp_ms) >= TICK_PERIOD_TEMP_MS)
+  {
+#if FEB_SN_HAS_IMU
+    read_IMU_Temperature();
+#endif
+#if FEB_SN_HAS_MAG
+    read_Mag_Temperature();
+#endif
+    FEB_CAN_Temps_Tick();
+    t_temp_ms = now_ms;
+  }
+
+  /* 10 Hz: CAN ping/pong test service (PING transmit + deferred RX logging). */
+  if ((uint32_t)(now_ms - t_ping_ms) >= TICK_PERIOD_PING_MS)
+  {
+    FEB_SN_PingPong_Tick();
+    t_ping_ms = now_ms;
+  }
+
+  /* IRTS sensor-config burst: self-gates on its own 1 Hz cadence and stops
+   * itself after 15 s, so call it every iteration (idle when not running). */
+  FEB_CAN_IRTSSensorConfig_Tick();
 }
