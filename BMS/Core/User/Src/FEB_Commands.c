@@ -32,6 +32,7 @@
 #include "task.h"
 #include "cmsis_os.h"
 #include <ctype.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -110,7 +111,15 @@ static void subcmd_cells(int argc, char *argv[])
       float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
       float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
       uint8_t bal = FEB_ADBMS_GET_Cell_Discharging(bank, cell);
-      FEB_Console_Printf("  C%02d: %.3f/%.3f%s\r\n", cell + 1, v_c, v_s, bal ? "  *BAL" : "");
+      if (isnan(v_c) && isnan(v_s))
+      {
+        // Never read successfully (register group failing PEC since boot)
+        FEB_Console_Printf("  C%02d: --/--%s\r\n", cell + 1, bal ? "  *BAL" : "");
+      }
+      else
+      {
+        FEB_Console_Printf("  C%02d: %.3f/%.3f%s\r\n", cell + 1, v_c, v_s, bal ? "  *BAL" : "");
+      }
     }
   }
   FEB_Console_Printf("Balancing: %u cells active | delta %.0fmV | done: %s\r\n",

@@ -137,29 +137,41 @@ static inline uint8_t FEB_spi_read_byte(uint8_t tx_data)
   return data;
 }
 
-// ********************************** isoSPI Wake-Up Function *********************
+// ********************************** isoSPI Wake-Up Functions ********************
 
-// Wake ADBMS6830B from sleep mode
-// isoSPI requires CS pulse >400ns for wake-up, then 300us delay
+// Wake-up ripples down the daisy chain one IC per pulse: an IC's isoSPI port
+// must itself be up before it can forward anything to the next IC, so a single
+// CS pulse only ever wakes the first device — the far end of the chain never
+// hears it. Both functions below pulse once per IC.
+
+// Wake the full chain from SLEEP (isoSPI ports powered down). Slow — ~2 ms per
+// IC — so this is for init/recovery only, from task context (uses osDelay).
 static inline void wakeup_sleep(uint8_t total_ic)
 {
-  (void)total_ic; // Unused parameter, kept for API compatibility
-
-  // Pulse CS low for wake-up
-  FEB_cs_low();
-
-  // Short delay >400ns (a few microseconds)
-  // Increased to 1000 iterations to ensure sufficient pulse width across optimization levels
-  for (volatile int i = 0; i < 1000; i++)
+  for (uint8_t ic = 0; ic < total_ic; ic++)
   {
-    __NOP();
+    FEB_cs_low();
+    osDelay(pdMS_TO_TICKS(1)); // > tWAKE: this hop reaches STANDBY
+    FEB_cs_high();
+    osDelay(pdMS_TO_TICKS(1)); // port settles before pulsing the next hop
   }
+}
 
-  FEB_cs_high();
-
-  // Wait 300us minimum for ADBMS to wake up
-  // Using 1ms for safety (osDelay is FreeRTOS-aware)
-  osDelay(pdMS_TO_TICKS(1));
+// Wake the chain from IDLE before a command burst. The isoSPI ports drop to
+// IDLE after tIDLE (~4.3 ms) of bus silence, so every burst must start here.
+// One dummy byte per IC: at the SPI1 clock (90 MHz / 128 ≈ 703 kHz) each byte
+// takes ~11 µs > tREADY (10 µs), so every hop is ready before the next byte
+// reaches it. Dummy 0xFF bytes are not valid commands — the command counter is
+// unaffected.
+static inline void wakeup_idle(uint8_t total_ic)
+{
+  uint8_t dummy = 0xFF;
+  for (uint8_t ic = 0; ic < total_ic; ic++)
+  {
+    FEB_cs_low();
+    HAL_SPI_Transmit(FEB_ACTIVE_SPI, &dummy, 1, FEB_SPI_TIMEOUT_MS);
+    FEB_cs_high();
+  }
 }
 
 #endif /* INC_FEB_HW_H_ */

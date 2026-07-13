@@ -86,10 +86,6 @@ bool FEB_ADBMS_Init(void);
 void FEB_ADBMS_Voltage_Process(void);
 void FEB_ADBMS_Temperature_Process(void);
 
-void FEB_Cell_Balance_Start(void);
-void FEB_Cell_Balance_Process(void);
-void FEB_Stop_Balance(void);
-
 // ********************************** Voltage ************************************
 
 float FEB_ADBMS_GET_ACC_MIN_Voltage(void);
@@ -112,7 +108,8 @@ float FEB_ADBMS_GET_Therm_Raw_mV(uint8_t bank, uint16_t sensor);
 
 // ********************************** Balancing **********************************
 
-void FEB_Stop_Balance(void);
+void FEB_Stop_Balance(void);             // lock-free stop request; safe from the 1ms SM task
+void FEB_Cell_Balance_ServiceStop(void); // ADBMSTask only: bus writes for a pending stop
 void FEB_Cell_Balance_Start(void);
 void FEB_Cell_Balance_Process(void);
 bool FEB_Cell_Balancing_Status(void);

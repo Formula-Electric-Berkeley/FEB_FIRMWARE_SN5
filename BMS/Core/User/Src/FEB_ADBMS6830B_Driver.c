@@ -10,6 +10,12 @@
 #include <stdio.h>
 #include "feb_log.h"
 
+// Same tag FEB_Commands.h uses for the [ADBMS] init/console messages; defined
+// here too so the driver doesn't pull in the console header for one macro.
+#ifndef TAG_ADBMS
+#define TAG_ADBMS "[ADBMS]"
+#endif
+
 // ********************************** Functions **********************************
 
 uint16_t SetOverVoltageThreshold(float voltage)
@@ -285,7 +291,6 @@ uint8_t ADBMS6830B_rdcv(uint8_t total_ic, // The number of ICs in the system
 
   for (int REGGRP = 0; REGGRP < 6; REGGRP++)
   {
-    wakeup_sleep(FEB_NUM_IC);
     transmitCMDR(codes[REGGRP], cell_data, TxSize * total_ic);
     uint8_t bytesInGroup = (REGGRP == 5) ? 2 : 6;
 
@@ -337,7 +342,6 @@ uint8_t ADBMS6830B_rdsv(uint8_t total_ic, // The number of ICs in the system
 
   for (int REGGRP = 0; REGGRP < 6; REGGRP++)
   {
-    wakeup_sleep(FEB_NUM_IC);
     transmitCMDR(codes[REGGRP], cell_data, TxSize * total_ic);
     uint8_t bytesInGroup = (REGGRP == 5) ? 2 : 6;
 
@@ -377,15 +381,64 @@ uint8_t ADBMS6830B_rdsv(uint8_t total_ic, // The number of ICs in the system
   return errorCount;
 }
 // ******************************** Temperature ********************************
+/* Compare what we wrote against what the chain reads back. Returns the first
+ * mismatching IC (or -1 if all match) and logs the differing register/bytes.
+ * A PEC failure on the read-back counts as a mismatch: either way we cannot
+ * prove the write landed. */
+static int8_t verify_cfg_readback(uint8_t total_ic, cell_asic ic[])
+{
+  for (uint8_t icn = 0; icn < total_ic; icn++)
+  {
+    if (ic[icn].configa.rx_pec_match != 0 || ic[icn].configb.rx_pec_match != 0)
+    {
+      LOG_W(TAG_ADBMS, "Config readback PEC error on IC%u", (unsigned)icn);
+      return (int8_t)icn;
+    }
+    if (memcmp(ic[icn].configa.tx_data, ic[icn].configa.rx_data, 6) != 0)
+    {
+      LOG_W(TAG_ADBMS, "CFGA readback mismatch IC%u: wrote %02X%02X%02X%02X%02X%02X read %02X%02X%02X%02X%02X%02X",
+            (unsigned)icn, ic[icn].configa.tx_data[0], ic[icn].configa.tx_data[1], ic[icn].configa.tx_data[2],
+            ic[icn].configa.tx_data[3], ic[icn].configa.tx_data[4], ic[icn].configa.tx_data[5],
+            ic[icn].configa.rx_data[0], ic[icn].configa.rx_data[1], ic[icn].configa.rx_data[2],
+            ic[icn].configa.rx_data[3], ic[icn].configa.rx_data[4], ic[icn].configa.rx_data[5]);
+      return (int8_t)icn;
+    }
+    if (memcmp(ic[icn].configb.tx_data, ic[icn].configb.rx_data, 6) != 0)
+    {
+      LOG_W(TAG_ADBMS, "CFGB readback mismatch IC%u: wrote %02X%02X%02X%02X%02X%02X read %02X%02X%02X%02X%02X%02X",
+            (unsigned)icn, ic[icn].configb.tx_data[0], ic[icn].configb.tx_data[1], ic[icn].configb.tx_data[2],
+            ic[icn].configb.tx_data[3], ic[icn].configb.tx_data[4], ic[icn].configb.tx_data[5],
+            ic[icn].configb.rx_data[0], ic[icn].configb.rx_data[1], ic[icn].configb.rx_data[2],
+            ic[icn].configb.rx_data[3], ic[icn].configb.rx_data[4], ic[icn].configb.rx_data[5]);
+      return (int8_t)icn;
+    }
+  }
+  return -1;
+}
+
 void ADBMS6830B_wrALL(uint8_t total_ic, // The number of ICs being written to
                       cell_asic ic[]    // A two dimensional array of the configuration data that will be written
 )
 {
-  printf("[ADBMS] Writing ADBMS CFGRA Configuration to ICs\r\n");
-  ADBMS6830B_wrcfga(total_ic, ic);
-  printf("[ADBMS] Writing ADBMS CFGRB Configuration to ICs\r\n");
-  ADBMS6830B_wrcfgb(total_ic, ic);
-  printf("[ADBMS] ADBMS CFGRA and CFGRB Configuration Written to ICs\r\n");
+  /* Write CFGA/CFGB, then read both back and verify. A silently-missed config
+   * write is dangerous: a stale CFGB leaves discharge FETs on while the
+   * firmware reports them off. Retry once on mismatch, then warn loudly. */
+  for (uint8_t attempt = 0;; attempt++)
+  {
+    ADBMS6830B_wrcfga(total_ic, ic);
+    ADBMS6830B_wrcfgb(total_ic, ic);
+    ADBMS6830B_rdcfga(total_ic, ic);
+    ADBMS6830B_rdcfgb(total_ic, ic);
+
+    int8_t bad_ic = verify_cfg_readback(total_ic, ic);
+    if (bad_ic < 0)
+      return;
+    if (attempt >= 1)
+    {
+      LOG_W(TAG_ADBMS, "Config write unverified on IC%d after retry", bad_ic);
+      return;
+    }
+  }
 }
 
 void ADBMS6830B_rdALL(uint8_t total_ic, // The number of ICs being written to
@@ -658,10 +711,6 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
     return 1;
   }
 
-  // Match rdcv/rdsv/rdsid: ensure the daisy chain is awake before the first
-  // command or the leading frames can be dropped on a sleeping chain.
-  wakeup_sleep(total_ic);
-
   // RDAUXA: GPIO1-3 -> a_codes[0..2]
   transmitCMDR(RDAUXA, cell_data, NUM_RX_BYT * total_ic);
 
@@ -730,7 +779,6 @@ uint8_t ADBMS6830B_rdsid(uint8_t total_ic, // The number of ICs in the system
     return 1; // Memory allocation failed
   }
 
-  wakeup_sleep(total_ic);
   transmitCMDR(RDSID, sid_data, NUM_RX_BYT * total_ic);
 
   // One command on the wire -> one CC tick. See rdcv for rationale.

@@ -40,6 +40,10 @@ accumulator_t FEB_ACC = {0};
 int balancing_cycle = 0;
 uint16_t balancing_mask = 0xAAAA;
 
+/* Set by FEB_Stop_Balance() from any task (SM/console, lock-free); consumed by
+ * FEB_Cell_Balance_ServiceStop() in ADBMSTask, which owns the bus writes. */
+static volatile bool balance_stop_pending = false;
+
 uint8_t ERROR_TYPE = 0; // HEXDIGIT 1 voltage faults; HEXDIGIT 2 temp faults; HEXDIGIT 3 relay faults
 
 /* Sticky fault flags + freshness tick for the state machine.
@@ -639,8 +643,11 @@ bool FEB_ADBMS_Init(void)
     FEB_ACC.banks[bank].total_voltage_V = 0;
     for (uint8_t cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
     {
-      FEB_ACC.banks[bank].cells[cell].voltage_V = 0;
-      FEB_ACC.banks[bank].cells[cell].voltage_S = 0;
+      // NAN = "never read successfully" (same sentinel pattern as the raw
+      // thermistor telemetry below). A 0.0 seed reads as a real 0 V cell and
+      // poisons the pack min/delta when a register group never passes PEC.
+      FEB_ACC.banks[bank].cells[cell].voltage_V = NAN;
+      FEB_ACC.banks[bank].cells[cell].voltage_S = NAN;
       FEB_ACC.banks[bank].cells[cell].violations = 0;
       FEB_ACC.banks[bank].cells[cell].discharging = 0;
     }
@@ -666,6 +673,10 @@ bool FEB_ADBMS_Init(void)
   printf("[ADBMS] Initializing ADBMS Configuration\r\n");
   FEB_cs_high();
   printf("[ADBMS] High CS\r\n");
+  // Full wake from SLEEP, one pulse per IC so the wake ripples to the end of
+  // the chain. Commands only carry a fast wake-from-IDLE (wakeup_idle in the
+  // command layer), which is not enough for a chain that has powered down.
+  wakeup_sleep(FEB_NUM_IC);
   ADBMS6830B_init_cfg(FEB_NUM_IC, IC_Config);
   printf("[ADBMS] Resetting ADBMS CRC Count\r\n");
   ADBMS6830B_reset_crc_count(FEB_NUM_IC, IC_Config);
@@ -913,6 +924,7 @@ float FEB_ADBMS_GET_Therm_Raw_mV(uint8_t bank, uint16_t sensor)
 void FEB_Cell_Balance_Start()
 {
   LOG_I(TAG_BALANCE, "Starting cell balancing");
+  balance_stop_pending = false; // starting supersedes any not-yet-serviced stop
   osMutexAcquire(ADBMSMutexHandle, osWaitForever);
   FEB_cs_high();
   ADBMS6830B_init_cfg(FEB_NUM_IC, IC_Config);
@@ -1027,9 +1039,9 @@ bool FEB_Cell_Balancing_Status(void)
     {
       const float voltage = FEB_ADBMS_GET_Cell_Voltage(i, j) * 1000.0f;
 
-      if (voltage < 0)
+      if (isnan(voltage) || voltage < 0)
       {
-        continue;
+        continue; // NAN = never read (PEC-failed); -1000mV = out-of-range args
       }
 
       if (voltage < min_v)
@@ -1088,9 +1100,9 @@ float FEB_ADBMS_GET_Cell_Voltage_Delta_mV(void)
     for (size_t j = 0; j < FEB_NUM_CELLS_PER_BANK; ++j)
     {
       const float voltage = FEB_ADBMS_GET_Cell_Voltage(i, j) * 1000.0f;
-      if (voltage < 0)
+      if (isnan(voltage) || voltage < 0)
       {
-        continue; // getter returns -1000mV (-1.0V * 1000) for invalid/out-of-range
+        continue; // NAN = never read (PEC-failed); -1000mV = out-of-range args
       }
       if (voltage < min_v)
         min_v = voltage;
@@ -1124,9 +1136,10 @@ void FEB_Stop_Balance()
   balancing_cycle = 0;
 
   // Clear the per-cell discharge flags so the console/CSV readout reflects the
-  // hardware (DCC=0 below) once balancing stops. Lock-free: this is reachable
-  // from the 1ms SM task (fault entry / balance transitions), which must never
-  // block on ADBMSMutexHandle; single-byte stores are atomic on Cortex-M4.
+  // hardware (DCC=0, written below by ServiceStop) once balancing stops.
+  // Lock-free: this is reachable from the 1ms SM task (fault entry / balance
+  // transitions), which must never block on ADBMSMutexHandle; single-byte
+  // stores are atomic on Cortex-M4.
   for (size_t i = 0; i < FEB_NBANKS; ++i)
   {
     for (size_t j = 0; j < FEB_NUM_CELLS_PER_BANK; ++j)
@@ -1135,12 +1148,33 @@ void FEB_Stop_Balance()
     }
   }
 
+  // The actual bus writes (DCC=0 config + restart conversions) must not happen
+  // here: callers run in the SM/console tasks, and an unguarded SPI transaction
+  // from a lower-priority task gets preempted mid-frame by ADBMSTask's own
+  // traffic — interleaved frames, PEC errors, command-counter drift. Hand the
+  // bus work to ADBMSTask, which services it under the mutex within ~10 ms.
+  balance_stop_pending = true;
+}
+
+// ADBMSTask context only. Performs the bus writes for a requested balance stop
+// under the ADBMS mutex.
+void FEB_Cell_Balance_ServiceStop()
+{
+  if (!balance_stop_pending)
+  {
+    return;
+  }
+
+  osMutexAcquire(ADBMSMutexHandle, osWaitForever);
   for (uint8_t ic = 0; ic < FEB_NUM_IC; ic++)
   {
     ADBMS6830B_set_cfgr(ic, IC_Config, refon, cth_bits, gpio_bits, 0, dcto_bits, uv, ov);
   }
   ADBMS6830B_wrALL(FEB_NUM_IC, IC_Config);
   transmitCMD(ADCV | AD_DCP);
+  balance_stop_pending = false;
+  osMutexRelease(ADBMSMutexHandle);
+  LOG_D(TAG_BALANCE, "Cell discharge stopped (DCC cleared)");
 }
 
 // ********************************** Error Type *********************************

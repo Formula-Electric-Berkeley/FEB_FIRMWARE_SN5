@@ -86,6 +86,11 @@ void StartADBMSTask(void *argument)
   {
     uint32_t now = osKernelGetTickCount();
 
+    /* Balance-stop requests come from the SM/console tasks as a lock-free
+     * flag (they must not touch the bus themselves); do the DCC-clear bus
+     * writes here, under the mutex, before this cycle's measurements. */
+    FEB_Cell_Balance_ServiceStop();
+
     /* Voltage measurement every 100ms (10 Hz) */
     if (now - voltage_tick >= pdMS_TO_TICKS(100))
     {
