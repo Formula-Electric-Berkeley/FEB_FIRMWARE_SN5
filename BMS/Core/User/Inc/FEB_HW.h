@@ -143,23 +143,24 @@ static inline uint8_t FEB_spi_read_byte(uint8_t tx_data)
 // isoSPI requires CS pulse >400ns for wake-up, then 300us delay
 static inline void wakeup_sleep(uint8_t total_ic)
 {
-  (void)total_ic; // Unused parameter, kept for API compatibility
-
-  // Pulse CS low for wake-up
-  FEB_cs_low();
-
-  // Short delay >400ns (a few microseconds)
-  // Increased to 1000 iterations to ensure sufficient pulse width across optimization levels
-  for (volatile int i = 0; i < 1000; i++)
+  for (int k = 0; k < total_ic; k++)
   {
-    __NOP();
+    // Pulse CS low for wake-up
+    FEB_cs_low();
+
+    // Short delay >400ns (a few microseconds)
+    // Increased to 1000 iterations to ensure sufficient pulse width across optimization levels
+    for (volatile int i = 0; i < 1000; i++)
+    {
+      __NOP();
+    }
+
+    FEB_cs_high();
+
+    // Wait 300us minimum for ADBMS to wake up
+    // Using 1ms for safety (osDelay is FreeRTOS-aware)
+    osDelay(pdMS_TO_TICKS(1));
   }
-
-  FEB_cs_high();
-
-  // Wait 300us minimum for ADBMS to wake up
-  // Using 1ms for safety (osDelay is FreeRTOS-aware)
-  osDelay(pdMS_TO_TICKS(1));
 }
 
 #endif /* INC_FEB_HW_H_ */
