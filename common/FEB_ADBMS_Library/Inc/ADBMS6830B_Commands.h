@@ -124,9 +124,11 @@
  * Note: ADCV, ADSV, ADAX, ADAX2 have configurable bits for mode selection.
  * The base values below are starting points - OR with flag bits as needed.
  *
- * ADCV bits:
- * ADSV bits:
- * ADAX bits:
+ * Bit positions verified against ADI's reference driver bitfield structs
+ * (ADCV_t/ADSV_t/ADAX_t) — see common/FEB_ADBMS_Library/AUDIT.md:
+ *   ADCV: RD=CC8, CONT=CC7, DCP=CC4, RSTF=CC2, OW[1:0]=CC[1:0]
+ *   ADSV: CONT=CC7, DCP=CC4, OW[1:0]=CC[1:0]
+ *   ADAX: OW=CC8, PUP=CC7, CH4=CC6, CH[3:0]=CC[3:0]
  *============================================================================*/
 // Start Cell Voltage ADC Conversion and Poll Status
 #define ADCV(rd, cont, dcp, rstf, ow)                                                                                  \
@@ -135,10 +137,16 @@
 // Start S-ADC Conversion and Poll Status
 #define ADSV(cont, dcp, ow) (0x0168 | ((cont & 0x01) << 7) | ((dcp & 0x01) << 4) | ((ow & 0x03) << 0))
 
-// Start AUX ADC Conversions and Poll Status
-#define ADAX(ow, pup, ch) (0x0410 | ((ow & 0x01) << 8) | ((pup & 0x01) << 7) | ((ch & 0x10) << 6) | ((ch & 0x0F) << 0))
+// Start AUX ADC Conversions and Poll Status.
+// CH is 5 bits: CH[3:0] land at CC[3:0]; CH4 (channel codes >= 0x10, i.e.
+// VREF2/VD/VA/ITEMP/VPV/VMV/RES) lands at CC6 — hence (ch & 0x10) << 2.
+// (A previous revision shifted CH4 into CC10, which the 0x0410 base already
+// sets, silently selecting a GPIO channel instead of the supply channels.)
+#define ADAX(ow, pup, ch) (0x0410 | ((ow & 0x01) << 8) | ((pup & 0x01) << 7) | ((ch & 0x10) << 2) | ((ch & 0x0F) << 0))
 
 // Start AUX2 ADC Conversions and Poll Status
+// NOTE: CH[3:0] placement at CC[3:0] is UNVERIFIED against the datasheet
+// (ADI's ADAX2_t bitfield packing is ambiguous) — confirm before using ADAX2.
 #define ADAX2(ch) (0x0400 | ((ch & 0x0F) << 0))
 
 /*============================================================================
@@ -352,7 +360,8 @@ typedef enum
 
 /** ADAX bit flags for combining with base command */
 #define ADAX_OW (1 << 8)  /**< Open-wire mode (bit 8) */
-#define ADAX_PUP (1 << 6) /**< Pull-up enable (bit 6) */
+#define ADAX_PUP (1 << 7) /**< Pull-up enable (bit 7 — CC7 per ADI ADAX_t; CC6 is CH4) */
+#define ADAX_CH4 (1 << 6) /**< Channel-select bit 4 (bit 6) — set for VREF2/VD/VA/ITEMP/VPV/VMV/RES */
 
 /*============================================================================
  * Backwards-Compatible Base Command Values
