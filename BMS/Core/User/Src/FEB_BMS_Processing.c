@@ -341,14 +341,36 @@ static void _process_voltages(bool voltage_data_fresh)
           LOG_W(TAG_PROC, "C/S mismatch B%d IC%d C%d: C=%dmV S=%dmV", bank, ic_idx, cell, (int)v_c_mv, (int)v_s_mv);
         }
 
-        if (v_c_mv < (int32_t)uv_threshold_mv)
+        /* Redundant UV/OV: the software compare against the mode thresholds
+         * ORed with the chip's own comparator flags (STATD, refreshed with
+         * every voltage pass; VUV/VOV programmed at init/mode change). Either
+         * source alone can trip the debounce - the two protect against
+         * different failure modes (bad host data vs bad host thresholds). A
+         * disagreement is itself surfaced: it means thresholds or data are
+         * wrong. NOTE: chip flags may be latched until CLOVUV (datasheet
+         * check pending) - latching only makes this MORE conservative. */
+        bool sw_uv = (v_c_mv < (int32_t)uv_threshold_mv);
+        bool sw_ov = (v_c_mv > (int32_t)ov_threshold_mv);
+        bool hw_uv = ADBMS_GetCellUVFlag(global_ic, cell);
+        bool hw_ov = ADBMS_GetCellOVFlag(global_ic, cell);
+        if ((hw_uv != sw_uv) || (hw_ov != sw_ov))
+        {
+          if (c->uv_count == 0 && c->ov_count == 0) /* log the onset, not 10 Hz */
+          {
+            LOG_W(TAG_PROC, "HW/SW limit disagree B%d IC%d C%d: %dmV sw=%c%c hw=%c%c", bank, ic_idx, cell, (int)v_c_mv,
+                  sw_uv ? 'U' : '-', sw_ov ? 'O' : '-', hw_uv ? 'U' : '-', hw_ov ? 'O' : '-');
+          }
+        }
+
+        if (sw_uv || hw_uv)
         {
           if (c->uv_count < 0xFF)
             c->uv_count++;
           if (c->uv_count >= BMS_VOLTAGE_ERROR_THRESHOLD)
           {
             _raise_error(BMS_ERR_SRC_VOLTAGE, BMS_APP_ERR_VOLTAGE_UV, bank, ic_idx, cell);
-            LOG_E(TAG_PROC, "UV fault: B%d IC%d C%d = %dmV < %dmV", bank, ic_idx, cell, (int)v_c_mv, uv_threshold_mv);
+            LOG_E(TAG_PROC, "UV fault: B%d IC%d C%d = %dmV < %dmV (hw=%d)", bank, ic_idx, cell, (int)v_c_mv,
+                  uv_threshold_mv, hw_uv);
           }
         }
         else
@@ -356,14 +378,15 @@ static void _process_voltages(bool voltage_data_fresh)
           c->uv_count = 0;
         }
 
-        if (v_c_mv > (int32_t)ov_threshold_mv)
+        if (sw_ov || hw_ov)
         {
           if (c->ov_count < 0xFF)
             c->ov_count++;
           if (c->ov_count >= BMS_VOLTAGE_ERROR_THRESHOLD)
           {
             _raise_error(BMS_ERR_SRC_VOLTAGE, BMS_APP_ERR_VOLTAGE_OV, bank, ic_idx, cell);
-            LOG_E(TAG_PROC, "OV fault: B%d IC%d C%d = %dmV > %dmV", bank, ic_idx, cell, (int)v_c_mv, ov_threshold_mv);
+            LOG_E(TAG_PROC, "OV fault: B%d IC%d C%d = %dmV > %dmV (hw=%d)", bank, ic_idx, cell, (int)v_c_mv,
+                  ov_threshold_mv, hw_ov);
           }
         }
         else
@@ -657,7 +680,10 @@ void BMS_Proc_RunFrame(void)
    * All timestamps here are in milliseconds, sourced from the same
    * ADBMS_Platform_GetTickMs() counter that stamps the register cache. */
   uint32_t now_ms = ADBMS_Platform_GetTickMs();
-  uint32_t cv_tick = ADBMS_GetRegisterLastTickMs(ADBMS_REG_CVALL);
+  /* CVF is the LAST group the voltage job reads - its timestamp marks a
+   * completed pass (the job reads groups A..F individually; see
+   * _job_cell_voltages for why bulk RDCVALL is not used). */
+  uint32_t cv_tick = ADBMS_GetRegisterLastTickMs(ADBMS_REG_CVF);
   uint32_t aux_tick = ADBMS_GetRegisterLastTickMs(ADBMS_REG_AUXA);
   uint32_t statd_tick = ADBMS_GetRegisterLastTickMs(ADBMS_REG_STATD);
 
@@ -693,6 +719,34 @@ void BMS_Proc_RunFrame(void)
   /* NOTE: BMS_ERR_SRC_COMM is cleared only by a complete, PEC-valid voltage
    * pass (_process_voltages) - a fresh STATD read alone must not clear it. */
   (void)statd_tick;
+
+  /* Chip-health flags from STATC (read by the 1 Hz STATUS job). */
+  uint32_t statc_tick = ADBMS_GetRegisterLastTickMs(ADBMS_REG_STATC);
+  if (statc_tick != 0 && (now_ms - statc_tick) <= 3000u)
+  {
+    for (uint8_t ic = 0; ic < BMS_TOTAL_ICS; ic++)
+    {
+      if (ADBMS_GetTHSDFlag(ic))
+      {
+        /* Thermal shutdown: the monitor die itself overheated. */
+        _raise_error(BMS_ERR_SRC_TEMP, BMS_APP_ERR_TEMP_HIGH, ic / BMS_ICS_PER_BANK, ic % BMS_ICS_PER_BANK, 0);
+        LOG_E(TAG_PROC, "IC%u thermal shutdown (THSD) flagged", (unsigned)ic);
+      }
+      if (ADBMS_GetSPIFaultFlag(ic))
+      {
+        LOG_W(TAG_PROC, "IC%u SPI fault (SPIFLT) flagged", (unsigned)ic);
+      }
+      if (ADBMS_GetSleepFlag(ic))
+      {
+        /* The IC slept since we last configured it: its config registers
+         * reverted to defaults (thresholds, DCTO, REFON). Re-stage config;
+         * the acquisition task rewrites + read-back-verifies it. */
+        LOG_W(TAG_PROC, "IC%u SLEEP flagged - re-staging configuration", (unsigned)ic);
+        ADBMS_RequestWrite(ADBMS_REG_CFGA);
+        ADBMS_RequestWrite(ADBMS_REG_CFGB);
+      }
+    }
+  }
 
   if (t_fresh)
   {

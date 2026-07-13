@@ -51,9 +51,12 @@ static Job_t s_jobs[BMS_ACQ_JOB_COUNT] = {
 static uint32_t s_consecutive_pec_errors = 0;
 
 /* Runtime-configurable cell-ADC options (used by _job_cell_voltages).
- * rd=1 (redundant), dcp=1 (discharge permitted), ow=0 (no open-wire test). */
+ * rd=1 (redundant), ow=0 (no open-wire test).
+ * dcp=0: discharge is PAUSED during conversions so balancing current through
+ * the cell input filters cannot corrupt the measurement (field-proven policy
+ * from the SN5 driver; the hardware gates DCC for the conversion window). */
 static uint8_t s_cell_rd = 1;
-static uint8_t s_cell_dcp = 1;
+static uint8_t s_cell_dcp = 0;
 static uint8_t s_cell_ow = 0;
 
 void BMS_Acq_SetCellADCOptions(uint8_t rd, uint8_t dcp, uint8_t ow)
@@ -254,6 +257,16 @@ void BMS_Acq_ServiceScheduler(void)
 
 static ADBMS_Error_t _job_cell_voltages(void)
 {
+  /* Per-group reads (6 data bytes + DPEC each) rather than RDCVALL/RDSALL:
+   * the bulk-read payload framing (single vs per-group DPEC) is not yet
+   * datasheet-verified (see common/FEB_ADBMS_Library/AUDIT.md), while the
+   * per-group format is unambiguous and field-proven. A PEC failure on one
+   * group must not abort the rest - read them all, report the first error. */
+  static const ADBMS_RegGroup_t CV_GROUPS[] = {ADBMS_REG_CVA, ADBMS_REG_CVB, ADBMS_REG_CVC,
+                                               ADBMS_REG_CVD, ADBMS_REG_CVE, ADBMS_REG_CVF};
+  static const ADBMS_RegGroup_t SV_GROUPS[] = {ADBMS_REG_SVA, ADBMS_REG_SVB, ADBMS_REG_SVC,
+                                               ADBMS_REG_SVD, ADBMS_REG_SVE, ADBMS_REG_SVF};
+
   ADBMS_Error_t err = ADBMS_StartCellADC(s_cell_rd, 0, s_cell_dcp, 0, s_cell_ow);
   if (err != ADBMS_OK)
     return err;
@@ -273,17 +286,24 @@ static ADBMS_Error_t _job_cell_voltages(void)
       return err;
   }
 
-  err = ADBMS_ReadAllCellVoltages();
-  if (err != ADBMS_OK)
-    return err;
+  ADBMS_Error_t rc = ADBMS_OK;
+  for (uint8_t g = 0; g < 6; g++)
+  {
+    err = ADBMS_ReadRegister(CV_GROUPS[g]);
+    if (err != ADBMS_OK && rc == ADBMS_OK)
+      rc = err;
+  }
 
   if (s_cell_rd)
   {
-    (void)ADBMS_ReadAllSVoltages();
+    for (uint8_t g = 0; g < 6; g++)
+    {
+      (void)ADBMS_ReadRegister(SV_GROUPS[g]);
+    }
   }
 
   (void)ADBMS_ReadStatusD();
-  return ADBMS_OK;
+  return rc;
 }
 
 /* MUX-select helper: updates GPO bits without touching other CFGA fields.

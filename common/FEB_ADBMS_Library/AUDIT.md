@@ -63,6 +63,10 @@ bitfield structs):
 | STATD `C_UV/C_OV` bit layout | per `RDSTATD_DECODE` | DS-pending |
 | Daisy-chain read byte order | parse loop maps first-received → IC0 | verify on 10-IC hardware + DS |
 | ADI lists `PLAUT 0x0719`, `DIAGN 0x0715` | not defined here | `DIAGN` collides with `CLOVUV` in the mirror — DS must adjudicate before either is added |
+| Bulk-read payload framing (`RDCVALL`/`RDSALL`/`RDASALL`) | reg table assumes one DPEC per whole payload | unverified — the voltage job deliberately uses per-group reads instead (`_job_cell_voltages`) until DS confirms |
+| DCTO encoding/units | `BMS_DISCHARGE_TIMEOUT_CODE 0x3F` (max) | code→minutes mapping DS-pending; once known, shrink to the smallest value that comfortably exceeds the CFGB refresh cadence so a dead host stops discharge quickly |
+| STATD `C_UV`/`C_OV` latch semantics | consumed as redundant OV/UV trigger | whether flags latch until `CLOVUV` is DS-pending (latching = more conservative, acceptable) |
+| Open-wire detection procedure | **not implemented** | the OW even/odd evaluation algorithm is datasheet-specified; deliberately deferred until the PDF lands rather than guessed (`bms owd` job planned) |
 
 ## Guard
 
