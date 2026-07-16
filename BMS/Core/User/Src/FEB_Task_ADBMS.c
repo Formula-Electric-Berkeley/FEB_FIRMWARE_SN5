@@ -1,130 +1,97 @@
 /**
- ******************************************************************************
- * @file           : FEB_Task_ADBMS.c
- * @brief          : ADBMS6830B monitoring task
- * @author         : Formula Electric @ Berkeley
- ******************************************************************************
+ * @file FEB_Task_ADBMS.c
+ * @brief ADBMS acquisition task (SPI owner)
+ *
+ * Runs the ADBMS register acquisition scheduler. This task is the sole
+ * owner of the SPI bus; all control-path writes (balancing, config,
+ * mode changes) are staged by other tasks into g_adbms and picked up
+ * via the pending-writes bitmask by BMS_Acq_ServiceScheduler().
+ *
+ * Fault handling and data interpretation live in the BMS processing
+ * task - this task only performs raw I/O.
  */
 
 #include "FEB_Task_ADBMS.h"
-#include "main.h"
-#include "FEB_ADBMS6830B.h"
-#include "FEB_HW.h"
+#include "FEB_BMS_Acquisition.h"
+#include "FEB_ADBMS_App.h"
 #include "FEB_SM.h"
-#include "FEB_Const.h"
-#include "FEB_Commands.h"
+#include "BMS_HW_Config.h"
 #include "cmsis_os.h"
 #include "feb_log.h"
 #include <stdbool.h>
 
 #define TAG_ADBMS "[ADBMS]"
 
-/* External mutex from freertos.c */
+/* Legacy mutex retained for the one-shot init sequence (BMS_App_Init
+ * runs synchronous SPI traffic and must serialize against nothing else
+ * here, but keeping the acquire/release preserves compatibility with any
+ * external boot hook that wants to gate on readiness). */
 extern osMutexId_t ADBMSMutexHandle;
 
-/* ===== StartADBMSTask =====
-   High-priority task for ADBMS6830B monitoring and control
-   - Initializes isoSPI redundancy system and ADBMS chips
-   - Monitors cell voltages every 100ms
-   - Monitors cell temperatures every 500ms
-   - Performs cell balancing when in BALANCE state */
+/* Cadence at which we wake to service the scheduler. The scheduler runs
+ * jobs only when their own period has elapsed, so this only has to be
+ * fast enough to honour the tightest cadence (voltage @ 10 Hz). */
+#define ADBMS_TASK_TICK_MS 5
+
 void StartADBMSTask(void *argument)
 {
   (void)argument;
 
-  const uint8_t MAX_INIT_RETRIES = 5;
-  uint8_t init_attempts = 0;
-  bool init_success = false;
+  LOG_I(TAG_ADBMS, "ADBMS acquisition task starting");
+  osDelay(pdMS_TO_TICKS(100));
 
-  LOG_I(TAG_ADBMS, "Task Begun");
+  BMS_Acq_Init();
 
-  /* === Initialization Phase === */
-  while (init_attempts < MAX_INIT_RETRIES && !init_success)
+  /* One-shot driver init + config. Done under the mutex so nothing else
+   * attempts to interact before ADBMS_Init() / ADBMS_WriteConfig() land. */
+  BMS_AppError_t init_err = BMS_APP_ERR_INIT;
+  for (uint8_t retry = 0; retry < BMS_INIT_RETRY_COUNT; retry++)
   {
-    init_attempts++;
-
-/* Initialize redundant isoSPI system (if in redundant mode) */
-#if (ISOSPI_MODE == ISOSPI_MODE_REDUNDANT)
-    FEB_spi_init_redundancy();
-#endif
-
-    /* Note: MUX pins M1/M2 are hardwired (M1=HIGH, M2=LOW), no GPIO control needed */
-
-    /* Initialize ADBMS6830B chips and validate communication */
-    init_success = FEB_ADBMS_Init();
-
-    if (!init_success && init_attempts < MAX_INIT_RETRIES)
+    if (osMutexAcquire(ADBMSMutexHandle, osWaitForever) == osOK)
     {
-      osDelay(pdMS_TO_TICKS(100)); /* Wait 100ms before retry */
+      init_err = BMS_App_Init();
+      osMutexRelease(ADBMSMutexHandle);
+
+      if (init_err == BMS_APP_OK)
+      {
+        LOG_I(TAG_ADBMS, "Initialization successful on attempt %d", retry + 1);
+        break;
+      }
     }
+    LOG_W(TAG_ADBMS, "Init attempt %d failed, retrying...", retry + 1);
+    osDelay(pdMS_TO_TICKS(BMS_INIT_RETRY_DELAY_MS));
   }
 
-  /* Handle initialization failure */
-  if (!init_success)
+  if (init_err != BMS_APP_OK)
   {
-    LOG_E(TAG_ADBMS, "FATAL: Initialization failed after %d attempts", MAX_INIT_RETRIES);
-    FEB_ADBMS_Update_Error_Type(ERROR_TYPE_INIT_FAILURE);
-
-    /* Signal failure via LED blinking */
+    LOG_E(TAG_ADBMS, "Initialization failed after %d attempts", BMS_INIT_RETRY_COUNT);
+    FEB_SM_Fault(BMS_STATE_FAULT_BMS);
     for (;;)
-    {
-      HAL_GPIO_TogglePin(INDICATOR_GPIO_Port, INDICATOR_Pin);
-      osDelay(pdMS_TO_TICKS(500));
-    }
+      osDelay(pdMS_TO_TICKS(1000));
   }
 
-  /* === Main Task Loop === */
-  uint32_t voltage_tick = osKernelGetTickCount();
-  /* Phase-offset the temperature scan by half a period so it doesn't fire on the
-   * same tick as the (now equal-rate) voltage scan and serialize their isoSPI
-   * work under the shared mutex. Unsigned tick wrap is intentional and matches
-   * the rollover-safe `now - tick` comparison idiom used below. */
-  uint32_t temp_tick = osKernelGetTickCount() - pdMS_TO_TICKS(FEB_TEMP_SCAN_PERIOD_MS / 2);
-  uint32_t balance_tick = osKernelGetTickCount();
+  /* Prime the register mirror with one synchronous pass of each
+   * essential job, so the processing task has data on its first frame. */
+  LOG_I(TAG_ADBMS, "Priming register mirror...");
+  (void)BMS_Acq_RunJobNow(BMS_ACQ_JOB_CELL_VOLTAGES);
+  (void)BMS_Acq_RunJobNow(BMS_ACQ_JOB_AUX_SCAN);
+  (void)BMS_Acq_RunJobNow(BMS_ACQ_JOB_STATUS);
+  LOG_I(TAG_ADBMS, "Prime complete - entering scheduler loop");
 
   for (;;)
   {
-    uint32_t now = osKernelGetTickCount();
+    BMS_Acq_ServiceScheduler();
 
-    /* Balance-stop requests come from the SM/console tasks as a lock-free
-     * flag (they must not touch the bus themselves); do the DCC-clear bus
-     * writes here, under the mutex, before this cycle's measurements. */
-    FEB_Cell_Balance_ServiceStop();
-
-    /* Voltage measurement every 100ms (10 Hz) */
-    if (now - voltage_tick >= pdMS_TO_TICKS(100))
+    /* Consecutive-PEC surveillance is a hard-fault signal; surface it to
+     * the state machine. Fault semantics remain in processing task for
+     * logical faults (UV/OV/temp); this one catches total bus failure. */
+    if (BMS_Acq_GetConsecutivePECErrors() >= BMS_PEC_ERROR_THRESHOLD)
     {
-      osMutexAcquire(ADBMSMutexHandle, osWaitForever);
-      FEB_ADBMS_Voltage_Process();
-      osMutexRelease(ADBMSMutexHandle);
-      voltage_tick = now;
+      LOG_E(TAG_ADBMS, "Consecutive PEC failures >= %d - declaring comm fault", BMS_PEC_ERROR_THRESHOLD);
+      FEB_SM_Fault(BMS_STATE_FAULT_BMS);
+      BMS_Acq_ResetConsecutivePECErrors();
     }
 
-    /* Temperature measurement (FEB_TEMP_SCAN_PERIOD_MS; 10 Hz) — fast enough that
-     * the per-sensor over/under-temp debounce latches within the FSAE 1 s window. */
-    if (now - temp_tick >= pdMS_TO_TICKS(FEB_TEMP_SCAN_PERIOD_MS))
-    {
-      osMutexAcquire(ADBMSMutexHandle, osWaitForever);
-      FEB_ADBMS_Temperature_Process();
-      osMutexRelease(ADBMSMutexHandle);
-      temp_tick = now;
-    }
-
-    /* Cell balancing only in BALANCE state, which is entered solely via the
-     * BMS|balance|on serial command. Never balance in BATTERY_FREE. */
-    BMS_State_t current_state = FEB_SM_Get_Current_State();
-    if (current_state == BMS_STATE_BALANCE)
-    {
-      if (now - balance_tick >= pdMS_TO_TICKS(FEB_CELL_BALANCE_INTERVAL_MS))
-      {
-        osMutexAcquire(ADBMSMutexHandle, osWaitForever);
-        FEB_Cell_Balance_Process();
-        osMutexRelease(ADBMSMutexHandle);
-        balance_tick = now;
-      }
-    }
-
-    /* Task runs at 10ms period (100 Hz) */
-    osDelay(pdMS_TO_TICKS(10));
+    osDelay(pdMS_TO_TICKS(ADBMS_TASK_TICK_MS));
   }
 }

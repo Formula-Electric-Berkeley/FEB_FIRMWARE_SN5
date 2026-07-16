@@ -58,6 +58,14 @@ repos:
         pass_filenames: false
         always_run: true
 
+      # ADBMS opcode guard - no two command opcodes may share a value
+      # (see common/FEB_ADBMS_Library/AUDIT.md).
+      - id: check-adbms-opcodes
+        name: check-adbms-opcodes
+        entry: ./scripts/check-adbms-opcodes.py
+        language: script
+        files: ADBMS6830B_Commands\.h$
+
       # Auto-increment patch version on each commit for affected boards + repo.
       # No-ops if a VERSION file is already staged (so /version stays authoritative).
       - id: auto-bump-patch

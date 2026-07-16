@@ -22,7 +22,7 @@
 #include "feb_can.h"
 #include "feb_log.h"
 #include "FEB_Const.h"
-#include "FEB_ADBMS6830B.h"
+#include "FEB_ADBMS_App.h"
 #include "FEB_SM.h"
 #include "FEB_CAN_State.h"
 #include "stm32f4xx_hal.h"
