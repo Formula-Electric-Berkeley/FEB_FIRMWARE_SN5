@@ -136,6 +136,27 @@ uint32_t FEB_ADBMS_Get_Fault_Flags(void);
  *  cell-monitor sensor-timeout check in the state machine. */
 uint32_t FEB_ADBMS_Get_Last_Update_Tick(void);
 
+// ********************************** Validation Limit Profiles ******************
+// ONE validation path (validate_voltages/validate_temps in the ADBMS task) with
+// runtime-switchable limits. The SM selects CHARGING while in
+// CHARGER_PRECHARGE/CHARGING (Li-ion charge accept tops out ~45C); every other
+// state (including BALANCE, which discharges) uses NORMAL. The charger module
+// (FEB_CAN_Charger.c) does NOT validate the pack — it only soft-gates charge
+// start/stop against the FEB_CONFIG_CELL_SOFT_* management thresholds.
+typedef enum
+{
+  FEB_VALIDATION_PROFILE_NORMAL = 0, // 2800-4200 mV, -20..60 C (FEB_CELL_* macros)
+  FEB_VALIDATION_PROFILE_CHARGING,   // same voltages, max temp 45.0 C
+  FEB_VALIDATION_PROFILE_COUNT
+} FEB_Validation_Profile_t;
+
+/** @brief Select the active validation limit profile. SM task only; single
+ *  aligned store, read lock-free by the ADBMS task (atomic on Cortex-M4). */
+void FEB_ADBMS_Set_Validation_Profile(FEB_Validation_Profile_t profile);
+
+/** @brief Currently active profile (for console/diagnostics). */
+FEB_Validation_Profile_t FEB_ADBMS_Get_Validation_Profile(void);
+
 // ********************************** Lock-free Snapshots ************************
 // Pack-level values published by the ADBMS task at the end of each scan and
 // readable WITHOUT the ADBMS mutex (atomic 32-bit reads). Use these — not the

@@ -11,10 +11,12 @@
  *   - charger -> BMS : Charger_Status (0x18FF50E5)
  *   - BMS  -> charger: Charger_Limits (0x1806E5F4)
  *
- * Port of SN4 /BMS_REDO_withdrivers/Core/Src/FEB_CAN_Charger.c. Logic is
- * preserved; the transport is the SN5 feb_can_lib (extended-ID RX/TX,
- * FreeRTOS-safe TX queue) rather than SN4's raw HAL mailbox busy-wait, and
- * pack telemetry comes from the SN5 ADBMS accessors.
+ * Port of SN4 /BMS_REDO_withdrivers/Core/Src/FEB_CAN_Charger.c. The transport
+ * is the SN5 feb_can_lib (extended-ID RX/TX, FreeRTOS-safe TX queue) rather
+ * than SN4's raw HAL mailbox busy-wait, and pack telemetry comes from the SN5
+ * ADBMS accessors. One intentional deviation from SN4: pack V/T validation
+ * moved out of this module into the ADBMS validators (CHARGING limit profile);
+ * FEB_CAN_Charging_Status() only soft-gates charge management.
  */
 
 #include "FEB_CAN_Charger.h"
@@ -125,6 +127,14 @@ bool FEB_CAN_Charger_Received(void)
 
 /* ============================================================================
  * Charge decision (SN4 FEB_CAN_Charging_Status, retargeted to SN5 accessors)
+ *
+ * Intentional SN5 deviation from SN4: this module no longer VALIDATES the pack.
+ * All pack V/T hard faults come from the ADBMS validators
+ * (validate_voltages/validate_temps), which enforce the tighter CHARGING limit
+ * profile while the SM is in CHARGER_PRECHARGE/CHARGING. What remains here is
+ * charge MANAGEMENT: soft start/stop gating against the FEB_CONFIG_CELL_SOFT_*
+ * thresholds (never latches a fault) plus charger-side telemetry, where a
+ * charger-reported hardware failure is the only remaining -1.
  * ============================================================================ */
 
 int8_t FEB_CAN_Charging_Status(void)
@@ -164,35 +174,24 @@ int8_t FEB_CAN_Charging_Status(void)
   }
 
 #if !FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS
-  /* Pack-level hard over-voltage (volts vs volts). */
-  if (pack_v >= FEB_CONFIG_PACK_HARD_MAX_VOLTAGE_V)
-  {
-    return -1;
-  }
-
-  /* Highest cell: soft limit -> stop charging, hard limit -> fault. */
+  /* Highest cell at the soft target -> stop charging (management, not a
+   * fault; hard over-voltage is the ADBMS validators' job). */
   float max_cell_mV = FEB_ADBMS_Snapshot_Max_Cell_Voltage() * 1000.0f;
   if (max_cell_mV >= FEB_CONFIG_CELL_SOFT_MAX_VOLTAGE_mV)
   {
-    if (max_cell_mV >= FEB_CONFIG_CELL_HARD_MAX_VOLTAGE_mV)
-    {
-      return -1;
-    }
     return 1;
   }
 #endif
 
 #if !FEB_BMS_DISABLE_TEMP_CHECKS
-  /* Highest temperature: soft limit -> stop charging, hard limit -> fault.
-   * NaN (no temp scan yet) fails both comparisons -> treated as OK; cell-data
-   * presence is already gated by pack_v above and ADBMS staleness is a fault. */
+  /* Highest temperature at the soft limit -> don't start / stop charging and
+   * wait for cooldown (the CHARGING-profile 45C hard fault only applies once
+   * the SM is actually in a charging state). NaN (no temp scan yet) fails the
+   * comparison -> treated as OK; cell-data presence is already gated by pack_v
+   * above and ADBMS staleness is a fault. */
   float max_temp_dC = FEB_ADBMS_Snapshot_Max_Temp() * 10.0f;
   if (max_temp_dC >= FEB_CONFIG_CELL_SOFT_MAX_TEMP_dC)
   {
-    if (max_temp_dC >= FEB_CONFIG_CELL_HARD_MAX_TEMP_dC)
-    {
-      return -1;
-    }
     return 1;
   }
 #endif

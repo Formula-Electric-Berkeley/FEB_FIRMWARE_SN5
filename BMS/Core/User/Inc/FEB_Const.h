@@ -126,12 +126,16 @@ _Static_assert((FEB_TEMP_ERROR_THRESH + 1) * FEB_TEMP_SCAN_PERIOD_MS <= FEB_TEMP
 #define FEB_TEMP_MIN_SENSORS_FOR_MEDIAN 5 // min valid readings to trust the bank median
 
 // ********************************** Charging Limits (SN4-derived) **************
-// Used by FEB_CAN_Charging_Status(). Soft limit -> stop charging and return to
-// BATTERY_FREE; hard limit -> FAULT_CHARGING. SN5 values (do not copy SN4's
-// pack-specific thermal numbers verbatim).
-#define FEB_CONFIG_CELL_HARD_MAX_VOLTAGE_mV 4200 // Hard cell over-voltage -> FAULT_CHARGING
+// SOFT limits are charge MANAGEMENT: consumed by FEB_CAN_Charging_Status()
+// (and the balance thermal gates) to decide start/stop/wait — they never latch
+// a fault. The HARD temp limit feeds the CHARGING validation profile in
+// FEB_ADBMS6830B.c, enforced by validate_temps() only while the SM is in
+// CHARGER_PRECHARGE/CHARGING; a warm pack sitting in BATTERY_FREE is judged
+// against the NORMAL 60.0C ceiling and simply waits to charge. SN5 values (do
+// not copy SN4's pack-specific thermal numbers verbatim).
+#define FEB_CONFIG_CELL_HARD_MAX_VOLTAGE_mV 4200 // == FEB_CELL_MAX_VOLTAGE_MV: both profiles share the voltage max
 #define FEB_CONFIG_CELL_SOFT_MAX_VOLTAGE_mV 4180 // TUNE: soft target -> stop charge
-#define FEB_CONFIG_CELL_HARD_MAX_TEMP_dC 450     // 45.0C hard charge over-temp -> FAULT_CHARGING
+#define FEB_CONFIG_CELL_HARD_MAX_TEMP_dC 450     // 45.0C CHARGING-profile over-temp -> FAULT_CHARGING
 // Charge thermal limits are stricter than the 60.0C discharge ceiling
 // (FEB_CELL_MAX_TEMP_DC): Li-ion charge accept tops out ~45C. Soft limit
 // (FEB_CONFIG_CELL_SOFT_MAX_TEMP_dC, 40.0C above) stops charge with margin
@@ -191,7 +195,7 @@ _Static_assert((FEB_TEMP_ERROR_THRESH + 1) * FEB_TEMP_SCAN_PERIOD_MS <= FEB_TEMP
 // ********************************** Temperature Enforcement Override (BENCH ONLY)
 
 // Set to 1 to disable ALL cell-temperature enforcement: the over/under-temp
-// fault latch (validate_temps), the charging temp soft-stop/hard-fault block
+// fault latch (validate_temps), the charging temp soft-stop gate
 // (FEB_CAN_Charging_Status), and the balance thermal gates. For bench bring-up
 // of ADBMS modules with unpopulated thermistors: floating inputs can latch
 // spurious temp faults, and all-NaN readings block balancing entirely.
@@ -208,7 +212,7 @@ _Static_assert((FEB_TEMP_ERROR_THRESH + 1) * FEB_TEMP_SCAN_PERIOD_MS <= FEB_TEMP
 // Each macro removes one ADC's readings from the voltage-fault judgment in
 // validate_voltages():
 //   PRIMARY   -> C-ADC readings (cells[].voltage_V). Also compiles out the
-//                charging pack/cell over-voltage limits in
+//                charging cell soft over-voltage gate in
 //                FEB_CAN_Charging_Status() (computed from primary readings).
 //   SECONDARY -> S-ADC readings (cells[].voltage_S, the redundancy confirmation).
 // With one side disabled, the other alone judges violations. With BOTH set to

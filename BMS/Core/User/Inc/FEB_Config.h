@@ -1,7 +1,9 @@
 /**
  * @file FEB_Config.h
  * @brief BMS Configuration Getters
- * @note Hardcoded configuration values for initial development
+ * @note Hardcoded configuration values for initial development. Cell V/T
+ *       validation limits are NOT served from here anymore — they live in the
+ *       runtime-switchable NORMAL/CHARGING profile table in FEB_ADBMS6830B.c.
  */
 
 #ifndef FEB_CONFIG_H
@@ -10,42 +12,6 @@
 #include <stdint.h>
 #include "FEB_Const.h"
 #include "main.h"
-
-/**
- * @brief Get maximum safe cell voltage
- * @return Maximum voltage in millivolts (mV)
- */
-static inline uint16_t FEB_Config_Get_Cell_Max_Voltage_mV(void)
-{
-  return FEB_CELL_MAX_VOLTAGE_MV;
-}
-
-/**
- * @brief Get minimum safe cell voltage
- * @return Minimum voltage in millivolts (mV)
- */
-static inline uint16_t FEB_Config_Get_Cell_Min_Voltage_mV(void)
-{
-  return FEB_CELL_MIN_VOLTAGE_MV;
-}
-
-/**
- * @brief Get maximum safe cell temperature
- * @return Maximum temperature in deci-Celsius (dC)
- */
-static inline int16_t FEB_Config_Get_Cell_Max_Temperature_dC(void)
-{
-  return FEB_CELL_MAX_TEMP_DC;
-}
-
-/**
- * @brief Get minimum safe cell temperature
- * @return Minimum temperature in deci-Celsius (dC)
- */
-static inline int16_t FEB_Config_Get_Cell_Min_Temperature_dC(void)
-{
-  return FEB_CELL_MIN_TEMP_DC;
-}
 
 /**
  * @brief Get cell balancing voltage threshold

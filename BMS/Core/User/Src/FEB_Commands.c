@@ -83,6 +83,8 @@ static void subcmd_status(int argc, char *argv[])
 
   FEB_Console_Printf("\r\n=== BMS Status ===\r\n");
   FEB_Console_Printf("State: %s\r\n", FEB_CAN_State_GetStateName(FEB_SM_Get_Current_State()));
+  FEB_Console_Printf("Limits profile: %s\r\n",
+                     FEB_ADBMS_Get_Validation_Profile() == FEB_VALIDATION_PROFILE_CHARGING ? "CHARGING" : "NORMAL");
   FEB_Console_Printf("Pack Voltage: %.2fV\r\n", FEB_ADBMS_GET_ACC_Total_Voltage());
   FEB_Console_Printf("Min Cell (C/S): %.3fV / %.3fV\r\n", min_c, min_s);
   FEB_Console_Printf("Max Cell (C/S): %.3fV / %.3fV\r\n", max_c, max_s);

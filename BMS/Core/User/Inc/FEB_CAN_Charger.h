@@ -11,6 +11,8 @@
  *
  * Behaviour mirrors SN4 (FEB_CAN_Charger.c) but uses the SN5 feb_can_lib
  * RX/TX API (extended-ID aware, FreeRTOS-safe queues) instead of raw HAL.
+ * Intentional SN5 deviation: pack V/T validation lives in the ADBMS validators
+ * (CHARGING limit profile, see FEB_ADBMS6830B.h), not in this module.
  */
 
 #ifndef INC_FEB_CAN_CHARGER_H_
@@ -32,10 +34,11 @@ void FEB_CAN_Charger_Init(void);
 bool FEB_CAN_Charger_Received(void);
 
 /**
- * @brief SN4 charge-decision function (uses existing cell V/T telemetry).
- * @return  1  charge complete / soft V or T limit hit -> stop, return to FREE
- *         -1  hard pack/cell over-voltage or over-temp -> FAULT_CHARGING
- *          0  keep charging
+ * @brief Charge-management decision (soft gating only; pack V/T hard faults
+ *        are latched by the ADBMS validators under the CHARGING profile).
+ * @return  1  not ready / charge complete / soft V-T stop -> stay in or return to FREE
+ *         -1  charger-reported hardware failure -> FAULT_CHARGING
+ *          0  ok to charge / keep charging
  */
 int8_t FEB_CAN_Charging_Status(void);
 

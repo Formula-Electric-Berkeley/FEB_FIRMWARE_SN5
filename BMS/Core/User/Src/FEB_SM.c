@@ -185,6 +185,18 @@ static void (*transitionVector[14])(BMS_State_t) = {
  * Helper Functions
  * ============================================================================ */
 
+/* Validation limits follow the state: the ADBMS validators enforce the tighter
+ * CHARGING profile only while charge current can flow (CHARGER_PRECHARGE /
+ * CHARGING). Called at every SM_Current_State write site, so no exit path —
+ * fault entry, recover, soft stop, console transition — can leave the CHARGING
+ * limits stuck. BALANCE intentionally stays NORMAL: balancing discharges (no
+ * charge-accept limit) and is already paused at the 40C soft gate. */
+static void apply_validation_profile(BMS_State_t state)
+{
+  bool charging = (state == BMS_STATE_CHARGER_PRECHARGE || state == BMS_STATE_CHARGING);
+  FEB_ADBMS_Set_Validation_Profile(charging ? FEB_VALIDATION_PROFILE_CHARGING : FEB_VALIDATION_PROFILE_NORMAL);
+}
+
 /**
  * @brief Update state with protection against fault state exit
  */
@@ -199,6 +211,7 @@ static BMS_State_t updateStateProtected(BMS_State_t next_state)
 
   BMS_State_t prev_state = SM_Current_State;
   SM_Current_State = next_state;
+  apply_validation_profile(next_state);
 
   /* Log state transition */
   LOG_I(TAG_SM, "%s -> %s", FEB_CAN_State_GetStateName(prev_state), FEB_CAN_State_GetStateName(next_state));
@@ -229,9 +242,14 @@ static void fault_begin(BMS_State_t fault_type)
 
   SM_Current_State = fault_type;
   FEB_CAN_State_SetState(fault_type);
+  apply_validation_profile(fault_type);
 
   /* Stop cell balancing immediately */
   FEB_Stop_Balance();
+
+  /* Stop commanding charge. The 100ms FEB_CAN_Charger_Process() safety net
+   * would do this anyway; this makes fault entry explicit and immediate. */
+  FEB_CAN_Charger_Stop_Charge();
 
   /* Open BMS shutdown relay immediately (disables HV path). The BMS
    * indicator (PC0) is always the inverse of the relay pin (PC1), and the
@@ -298,6 +316,7 @@ static void fault_recover(void)
   /* Leave the fault directly (bypasses the updateStateProtected latch). */
   SM_Current_State = BMS_STATE_LV_POWER;
   FEB_CAN_State_SetState(BMS_STATE_LV_POWER);
+  apply_validation_profile(BMS_STATE_LV_POWER);
 }
 
 /**
@@ -583,6 +602,7 @@ void FEB_SM_Init(void)
   LOG_I(TAG_SM, "State machine initializing");
 
   SM_Current_State = BMS_STATE_BOOT;
+  apply_validation_profile(BMS_STATE_BOOT);
 
   /* Open AIR+ and precharge relays (safe state) */
   FEB_HW_AIR_Plus_Set(false);
@@ -1126,11 +1146,14 @@ static void FreeTransition(BMS_State_t next_state)
       break;
     }
 
-    /* Charge decision (mirrors SN4 FreeTransition). */
+    /* Charge decision: -1 = charger-reported hardware failure. Pack V/T hard
+     * faults are latched by the ADBMS validators (CHARGING profile applies only
+     * once charging actually starts), not here — a warm pack in FREE simply
+     * waits below until it cools under the 40C soft limit. */
     int8_t charging_status = FEB_CAN_Charging_Status();
     if (charging_status == -1)
     {
-      LOG_E(TAG_SM, "Charging fault detected in BATTERY_FREE");
+      LOG_E(TAG_SM, "Charger hardware failure reported in BATTERY_FREE");
       FreeTransition(BMS_STATE_FAULT_CHARGING);
       break;
     }
@@ -1266,9 +1289,9 @@ static void ChargingTransition(BMS_State_t next_state)
       break;
     }
 
-    /* SN4 charge decision: 1 = done / soft V or T limit -> FREE; -1 = hard
-     * over-V/T -> FAULT_CHARGING. (Other charger-group faults are caught by
-     * evaluate_faults().) */
+    /* Charge decision: 1 = done / soft V-T stop -> FREE; -1 = charger-reported
+     * hardware failure -> FAULT_CHARGING. Pack over-V/T mid-charge surfaces as
+     * ADBMS fault flags (CHARGING profile) via evaluate_faults(). */
     int8_t charge_status = FEB_CAN_Charging_Status();
     if (charge_status == 1)
     {
@@ -1277,7 +1300,7 @@ static void ChargingTransition(BMS_State_t next_state)
     }
     else if (charge_status == -1)
     {
-      LOG_E(TAG_SM, "Charging hard fault");
+      LOG_E(TAG_SM, "Charger hardware failure, entering FAULT_CHARGING");
       ChargingTransition(BMS_STATE_FAULT_CHARGING);
     }
     break;

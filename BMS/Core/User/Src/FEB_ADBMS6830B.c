@@ -53,6 +53,33 @@ uint8_t ERROR_TYPE = 0; // HEXDIGIT 1 voltage faults; HEXDIGIT 2 temp faults; HE
 static volatile uint32_t adbms_fault_flags = 0;
 static volatile uint32_t adbms_last_update_tick = 0;
 
+/* Runtime-switchable validation limits (see FEB_ADBMS6830B.h). Written by the
+ * 1ms SM task via FEB_ADBMS_Set_Validation_Profile(); read once per validation
+ * pass so each pass uses one coherent limit set. Aligned word access is atomic
+ * on Cortex-M4, so no mutex is needed. */
+typedef struct
+{
+  uint16_t cell_max_mV;
+  uint16_t cell_min_mV;
+  int16_t temp_max_dC;
+  int16_t temp_min_dC;
+} validation_limits_t;
+
+static const validation_limits_t validation_limits[FEB_VALIDATION_PROFILE_COUNT] = {
+    [FEB_VALIDATION_PROFILE_NORMAL] = {FEB_CELL_MAX_VOLTAGE_MV, FEB_CELL_MIN_VOLTAGE_MV, FEB_CELL_MAX_TEMP_DC,
+                                       FEB_CELL_MIN_TEMP_DC},
+    [FEB_VALIDATION_PROFILE_CHARGING] = {FEB_CELL_MAX_VOLTAGE_MV, FEB_CELL_MIN_VOLTAGE_MV,
+                                         FEB_CONFIG_CELL_HARD_MAX_TEMP_dC, FEB_CELL_MIN_TEMP_DC},
+};
+
+/* The FSAE fault-timing argument (FEB_Const.h static assert) treats NORMAL as
+ * the loosest-ever bound; a validation pass may run with a profile up to one
+ * scan (100ms) stale, which is only safe if CHARGING is a strict subset. */
+_Static_assert(FEB_CONFIG_CELL_HARD_MAX_TEMP_dC <= FEB_CELL_MAX_TEMP_DC,
+               "CHARGING profile must be at least as strict as NORMAL");
+
+static volatile FEB_Validation_Profile_t active_validation_profile = FEB_VALIDATION_PROFILE_NORMAL;
+
 #if !FEB_BMS_DISABLE_TEMP_CHECKS
 /* Arm tick for the temperature-telemetry-loss fault (0 = disarmed). Set when the
  * valid-read fraction first drops below FEB_TEMP_MIN_VALID_FRACTION; a sensor
@@ -233,8 +260,9 @@ static void store_cell_voltages()
 static void validate_voltages()
 {
   DEBUG_VOLTAGE_PRINT("Validating voltages");
-  uint16_t vMax = FEB_Config_Get_Cell_Max_Voltage_mV();
-  uint16_t vMin = FEB_Config_Get_Cell_Min_Voltage_mV();
+  const validation_limits_t *lim = &validation_limits[active_validation_profile];
+  uint16_t vMax = lim->cell_max_mV;
+  uint16_t vMin = lim->cell_min_mV;
   DEBUG_VOLTAGE_PRINT("Voltage limits: Min=%.3fV Max=%.3fV", vMin / 1000.0f, vMax / 1000.0f);
 
   for (uint8_t bank = 0; bank < FEB_NBANKS; bank++)
@@ -480,8 +508,9 @@ static float temp_median_dC(float *a, int n)
 static void validate_temps()
 {
   DEBUG_TEMP_PRINT("Validating temperatures");
-  int16_t tMax = (int16_t)FEB_Config_Get_Cell_Max_Temperature_dC();
-  int16_t tMin = (int16_t)FEB_Config_Get_Cell_Min_Temperature_dC();
+  const validation_limits_t *lim = &validation_limits[active_validation_profile];
+  int16_t tMax = lim->temp_max_dC;
+  int16_t tMin = lim->temp_min_dC;
   DEBUG_TEMP_PRINT("Temperature limits: Min=%.1fC Max=%.1fC", tMin / 10.0f, tMax / 10.0f);
   int totalReads = 0;
 
@@ -1199,6 +1228,25 @@ uint32_t FEB_ADBMS_Get_Fault_Flags(void)
 uint32_t FEB_ADBMS_Get_Last_Update_Tick(void)
 {
   return adbms_last_update_tick;
+}
+
+// ********************************** Validation Limit Profiles ******************
+
+void FEB_ADBMS_Set_Validation_Profile(FEB_Validation_Profile_t profile)
+{
+  /* Called every SM tick; only act (and log) on an actual change. */
+  if (profile >= FEB_VALIDATION_PROFILE_COUNT || profile == active_validation_profile)
+  {
+    return;
+  }
+  active_validation_profile = profile;
+  printf("[ADBMS] Validation limits -> %s profile\r\n",
+         (profile == FEB_VALIDATION_PROFILE_CHARGING) ? "CHARGING" : "NORMAL");
+}
+
+FEB_Validation_Profile_t FEB_ADBMS_Get_Validation_Profile(void)
+{
+  return active_validation_profile;
 }
 
 // ********************************** Lock-free Snapshots ************************
