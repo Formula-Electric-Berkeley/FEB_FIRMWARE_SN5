@@ -1,6 +1,11 @@
 #ifndef INC_FEB__MAIN_H_
 #define INC_FEB__MAIN_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "FEB_CAN.h"
 #include "feb_tps.h"
 #include "feb_console.h"
@@ -12,17 +17,17 @@
 #include <stdio.h>
 #include <string.h>
 
-/*
- * The LVPDB has multiple TPS chips on the bus. These are the addresses of
- * each of the TPS chips. The naming conventions is as follows:
- *		LV - Low Voltage Source (sda-scl)
- *		SH - Shutdown Source (sda-sda)
- *		LT - Laptop Branch (gnd-gnd)
- *		BM_L - Braking Servo, Lidar (scl-scl)
- *		SM - Steering Motor (gnd-sda)
- *		AF1_AF2 - Accumulator Fans 1 Branch (gnd-vs)
- *		CP_RF - Coolant Pump + Radiator Fans Branch (vs-scl)
- */
+  /*
+   * The LVPDB has multiple TPS chips on the bus. These are the addresses of
+   * each of the TPS chips. The naming conventions is as follows:
+   *		LV - Low Voltage Source (sda-scl)
+   *		SH - Shutdown Source (sda-sda)
+   *		LT - Laptop Branch (gnd-gnd)
+   *		BM_L - Braking Servo, Lidar (scl-scl)
+   *		SM - Steering Motor (gnd-sda)
+   *		AF1_AF2 - Accumulator Fans 1 Branch (gnd-vs)
+   *		CP_RF - Coolant Pump + Radiator Fans Branch (vs-scl)
+   */
 
 #define NUM_TPS2482 7
 
@@ -74,9 +79,13 @@
 
 #define SLEEP_TIME 10
 
-void FEB_Main_Setup(void);
-void FEB_Main_Loop(void);
-void FEB_1ms_Callback(void);
-void FEB_CAN1_Rx_Callback(CAN_RxHeaderTypeDef *rx_header, void *data);
+  void FEB_Main_Setup(void);
+  void FEB_Main_Loop(void);
+  void FEB_1ms_Callback(void);
+  void FEB_CAN1_Rx_Callback(CAN_RxHeaderTypeDef *rx_header, void *data);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

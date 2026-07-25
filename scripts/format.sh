@@ -2,7 +2,7 @@
 #
 # Clang-Format Script for User Code
 #
-# Formats all .c and .h files in Core/User/ directories across all boards.
+# Formats all .c/.h/.cpp/.hpp files in Core/User/ directories across all boards.
 # Requires clang-format version 18 for consistent formatting across all platforms.
 # Will offer to install the correct version if not found.
 #
@@ -52,7 +52,7 @@ show_help() {
     cat << EOF
 Clang-Format Script for User Code
 
-Formats all .c and .h files in Core/User/ directories across all boards.
+Formats all .c/.h/.cpp/.hpp files in Core/User/ directories across all boards.
 Uses the .clang-format configuration file in the repository root.
 
 IMPORTANT: Requires clang-format version ${REQUIRED_VERSION} for consistent formatting.
@@ -278,7 +278,7 @@ for board in "${BOARDS[@]}"; do
     if [[ -d "$user_dir" ]]; then
         while IFS= read -r -d '' file; do
             FILES+=("$file")
-        done < <(find "$user_dir" -type f \( -name "*.c" -o -name "*.h" \) -print0 2>/dev/null)
+        done < <(find "$user_dir" -type f \( -name "*.c" -o -name "*.h" -o -name "*.cpp" -o -name "*.hpp" \) -print0 2>/dev/null)
     fi
 done
 
@@ -287,7 +287,7 @@ for lib in "${COMMON_LIBS[@]}"; do
     if [[ -d "$lib" ]]; then
         while IFS= read -r -d '' file; do
             FILES+=("$file")
-        done < <(find "$lib" -type f \( -name "*.c" -o -name "*.h" \) -print0 2>/dev/null)
+        done < <(find "$lib" -type f \( -name "*.c" -o -name "*.h" -o -name "*.cpp" -o -name "*.hpp" \) -print0 2>/dev/null)
     fi
 done
 

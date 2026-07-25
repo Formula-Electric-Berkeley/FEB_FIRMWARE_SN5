@@ -6,9 +6,18 @@
 #ifndef FEB_UI_TORQUE_H
 #define FEB_UI_TORQUE_H
 
-// ── API ───────────────────────────────────────────────────────────────
-void FEB_UI_Update_Torque();
-void FEB_UI_Init_Torque(lv_obj_t *ui_Screen);
-void FEB_UI_Destroy_Torque(void);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+  // ── API ───────────────────────────────────────────────────────────────
+  void FEB_UI_Update_Torque();
+  void FEB_UI_Init_Torque(lv_obj_t *ui_Screen);
+  void FEB_UI_Destroy_Torque(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FEB_UI_TORQUE_H */

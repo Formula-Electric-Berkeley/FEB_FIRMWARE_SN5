@@ -14,6 +14,11 @@
 #ifndef FEB_RTOS_UTILS_H
 #define FEB_RTOS_UTILS_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /* Error_Handler must be available - typically declared in main.h */
 extern void Error_Handler(void);
 
@@ -30,5 +35,9 @@ extern void Error_Handler(void);
  */
 #define REQUIRE_RTOS_HANDLE(handle) \
   do { if ((handle) == NULL) { Error_Handler(); } } while(0)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FEB_RTOS_UTILS_H */

@@ -141,13 +141,11 @@ void FEB_CAN_State_Tick(void)
 
     /* Pack and send */
     uint8_t tx_data[FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_LENGTH];
-    feb_can_bms_accumulator_voltage_pack(tx_data,
-                                         &((struct feb_can_bms_accumulator_voltage_t){
-                                             .total_pack_voltage = (int)(FEB_ADBMS_GET_ACC_Total_Voltage() * 10),
-                                             .min_cell_voltage = (int)(min_c * 10),
-                                             .max_cell_voltage = (int)(max_c * 10),
-                                             .send_time = HAL_GetTick()}),
-                                         sizeof(tx_data));
+    struct feb_can_bms_accumulator_voltage_t msg = {.total_pack_voltage = (int)(FEB_ADBMS_GET_ACC_Total_Voltage() * 10),
+                                                    .min_cell_voltage = (int)(min_c * 10),
+                                                    .max_cell_voltage = (int)(max_c * 10),
+                                                    .send_time = HAL_GetTick()};
+    feb_can_bms_accumulator_voltage_pack(tx_data, &msg, sizeof(tx_data));
 
     FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
                     FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_LENGTH);
@@ -162,13 +160,12 @@ void FEB_CAN_State_Tick(void)
     temp_divider = 0;
     /* Pack and send */
     uint8_t tx_data[FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_LENGTH];
-    feb_can_bms_accumulator_temperature_pack(tx_data,
-                                             &((struct feb_can_bms_accumulator_temperature_t){
-                                                 .average_pack_temperature = (int)(FEB_ADBMS_GET_ACC_AVG_Temp() * 10),
-                                                 .max_cell_temperature = (int)(FEB_ADBMS_GET_ACC_MAX_Temp() * 10),
-                                                 .min_cell_temperature = (int)(FEB_ADBMS_GET_ACC_MIN_Temp() * 10),
-                                                 .send_time = HAL_GetTick()}),
-                                             sizeof(tx_data));
+    struct feb_can_bms_accumulator_temperature_t msg = {
+        .average_pack_temperature = (int)(FEB_ADBMS_GET_ACC_AVG_Temp() * 10),
+        .min_cell_temperature = (int)(FEB_ADBMS_GET_ACC_MIN_Temp() * 10),
+        .max_cell_temperature = (int)(FEB_ADBMS_GET_ACC_MAX_Temp() * 10),
+        .send_time = HAL_GetTick()};
+    feb_can_bms_accumulator_temperature_pack(tx_data, &msg, sizeof(tx_data));
 
     FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
                     FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_LENGTH);

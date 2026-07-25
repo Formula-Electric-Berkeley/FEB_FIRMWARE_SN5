@@ -121,6 +121,8 @@ extern "C"
    */
   void DCU_CAN_Log_RegisterCsvHandlers(void);
 
+  void StartCanLogTask(void *argument);
+
 #ifdef __cplusplus
 }
 #endif

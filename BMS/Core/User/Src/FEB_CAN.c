@@ -22,6 +22,7 @@
 #include "cmsis_os2.h"
 #include "main.h"
 #include "feb_log.h"
+#include "FEB_CAN_Tasks.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
 #include "FEB_CAN_DASH.h"

@@ -29,14 +29,16 @@ float_t imu_temp_c;
 int32_t platform_write(void *handle, uint8_t devaddress, uint8_t reg, const uint8_t *bufp, uint16_t len)
 {
   HAL_StatusTypeDef ret;
-  ret = HAL_I2C_Mem_Write(handle, devaddress << 1, reg, I2C_MEMADD_SIZE_8BIT, (uint8_t *)bufp, len, I2C_TIMEOUT_MS);
+  ret = HAL_I2C_Mem_Write((I2C_HandleTypeDef *)handle, devaddress << 1, reg, I2C_MEMADD_SIZE_8BIT, (uint8_t *)bufp, len,
+                          I2C_TIMEOUT_MS);
   return (ret == HAL_OK) ? 0 : -1;
 }
 
 int32_t platform_read(void *handle, uint8_t devaddress, uint8_t reg, uint8_t *bufp, uint16_t len)
 {
   HAL_StatusTypeDef ret;
-  ret = HAL_I2C_Mem_Read(handle, devaddress << 1, reg, I2C_MEMADD_SIZE_8BIT, (uint8_t *)bufp, len, I2C_TIMEOUT_MS);
+  ret = HAL_I2C_Mem_Read((I2C_HandleTypeDef *)handle, devaddress << 1, reg, I2C_MEMADD_SIZE_8BIT, (uint8_t *)bufp, len,
+                         I2C_TIMEOUT_MS);
   return (ret == HAL_OK) ? 0 : -1;
 }
 // 0x6a or 0x6b

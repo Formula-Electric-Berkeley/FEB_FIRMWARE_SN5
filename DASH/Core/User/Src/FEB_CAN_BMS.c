@@ -32,7 +32,7 @@ typedef struct
 } BMS_CAN_Data_t;
 
 static BMS_CAN_Data_t bms_data = {
-    .state = 0, .cell_max_temperature = 0, .accumulator_total_voltage = 0, .last_rx_tick = 0};
+    .state = (BMS_State_t)0, .cell_max_temperature = 0, .accumulator_total_voltage = 0, .last_rx_tick = 0};
 
 //  FEB_CAN_BMS_GETLAST
 //

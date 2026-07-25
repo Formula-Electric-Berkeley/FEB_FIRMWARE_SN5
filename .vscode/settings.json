@@ -34,7 +34,7 @@
         "-DCMAKE_COMMAND=cube-cmake"
     ],
     "[c]": {
-        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+        "editor.defaultFormatter": "STMicroelectronics.stm32cube-ide-clangd",
         "editor.formatOnSave": true
     },
     "[cpp]": {

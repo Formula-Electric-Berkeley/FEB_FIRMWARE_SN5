@@ -21,6 +21,11 @@
 #ifndef INC_FEB_CAN_IVT_H_
 #define INC_FEB_CAN_IVT_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -30,28 +35,32 @@
 /* Data is considered stale after this many ms without an IVT frame. */
 #define FEB_CAN_IVT_DATA_TIMEOUT_MS 1000
 
-/**
- * @brief Register IVT CAN RX callbacks on CAN1
- */
-void FEB_CAN_IVT_Init(void);
+  /**
+   * @brief Register IVT CAN RX callbacks on CAN1
+   */
+  void FEB_CAN_IVT_Init(void);
 
-/**
- * @brief Get pack voltage from the IVT (channel FEB_CAN_IVT_PACK_VOLTAGE_CHANNEL)
- * @return Pack voltage in volts; 0.0 if data is stale or never received
- */
-float FEB_CAN_IVT_GetVoltage(void);
+  /**
+   * @brief Get pack voltage from the IVT (channel FEB_CAN_IVT_PACK_VOLTAGE_CHANNEL)
+   * @return Pack voltage in volts; 0.0 if data is stale or never received
+   */
+  float FEB_CAN_IVT_GetVoltage(void);
 
-/**
- * @brief Get pack current from the IVT
- * @return Pack current in amps (may be stale — gate with FEB_CAN_IVT_IsDataFresh)
- */
-float FEB_CAN_IVT_GetCurrent(void);
+  /**
+   * @brief Get pack current from the IVT
+   * @return Pack current in amps (may be stale — gate with FEB_CAN_IVT_IsDataFresh)
+   */
+  float FEB_CAN_IVT_GetCurrent(void);
 
-/**
- * @brief Check whether IVT data is fresh
- * @param timeout_ms Maximum acceptable age in milliseconds
- * @return true if a frame arrived within timeout_ms, false otherwise
- */
-bool FEB_CAN_IVT_IsDataFresh(uint32_t timeout_ms);
+  /**
+   * @brief Check whether IVT data is fresh
+   * @param timeout_ms Maximum acceptable age in milliseconds
+   * @return true if a frame arrived within timeout_ms, false otherwise
+   */
+  bool FEB_CAN_IVT_IsDataFresh(uint32_t timeout_ms);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_CAN_IVT_H_ */

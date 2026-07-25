@@ -6,6 +6,8 @@ get_filename_component(PROJ_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 # ── Compiler settings ────────────────────────────────────────────────
 set(CMAKE_C_STANDARD                11)
 set(CMAKE_C_STANDARD_REQUIRED       ON)
+set(CMAKE_CXX_STANDARD              20)
+set(CMAKE_CXX_STANDARD_REQUIRED     ON)
 set(CMAKE_C_EXTENSIONS              ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS   TRUE)
 
@@ -42,7 +44,7 @@ add_compile_definitions(
 #  SOURCE COLLECTION (globbed — CubeMX regens are a no-op for CMake)
 # ══════════════════════════════════════════════════════════════════════
 
-file(GLOB_RECURSE CORE_SOURCES "Core/*.c")          # Core/Src + Core/User/Src
+file(GLOB_RECURSE CORE_SOURCES "Core/*.c" "Core/*.cpp")          # Core/Src + Core/User/Src
 file(GLOB         STARTUP_ASM  "startup_*.s")
 file(GLOB         HAL_SOURCES  "Drivers/STM32F0xx_HAL_Driver/Src/*.c")
 list(FILTER HAL_SOURCES EXCLUDE REGEX "_template\\.c$")

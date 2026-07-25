@@ -19,6 +19,13 @@ extern "C"
    */
   void FEB_Init(void);
 
+  /* FreeRTOS task entry points. These override __weak stubs in Core/Src/freertos.c
+   * by symbol name alone, so their linkage MUST be pinned here: if FEB_Main.c is
+   * ever compiled as C++ without these declarations, the names mangle, the weak
+   * stubs win silently, and the tasks become do-nothing loops. */
+  void StartUartRxTask(void *argument);
+  void StartUartTxTask(void *argument);
+
 #ifdef __cplusplus
 }
 #endif

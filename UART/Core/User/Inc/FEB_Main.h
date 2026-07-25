@@ -19,6 +19,8 @@ extern "C"
    */
   void FEB_Main_Setup(void);
 
+  void StartUARTRxTask(void *argument);
+
 #ifdef __cplusplus
 }
 #endif

@@ -6,6 +6,8 @@ get_filename_component(PROJ_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 # ── Compiler settings ────────────────────────────────────────────────
 set(CMAKE_C_STANDARD                11)
 set(CMAKE_C_STANDARD_REQUIRED       ON)
+set(CMAKE_CXX_STANDARD              20)
+set(CMAKE_CXX_STANDARD_REQUIRED     ON)
 set(CMAKE_C_EXTENSIONS              ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS   TRUE)
 
@@ -31,7 +33,7 @@ add_compile_definitions(
 # ══════════════════════════════════════════════════════════════════════
 
 # Core application sources (CubeMX-generated + user code)
-file(GLOB_RECURSE CORE_SOURCES "Core/*.c")
+file(GLOB_RECURSE CORE_SOURCES "Core/*.c" "Core/*.cpp")
 
 # Startup assembly
 file(GLOB STARTUP_ASM "startup_*.s")

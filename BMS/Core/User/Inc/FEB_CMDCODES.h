@@ -1,6 +1,11 @@
 #ifndef INC_FEB_CMDCODES_H_
 #define INC_FEB_CMDCODES_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 // ********************************** ADBMS6830B Command Codes *******************
 // Based on ADBMS6830 datasheet - fully verbose naming scheme
 
@@ -115,5 +120,9 @@
 #define WRPWMB CMD_WRITE_PWM_REG_GROUP_B
 #define RDPWMA CMD_READ_PWM_REG_GROUP_A
 #define RDPWMB CMD_READ_PWM_REG_GROUP_B
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_CMDCODES_H_ */

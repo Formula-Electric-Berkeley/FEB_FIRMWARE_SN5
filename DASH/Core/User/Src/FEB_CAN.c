@@ -25,6 +25,7 @@
 #include "task.h"
 #include "feb_console.h"
 #include "main.h"
+#include "FEB_CAN_Tasks.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
 #include "FEB_CAN_LVPDB.h"

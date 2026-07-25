@@ -6,15 +6,24 @@
 #ifndef FEB_UI_HELPERS_H
 #define FEB_UI_HELPERS_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "lvgl.h"
 
-// ── Screen objects (extern for FEB_UI.c) ─────────────────────────────
-extern lv_obj_t *ui_Screen1;
+  // ── Screen objects (extern for FEB_UI.c) ─────────────────────────────
+  extern lv_obj_t *ui_Screen1;
 
-// ── API ───────────────────────────────────────────────────────────────
-void ui_set_torque(int16_t torque);
-void ui_init(void);
-void ui_destroy(void);
-void ui_update(void);
+  // ── API ───────────────────────────────────────────────────────────────
+  void ui_set_torque(int16_t torque);
+  void ui_init(void);
+  void ui_destroy(void);
+  void ui_update(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FEB_UI_HELPERS_H */

@@ -6,30 +6,39 @@
 #ifndef FEB_CAN_STATE_H
 #define FEB_CAN_STATE_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdbool.h>
 
-/**
- * @brief Initialize the DASH CAN state publisher
- */
-void FEB_CAN_State_Init(void);
+  /**
+   * @brief Initialize the DASH CAN state publisher
+   */
+  void FEB_CAN_State_Init(void);
 
-/**
- * @brief Periodic tick for CAN state publishing
- * @note Call from 1ms timer callback (e.g., HAL_TIM_PeriodElapsedCallback)
- */
-void FEB_CAN_State_Tick(void);
+  /**
+   * @brief Periodic tick for CAN state publishing
+   * @note Call from 1ms timer callback (e.g., HAL_TIM_PeriodElapsedCallback)
+   */
+  void FEB_CAN_State_Tick(void);
 
-/**
- * @brief Signal that CAN is initialized and ready for transmission
- * @note Call from CAN RX task after DASH_CAN_Init() completes
- */
-void FEB_CAN_State_SetReady(void);
+  /**
+   * @brief Signal that CAN is initialized and ready for transmission
+   * @note Call from CAN RX task after DASH_CAN_Init() completes
+   */
+  void FEB_CAN_State_SetReady(void);
 
-/**
- * @brief Returns true once FEB_CAN_State_SetReady() has been called.
- * @note  Used by the TX task to gate publishing while the RX task is still
- *        installing CAN filters at startup (avoids a race during init).
- */
-bool FEB_CAN_State_IsReady(void);
+  /**
+   * @brief Returns true once FEB_CAN_State_SetReady() has been called.
+   * @note  Used by the TX task to gate publishing while the RX task is still
+   *        installing CAN filters at startup (avoids a race during init).
+   */
+  bool FEB_CAN_State_IsReady(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FEB_CAN_STATE_H */

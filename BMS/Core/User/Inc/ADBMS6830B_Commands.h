@@ -9,6 +9,11 @@
 #ifndef ADBMS6830B_COMMANDS_H
 #define ADBMS6830B_COMMANDS_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /*============================================================================
  * Configuration Register Commands
  *============================================================================*/
@@ -208,5 +213,9 @@
 #define ADAX_CH_GPIO10 0x000A // GPIO10 only
 #define ADAX_CH_VREF2 0x000B  // VREF2 only
 #define ADAX_CH_ITEMP 0x000C  // Internal temp only
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ADBMS6830B_COMMANDS_H */

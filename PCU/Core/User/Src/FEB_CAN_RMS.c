@@ -122,9 +122,9 @@ void FEB_CAN_RMS_Init(void)
   // just a hand-picked few. mask 0x7F0 makes the low 4 ID bits don't-care.
   FEB_CAN_RX_Params_t params = {
       .instance = FEB_CAN_INSTANCE_1,
+      .can_id = FEB_CAN_RMS_FRAME_BASE_ID,
       .id_type = FEB_CAN_ID_STD,
       .filter_type = FEB_CAN_FILTER_MASK,
-      .can_id = FEB_CAN_RMS_FRAME_BASE_ID,
       .mask = 0x7F0u,
       .fifo = FEB_CAN_FIFO_0,
       .callback = FEB_CAN_RMS_Callback,

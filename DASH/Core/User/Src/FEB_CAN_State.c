@@ -85,18 +85,17 @@ void FEB_CAN_State_Tick(void)
 
     IO_States_t states = FEB_IO_GetLastIOStates();
 
-    if (feb_can_dash_state_pack(tx_data,
-                                &((struct feb_can_dash_state_t){.buzzer = states.buzzer_enabled,
-                                                                .button1 = states.button_rtd,
-                                                                .button2 = states.button_2,
-                                                                .button3 = states.button_3,
-                                                                .button4 = states.button_4,
-                                                                .switch1 = states.switch_accumulator_fans,
-                                                                .switch2 = states.switch_coolant_pump_radiator_fan,
-                                                                .switch3 = states.switch_logging,
-                                                                .switch4 = states.switch_4,
-                                                                .ready_to_drive = FEB_State_GetLastRTD()}),
-                                sizeof(tx_data)) == FEB_CAN_DASH_STATE_LENGTH)
+    struct feb_can_dash_state_t state_msg = {.button1 = states.button_rtd,
+                                             .button2 = states.button_2,
+                                             .button3 = states.button_3,
+                                             .button4 = states.button_4,
+                                             .switch1 = states.switch_accumulator_fans,
+                                             .switch2 = states.switch_coolant_pump_radiator_fan,
+                                             .switch3 = states.switch_logging,
+                                             .switch4 = states.switch_4,
+                                             .buzzer = states.buzzer_enabled,
+                                             .ready_to_drive = FEB_State_GetLastRTD()};
+    if (feb_can_dash_state_pack(tx_data, &state_msg, sizeof(tx_data)) == FEB_CAN_DASH_STATE_LENGTH)
     {
       FEB_CAN_Status_t st = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_2, FEB_CAN_DASH_STATE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
                                             FEB_CAN_DASH_STATE_LENGTH);

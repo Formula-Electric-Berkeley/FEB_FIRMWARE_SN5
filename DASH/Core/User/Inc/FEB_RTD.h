@@ -9,14 +9,23 @@
 #ifndef FEB_RTD_H
 #define FEB_RTD_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdbool.h>
 
 #define RTD_SAFETY_DURATION 2000
 #define BUZZER_DURATION_RTD_ENTER 2000
 #define BUZZER_DURATION_RTD_EXIT 500
 
-void FEB_State_Update_RTD(void);
+  void FEB_State_Update_RTD(void);
 
-bool FEB_State_GetLastRTD(void);
+  bool FEB_State_GetLastRTD(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FEB_RTD_H */

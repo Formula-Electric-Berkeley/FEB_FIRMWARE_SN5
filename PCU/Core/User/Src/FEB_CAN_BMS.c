@@ -112,8 +112,8 @@ static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
   }
   else if (can_id == FEB_CAN_BMS_STATE_FRAME_ID)
   {
-    BMS_MESSAGE.state = data[0] & 0x1F;
-    BMS_MESSAGE.ping_ack = (data[0] & 0xE0) >> 5;
+    BMS_MESSAGE.state = (FEB_SM_ST_t)(data[0] & 0x1F);
+    BMS_MESSAGE.ping_ack = (FEB_HB_t)((data[0] & 0xE0) >> 5);
 
     /* Defer heartbeat TX to main loop - do NOT transmit from ISR */
     if (BMS_MESSAGE.state == FEB_SM_ST_BUS_HEALTH_CHECK || BMS_MESSAGE.ping_ack == FEB_HB_PCU)
@@ -137,8 +137,8 @@ void FEB_CAN_HEARTBEAT_Transmit(void)
   FEB_ADC_GetAPPSData(&apps_data);
 
   uint8_t tx_data[FEB_CAN_PCU_HEARTBEAT_LENGTH] = {0};
-  feb_can_pcu_heartbeat_pack(tx_data, &((struct feb_can_pcu_heartbeat_t){.error0 = !apps_data.plausible}),
-                             sizeof(tx_data));
+  struct feb_can_pcu_heartbeat_t heartbeat_msg = {.error0 = !apps_data.plausible};
+  feb_can_pcu_heartbeat_pack(tx_data, &heartbeat_msg, sizeof(tx_data));
 
   FEB_CAN_Status_t status = FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_PCU_HEARTBEAT_FRAME_ID, FEB_CAN_ID_STD, tx_data,
                                             FEB_CAN_PCU_HEARTBEAT_LENGTH);

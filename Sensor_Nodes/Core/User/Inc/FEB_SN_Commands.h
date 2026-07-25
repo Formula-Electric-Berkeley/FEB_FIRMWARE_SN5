@@ -9,11 +9,20 @@
 #ifndef INC_FEB_SN_COMMANDS_H_
 #define INC_FEB_SN_COMMANDS_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "feb_console.h"
 
-/**
- * @brief Register all Sensor Node console commands (IMU, MAG)
- */
-void SN_RegisterCommands(void);
+  /**
+   * @brief Register all Sensor Node console commands (IMU, MAG)
+   */
+  void SN_RegisterCommands(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_SN_COMMANDS_H_ */

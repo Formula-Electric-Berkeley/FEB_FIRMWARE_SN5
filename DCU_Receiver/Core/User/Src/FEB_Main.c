@@ -102,11 +102,11 @@ void FEB_Init(void)
 
   /* Initialize logging system */
   FEB_Log_Config_t log_cfg = {
-      .custom_output = log_output_both,
       .level = FEB_LOG_DEBUG,
       .colors = true,
       .timestamps = true,
       .get_tick_ms = HAL_GetTick,
+      .custom_output = log_output_both,
       .mutex = logMutexHandle,
   };
   FEB_Log_Init(&log_cfg);

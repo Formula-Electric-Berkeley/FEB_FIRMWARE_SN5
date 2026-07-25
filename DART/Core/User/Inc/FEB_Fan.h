@@ -1,14 +1,19 @@
 #ifndef INC_FEB_FAN_H_
 #define INC_FEB_FAN_H_
 
-// ********************************** Includes & External **********************************
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+  // ********************************** Includes & External **********************************
 
 #include <stm32f0xx_hal.h>
 #include <stdbool.h>
 
-// ********************************** Defines **********************************
+  // ********************************** Defines **********************************
 
-// Fan: DC Fan San Ace 80 (9HV0824P1G003) – https://products.sanyodenki.com/info/sanace/en/technical_material/pwm.html
+  // Fan: DC Fan San Ace 80 (9HV0824P1G003) – https://products.sanyodenki.com/info/sanace/en/technical_material/pwm.html
 
 #define TACH_FILTER_EXPONENT 2
 
@@ -29,25 +34,29 @@
 // Sanyo San Ace 80 9HV0824P1G003 max rated speed (RPM). Used for tach percent.
 #define FAN_MAX_RPM 14000u
 
-// ********************************** Function Prototypes **********************************
+  // ********************************** Function Prototypes **********************************
 
-void FEB_Fan_Init(void);
+  void FEB_Fan_Init(void);
 
-void FEB_Fan_CAN_Msg_Process(uint8_t *FEB_CAN_Rx_Data);
-void FEB_Fan_Watchdog_Tick(void);
-void FEB_Fan_SetManualOverride(bool enable, uint8_t percent);
-void FEB_Fan_SetManualFan(uint8_t fan_idx, uint8_t percent);
-int16_t FEB_Fan_GetLastMaxCellTemp(void);
-uint32_t FEB_Fan_GetStalenessMs(void);
-bool FEB_Fan_IsManualOverride(void);
-uint8_t FEB_Fan_GetCommandedPercent(uint8_t fan_idx);
-uint32_t FEB_Fan_GetCommandedCounts(uint8_t fan_idx);
+  void FEB_Fan_CAN_Msg_Process(uint8_t *FEB_CAN_Rx_Data);
+  void FEB_Fan_Watchdog_Tick(void);
+  void FEB_Fan_SetManualOverride(bool enable, uint8_t percent);
+  void FEB_Fan_SetManualFan(uint8_t fan_idx, uint8_t percent);
+  int16_t FEB_Fan_GetLastMaxCellTemp(void);
+  uint32_t FEB_Fan_GetStalenessMs(void);
+  bool FEB_Fan_IsManualOverride(void);
+  uint8_t FEB_Fan_GetCommandedPercent(uint8_t fan_idx);
+  uint32_t FEB_Fan_GetCommandedCounts(uint8_t fan_idx);
 
-void FEB_Fan_PWM_Init(void);
-void FEB_Fan_All_Speed_Set(uint32_t speed);
-void FEB_Fan_Speed_Set(uint8_t fan_idx, uint32_t speed);
+  void FEB_Fan_PWM_Init(void);
+  void FEB_Fan_All_Speed_Set(uint32_t speed);
+  void FEB_Fan_Speed_Set(uint8_t fan_idx, uint32_t speed);
 
-void FEB_Fan_TACH_Init(void);
-void FEB_Fan_TACH_Callback(TIM_HandleTypeDef *htim);
+  void FEB_Fan_TACH_Init(void);
+  void FEB_Fan_TACH_Callback(TIM_HandleTypeDef *htim);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_FAN_H_ */

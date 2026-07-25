@@ -33,6 +33,8 @@ extern "C"
    */
   bool DCU_CAN_IsInitialized(void);
 
+  void StartCanDispatchTask(void *argument);
+
 #ifdef __cplusplus
 }
 #endif

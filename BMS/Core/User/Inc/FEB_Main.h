@@ -19,6 +19,9 @@ extern "C"
    */
   void FEB_Init(void);
 
+  void StartSMTask(void *argument);
+  void StartUartRxTask(void *argument);
+
 #ifdef __cplusplus
 }
 #endif

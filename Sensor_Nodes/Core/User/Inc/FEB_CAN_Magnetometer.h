@@ -9,20 +9,29 @@
 #ifndef FEB_CAN_Magnetometer_H
 #define FEB_CAN_Magnetometer_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-/* ============================================================================
- * API Functions
- * ============================================================================ */
+  /* ============================================================================
+   * API Functions
+   * ============================================================================ */
 
-/**
- * @brief Process Magnetometer data transmissions
- *
- * Packs and transmits Magnetometer data over CAN.
- */
+  /**
+   * @brief Process Magnetometer data transmissions
+   *
+   * Packs and transmits Magnetometer data over CAN.
+   */
 
-void FEB_CAN_Magnetometer_Tick(void);
+  void FEB_CAN_Magnetometer_Tick(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FEB_CAN_Magnetometer_H */

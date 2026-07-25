@@ -9,18 +9,27 @@
 #ifndef FEB_CAN_TPS_H
 #define FEB_CAN_TPS_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-/* ============================================================================
- * API Functions
- * ============================================================================ */
+  /* ============================================================================
+   * API Functions
+   * ============================================================================ */
 
-/**
- * @brief Process TPS data transmissions
- * @note Current values are sign-corrected by the TPS library
- */
-void FEB_CAN_TPS_Tick(int16_t *tps_current_raw, uint16_t *tps_bus_voltage_raw, size_t length);
+  /**
+   * @brief Process TPS data transmissions
+   * @note Current values are sign-corrected by the TPS library
+   */
+  void FEB_CAN_TPS_Tick(int16_t *tps_current_raw, uint16_t *tps_bus_voltage_raw, size_t length);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FEB_CAN_TPS_H */

@@ -25,63 +25,72 @@
 #ifndef INC_FEB_CAN_IVT_H_
 #define INC_FEB_CAN_IVT_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 
-/* ============================================================================
- * IVT Data Structure
- * ============================================================================ */
+  /* ============================================================================
+   * IVT Data Structure
+   * ============================================================================ */
 
-typedef struct
-{
-  volatile float current_mA;      /* Pack current in milliamps */
-  volatile float voltage_1_mV;    /* Voltage 1 in millivolts (pack voltage) */
-  volatile float voltage_2_mV;    /* Voltage 2 in millivolts */
-  volatile float voltage_3_mV;    /* Voltage 3 in millivolts */
-  volatile float temperature_C;   /* Temperature in Celsius */
-  volatile uint32_t last_rx_tick; /* Timestamp of last received message */
-} FEB_CAN_IVT_Data_t;
+  typedef struct
+  {
+    volatile float current_mA;      /* Pack current in milliamps */
+    volatile float voltage_1_mV;    /* Voltage 1 in millivolts (pack voltage) */
+    volatile float voltage_2_mV;    /* Voltage 2 in millivolts */
+    volatile float voltage_3_mV;    /* Voltage 3 in millivolts */
+    volatile float temperature_C;   /* Temperature in Celsius */
+    volatile uint32_t last_rx_tick; /* Timestamp of last received message */
+  } FEB_CAN_IVT_Data_t;
 
-/* ============================================================================
- * Public Interface
- * ============================================================================ */
+  /* ============================================================================
+   * Public Interface
+   * ============================================================================ */
 
-/**
- * @brief Initialize IVT CAN reception
- * @note Registers callbacks for IVT CAN message IDs
- */
-void FEB_CAN_IVT_Init(void);
+  /**
+   * @brief Initialize IVT CAN reception
+   * @note Registers callbacks for IVT CAN message IDs
+   */
+  void FEB_CAN_IVT_Init(void);
 
-/**
- * @brief Get pack voltage from IVT sensor (V1)
- * @return Pack voltage in volts
- * @note Returns 0.0 if data is stale (>1000ms old)
- */
-float FEB_CAN_IVT_GetVoltage(void);
+  /**
+   * @brief Get pack voltage from IVT sensor (V1)
+   * @return Pack voltage in volts
+   * @note Returns 0.0 if data is stale (>1000ms old)
+   */
+  float FEB_CAN_IVT_GetVoltage(void);
 
-/**
- * @brief Get pack current from IVT sensor
- * @return Pack current in amps
- */
-float FEB_CAN_IVT_GetCurrent(void);
+  /**
+   * @brief Get pack current from IVT sensor
+   * @return Pack current in amps
+   */
+  float FEB_CAN_IVT_GetCurrent(void);
 
-/**
- * @brief Get temperature from IVT sensor
- * @return Temperature in Celsius
- */
-float FEB_CAN_IVT_GetTemperature(void);
+  /**
+   * @brief Get temperature from IVT sensor
+   * @return Temperature in Celsius
+   */
+  float FEB_CAN_IVT_GetTemperature(void);
 
-/**
- * @brief Check if IVT data is fresh
- * @param timeout_ms Maximum age of data in milliseconds
- * @return true if data is fresh, false if stale or never received
- */
-bool FEB_CAN_IVT_IsDataFresh(uint32_t timeout_ms);
+  /**
+   * @brief Check if IVT data is fresh
+   * @param timeout_ms Maximum age of data in milliseconds
+   * @return true if data is fresh, false if stale or never received
+   */
+  bool FEB_CAN_IVT_IsDataFresh(uint32_t timeout_ms);
 
-/**
- * @brief Get raw IVT data structure
- * @return Pointer to IVT data (read-only)
- */
-const FEB_CAN_IVT_Data_t *FEB_CAN_IVT_GetData(void);
+  /**
+   * @brief Get raw IVT data structure
+   * @return Pointer to IVT data (read-only)
+   */
+  const FEB_CAN_IVT_Data_t *FEB_CAN_IVT_GetData(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_CAN_IVT_H_ */

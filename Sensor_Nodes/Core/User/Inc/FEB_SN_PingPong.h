@@ -19,12 +19,17 @@
 #ifndef FEB_SN_PINGPONG_H
 #define FEB_SN_PINGPONG_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 
-/* ============================================================================
- * Channel Definitions
- * ============================================================================ */
+  /* ============================================================================
+   * Channel Definitions
+   * ============================================================================ */
 
 #define FEB_PINGPONG_NUM_CHANNELS 4
 
@@ -34,70 +39,74 @@
 #define FEB_PINGPONG_FRAME_ID_3 0xE2
 #define FEB_PINGPONG_FRAME_ID_4 0xE3
 
-/* ============================================================================
- * Type Definitions
- * ============================================================================ */
+  /* ============================================================================
+   * Type Definitions
+   * ============================================================================ */
 
-typedef enum
-{
-  PINGPONG_MODE_OFF = 0, /* Channel disabled */
-  PINGPONG_MODE_PING,    /* TX on ID, increment counter each transmission */
-  PINGPONG_MODE_PONG,    /* Listen on ID, respond with counter+1 */
-} FEB_PingPong_Mode_t;
+  typedef enum
+  {
+    PINGPONG_MODE_OFF = 0, /* Channel disabled */
+    PINGPONG_MODE_PING,    /* TX on ID, increment counter each transmission */
+    PINGPONG_MODE_PONG,    /* Listen on ID, respond with counter+1 */
+  } FEB_PingPong_Mode_t;
 
-/* ============================================================================
- * API Functions
- * ============================================================================ */
+  /* ============================================================================
+   * API Functions
+   * ============================================================================ */
 
-/**
- * @brief Initialize the ping/pong module
- * @note Must be called after FEB_CAN_Init()
- */
-void FEB_SN_PingPong_Init(void);
+  /**
+   * @brief Initialize the ping/pong module
+   * @note Must be called after FEB_CAN_Init()
+   */
+  void FEB_SN_PingPong_Init(void);
 
-/**
- * @brief Set the mode for a channel
- * @param channel Channel number (1-4)
- * @param mode PINGPONG_MODE_OFF, PINGPONG_MODE_PING, or PINGPONG_MODE_PONG
- */
-void FEB_SN_PingPong_SetMode(uint8_t channel, FEB_PingPong_Mode_t mode);
+  /**
+   * @brief Set the mode for a channel
+   * @param channel Channel number (1-4)
+   * @param mode PINGPONG_MODE_OFF, PINGPONG_MODE_PING, or PINGPONG_MODE_PONG
+   */
+  void FEB_SN_PingPong_SetMode(uint8_t channel, FEB_PingPong_Mode_t mode);
 
-/**
- * @brief Get the current mode of a channel
- * @param channel Channel number (1-4)
- * @return Current mode
- */
-FEB_PingPong_Mode_t FEB_SN_PingPong_GetMode(uint8_t channel);
+  /**
+   * @brief Get the current mode of a channel
+   * @param channel Channel number (1-4)
+   * @return Current mode
+   */
+  FEB_PingPong_Mode_t FEB_SN_PingPong_GetMode(uint8_t channel);
 
-/**
- * @brief Process ping transmissions (call from main loop, e.g., every 100ms)
- */
-void FEB_SN_PingPong_Tick(void);
+  /**
+   * @brief Process ping transmissions (call from main loop, e.g., every 100ms)
+   */
+  void FEB_SN_PingPong_Tick(void);
 
-/**
- * @brief Get TX count for a channel
- * @param channel Channel number (1-4)
- * @return Number of messages transmitted
- */
-uint32_t FEB_SN_PingPong_GetTxCount(uint8_t channel);
+  /**
+   * @brief Get TX count for a channel
+   * @param channel Channel number (1-4)
+   * @return Number of messages transmitted
+   */
+  uint32_t FEB_SN_PingPong_GetTxCount(uint8_t channel);
 
-/**
- * @brief Get RX count for a channel
- * @param channel Channel number (1-4)
- * @return Number of messages received
- */
-uint32_t FEB_SN_PingPong_GetRxCount(uint8_t channel);
+  /**
+   * @brief Get RX count for a channel
+   * @param channel Channel number (1-4)
+   * @return Number of messages received
+   */
+  uint32_t FEB_SN_PingPong_GetRxCount(uint8_t channel);
 
-/**
- * @brief Get last received counter value
- * @param channel Channel number (1-4)
- * @return Last counter value received, or 0 if none
- */
-int32_t FEB_SN_PingPong_GetLastCounter(uint8_t channel);
+  /**
+   * @brief Get last received counter value
+   * @param channel Channel number (1-4)
+   * @return Last counter value received, or 0 if none
+   */
+  int32_t FEB_SN_PingPong_GetLastCounter(uint8_t channel);
 
-/**
- * @brief Reset all counters and turn off all channels
- */
-void FEB_SN_PingPong_Reset(void);
+  /**
+   * @brief Reset all counters and turn off all channels
+   */
+  void FEB_SN_PingPong_Reset(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FEB_SN_PINGPONG_H */

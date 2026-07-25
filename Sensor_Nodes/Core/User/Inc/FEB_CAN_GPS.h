@@ -9,20 +9,29 @@
 #ifndef FEB_CAN_GPS_H
 #define FEB_CAN_GPS_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-/* ============================================================================
- * API Functions
- * ============================================================================ */
+  /* ============================================================================
+   * API Functions
+   * ============================================================================ */
 
-/**
- * @brief Process GPS data transmissions
- *
- * Packs and transmits GPS data over CAN.
- */
+  /**
+   * @brief Process GPS data transmissions
+   *
+   * Packs and transmits GPS data over CAN.
+   */
 
-void FEB_CAN_GPS_Tick(void);
+  void FEB_CAN_GPS_Tick(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FEB_CAN_GPS_H */

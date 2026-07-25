@@ -1,6 +1,13 @@
 #ifndef INC_FEB_CONST_H_
 #define INC_FEB_CONST_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include <assert.h>
+
 // ********************************** ADBMS Configuration Constants **************
 
 // Number of ADBMS6830 ICs per bank
@@ -24,8 +31,8 @@
 // Total number of temperature sensors per bank
 #define FEB_NUM_TEMP_SENSORS (FEB_NUM_TEMP_SENSE_PER_IC * FEB_NUM_ICPBANK)
 
-// ********************************** ADBMS6830B ADC Conversion Constants ********
-// From ADBMS6830B datasheet - Cell voltage measurement
+  // ********************************** ADBMS6830B ADC Conversion Constants ********
+  // From ADBMS6830B datasheet - Cell voltage measurement
 
 #define ADBMS_ADC_LSB_UV 150      // ADC resolution: 150 µV/LSB
 #define ADBMS_ADC_LSB_V 0.000150f // ADC resolution in volts
@@ -37,8 +44,8 @@
 // Options: 0x00=OFF, 0x01=EVEN_CH, 0x02=ODD_CH, 0x03=ALL_CH
 #define ADBMS_OW_DETECTION_MODE 0x00 // OW detection disabled
 
-// ********************************** Thermistor Beta Parameter Constants *********
-// NTC Thermistor conversion using Beta parameter equation
+  // ********************************** Thermistor Beta Parameter Constants *********
+  // NTC Thermistor conversion using Beta parameter equation
 
 #define THERM_R_REF_OHMS 10000.0f    // Reference resistance at 25°C (10k NTC)
 #define THERM_T_REF_K 298.15f        // Reference temperature in Kelvin (25°C)
@@ -55,15 +62,15 @@
 #define THERM_MIN_VOLTAGE_MV 100.0f  // Below this: open circuit / disconnected
 #define THERM_MAX_VOLTAGE_MV 4900.0f // Above this: short circuit / sensor fault
 
-// ********************************** Error Type Codes ****************************
+  // ********************************** Error Type Codes ****************************
 
 #define ERROR_TYPE_TEMP_VIOLATION 0x10
 #define ERROR_TYPE_LOW_TEMP_READS 0x20
 #define ERROR_TYPE_VOLTAGE_VIOLATION 0x30
 #define ERROR_TYPE_INIT_FAILURE 0x40
 
-// ********************************** Temperature Validation Range ****************
-// Valid operating range for temperature sensors (in deci-Celsius)
+  // ********************************** Temperature Validation Range ****************
+  // Valid operating range for temperature sensors (in deci-Celsius)
 
 #define TEMP_VALID_MIN_DC (-400) // -40.0°C minimum valid reading
 #define TEMP_VALID_MAX_DC 850    // 85.0°C maximum valid reading
@@ -100,8 +107,8 @@
 // under budget, so it cannot silently regress if the period or threshold changes.
 #define FEB_TEMP_SCAN_PERIOD_MS 100  // temperature scan cadence (10 Hz)
 #define FEB_TEMP_FAULT_BUDGET_MS 900 // margin under the 1 s FSAE temperature window
-_Static_assert((FEB_TEMP_ERROR_THRESH + 1) * FEB_TEMP_SCAN_PERIOD_MS <= FEB_TEMP_FAULT_BUDGET_MS,
-               "Over/under-temp fault must latch within the FSAE temperature window");
+  static_assert((FEB_TEMP_ERROR_THRESH + 1) * FEB_TEMP_SCAN_PERIOD_MS <= FEB_TEMP_FAULT_BUDGET_MS,
+                "Over/under-temp fault must latch within the FSAE temperature window");
 
 // Temperature-telemetry-loss fail-safe (FSAE: a disconnected temperature sense
 // wire must open the shutdown circuit within 1 s). If fewer than
@@ -259,48 +266,52 @@ _Static_assert((FEB_TEMP_ERROR_THRESH + 1) * FEB_TEMP_SCAN_PERIOD_MS <= FEB_TEMP
 #define FEB_BMS_BENCH_PACK_VOLTAGE_V 60.0f
 #endif
 
-// ********************************** Accumulator Structure **********************
+  // ********************************** Accumulator Structure **********************
 
-typedef struct
-{
-  float voltage_V; // C-code voltage measurement
-  float voltage_S; // S-code voltage measurement (redundant)
-  float temperature_C;
-  uint8_t violations;  // Consecutive violation counter for this cell
-  uint8_t discharging; // Cell is being discharged for balancing
-} cell_data_t;
+  typedef struct
+  {
+    float voltage_V; // C-code voltage measurement
+    float voltage_S; // S-code voltage measurement (redundant)
+    float temperature_C;
+    uint8_t violations;  // Consecutive violation counter for this cell
+    uint8_t discharging; // Cell is being discharged for balancing
+  } cell_data_t;
 
-typedef struct
-{
-  cell_data_t cells[FEB_NUM_CELLS_PER_BANK];
-  float total_voltage_V;
-  float min_voltage_V;
-  float max_voltage_V;
-  float avg_temp_C;
-  float min_temp_C;
-  float max_temp_C;
-  uint8_t voltRead;                                   // Voltage reading valid flag
-  uint8_t tempRead;                                   // Temperature reading valid flag
-  uint8_t badReadV;                                   // Bad voltage read counter
-  float temp_sensor_readings_V[FEB_NUM_TEMP_SENSORS]; // Temperature sensor readings
-  uint8_t temp_violations[FEB_NUM_TEMP_SENSORS];      // Per-sensor violation counters
-  uint16_t therm_raw_codes[FEB_NUM_TEMP_SENSORS];     // Raw ADC codes (0xFFFF = PEC failure)
-  float therm_raw_voltages_mV[FEB_NUM_TEMP_SENSORS];  // Converted mV (NaN = PEC failure)
-} bank_data_t;
+  typedef struct
+  {
+    cell_data_t cells[FEB_NUM_CELLS_PER_BANK];
+    float total_voltage_V;
+    float min_voltage_V;
+    float max_voltage_V;
+    float avg_temp_C;
+    float min_temp_C;
+    float max_temp_C;
+    uint8_t voltRead;                                   // Voltage reading valid flag
+    uint8_t tempRead;                                   // Temperature reading valid flag
+    uint8_t badReadV;                                   // Bad voltage read counter
+    float temp_sensor_readings_V[FEB_NUM_TEMP_SENSORS]; // Temperature sensor readings
+    uint8_t temp_violations[FEB_NUM_TEMP_SENSORS];      // Per-sensor violation counters
+    uint16_t therm_raw_codes[FEB_NUM_TEMP_SENSORS];     // Raw ADC codes (0xFFFF = PEC failure)
+    float therm_raw_voltages_mV[FEB_NUM_TEMP_SENSORS];  // Converted mV (NaN = PEC failure)
+  } bank_data_t;
 
-typedef struct
-{
-  bank_data_t banks[FEB_NBANKS];
-  float total_voltage_V;
-  float min_voltage_V;
-  float max_voltage_V;
-  float pack_min_voltage_V; // Minimum cell voltage across entire pack
-  float pack_max_voltage_V; // Maximum cell voltage across entire pack
-  float avg_temp_C;
-  float pack_min_temp;     // Minimum temperature across entire pack
-  float pack_max_temp;     // Maximum temperature across entire pack
-  float average_pack_temp; // Average temperature across entire pack
-  uint8_t error_type;
-} accumulator_t;
+  typedef struct
+  {
+    bank_data_t banks[FEB_NBANKS];
+    float total_voltage_V;
+    float min_voltage_V;
+    float max_voltage_V;
+    float pack_min_voltage_V; // Minimum cell voltage across entire pack
+    float pack_max_voltage_V; // Maximum cell voltage across entire pack
+    float avg_temp_C;
+    float pack_min_temp;     // Minimum temperature across entire pack
+    float pack_max_temp;     // Maximum temperature across entire pack
+    float average_pack_temp; // Average temperature across entire pack
+    uint8_t error_type;
+  } accumulator_t;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_CONST_H_ */

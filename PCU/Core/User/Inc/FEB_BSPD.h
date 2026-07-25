@@ -1,21 +1,30 @@
 #ifndef INC_FEB_BSPD_H_
 #define INC_FEB_BSPD_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "stm32f4xx_hal.h"
 
 #include "feb_can_lib.h"
 #include "FEB_PINOUT.h"
 #include "feb_can.h"
 
-typedef struct BSPD_TYPE
-{
-  int8_t state;
-} BSPD_TYPE;
+  typedef struct BSPD_TYPE
+  {
+    int8_t state;
+  } BSPD_TYPE;
 
-/* Global variable - defined in FEB_BSPD.c */
-extern BSPD_TYPE BSPD;
+  /* Global variable - defined in FEB_BSPD.c */
+  extern BSPD_TYPE BSPD;
 
-void FEB_BSPD_CheckReset(void);
-void FEB_BSPD_CAN_Transmit(void);
+  void FEB_BSPD_CheckReset(void);
+  void FEB_BSPD_CAN_Transmit(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_BSPD_H_ */

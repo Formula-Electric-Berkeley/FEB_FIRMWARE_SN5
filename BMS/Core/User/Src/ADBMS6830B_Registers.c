@@ -147,7 +147,7 @@ static const ADBMS_CmdInfo_t cmd_table[] = {
     {RDRR, ADBMS_CMD_READ, 6, "RDRR", "Read Retention Reg"},
 
     /* Sentinel */
-    {0, 0, 0, NULL, NULL}};
+    {0, (ADBMS_CmdType_t)0, 0, NULL, NULL}};
 
 /*============================================================================
  * API: Find Command by Name

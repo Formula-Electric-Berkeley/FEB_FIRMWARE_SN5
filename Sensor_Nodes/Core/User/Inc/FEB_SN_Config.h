@@ -21,6 +21,11 @@
 #ifndef FEB_SN_CONFIG_H
 #define FEB_SN_CONFIG_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "feb_can.h"
 
 #define FEB_SN_VARIANT_FRONT 1
@@ -36,26 +41,26 @@
 #define FEB_SN_IS_FRONT() (FEB_SENSOR_NODE_VARIANT == FEB_SN_VARIANT_FRONT)
 #define FEB_SN_IS_REAR() (FEB_SENSOR_NODE_VARIANT == FEB_SN_VARIANT_REAR)
 
-extern const char FEB_SN_VARIANT_NAME[];
+  extern const char FEB_SN_VARIANT_NAME[];
 
-/* ============================================================================
- * Per-variant sensor population.
- *
- * FRONT and REAR boards may not be populated identically. Set each
- * FEB_SN_HAS_<sensor> to 1 if the corresponding device is present on the
- * physical board for that variant, 0 if it is absent. These flags gate:
- *   - sensor driver init calls in FEB_Main.c (no I2C/UART traffic to a
- *     missing chip — avoids spurious init-failure logs and bus stalls)
- *   - CAN reporter Tick bodies (no frames published for absent sensors)
- *
- * Defaults below assume all sensors are populated on both variants. Adjust
- * per the actual BOM. Feature gates are evaluated at compile time, so
- * disabled sensors carry zero flash/RAM cost.
- *
- * Fusion AHRS depends on IMU + magnetometer; if either is absent on a
- * variant, FEB_SN_HAS_FUSION must be 0. Sensor die temps come from the IMU
- * and magnetometer drivers, so FEB_SN_HAS_SENSOR_TEMPS requires both.
- * ============================================================================ */
+  /* ============================================================================
+   * Per-variant sensor population.
+   *
+   * FRONT and REAR boards may not be populated identically. Set each
+   * FEB_SN_HAS_<sensor> to 1 if the corresponding device is present on the
+   * physical board for that variant, 0 if it is absent. These flags gate:
+   *   - sensor driver init calls in FEB_Main.c (no I2C/UART traffic to a
+   *     missing chip — avoids spurious init-failure logs and bus stalls)
+   *   - CAN reporter Tick bodies (no frames published for absent sensors)
+   *
+   * Defaults below assume all sensors are populated on both variants. Adjust
+   * per the actual BOM. Feature gates are evaluated at compile time, so
+   * disabled sensors carry zero flash/RAM cost.
+   *
+   * Fusion AHRS depends on IMU + magnetometer; if either is absent on a
+   * variant, FEB_SN_HAS_FUSION must be 0. Sensor die temps come from the IMU
+   * and magnetometer drivers, so FEB_SN_HAS_SENSOR_TEMPS requires both.
+   * ============================================================================ */
 
 #if FEB_SN_IS_FRONT()
 #define FEB_SN_HAS_IMU 1
@@ -83,13 +88,13 @@ extern const char FEB_SN_VARIANT_NAME[];
 #error "FEB_SN_HAS_SENSOR_TEMPS requires both FEB_SN_HAS_IMU and FEB_SN_HAS_MAG"
 #endif
 
-/* ============================================================================
- * Per-variant CAN frame ID + struct + pack-fn aliases.
- *
- * Reporters use only the FEB_SN_* names below. To add a new sensor: extend
- * sensor_nodes_messages.py with FRONT/REAR functions, register both IDs in
- * generate.py, then add a matching alias block here.
- * ============================================================================ */
+  /* ============================================================================
+   * Per-variant CAN frame ID + struct + pack-fn aliases.
+   *
+   * Reporters use only the FEB_SN_* names below. To add a new sensor: extend
+   * sensor_nodes_messages.py with FRONT/REAR functions, register both IDs in
+   * generate.py, then add a matching alias block here.
+   * ============================================================================ */
 
 #if FEB_SN_IS_FRONT()
 
@@ -416,6 +421,10 @@ extern const char FEB_SN_VARIANT_NAME[];
 #define feb_sn_linpot_left linear_potentiometer_1_rear
 #define feb_sn_linpot_right linear_potentiometer_2_rear
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* FEB_SN_CONFIG_H */

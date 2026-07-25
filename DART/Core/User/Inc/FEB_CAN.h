@@ -1,7 +1,12 @@
 #ifndef INC_FEB_CAN_H_
 #define INC_FEB_CAN_H_
 
-// **************************************** Includes ****************************************
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+  // **************************************** Includes ****************************************
 
 #include <string.h>
 #include <FEB_CAN_BMS.h>
@@ -9,15 +14,19 @@
 #include <stm32f0xx_hal.h>
 #include <main.h>
 
-// **************************************** Function Prototypes ****************************************
+  // **************************************** Function Prototypes ****************************************
 
-void FEB_CAN_Init(void);
-void FEB_CAN_Filter_Config(void);
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan);
-void FEB_CAN_Transmit(CAN_HandleTypeDef *hcan, const uint16_t *frequency_hz);
+  void FEB_CAN_Init(void);
+  void FEB_CAN_Filter_Config(void);
+  void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan);
+  void FEB_CAN_Transmit(CAN_HandleTypeDef *hcan, const uint16_t *frequency_hz);
 
-uint32_t FEB_CAN_GetTxTimeoutCount(void);
-uint32_t FEB_CAN_GetTxHalErrorCount(void);
-uint32_t FEB_CAN_GetRxCount(void);
+  uint32_t FEB_CAN_GetTxTimeoutCount(void);
+  uint32_t FEB_CAN_GetTxHalErrorCount(void);
+  uint32_t FEB_CAN_GetRxCount(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_CAN_H_ */
