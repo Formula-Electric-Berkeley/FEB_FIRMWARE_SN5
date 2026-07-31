@@ -193,14 +193,12 @@
             "type": "pickString",
             "description": "Select board to flash",
             "options": ["BMS", "DASH", "DART", "DCU", "DCU_Receiver", "LVPDB", "PCU", "Sensor_Nodes_FRONT", "Sensor_Nodes_REAR", "UART", "UART_TEST"],
-            "default": "LVPDB"
         },
         {
             "id": "bumpBoard",
             "type": "pickString",
             "description": "Which board's firmware version to bump",
             "options": ["BMS", "DASH", "DART", "DCU", "DCU_Receiver", "LVPDB", "PCU", "Sensor_Nodes", "UART", "UART_TEST"],
-            "default": "BMS"
         },
         {
             "id": "bumpType",

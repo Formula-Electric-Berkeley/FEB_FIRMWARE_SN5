@@ -99,6 +99,10 @@ typedef void *FEB_Log_MutexHandle_t;
    */
   typedef int (*FEB_Log_OutputFunc_t)(const char *data, size_t len);
 
+  typedef bool (*FEB_Log_TapFunc_t)(FEB_Log_Level_t level, const char *tag, const char *msg, size_t len);
+
+  void FEB_Log_SetTap(FEB_Log_TapFunc_t tap);
+
   /* ============================================================================
    * Configuration Structure
    * ============================================================================ */

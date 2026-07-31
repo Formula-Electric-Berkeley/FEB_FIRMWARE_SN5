@@ -42,6 +42,10 @@ add_subdirectory(FEB_Console)
 # Version/provenance library - types + flash-info placeholder
 add_subdirectory(FEB_Version)
 
+# Console 2 + its system commands - C++ rewrite
+add_subdirectory(FEB_Console_2)
+add_subdirectory(FEB_Commands_2)
+
 # Default system commands - depends on Console and Log
 add_subdirectory(FEB_Commands)
 
