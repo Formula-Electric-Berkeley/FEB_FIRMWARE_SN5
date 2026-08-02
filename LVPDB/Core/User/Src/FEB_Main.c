@@ -1,4 +1,5 @@
 #include "FEB_Main.h"
+#include "cmsis_os2.h"
 #include "FEB_CAN_PingPong.h"
 #include "FEB_CAN_TPS.h"
 #include "FEB_LVPDB_Commands.h"
@@ -12,6 +13,7 @@
 #include <stdio.h>
 #include "FEB_CAN_BRAKE.h"
 #include "FEB_CAN_DASH.h"
+#include "feb_uart.h"
 
 extern CAN_HandleTypeDef hcan1;
 extern CAN_HandleTypeDef hcan2;
@@ -20,6 +22,24 @@ extern TIM_HandleTypeDef htim1;
 extern UART_HandleTypeDef huart2;
 extern DMA_HandleTypeDef hdma_usart2_tx;
 extern DMA_HandleTypeDef hdma_usart2_rx;
+
+#if FEB_LOG_USE_FREERTOS
+extern osMutexId_t logMutexHandle;
+#endif
+
+#if FEB_UART_USE_FREERTOS
+extern osMutexId_t uartTxMutexHandle;
+extern osSemaphoreId_t uartTxSemHandle;
+extern osMessageQueueId_t uartRxQueueHandle;
+#endif
+
+#if FEB_CAN_USE_FREERTOS
+extern osMessageQueueId_t canTxQueueHandle;
+extern osMessageQueueId_t canRxQueueHandle;
+extern osMutexId_t canTxMutexHandle;
+extern osMutexId_t canRxMutexHandle;
+extern osSemaphoreId_t canTxMailboxSemHandle;
+#endif
 
 static uint8_t uart_tx_buf[4096];
 static uint8_t uart_rx_buf[256];
@@ -88,6 +108,7 @@ FEB_LVPDB_CAN_Data can_data;
 bool bus_voltage_healthy = true;
 static bool tps_init_success = false;
 static uint8_t tps_registered_count = 0;
+static volatile bool feb_setup_complete = false;
 
 /**
  * Route TPS library log messages into the platform logging system with level mapping.
@@ -244,6 +265,12 @@ void FEB_Main_Setup(void)
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
       .get_tick_ms = HAL_GetTick,
+#if FEB_UART_USE_FREERTOS
+      .tx_mutex = uartTxMutexHandle,
+      .tx_complete_sem = uartTxSemHandle,
+      .enable_rx_queue = true,
+      .rx_queue = uartRxQueueHandle,
+#endif
   };
   FEB_UART_Init(FEB_UART_INSTANCE_1, &uart_cfg);
 
@@ -254,13 +281,15 @@ void FEB_Main_Setup(void)
       .colors = true,
       .timestamps = true,
       .get_tick_ms = HAL_GetTick,
+#if FEB_LOG_USE_FREERTOS
+      .mutex = logMutexHandle,
+#endif
   };
   FEB_Log_Init(&log_cfg);
 
   // Initialize console
   FEB_Console_Init(true);
   LVPDB_RegisterCommands();
-  FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
 
   LOG_I(TAG_MAIN, "Beginning Setup");
 
@@ -318,6 +347,13 @@ void FEB_Main_Setup(void)
       .hcan1 = &hcan1,
       .hcan2 = NULL,
       .get_tick_ms = HAL_GetTick,
+#if FEB_CAN_USE_FREERTOS
+      .tx_queue = canTxQueueHandle,
+      .rx_queue = canRxQueueHandle,
+      .tx_mutex = canTxMutexHandle,
+      .rx_mutex = canRxMutexHandle,
+      .tx_mailbox_sem = canTxMailboxSemHandle,
+#endif
   };
   FEB_CAN_Init(&can_cfg);
 
@@ -329,7 +365,7 @@ void FEB_Main_Setup(void)
   LOG_I(TAG_MAIN, "LVPDB Setup Complete");
   LOG_I(TAG_MAIN, "Type 'help' for available commands");
 
-  HAL_TIM_Base_Start_IT(&htim1);
+  feb_setup_complete = true;
 }
 
 #define MAIN_LOOP_POLL_INTERVAL_MS 50
@@ -541,4 +577,127 @@ static void FEB_Variable_Conversion(void)
   tps2482_current[6] = FLOAT_TO_INT16_T(tps2482_current_raw[6] * CP_RF_CURRENT_LSB);
 
   FEB_Current_IIR(tps2482_current, tps2482_current, tps2482_current_filter, NUM_TPS2482, tps2482_current_filter_init);
+}
+
+/* ============================================================================
+ * FreeRTOS Task Implementations - Override weak stubs in freertos.c
+ * ============================================================================ */
+
+void StartDefaultTask(void *argument)
+{
+  /* USER CODE BEGIN StartDefaultTask */
+  (void)argument;
+
+  FEB_Main_Setup();
+
+  for (;;)
+  {
+    osDelay(1000);
+  }
+  /* USER CODE END StartDefaultTask */
+}
+
+void StartUartConsoleLog(void *argument)
+{
+  /* USER CODE BEGIN StartUartConsoleLog */
+  (void)argument;
+
+  while (!feb_setup_complete)
+  {
+    osDelay(5);
+  }
+
+  char line_buf[FEB_UART_QUEUE_LINE_SIZE];
+  size_t line_len;
+
+  for (;;)
+  {
+    FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
+
+    if (FEB_UART_QueueReceiveLine(FEB_UART_INSTANCE_1, line_buf, sizeof(line_buf), &line_len, 10))
+    {
+      FEB_Console_ProcessLine(line_buf, line_len);
+    }
+  }
+  /* USER CODE END StartUartConsoleLog */
+}
+
+void StartTPSPowerManage(void *argument)
+{
+  /* USER CODE BEGIN StartTPSPowerManage */
+  (void)argument;
+
+  while (!feb_setup_complete)
+  {
+    osDelay(5);
+  }
+
+  for (;;)
+  {
+    if (tps_init_success)
+    {
+      uint8_t polled = 0;
+      for (uint8_t i = 0; i < NUM_TPS2482; i++)
+      {
+        if (tps_handles[i] == NULL)
+        {
+          tps2482_bus_voltage_raw[i] = 0;
+          tps2482_current_raw[i] = 0;
+          tps2482_shunt_voltage_raw[i] = 0;
+          tps_polled_success[i] = false;
+          continue;
+        }
+        uint16_t bv;
+        int16_t cur;
+        int16_t sv;
+        if (FEB_TPS_PollRaw(tps_handles[i], &bv, &cur, &sv) == FEB_TPS_OK)
+        {
+          tps2482_bus_voltage_raw[i] = bv;
+          tps2482_current_raw[i] = cur;
+          tps2482_shunt_voltage_raw[i] = sv;
+          tps_polled_success[i] = true;
+          polled++;
+        }
+        else
+        {
+          tps2482_bus_voltage_raw[i] = 0;
+          tps2482_current_raw[i] = 0;
+          tps2482_shunt_voltage_raw[i] = 0;
+          tps_polled_success[i] = false;
+        }
+      }
+      if (polled < tps_registered_count)
+      {
+        LOG_W(TAG_MAIN, "TPS poll: %u/%u registered devices succeeded", (unsigned)polled,
+              (unsigned)tps_registered_count);
+      }
+
+      FEB_Variable_Conversion();
+    }
+
+    osDelay(MAIN_LOOP_POLL_INTERVAL_MS);
+  }
+  /* USER CODE END StartTPSPowerManage */
+}
+
+void StartLVPDBTaskRx(void *argument)
+{
+  /* USER CODE BEGIN StartLVPDBTaskRx */
+  /* Infinite loop */
+  for (;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartLVPDBTaskRx */
+}
+
+void StartLVPDBTaskTx(void *argument)
+{
+  /* USER CODE BEGIN StartLVPDBTaskTx */
+  /* Infinite loop */
+  for (;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartLVPDBTaskTx */
 }
