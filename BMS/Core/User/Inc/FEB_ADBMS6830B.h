@@ -174,8 +174,9 @@ extern "C"
   /** @brief Highest cell voltage [V] from the last scan. */
   float FEB_ADBMS_Snapshot_Max_Cell_Voltage(void);
 
-  /** @brief Highest pack temperature [C] from the last scan (NaN until first scan). */
   float FEB_ADBMS_Snapshot_Max_Temp(void);
+
+  float FEB_ADBMS_Snapshot_Max_Valid_Temp(void);
 
 #ifdef __cplusplus
 }

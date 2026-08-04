@@ -14,7 +14,7 @@ extern "C"
 #define FEB_NUM_ICPBANK 1
 
 // Number of banks in the system
-#define FEB_NBANKS 10
+#define FEB_NBANKS 9
 
 // Total number of ICs in the daisy chain
 #define FEB_NUM_IC (FEB_NUM_ICPBANK * FEB_NBANKS)
@@ -79,7 +79,7 @@ extern "C"
 
 // Cell voltage limits (in millivolts)
 #define FEB_CELL_MAX_VOLTAGE_MV 4200      // Maximum safe cell voltage (Li-ion typical)
-#define FEB_CELL_MIN_VOLTAGE_MV 2800      // Minimum safe cell voltage (Li-ion typical)
+#define FEB_CELL_MIN_VOLTAGE_MV 2780      // Minimum safe cell voltage
 #define FEB_CELL_BALANCE_THRESHOLD_MV 10  // Start balancing if cell is >10mV above minimum
 #define FEB_CELL_BALANCE_INTERVAL_MS 1000 // Balancing cycle interval (1 second)
 #define FEB_CELL_BALANCE_ALL_AT_ONCE 1    // 1=balance all qualifying cells, 0=alternate odd/even
@@ -156,7 +156,7 @@ extern "C"
 // Charger: Elcon/HK HK-J-H650-12 GEN3 (170-650 VDC). Keep the target voltage
 // inside that window. Frames pack/unpack via the generated CAN lib (elcon.dbc).
 // Charger command (BMS -> charger) targets, in charger units (deci-amps / deci-volts).
-#define FEB_CHARGE_CURRENT_dA 40 // TUNE: 4.0 A nominal charge current
+#define FEB_CHARGE_CURRENT_dA 60 // TUNE: 4.0 A nominal charge current
 #define FEB_TRICKLE_CHARGE_CURRENT_dA (FEB_CHARGE_CURRENT_dA / 2)
 #define FEB_TRICKLE_CHARGE_INTERVAL_MS 5000 // toggle interval near full charge
 #define FEB_CHARGE_TARGET_VOLTAGE_dV ((uint16_t)(FEB_CONFIG_PACK_HARD_MAX_VOLTAGE_V * 10.0f * 0.99f))        // TUNE
@@ -304,9 +304,10 @@ extern "C"
     float pack_min_voltage_V; // Minimum cell voltage across entire pack
     float pack_max_voltage_V; // Maximum cell voltage across entire pack
     float avg_temp_C;
-    float pack_min_temp;     // Minimum temperature across entire pack
-    float pack_max_temp;     // Maximum temperature across entire pack
-    float average_pack_temp; // Average temperature across entire pack
+    float pack_min_temp;       // Minimum temperature across entire pack
+    float pack_max_temp;       // Maximum temperature across entire pack
+    float pack_max_valid_temp; // Maximum over PLAUSIBLE readings only
+    float average_pack_temp;   // Average temperature across entire pack
     uint8_t error_type;
   } accumulator_t;
 

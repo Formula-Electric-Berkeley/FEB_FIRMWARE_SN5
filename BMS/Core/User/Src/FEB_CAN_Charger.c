@@ -189,7 +189,7 @@ int8_t FEB_CAN_Charging_Status(void)
    * the SM is actually in a charging state). NaN (no temp scan yet) fails the
    * comparison -> treated as OK; cell-data presence is already gated by pack_v
    * above and ADBMS staleness is a fault. */
-  float max_temp_dC = FEB_ADBMS_Snapshot_Max_Temp() * 10.0f;
+  float max_temp_dC = FEB_ADBMS_Snapshot_Max_Valid_Temp() * 10.0f;
   if (max_temp_dC >= FEB_CONFIG_CELL_SOFT_MAX_TEMP_dC)
   {
     return 1;

@@ -95,6 +95,7 @@ static uint32_t temp_telemetry_loss_tick = 0;
 static volatile float adbms_snap_total_V = 0.0f;
 static volatile float adbms_snap_max_cell_V = 0.0f;
 static volatile float adbms_snap_max_temp_C = NAN;
+static volatile float adbms_snap_max_valid_temp_C = NAN;
 
 // ********************************** Config Bits ********************************
 
@@ -514,6 +515,8 @@ static void validate_temps()
   DEBUG_TEMP_PRINT("Temperature limits: Min=%.1fC Max=%.1fC", tMin / 10.0f, tMax / 10.0f);
   int totalReads = 0;
 
+  float maxValid_dC = -FLT_MAX;
+
   for (uint8_t bank = 0; bank < FEB_NBANKS; bank++)
   {
     FEB_ACC.banks[bank].tempRead = 0;
@@ -560,8 +563,11 @@ static void validate_temps()
         continue;
       }
 
-      // Plausible reading: counts as valid coverage.
       FEB_ACC.banks[bank].tempRead += 1;
+      if (temp > maxValid_dC)
+      {
+        maxValid_dC = temp;
+      }
 
       // Without a trustworthy median (too few valid sensors in this bank) we
       // cannot reject outliers, so do not fault on over/under-temp here; the
@@ -606,6 +612,10 @@ static void validate_temps()
     totalReads += FEB_ACC.banks[bank].tempRead;
     DEBUG_TEMP_PRINT("Bank %d: tempRead=%d", bank, FEB_ACC.banks[bank].tempRead);
   }
+
+  FEB_ACC.pack_max_valid_temp = (maxValid_dC > -FLT_MAX) ? (maxValid_dC / 10.0f) : NAN;
+  DEBUG_TEMP_PRINT("Pack max valid temp: %.1fC (raw max %.1fC)", (double)FEB_ACC.pack_max_valid_temp,
+                   (double)FEB_ACC.pack_max_temp);
 
   /* Valid-read fraction measured against the POPULATED sensor count (NOT the
    * 42-wide array: index 39 / MUX6[4] is unconnected by design), so a healthy
@@ -788,6 +798,7 @@ void FEB_ADBMS_Temperature_Process()
   validate_temps();
   /* Publish lock-free snapshot for the SM task (we hold the mutex here) */
   adbms_snap_max_temp_C = FEB_ACC.pack_max_temp;
+  adbms_snap_max_valid_temp_C = FEB_ACC.pack_max_valid_temp;
   adbms_last_update_tick = HAL_GetTick(); /* freshness for SM sensor-timeout check */
 
   DEBUG_TEMP_PRINT("=== Temperature Process Completed ===");
@@ -1270,4 +1281,9 @@ float FEB_ADBMS_Snapshot_Max_Cell_Voltage(void)
 float FEB_ADBMS_Snapshot_Max_Temp(void)
 {
   return adbms_snap_max_temp_C;
+}
+
+float FEB_ADBMS_Snapshot_Max_Valid_Temp(void)
+{
+  return adbms_snap_max_valid_temp_C;
 }

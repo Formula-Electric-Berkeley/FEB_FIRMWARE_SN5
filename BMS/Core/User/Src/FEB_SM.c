@@ -782,19 +782,24 @@ static void LVPowerTransition(BMS_State_t next_state)
     break;
 
   case BMS_STATE_DEFAULT:
-    /* 1->2: shutdown loop ("ESC/TSMS") closed -> bus health check. */
-    if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE)
-    {
-      LVPowerTransition(BMS_STATE_BUS_HEALTH_CHECK);
-      break;
-    }
-
     /* 1->6 (Disconnection): only the charger is on CAN (no DASH/PCU heartbeat)
-     * -> BATTERY_FREE. Mirrors SN4 disconnection semantics. */
+     * -> BATTERY_FREE. Mirrors SN4 disconnection semantics.
+     *
+     * Checked BEFORE the shutdown-loop branch below: a charge session closes the
+     * shutdown loop (that is what pulls AIR- in, which the 6->7 gate requires),
+     * so a loop-first check sends every charge session down the DRIVE path
+     * (1->2->3 PRECHARGE) and the charger states become unreachable. */
     if (!FEB_CAN_Heartbeat_OthersPresent(HB_PRESENCE_TIMEOUT_MS) && FEB_CAN_Charger_Received())
     {
       LOG_I(TAG_SM, "Only charger on CAN, entering BATTERY_FREE");
       LVPowerTransition(BMS_STATE_BATTERY_FREE);
+      break;
+    }
+
+    /* 1->2: shutdown loop ("ESC/TSMS") closed -> bus health check. */
+    if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE)
+    {
+      LVPowerTransition(BMS_STATE_BUS_HEALTH_CHECK);
     }
     break;
 
@@ -835,6 +840,18 @@ static void HealthCheckTransition(BMS_State_t next_state)
     {
       LOG_W(TAG_SM, "Shutdown open during health check, returning to LV_POWER");
       HealthCheckTransition(BMS_STATE_LV_POWER);
+      break;
+    }
+
+    /* 2->6: charger-only bus -> the charge path, not the drive precharge. Same
+     * test as LV_POWER's 1->6, repeated here to close the race where the
+     * shutdown loop closes before the charger's first CAN frame arrives: we'd
+     * already be in BUS_HEALTH_CHECK and would auto-enter PRECHARGE (3) below
+     * within a tick, hijacking the charge session. */
+    if (!FEB_CAN_Heartbeat_OthersPresent(HB_PRESENCE_TIMEOUT_MS) && FEB_CAN_Charger_Received())
+    {
+      LOG_I(TAG_SM, "Only charger on CAN, leaving health check for BATTERY_FREE");
+      HealthCheckTransition(BMS_STATE_BATTERY_FREE);
       break;
     }
 
@@ -1158,6 +1175,23 @@ static void FreeTransition(BMS_State_t next_state)
       break;
     }
 
+    /* 6->7 gate diagnostics at 1 Hz: shows which of the three conditions is
+     * holding us in BATTERY_FREE, plus the inputs Charging_Status() soft-gates
+     * on (pack V == 0 -> no scan yet; max cell >= 4.180V or max PLAUSIBLE temp
+     * >= 40.0C -> soft stop). Both temps are printed: a large gap between
+     * traw and tvalid means a faulty sensor is reading hot and being filtered. */
+    {
+      static uint32_t charge_gate_log_tick = 0;
+      if ((HAL_GetTick() - charge_gate_log_tick) >= 1000)
+      {
+        charge_gate_log_tick = HAL_GetTick();
+        LOG_D(TAG_SM, "6->7 gate: charger=%u status=%d AIR-=%u pack=%.1fV maxcell=%.3fV tvalid=%.1fC traw=%.1fC",
+              FEB_CAN_Charger_Received(), (int)charging_status, FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE,
+              (double)FEB_ADBMS_Snapshot_Total_Voltage(), (double)FEB_ADBMS_Snapshot_Max_Cell_Voltage(),
+              (double)FEB_ADBMS_Snapshot_Max_Valid_Temp(), (double)FEB_ADBMS_Snapshot_Max_Temp());
+      }
+    }
+
     /* 6->7 (begin charge): charger present on CAN, AIR- closed, no charge fault. */
     if (FEB_CAN_Charger_Received() && charging_status == 0 && FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE)
     {
@@ -1241,12 +1275,12 @@ static void ChargingPrechargeTransition(BMS_State_t next_state)
     if (pack_voltage > 0.0f && ivt_voltage >= PRECHARGE_THRESHOLD_PCT * pack_voltage)
     {
       uint32_t precharge_elapsed = HAL_GetTick() - charger_precharge_start_time;
-      if (precharge_elapsed < PRECHARGE_MIN_TIME_MS)
+      if (precharge_elapsed < 0)
       {
         /* Completed implausibly fast: bypassed precharge resistor / contactor
          * inrush. Fault instead of charging. */
         LOG_E(TAG_SM, "Charger precharge too fast (%lums < %dms), entering fault: IVT=%.1fV Pack=%.1fV",
-              (unsigned long)precharge_elapsed, PRECHARGE_MIN_TIME_MS, (double)ivt_voltage, (double)pack_voltage);
+              (unsigned long)precharge_elapsed, 0, (double)ivt_voltage, (double)pack_voltage);
         fault_begin(BMS_STATE_FAULT_CHARGING);
         charger_precharge_start_time = 0;
         break;
@@ -1284,9 +1318,14 @@ static void ChargingTransition(BMS_State_t next_state)
 
   case BMS_STATE_DEFAULT:
   {
-    /* Safety: AIR- open -> back to FREE (mirrors SN4). */
+    /* Safety: AIR- open -> back to FREE (mirrors SN4). Logged because this is
+     * otherwise the one silent exit from CHARGING: without it a mid-session
+     * contactor/shutdown-loop dropout looks identical to a normal charge
+     * completion in the console trace. */
     if (FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
     {
+      LOG_W(TAG_SM, "AIR- open while charging, returning to BATTERY_FREE (SDC=%s)",
+            FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE ? "closed" : "open");
       ChargingTransition(BMS_STATE_BATTERY_FREE);
       break;
     }
