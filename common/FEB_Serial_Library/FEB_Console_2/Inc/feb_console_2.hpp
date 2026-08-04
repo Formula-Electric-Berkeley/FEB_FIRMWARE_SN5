@@ -229,6 +229,9 @@ public:
   void cell(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
   void end_row();
 
+protected:
+  Table(Interaction &io, std::span<const Column> cols, const char *title, bool show_header, const char *csv_type);
+
 private:
   void start_row();
   void append_raw(const char *s, std::size_t len);
@@ -245,6 +248,27 @@ private:
   std::size_t col_;
   char row_[kRowBufferSize];
   std::size_t row_len_;
+  const char *csv_type_;
+};
+
+namespace detail
+{
+struct KVColumns
+{
+  std::array<Column, 2> cols;
+};
+} // namespace detail
+
+class KVTable : private detail::KVColumns, public Table
+{
+public:
+  KVTable(Interaction &io, std::uint8_t field_width, std::uint8_t value_width, const char *title = nullptr,
+          bool show_header = false)
+      : detail::KVColumns{{{{"Field", field_width}, {"Value", value_width}}}}, Table(io, cols, title, show_header, "kv")
+  {
+  }
+
+  void row(const char *field, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
 };
 
 class Console

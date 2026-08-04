@@ -789,7 +789,12 @@ int Interaction::option(const char *label, const char *command, const char *desc
 // MARK: Table
 
 Table::Table(Interaction &io, std::span<const Column> cols, const char *title, bool show_header)
-    : io_(io), cols_(cols), col_(0), row_len_(0)
+    : Table(io, cols, title, show_header, "table")
+{
+}
+
+Table::Table(Interaction &io, std::span<const Column> cols, const char *title, bool show_header, const char *csv_type)
+    : io_(io), cols_(cols), col_(0), row_len_(0), csv_type_(csv_type)
 {
   if (io_.csv_)
   {
@@ -799,7 +804,7 @@ Table::Table(Interaction &io, std::span<const Column> cols, const char *title, b
       append_raw("title", 5);
       append_cell_csv(title);
       io_.flush();
-      io_.emit_row("table", row_, row_len_);
+      io_.emit_row(csv_type_, row_, row_len_);
     }
 
     row_len_ = 0;
@@ -809,7 +814,7 @@ Table::Table(Interaction &io, std::span<const Column> cols, const char *title, b
       append_cell_csv(c.name);
     }
     io_.flush();
-    io_.emit_row("table", row_, row_len_);
+    io_.emit_row(csv_type_, row_, row_len_);
   }
   else
   {
@@ -848,7 +853,7 @@ Table::~Table()
   }
   if (io_.csv_)
   {
-    io_.emit_row("table", "end", 3);
+    io_.emit_row(csv_type_, "end", 3);
   }
   else
   {
@@ -992,7 +997,7 @@ void Table::end_row()
 
   if (io_.csv_)
   {
-    io_.emit_row("table", row_, row_len_);
+    io_.emit_row(csv_type_, row_, row_len_);
   }
   else
   {
@@ -1000,6 +1005,19 @@ void Table::end_row()
     io_.print("%s\r\n", row_);
   }
   start_row();
+}
+
+void KVTable::row(const char *field, const char *fmt, ...)
+{
+  char value[kRowBufferSize / 4];
+  std::va_list ap;
+  va_start(ap, fmt);
+  std::vsnprintf(value, sizeof(value), fmt, ap);
+  va_end(ap);
+
+  cell("%s", field);
+  cell("%s", value);
+  end_row();
 }
 
 // MARK: Console

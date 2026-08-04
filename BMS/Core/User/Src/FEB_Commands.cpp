@@ -27,7 +27,6 @@
 #include "task.h"
 
 #include <cmath>
-#include <cstdarg>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -49,20 +48,6 @@ extern "C"
 
 namespace
 {
-
-void row(Table &t, const char *field, const char *fmt, ...) __attribute__((format(printf, 3, 4)));
-void row(Table &t, const char *field, const char *fmt, ...)
-{
-  char value[96];
-  std::va_list ap;
-  va_start(ap, fmt);
-  std::vsnprintf(value, sizeof(value), fmt, ap);
-  va_end(ap);
-
-  t.cell("%s", field);
-  t.cell("%s", value);
-  t.end_row();
-}
 
 const char *isospi_mode_name()
 {
@@ -122,21 +107,20 @@ void cmd_bms_status(Interaction &io, std::span<char *const>)
 {
   const CellExtremes e = cell_extremes();
 
-  static constexpr Column kCols[] = {{"Field", 16}, {"Value", 28}};
-  Table t(io, kCols, "BMS Status", false);
+  KVTable t(io, 16, 28, "BMS Status");
 
-  row(t, "State", "%s", state_name(FEB_SM_Get_Current_State()));
-  row(t, "Limits profile", "%s",
-      FEB_ADBMS_Get_Validation_Profile() == FEB_VALIDATION_PROFILE_CHARGING ? "CHARGING" : "NORMAL");
-  row(t, "Pack voltage", "%.2f V", (double)FEB_ADBMS_GET_ACC_Total_Voltage());
-  row(t, "Min cell (C/S)", "%.3f / %.3f V", (double)e.min_c, (double)e.min_s);
-  row(t, "Max cell (C/S)", "%.3f / %.3f V", (double)e.max_c, (double)e.max_s);
-  row(t, "Temps min/max", "%.1f / %.1f C", (double)FEB_ADBMS_GET_ACC_MIN_Temp(), (double)FEB_ADBMS_GET_ACC_MAX_Temp());
-  row(t, "Temps avg", "%.1f C", (double)FEB_ADBMS_GET_ACC_AVG_Temp());
-  row(t, "Balancing", "%s", FEB_Cell_Balancing_Status() ? "ON" : "off");
-  row(t, "Cell delta", "%.0f mV", (double)FEB_ADBMS_GET_Cell_Voltage_Delta_mV());
-  row(t, "Balance done", "%s", FEB_Cell_Balance_Complete() ? "YES" : "no");
-  row(t, "Error type", "0x%02X", FEB_ADBMS_Get_Error_Type());
+  t.row("State", "%s", state_name(FEB_SM_Get_Current_State()));
+  t.row("Limits profile", "%s",
+        FEB_ADBMS_Get_Validation_Profile() == FEB_VALIDATION_PROFILE_CHARGING ? "CHARGING" : "NORMAL");
+  t.row("Pack voltage", "%.2f V", (double)FEB_ADBMS_GET_ACC_Total_Voltage());
+  t.row("Min cell (C/S)", "%.3f / %.3f V", (double)e.min_c, (double)e.min_s);
+  t.row("Max cell (C/S)", "%.3f / %.3f V", (double)e.max_c, (double)e.max_s);
+  t.row("Temps min/max", "%.1f / %.1f C", (double)FEB_ADBMS_GET_ACC_MIN_Temp(), (double)FEB_ADBMS_GET_ACC_MAX_Temp());
+  t.row("Temps avg", "%.1f C", (double)FEB_ADBMS_GET_ACC_AVG_Temp());
+  t.row("Balancing", "%s", FEB_Cell_Balancing_Status() ? "ON" : "off");
+  t.row("Cell delta", "%.0f mV", (double)FEB_ADBMS_GET_Cell_Voltage_Delta_mV());
+  t.row("Balance done", "%s", FEB_Cell_Balance_Complete() ? "YES" : "no");
+  t.row("Error type", "0x%02X", FEB_ADBMS_Get_Error_Type());
 }
 
 void cmd_bms_cells(Interaction &io, std::span<char *const>)
@@ -246,16 +230,15 @@ void cmd_bms_cell(Interaction &io, std::span<char *const> args)
   const float voltage_c = FEB_ADBMS_GET_Cell_Voltage(bank_idx, cell_idx);
   const float voltage_s = FEB_ADBMS_GET_Cell_Voltage_S(bank_idx, cell_idx);
 
-  static constexpr Column kCols[] = {{"Field", 16}, {"Value", 20}};
-  Table t(io, kCols, "Cell", false);
+  KVTable t(io, 16, 20, "Cell");
 
-  row(t, "Bank / cell", "%ld / %ld", bank, cell);
-  row(t, "Voltage (C)", "%.3f V", (double)voltage_c);
-  row(t, "Voltage (S)", "%.3f V", (double)voltage_s);
-  row(t, "Delta", "%.4f V", (double)(voltage_c - voltage_s));
-  row(t, "Temperature", "%.1f C", (double)FEB_ADBMS_GET_Cell_Temperature(bank_idx, cell_idx));
-  row(t, "Violations", "%u", (unsigned)FEB_ADBMS_GET_Cell_Violations(bank_idx, cell_idx));
-  row(t, "Balancing", "%s", FEB_ADBMS_GET_Cell_Discharging(bank_idx, cell_idx) ? "yes" : "no");
+  t.row("Bank / cell", "%ld / %ld", bank, cell);
+  t.row("Voltage (C)", "%.3f V", (double)voltage_c);
+  t.row("Voltage (S)", "%.3f V", (double)voltage_s);
+  t.row("Delta", "%.4f V", (double)(voltage_c - voltage_s));
+  t.row("Temperature", "%.1f C", (double)FEB_ADBMS_GET_Cell_Temperature(bank_idx, cell_idx));
+  t.row("Violations", "%u", (unsigned)FEB_ADBMS_GET_Cell_Violations(bank_idx, cell_idx));
+  t.row("Balancing", "%s", FEB_ADBMS_GET_Cell_Discharging(bank_idx, cell_idx) ? "yes" : "no");
 }
 
 void cmd_bms_cell_stats(Interaction &io, std::span<char *const>)
@@ -486,20 +469,20 @@ constexpr std::array<Command, 2> kBalanceSubcommands = {{
 
 void cmd_bms_gpio(Interaction &io, std::span<char *const>)
 {
-  static constexpr Column kCols[] = {{"Signal", 18}, {"State", 18}};
-  Table t(io, kCols, "GPIO", false);
+  KVTable t(io, 18, 18, "GPIO");
 
-  row(t, "AIR+ sense", "%s", FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
-  row(t, "AIR- sense", "%s", FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
-  row(t, "Precharge sense", "%s", FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
-  row(t, "Shutdown loop", "%s", FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
-  row(t, "IMD status", "%s",
-      FEB_HW_IMD_Sense() == FEB_RELAY_STATE_CLOSE ? "OK (armed)" : (FEB_SM_IMD_Armed() ? "FAULT" : "LOW (not armed)"));
-  row(t, "Reset button", "%s", FEB_HW_Reset_Button_Pressed() ? "PRESSED" : "NOT_PRESSED");
-  row(t, "BMS SHDN (PC1)", "%s", FEB_HW_BMS_Shutdown_Get() ? "CLOSED" : "OPEN");
-  row(t, "BMS IND (PC0)", "%s", FEB_HW_BMS_Indicator_Get() ? "ON" : "off");
-  row(t, "TSMS indicator", "%s", FEB_HW_TSMS_Indicator_Get() ? "ON" : "off");
-  row(t, "HV safe", "%s", FEB_HW_Is_HV_Safe() ? "YES" : "no");
+  t.row("AIR+ sense", "%s", FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
+  t.row("AIR- sense", "%s", FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
+  t.row("Precharge sense", "%s", FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
+  t.row("Shutdown loop", "%s", FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
+  t.row("IMD status", "%s",
+        FEB_HW_IMD_Sense() == FEB_RELAY_STATE_CLOSE ? "OK (armed)"
+                                                    : (FEB_SM_IMD_Armed() ? "FAULT" : "LOW (not armed)"));
+  t.row("Reset button", "%s", FEB_HW_Reset_Button_Pressed() ? "PRESSED" : "NOT_PRESSED");
+  t.row("BMS SHDN (PC1)", "%s", FEB_HW_BMS_Shutdown_Get() ? "CLOSED" : "OPEN");
+  t.row("BMS IND (PC0)", "%s", FEB_HW_BMS_Indicator_Get() ? "ON" : "off");
+  t.row("TSMS indicator", "%s", FEB_HW_TSMS_Indicator_Get() ? "ON" : "off");
+  t.row("HV safe", "%s", FEB_HW_Is_HV_Safe() ? "YES" : "no");
 }
 
 void cmd_bms_charger(Interaction &io, std::span<char *const>)
@@ -509,38 +492,36 @@ void cmd_bms_charger(Interaction &io, std::span<char *const>)
 
   {
     /* Charger -> BMS (Charger_Status, 0x18FF50E5). */
-    static constexpr Column kCols[] = {{"Field", 16}, {"Value", 26}};
-    Table t(io, kCols, "Charger -> BMS", false);
+    KVTable t(io, 16, 26, "Charger -> BMS");
 
     if (!s.ever_seen)
     {
-      row(t, "Link", "no charger frames on bus");
+      t.row("Link", "no charger frames on bus");
     }
     else
     {
-      row(t, "Link", "%s (age %lu ms, rx %lu)", s.present ? "PRESENT" : "TIMEOUT", (unsigned long)s.age_ms,
-          (unsigned long)s.rx_count);
-      row(t, "Output V", "%.1f V", (double)(s.op_voltage_dV / 10.0f));
-      row(t, "Output I", "%.1f A", (double)(s.op_current_dA / 10.0f));
-      row(t, "HW status", "%s", s.hw_status ? "FAIL" : "OK");
-      row(t, "Temperature", "%s", s.temperature ? "FAULT" : "OK");
-      row(t, "Input voltage", "%s", s.input_voltage ? "FAULT" : "OK");
-      row(t, "Charger state", "%s", s.state ? "OFF" : "CHARGING");
-      row(t, "Comm state", "%s", s.communication_state ? "TIMEOUT" : "OK");
+      t.row("Link", "%s (age %lu ms, rx %lu)", s.present ? "PRESENT" : "TIMEOUT", (unsigned long)s.age_ms,
+            (unsigned long)s.rx_count);
+      t.row("Output V", "%.1f V", (double)(s.op_voltage_dV / 10.0f));
+      t.row("Output I", "%.1f A", (double)(s.op_current_dA / 10.0f));
+      t.row("HW status", "%s", s.hw_status ? "FAIL" : "OK");
+      t.row("Temperature", "%s", s.temperature ? "FAULT" : "OK");
+      t.row("Input voltage", "%s", s.input_voltage ? "FAULT" : "OK");
+      t.row("Charger state", "%s", s.state ? "OFF" : "CHARGING");
+      t.row("Comm state", "%s", s.communication_state ? "TIMEOUT" : "OK");
     }
   }
 
   /* BMS -> charger (Charger_Limits, 0x1806E5F4). */
-  static constexpr Column kCols[] = {{"Field", 16}, {"Value", 26}};
-  Table t(io, kCols, "BMS -> Charger", false);
+  KVTable t(io, 16, 26, "BMS -> Charger");
 
-  row(t, "SM state", "%s", state_name(FEB_SM_Get_Current_State()));
-  row(t, "Target V", "%.1f V", (double)(s.cmd_voltage_dV / 10.0f));
-  row(t, "Max I", "%.1f A", (double)(s.cmd_current_dA / 10.0f));
-  row(t, "Control", "%s", s.control ? "STOP" : "START");
-  row(t, "Trickle", "%s%s", s.trickle_active ? "ACTIVE" : "off",
-      s.trickle_active ? (s.trickle_on ? " (on)" : " (rest)") : "");
-  row(t, "Done charging", "%s", s.done_charging ? "YES" : "no");
+  t.row("SM state", "%s", state_name(FEB_SM_Get_Current_State()));
+  t.row("Target V", "%.1f V", (double)(s.cmd_voltage_dV / 10.0f));
+  t.row("Max I", "%.1f A", (double)(s.cmd_current_dA / 10.0f));
+  t.row("Control", "%s", s.control ? "STOP" : "START");
+  t.row("Trickle", "%s%s", s.trickle_active ? "ACTIVE" : "off",
+        s.trickle_active ? (s.trickle_on ? " (on)" : " (rest)") : "");
+  t.row("Done charging", "%s", s.done_charging ? "YES" : "no");
 }
 
 void cmd_bms_ivt(Interaction &io, std::span<char *const>)
@@ -548,26 +529,24 @@ void cmd_bms_ivt(Interaction &io, std::span<char *const>)
   const FEB_CAN_IVT_Data_t *ivt = FEB_CAN_IVT_GetData();
   const std::uint32_t age = HAL_GetTick() - ivt->last_rx_tick;
 
-  static constexpr Column kCols[] = {{"Field", 16}, {"Value", 22}};
-  Table t(io, kCols, "IVT Sensor", false);
+  KVTable t(io, 16, 22, "IVT Sensor");
 
-  row(t, "Pack current", "%.2f A", (double)(ivt->current_mA / 1000.0f));
-  row(t, "Voltage 1", "%.2f V", (double)(ivt->voltage_1_mV / 1000.0f));
-  row(t, "Voltage 2", "%.2f V", (double)(ivt->voltage_2_mV / 1000.0f));
-  row(t, "Voltage 3", "%.2f V", (double)(ivt->voltage_3_mV / 1000.0f));
-  row(t, "Pack voltage", "%.2f V (U%d)", (double)FEB_CAN_IVT_GetVoltage(), FEB_IVT_PACK_VOLTAGE_CHANNEL);
-  row(t, "Temperature", "%.1f C", (double)ivt->temperature_C);
-  row(t, "Data age", "%lu ms (%s)", (unsigned long)age, FEB_CAN_IVT_IsDataFresh(1000) ? "FRESH" : "STALE");
+  t.row("Pack current", "%.2f A", (double)(ivt->current_mA / 1000.0f));
+  t.row("Voltage 1", "%.2f V", (double)(ivt->voltage_1_mV / 1000.0f));
+  t.row("Voltage 2", "%.2f V", (double)(ivt->voltage_2_mV / 1000.0f));
+  t.row("Voltage 3", "%.2f V", (double)(ivt->voltage_3_mV / 1000.0f));
+  t.row("Pack voltage", "%.2f V (U%d)", (double)FEB_CAN_IVT_GetVoltage(), FEB_IVT_PACK_VOLTAGE_CHANNEL);
+  t.row("Temperature", "%.1f C", (double)ivt->temperature_C);
+  t.row("Data age", "%lu ms (%s)", (unsigned long)age, FEB_CAN_IVT_IsDataFresh(1000) ? "FRESH" : "STALE");
 }
 
 void cmd_bms_spi(Interaction &io, std::span<char *const>)
 {
-  static constexpr Column kCols[] = {{"Field", 18}, {"Value", 18}};
-  Table t(io, kCols, "isoSPI", false);
+  KVTable t(io, 18, 18, "isoSPI");
 
-  row(t, "Mode", "%s", isospi_mode_name());
-  row(t, "Primary channel", "SPI%d", ISOSPI_PRIMARY_CHANNEL);
-  row(t, "Failover thresh", "%d PEC errors", ISOSPI_FAILOVER_PEC_THRESHOLD);
+  t.row("Mode", "%s", isospi_mode_name());
+  t.row("Primary channel", "SPI%d", ISOSPI_PRIMARY_CHANNEL);
+  t.row("Failover thresh", "%d PEC errors", ISOSPI_FAILOVER_PEC_THRESHOLD);
 }
 
 const char *err_type_name(std::uint8_t err)
@@ -593,44 +572,42 @@ void cmd_bms_errors(Interaction &io, std::span<char *const>)
 {
   const std::uint8_t err = FEB_ADBMS_Get_Error_Type();
 
-  static constexpr Column kCols[] = {{"Field", 14}, {"Value", 26}};
-  Table t(io, kCols, "Errors", false);
+  KVTable t(io, 14, 26, "Errors");
 
-  row(t, "Error type", "0x%02X (%s)", err, err_type_name(err));
-  row(t, "State", "%s", state_name(FEB_SM_Get_Current_State()));
-  row(t, "Faulted", "%s", FEB_SM_Is_Faulted() ? "YES" : "no");
-  row(t, "HV active", "%s", FEB_SM_Is_HV_Active() ? "YES" : "no");
+  t.row("Error type", "0x%02X (%s)", err, err_type_name(err));
+  t.row("State", "%s", state_name(FEB_SM_Get_Current_State()));
+  t.row("Faulted", "%s", FEB_SM_Is_Faulted() ? "YES" : "no");
+  t.row("HV active", "%s", FEB_SM_Is_HV_Active() ? "YES" : "no");
 }
 
 void cmd_bms_config(Interaction &io, std::span<char *const>)
 {
-  static constexpr Column kCols[] = {{"Field", 18}, {"Value", 24}};
-  Table t(io, kCols, "Configuration", false);
+  KVTable t(io, 18, 24, "Configuration");
 
-  row(t, "Banks", "%d", FEB_NBANKS);
-  row(t, "ICs per bank", "%d", FEB_NUM_ICPBANK);
-  row(t, "Cells per bank", "%d", FEB_NUM_CELLS_PER_BANK);
-  row(t, "Temp sensors", "%d", FEB_NUM_TEMP_SENSORS);
-  row(t, "Total cells", "%d", FEB_NBANKS * FEB_NUM_CELLS_PER_BANK);
-  row(t, "isoSPI mode", "%s", isospi_mode_name());
-  row(t, "Max cell V", "%.3f V", (double)(FEB_CELL_MAX_VOLTAGE_MV / 1000.0f));
-  row(t, "Min cell V", "%.3f V", (double)(FEB_CELL_MIN_VOLTAGE_MV / 1000.0f));
-  row(t, "Max cell temp", "%.1f C", (double)(FEB_CELL_MAX_TEMP_DC / 10.0f));
-  row(t, "Min cell temp", "%.1f C", (double)(FEB_CELL_MIN_TEMP_DC / 10.0f));
+  t.row("Banks", "%d", FEB_NBANKS);
+  t.row("ICs per bank", "%d", FEB_NUM_ICPBANK);
+  t.row("Cells per bank", "%d", FEB_NUM_CELLS_PER_BANK);
+  t.row("Temp sensors", "%d", FEB_NUM_TEMP_SENSORS);
+  t.row("Total cells", "%d", FEB_NBANKS * FEB_NUM_CELLS_PER_BANK);
+  t.row("isoSPI mode", "%s", isospi_mode_name());
+  t.row("Max cell V", "%.3f V", (double)(FEB_CELL_MAX_VOLTAGE_MV / 1000.0f));
+  t.row("Min cell V", "%.3f V", (double)(FEB_CELL_MIN_VOLTAGE_MV / 1000.0f));
+  t.row("Max cell temp", "%.1f C", (double)(FEB_CELL_MAX_TEMP_DC / 10.0f));
+  t.row("Min cell temp", "%.1f C", (double)(FEB_CELL_MIN_TEMP_DC / 10.0f));
 #if FEB_BMS_DISABLE_TEMP_CHECKS
-  row(t, "Temp checks", "DISABLED (BENCH MODE)");
+  t.row("Temp checks", "DISABLED (BENCH MODE)");
 #else
-  row(t, "Temp checks", "enabled");
+  t.row("Temp checks", "enabled");
 #endif
 #if FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS
-  row(t, "Volt checks (C)", "DISABLED (BENCH MODE)");
+  t.row("Volt checks (C)", "DISABLED (BENCH MODE)");
 #else
-  row(t, "Volt checks (C)", "enabled");
+  t.row("Volt checks (C)", "enabled");
 #endif
 #if FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS
-  row(t, "Volt checks (S)", "DISABLED (BENCH MODE)");
+  t.row("Volt checks (S)", "DISABLED (BENCH MODE)");
 #else
-  row(t, "Volt checks (S)", "enabled");
+  t.row("Volt checks (S)", "enabled");
 #endif
 }
 
@@ -668,13 +645,12 @@ void cmd_bms_mem(Interaction &io, std::span<char *const>)
   const std::size_t free_heap = xPortGetFreeHeapSize();
   const std::size_t used = total - free_heap;
 
-  static constexpr Column kCols[] = {{"Field", 16}, {"Value", 20}};
-  Table t(io, kCols, "Heap", false);
+  KVTable t(io, 16, 20, "Heap");
 
-  row(t, "Total", "%u bytes", (unsigned)total);
-  row(t, "Free", "%u bytes", (unsigned)free_heap);
-  row(t, "Min free ever", "%u bytes", (unsigned)xPortGetMinimumEverFreeHeapSize());
-  row(t, "Used", "%u bytes (%u%%)", (unsigned)used, (unsigned)((used * 100) / (total > 0 ? total : 1)));
+  t.row("Total", "%u bytes", (unsigned)total);
+  t.row("Free", "%u bytes", (unsigned)free_heap);
+  t.row("Min free ever", "%u bytes", (unsigned)xPortGetMinimumEverFreeHeapSize());
+  t.row("Used", "%u bytes (%u%%)", (unsigned)used, (unsigned)((used * 100) / (total > 0 ? total : 1)));
 }
 
 constexpr const char *kPingPongModeNames[] = {"OFF", "PING", "PONG"};
@@ -924,16 +900,15 @@ void cmd_bms_reg_status(Interaction &io, std::span<char *const>)
   std::uint8_t sid[6];
   ADBMS_ReadReg(RDSID, 0, sid);
 
-  static constexpr Column kCols[] = {{"Field", 8}, {"Value", 20}};
-  Table t(io, kCols, "ADBMS6830B Status (IC 0)", false);
+  KVTable t(io, 8, 20, "ADBMS6830B Status (IC 0)");
 
-  row(t, "VREF2", "%.3f V", (double)(ADBMS_CodeToVoltage_mV(stata.values.VREF2) / 1000.0f));
-  row(t, "ITMP", "%.1f C", (double)ADBMS_CodeToTemp_C(stata.values.ITMP));
-  row(t, "VA", "%.3f V", (double)(ADBMS_CodeToVoltage_mV(stata.values.VA) / 1000.0f));
-  row(t, "VD", "%.3f V", (double)(ADBMS_CodeToVoltage_mV(statb.bits.VD) / 1000.0f));
-  row(t, "UV", "0x%04X", (unsigned)(statb.bits.C_UV_LO | ((std::uint16_t)statb.bits.C_UV_HI << 8)));
-  row(t, "OV", "0x%04X", (unsigned)(statb.bits.C_OV_LO | ((std::uint16_t)statb.bits.C_OV_HI << 8)));
-  row(t, "SID", "%02X%02X%02X%02X%02X%02X", sid[5], sid[4], sid[3], sid[2], sid[1], sid[0]);
+  t.row("VREF2", "%.3f V", (double)(ADBMS_CodeToVoltage_mV(stata.values.VREF2) / 1000.0f));
+  t.row("ITMP", "%.1f C", (double)ADBMS_CodeToTemp_C(stata.values.ITMP));
+  t.row("VA", "%.3f V", (double)(ADBMS_CodeToVoltage_mV(stata.values.VA) / 1000.0f));
+  t.row("VD", "%.3f V", (double)(ADBMS_CodeToVoltage_mV(statb.bits.VD) / 1000.0f));
+  t.row("UV", "0x%04X", (unsigned)(statb.bits.C_UV_LO | ((std::uint16_t)statb.bits.C_UV_HI << 8)));
+  t.row("OV", "0x%04X", (unsigned)(statb.bits.C_OV_LO | ((std::uint16_t)statb.bits.C_OV_HI << 8)));
+  t.row("SID", "%02X%02X%02X%02X%02X%02X", sid[5], sid[4], sid[3], sid[2], sid[1], sid[0]);
 }
 
 constexpr std::array<Command, 6> kRegSubcommands = {{

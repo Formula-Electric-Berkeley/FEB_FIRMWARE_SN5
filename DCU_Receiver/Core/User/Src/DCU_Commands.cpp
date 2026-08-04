@@ -85,33 +85,15 @@ void cmd_dcu_radio_status(Interaction &io, std::span<char *const>)
   FEB_RFM95_GetStats(&stats);
 
   {
-    static constexpr Column kCols[] = {{"Field", 12}, {"Value", 14}};
-    Table t(io, kCols, "Radio Status", false);
+    KVTable t(io, 12, 14, "Radio Status");
 
-    t.cell("Last RSSI");
-    t.cell("%d dBm", (int)stats.last_rssi);
-    t.end_row();
-
-    t.cell("Last SNR");
-    t.cell("%d dB", (int)stats.last_snr);
-    t.end_row();
-
-    t.cell("Listen mode");
-    t.cell("%s", FEB_Task_Radio_GetListenMode() ? "ON" : "off");
-    t.end_row();
-
-    t.cell("OpMode");
-    t.cell("0x%02X", rfm95_read_register(&s_debug_handle, RFM95_REG_OP_MODE));
-    t.end_row();
-
-    t.cell("Frequency");
-    t.cell("%lu Hz", (unsigned long)radio_read_freq_hz());
-    t.end_row();
-
-    t.cell("ModemCfg1/2");
-    t.cell("0x%02X 0x%02X", rfm95_read_register(&s_debug_handle, RFM95_REG_MODEM_CONFIG_1),
-           rfm95_read_register(&s_debug_handle, RFM95_REG_MODEM_CONFIG_2));
-    t.end_row();
+    t.row("Last RSSI", "%d dBm", (int)stats.last_rssi);
+    t.row("Last SNR", "%d dB", (int)stats.last_snr);
+    t.row("Listen mode", "%s", FEB_Task_Radio_GetListenMode() ? "ON" : "off");
+    t.row("OpMode", "0x%02X", rfm95_read_register(&s_debug_handle, RFM95_REG_OP_MODE));
+    t.row("Frequency", "%lu Hz", (unsigned long)radio_read_freq_hz());
+    t.row("ModemCfg1/2", "0x%02X 0x%02X", rfm95_read_register(&s_debug_handle, RFM95_REG_MODEM_CONFIG_1),
+          rfm95_read_register(&s_debug_handle, RFM95_REG_MODEM_CONFIG_2));
   }
 
   rfm95_debug_gpio_status(&s_debug_handle); /* reports through FEB_Log, not this console */
@@ -122,36 +104,15 @@ void cmd_dcu_radio_stats(Interaction &io, std::span<char *const>)
   FEB_RFM95_Stats_t s;
   FEB_RFM95_GetStats(&s);
 
-  static constexpr Column kCols[] = {{"Field", 12}, {"Value", 14}};
-  Table t(io, kCols, "Radio Stats", false);
+  KVTable t(io, 12, 14, "Radio Stats");
 
-  t.cell("TX count");
-  t.cell("%lu", (unsigned long)s.tx_count);
-  t.end_row();
-
-  t.cell("TX errors");
-  t.cell("%lu", (unsigned long)s.tx_errors);
-  t.end_row();
-
-  t.cell("RX count");
-  t.cell("%lu", (unsigned long)s.rx_count);
-  t.end_row();
-
-  t.cell("RX errors");
-  t.cell("%lu", (unsigned long)s.rx_errors);
-  t.end_row();
-
-  t.cell("RX timeouts");
-  t.cell("%lu", (unsigned long)s.rx_timeouts);
-  t.end_row();
-
-  t.cell("Last RSSI");
-  t.cell("%d dBm", (int)s.last_rssi);
-  t.end_row();
-
-  t.cell("Last SNR");
-  t.cell("%d dB", (int)s.last_snr);
-  t.end_row();
+  t.row("TX count", "%lu", (unsigned long)s.tx_count);
+  t.row("TX errors", "%lu", (unsigned long)s.tx_errors);
+  t.row("RX count", "%lu", (unsigned long)s.rx_count);
+  t.row("RX errors", "%lu", (unsigned long)s.rx_errors);
+  t.row("RX timeouts", "%lu", (unsigned long)s.rx_timeouts);
+  t.row("Last RSSI", "%d dBm", (int)s.last_rssi);
+  t.row("Last SNR", "%d dB", (int)s.last_snr);
 }
 
 void cmd_dcu_radio_tx(Interaction &io, std::span<char *const> args)
