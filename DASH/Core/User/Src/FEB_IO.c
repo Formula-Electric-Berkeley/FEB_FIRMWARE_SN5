@@ -43,9 +43,8 @@ static HAL_StatusTypeDef status;
 // MARK: Initialization
 void FEB_IO_Init(void)
 {
-  uint8_t init_val[2]; // To initialize the IO expander GPIO, we first transmit 2 bytes of all 1s
-  // memset(init_val, 0xFF, sizeof(init_val));
-  init_val[0] = 0b11100001;
+  uint8_t init_val[2];
+  init_val[0] = 0b11111111;
   init_val[1] = 0b11111111;
 
   status = FEB_I2C_Master_Transmit(&hi2c1, IOEXP_ADDR << 1, init_val, 2, HAL_MAX_DELAY);
@@ -191,7 +190,7 @@ void FEB_IO_Set_Buzzer(bool new_state)
 
   // printf(state.buzzer_enabled ? "buzzing\r\n" : "silent\r\n");
   uint8_t send_val[2];
-  send_val[0] = state.buzzer_enabled ? 0b11100000 : 0b11100001;
+  send_val[0] = state.buzzer_enabled ? 0b11111110 : 0b11111111;
   send_val[1] = 0b11111111;
 
   status = FEB_I2C_Master_Transmit(&hi2c1, IOEXP_ADDR << 1, send_val, 2, HAL_MAX_DELAY);
