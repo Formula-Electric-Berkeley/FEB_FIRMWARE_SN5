@@ -117,7 +117,7 @@ extern "C"
   void FEB_Cell_Balance_ServiceStop(void); // ADBMSTask only: bus writes for a pending stop
   void FEB_Cell_Balance_Start(void);
   void FEB_Cell_Balance_Process(void);
-  bool FEB_Cell_Balancing_Status(void);
+  bool FEB_Cell_Balance_Needed(void); // pack needs balancing (delta >= threshold, not blocked); NOT "is running"
   uint16_t FEB_ADBMS_GET_Balancing_Cell_Count(void); // # of cells with discharge active
   float FEB_ADBMS_GET_Cell_Voltage_Delta_mV(void);   // pack max-min cell delta in mV, -1 if no valid data
   bool FEB_Cell_Balance_Complete(void);              // true when valid readings AND delta < threshold

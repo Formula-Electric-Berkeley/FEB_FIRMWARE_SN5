@@ -701,7 +701,7 @@ bool FEB_ADBMS_Init(void)
     }
   }
 
-  // Seed pack-wide temp stats to NaN so FEB_Cell_Balancing_Status() fails closed
+  // Seed pack-wide temp stats to NaN so FEB_Cell_Balance_Needed() fails closed
   // before the first temperature scan completes. Zero would let the gate
   // (max < soft limit) pass with no telemetry.
   FEB_ACC.pack_max_temp = NAN;
@@ -1053,7 +1053,11 @@ void FEB_Cell_Balance_Process()
   ADBMS6830B_wrcfgb(FEB_NUM_IC, IC_Config);
 }
 
-bool FEB_Cell_Balancing_Status(void)
+// "Should we be balancing?" predicate — pack delta >= slippage threshold and
+// nothing blocking (temp gate, telemetry). Read-only: callable from any state,
+// so it must not warn; the state-gated actuator FEB_Cell_Balance_Process()
+// owns the operator-facing warnings.
+bool FEB_Cell_Balance_Needed(void)
 {
 #if !FEB_BMS_DISABLE_TEMP_CHECKS
   // The per-cell loop used to index temp_sensor_readings by cell index, which
@@ -1065,7 +1069,7 @@ bool FEB_Cell_Balancing_Status(void)
   const float max_temp_dC = FEB_ADBMS_GET_ACC_MAX_Temp() * 10.0f;
   if (!(max_temp_dC < FEB_CONFIG_CELL_SOFT_MAX_TEMP_dC))
   {
-    LOG_W(TAG_BALANCE, "Temp limit: pack max=%.1fC, stopping", max_temp_dC / 10.0f);
+    LOG_D(TAG_BALANCE, "Temp limit: pack max=%.1fC, balance blocked", max_temp_dC / 10.0f);
     return false;
   }
 #endif
@@ -1093,7 +1097,7 @@ bool FEB_Cell_Balancing_Status(void)
 
   if (max_v < 0 || min_v > 1e8f)
   {
-    LOG_W(TAG_BALANCE, "Invalid voltage readings, cannot balance");
+    LOG_D(TAG_BALANCE, "Invalid voltage readings, cannot balance");
     return false;
   }
 
@@ -1159,7 +1163,7 @@ float FEB_ADBMS_GET_Cell_Voltage_Delta_mV(void)
 }
 
 // "Done balancing": valid readings AND pack converged below the slippage
-// threshold. Distinct from !FEB_Cell_Balancing_Status(), which also returns
+// threshold. Distinct from !FEB_Cell_Balance_Needed(), which also returns
 // false when balancing is blocked (too hot / no telemetry).
 bool FEB_Cell_Balance_Complete(void)
 {

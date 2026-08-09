@@ -106,10 +106,11 @@ CellExtremes cell_extremes()
 void cmd_bms_status(Interaction &io, std::span<char *const>)
 {
   const CellExtremes e = cell_extremes();
+  const BMS_State_t state = FEB_SM_Get_Current_State();
 
   KVTable t(io, 16, 28, "BMS Status");
 
-  t.row("State", "%s", state_name(FEB_SM_Get_Current_State()));
+  t.row("State", "%s", state_name(state));
   t.row("Limits profile", "%s",
         FEB_ADBMS_Get_Validation_Profile() == FEB_VALIDATION_PROFILE_CHARGING ? "CHARGING" : "NORMAL");
   t.row("Pack voltage", "%.2f V", (double)FEB_ADBMS_GET_ACC_Total_Voltage());
@@ -117,7 +118,15 @@ void cmd_bms_status(Interaction &io, std::span<char *const>)
   t.row("Max cell (C/S)", "%.3f / %.3f V", (double)e.max_c, (double)e.max_s);
   t.row("Temps min/max", "%.1f / %.1f C", (double)FEB_ADBMS_GET_ACC_MIN_Temp(), (double)FEB_ADBMS_GET_ACC_MAX_Temp());
   t.row("Temps avg", "%.1f C", (double)FEB_ADBMS_GET_ACC_AVG_Temp());
-  t.row("Balancing", "%s", FEB_Cell_Balancing_Status() ? "ON" : "off");
+  if (state == BMS_STATE_BALANCE)
+  {
+    t.row("Balancing", "ON (%u cells)", (unsigned)FEB_ADBMS_GET_Balancing_Cell_Count());
+  }
+  else
+  {
+    t.row("Balancing", "%s", "off");
+  }
+  t.row("Needs balance", "%s", FEB_Cell_Balance_Needed() ? "YES" : "no");
   t.row("Cell delta", "%.0f mV", (double)FEB_ADBMS_GET_Cell_Voltage_Delta_mV());
   t.row("Balance done", "%s", FEB_Cell_Balance_Complete() ? "YES" : "no");
   t.row("Error type", "0x%02X", FEB_ADBMS_Get_Error_Type());
@@ -423,8 +432,17 @@ bool is_balancing_allowed()
 
 void cmd_bms_balance(Interaction &io, std::span<char *const>)
 {
-  io.println("Balancing: %s", FEB_Cell_Balancing_Status() ? "ON" : "off");
-  io.println("State: %s (balancing needs BATTERY_FREE or BALANCE)", state_name(FEB_SM_Get_Current_State()));
+  const BMS_State_t state = FEB_SM_Get_Current_State();
+  if (state == BMS_STATE_BALANCE)
+  {
+    io.println("Balancing: ON (%u cells)", (unsigned)FEB_ADBMS_GET_Balancing_Cell_Count());
+  }
+  else
+  {
+    io.println("Balancing: off");
+  }
+  io.println("Needs balance: %s", FEB_Cell_Balance_Needed() ? "yes" : "no");
+  io.println("State: %s (balancing needs BATTERY_FREE or BALANCE)", state_name(state));
 }
 
 void cmd_bms_balance_on(Interaction &io, std::span<char *const>)
