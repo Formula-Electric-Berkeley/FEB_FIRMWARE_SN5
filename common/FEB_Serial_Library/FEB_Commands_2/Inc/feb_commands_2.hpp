@@ -43,36 +43,25 @@ inline constexpr std::array<Command, 7> kLogSubcommands = {{
      .csv_hidden = true},
 }};
 
+inline constexpr std::array kEchoParams = {param_str("text")};
+
 inline constexpr std::array<Command, 8> kSystemCommands = {{
     {.name = "echo",
      .description = "Print arguments: echo <text>",
      .handler = sys::echo,
-     .args = "$text",
-     .csv_hidden = true,
-     .read_only = true},
-    {.name = "help",
-     .description = "Show this help screen",
-     .handler = sys::help,
-     .csv_hidden = true,
-     .read_only = true},
+     .params = kEchoParams,
+     .csv_hidden = true},
+    {.name = "help", .description = "Show this help screen", .handler = sys::help, .csv_hidden = true},
     {.name = "commands",
      .description = "List commands (for CSV hosts)",
      .handler = sys::commands,
      .text_hidden = true,
-     .csv_hidden = true,
-     .read_only = true},
-    {.name = "hello", .description = "Heartbeat / board discovery", .handler = sys::hello, .read_only = true},
-    {.name = "version",
-     .description = "Firmware version, commit, build and flash provenance",
-     .handler = sys::version,
-     .read_only = true},
-    {.name = "uptime", .description = "Milliseconds since boot", .handler = sys::uptime, .read_only = true},
+     .csv_hidden = true},
+    {.name = "hello", .description = "Heartbeat / board discovery", .handler = sys::hello},
+    {.name = "version", .description = "Firmware version, commit, build and flash provenance", .handler = sys::version},
+    {.name = "uptime", .description = "Milliseconds since boot", .handler = sys::uptime},
     {.name = "reboot", .description = "Perform a software reset", .handler = sys::reboot},
-    {.name = "log",
-     .description = "Show or set the log level",
-     .handler = sys::log,
-     .subs = kLogSubcommands,
-     .read_only = true},
+    {.name = "log", .description = "Show or set the log level", .handler = sys::log, .subs = kLogSubcommands},
 }};
 
 } // namespace feb::console

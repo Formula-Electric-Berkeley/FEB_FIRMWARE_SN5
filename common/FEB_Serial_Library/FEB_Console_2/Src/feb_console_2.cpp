@@ -335,13 +335,12 @@ void run(Interaction &io, const Command &cmd, std::span<char *const> args, const
 
   if (cmd.handler != nullptr)
   {
-    if (cmd.read_only)
-    {
-      io.flags("read_only");
-    }
     const char *prev = io.path();
     io.set_path(full);
-    cmd.handler(io, args);
+    if (io.bind(args, cmd.params))
+    {
+      cmd.handler(io, args);
+    }
     io.set_path(prev);
   }
   else if (args.size() >= 2)
@@ -520,6 +519,74 @@ bool Interaction::arg_bool(std::span<char *const> args, std::size_t index, bool 
 
   error("error", "not_a_boolean", "%s", tok);
   return false;
+}
+
+bool Interaction::bind(std::span<char *const> args, std::span<const Param> params)
+{
+  params_ = params;
+
+  for (std::size_t i = 0; i < params.size() && i < kMaxParams; i++)
+  {
+    const std::size_t token = i + 1; // args[0] is the name of the command
+    bool ok = false;
+
+    switch (params[i].type)
+    {
+    case Param::kInt:
+      ok = arg_int(args, token, &values_[i].i, params[i].min, params[i].max);
+      break;
+    case Param::kFloat:
+      ok = arg_float(args, token, &values_[i].f);
+      break;
+    case Param::kBool:
+      ok = arg_bool(args, token, &values_[i].b);
+      break;
+    case Param::kStr:
+      values_[i].s = arg_str(args, token);
+      ok = values_[i].s != nullptr;
+      break;
+    }
+
+    if (!ok)
+    {
+      params_ = {};
+      return false;
+    }
+  }
+  return true;
+}
+
+const Interaction::Value *Interaction::value(std::size_t index, Param::Type type) const
+{
+  if (index >= params_.size() || index >= kMaxParams || params_[index].type != type)
+  {
+    return nullptr;
+  }
+  return &values_[index];
+}
+
+long Interaction::param_int(std::size_t index) const
+{
+  const Value *v = value(index, Param::kInt);
+  return (v != nullptr) ? v->i : 0;
+}
+
+float Interaction::param_float(std::size_t index) const
+{
+  const Value *v = value(index, Param::kFloat);
+  return (v != nullptr) ? v->f : 0.0f;
+}
+
+bool Interaction::param_bool(std::size_t index) const
+{
+  const Value *v = value(index, Param::kBool);
+  return (v != nullptr) && v->b;
+}
+
+const char *Interaction::param_str(std::size_t index) const
+{
+  const Value *v = value(index, Param::kStr);
+  return (v != nullptr) ? v->s : nullptr;
 }
 
 int Interaction::flush()
@@ -728,24 +795,48 @@ int Interaction::flags(const char *flags)
 
 int Interaction::option(const Command &cmd, const char *path)
 {
-  const bool prefixed = (path != nullptr) && (path[0] != '\0');
-  char command[96];
+  char args[80];
+  std::size_t n = 0;
 
-  if (prefixed && cmd.args != nullptr)
+  for (const Param &p : cmd.params)
   {
-    std::snprintf(command, sizeof(command), "%s %s %s", path, cmd.name, cmd.args);
+    char *at = args + n;
+    const std::size_t room = sizeof(args) - n;
+    int w = 0;
+
+    switch (p.type)
+    {
+    case Param::kInt:
+      w = (p.min == LONG_MIN && p.max == LONG_MAX) ? std::snprintf(at, room, " $%s:int", p.name)
+                                                   : std::snprintf(at, room, " $%s:int:%ld:%ld", p.name, p.min, p.max);
+      break;
+    case Param::kFloat:
+      w = std::snprintf(at, room, " $%s:float", p.name);
+      break;
+    case Param::kBool:
+      w = std::snprintf(at, room, " $%s:bool", p.name);
+      break;
+    case Param::kStr:
+      w = std::snprintf(at, room, " $%s", p.name);
+      break;
+    }
+
+    if (w < 0 || static_cast<std::size_t>(w) >= room)
+    {
+      break;
+    }
+    n += static_cast<std::size_t>(w);
   }
-  else if (prefixed)
+  args[n] = '\0';
+
+  char command[96];
+  if ((path != nullptr) && (path[0] != '\0'))
   {
-    std::snprintf(command, sizeof(command), "%s %s", path, cmd.name);
-  }
-  else if (cmd.args != nullptr)
-  {
-    std::snprintf(command, sizeof(command), "%s %s", cmd.name, cmd.args);
+    std::snprintf(command, sizeof(command), "%s %s%s", path, cmd.name, args);
   }
   else
   {
-    std::snprintf(command, sizeof(command), "%s", cmd.name);
+    std::snprintf(command, sizeof(command), "%s%s", cmd.name, args);
   }
 
   return option(cmd.name, command, cmd.description);

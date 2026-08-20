@@ -24,9 +24,43 @@ inline constexpr std::size_t kMaxArgs = 32;
 inline constexpr std::size_t kLineBufferSize = 192;
 inline constexpr std::size_t kRowBufferSize = 320;
 inline constexpr std::size_t kTxIdMaxLen = 32;
+inline constexpr std::size_t kMaxParams = 4;
 
 class Console;
 class Interaction;
+
+struct Param
+{
+  enum Type : std::uint8_t
+  {
+    kInt,
+    kFloat,
+    kBool,
+    kStr
+  };
+
+  const char *name;
+  Type type = kStr;
+  long min = LONG_MIN; // kInt only
+  long max = LONG_MAX;
+};
+
+constexpr Param param_int(const char *name, long min = LONG_MIN, long max = LONG_MAX)
+{
+  return {name, Param::kInt, min, max};
+}
+constexpr Param param_float(const char *name)
+{
+  return {name, Param::kFloat};
+}
+constexpr Param param_bool(const char *name)
+{
+  return {name, Param::kBool};
+}
+constexpr Param param_str(const char *name)
+{
+  return {name, Param::kStr};
+}
 
 struct Command
 {
@@ -35,19 +69,18 @@ struct Command
   const char *name;
   const char *description;
   Handler handler = nullptr;
-  const char *args = nullptr; // placeholder suffix, e.g. "$timeout_ms:int"
 
+  std::span<const Param> params{};
   std::span<const Command> subs{};
 
   bool text_hidden = false; // omit from text-mode listings (`help`, parent screens)
   bool csv_hidden = false;  // omit from csv listings (`commands`, parent screens)
-  bool read_only = false;   // emits `flags,read_only` when run
 };
 
 template <std::size_t N>
 constexpr Command group(const char *name, const char *description, const std::array<Command, N> &subs)
 {
-  return {name, description, nullptr, nullptr, subs};
+  return {name, description, nullptr, {}, subs};
 }
 
 /**
@@ -83,6 +116,18 @@ template <std::size_t... Ns> constexpr auto concat(const std::array<Command, Ns>
       }(),
       ...);
   return out;
+}
+
+constexpr bool params_fit(std::span<const Command> cmds)
+{
+  for (const Command &c : cmds)
+  {
+    if (c.params.size() > kMaxParams || !params_fit(c.subs))
+    {
+      return false;
+    }
+  }
+  return true;
 }
 
 constexpr bool has_duplicate_names(std::span<const Command> cmds)
@@ -160,10 +205,14 @@ public:
   /** @p path is nullptr for a top-level command. */
   int option(const Command &cmd, const char *path = nullptr);
 
-  /**
-   * Each validates args[index] and, on failure, emits the `error` row itself
-   * before returning false. @p index counts from args[0] = the command name.
-   */
+  long param_int(std::size_t index) const;
+  float param_float(std::size_t index) const;
+  bool param_bool(std::size_t index) const;
+  const char *param_str(std::size_t index) const;
+
+  /* The dispatcher calls this before the handler. */
+  bool bind(std::span<char *const> args, std::span<const Param> params);
+
   bool arg_int(std::span<char *const> args, std::size_t index, long *out, long min = LONG_MIN, long max = LONG_MAX);
   bool arg_float(std::span<char *const> args, std::size_t index, float *out);
   /** Accepts on/off, true/false, yes/no, 1/0. */
@@ -199,6 +248,16 @@ private:
   friend class Table;
   friend class Console;
 
+  union Value
+  {
+    long i;
+    float f;
+    bool b;
+    const char *s;
+  };
+
+  const Value *value(std::size_t index, Param::Type type) const;
+
   int emit_row(const char *type, const char *body, std::size_t body_len);
 
   const Console *console_;
@@ -208,6 +267,8 @@ private:
   char line_[kRowBufferSize];
   std::size_t line_len_;
   const char *path_ = "";
+  std::span<const Param> params_{};
+  Value values_[kMaxParams] = {};
 };
 
 /** @p width is text-mode cosmetic only; CSV rows carry the full value. */

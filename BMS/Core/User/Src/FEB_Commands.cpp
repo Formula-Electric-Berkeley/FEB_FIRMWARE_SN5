@@ -225,14 +225,12 @@ void cmd_bms_therm_raw(Interaction &io, std::span<char *const>)
   io.println("Note: 0xFFFF / NaN = PEC failure on that aux register");
 }
 
-void cmd_bms_cell(Interaction &io, std::span<char *const> args)
+constexpr std::array kBmsCellParams = {param_int("bank", 1, FEB_NBANKS), param_int("cell", 1, FEB_NUM_CELLS_PER_BANK)};
+
+void cmd_bms_cell(Interaction &io, std::span<char *const>)
 {
-  long bank = 0;
-  long cell = 0;
-  if (!io.arg_int(args, 1, &bank, 1, FEB_NBANKS) || !io.arg_int(args, 2, &cell, 1, FEB_NUM_CELLS_PER_BANK))
-  {
-    return;
-  }
+  const long bank = io.param_int(0);
+  const long cell = io.param_int(1);
 
   const std::uint8_t bank_idx = (std::uint8_t)(bank - 1);
   const std::uint16_t cell_idx = (std::uint16_t)(cell - 1);
@@ -691,36 +689,33 @@ void cmd_bms_can_status(Interaction &io, std::span<char *const>)
   }
 }
 
-void set_pingpong_mode(Interaction &io, std::span<char *const> args, FEB_PingPong_Mode_t mode)
+void set_pingpong_mode(Interaction &io, long ch, FEB_PingPong_Mode_t mode)
 {
-  long ch = 0;
-  if (!io.arg_int(args, 1, &ch, 1, 4))
-  {
-    return;
-  }
   FEB_CAN_PingPong_SetMode((std::uint8_t)ch, mode);
   io.println("Channel %ld (0x%02X): %s mode started", ch, (unsigned)kPingPongFrameIds[ch - 1],
              kPingPongModeNames[mode]);
 }
 
-void cmd_bms_can_ping(Interaction &io, std::span<char *const> args)
+constexpr std::array kBmsCanPingParams = {param_int("channel", 1, 4)};
+
+void cmd_bms_can_ping(Interaction &io, std::span<char *const>)
 {
-  set_pingpong_mode(io, args, PINGPONG_MODE_PING);
+  set_pingpong_mode(io, io.param_int(0), PINGPONG_MODE_PING);
 }
 
-void cmd_bms_can_pong(Interaction &io, std::span<char *const> args)
+constexpr std::array kBmsCanPongParams = {param_int("channel", 1, 4)};
+
+void cmd_bms_can_pong(Interaction &io, std::span<char *const>)
 {
-  set_pingpong_mode(io, args, PINGPONG_MODE_PONG);
+  set_pingpong_mode(io, io.param_int(0), PINGPONG_MODE_PONG);
 }
+
+/* str, not int: the channel is 1-4 or the word "all". */
+constexpr std::array kBmsCanStopParams = {param_str("channel")};
 
 void cmd_bms_can_stop(Interaction &io, std::span<char *const> args)
 {
-  const char *target = io.arg_str(args, 1);
-  if (target == nullptr)
-  {
-    return;
-  }
-  if (iequal(target, "all"))
+  if (iequal(io.param_str(0), "all"))
   {
     FEB_CAN_PingPong_Reset();
     io.println("All channels stopped");
@@ -737,19 +732,19 @@ void cmd_bms_can_stop(Interaction &io, std::span<char *const> args)
 }
 
 constexpr std::array<Command, 4> kCanSubcommands = {{
-    {.name = "status",
-     .description = "Per-channel mode and counters",
-     .handler = cmd_bms_can_status,
-     .read_only = true},
+    {.name = "status", .description = "Per-channel mode and counters", .handler = cmd_bms_can_status},
     {.name = "ping",
      .description = "Start ping mode on a channel",
      .handler = cmd_bms_can_ping,
-     .args = "$channel:int"},
+     .params = kBmsCanPingParams},
     {.name = "pong",
      .description = "Start pong mode on a channel",
      .handler = cmd_bms_can_pong,
-     .args = "$channel:int"},
-    {.name = "stop", .description = "Stop one channel or all", .handler = cmd_bms_can_stop, .args = "$channel"},
+     .params = kBmsCanPongParams},
+    {.name = "stop",
+     .description = "Stop one channel or all",
+     .handler = cmd_bms_can_stop,
+     .params = kBmsCanStopParams},
 }};
 
 // MARK: ADBMS6830B register access
@@ -771,15 +766,10 @@ void cmd_bms_reg_list(Interaction &io, std::span<char *const>)
   }
 }
 
-/** Emits the `error` row itself when @p name is not a command of @p type. */
-const ADBMS_CmdInfo_t *find_reg_cmd(Interaction &io, std::span<char *const> args, ADBMS_CmdType_t type)
+/** Emits the `error` row itself when params[0] is not a command of @p type. */
+const ADBMS_CmdInfo_t *find_reg_cmd(Interaction &io, ADBMS_CmdType_t type)
 {
-  const char *name = io.arg_str(args, 1);
-  if (name == nullptr)
-  {
-    return nullptr;
-  }
-
+  const char *name = io.param_str(0);
   const ADBMS_CmdInfo_t *cmd = ADBMS_FindCmdByName(name);
   if (cmd == nullptr)
   {
@@ -796,9 +786,11 @@ const ADBMS_CmdInfo_t *find_reg_cmd(Interaction &io, std::span<char *const> args
   return cmd;
 }
 
-void cmd_bms_reg_read(Interaction &io, std::span<char *const> args)
+constexpr std::array kBmsRegReadParams = {param_str("name")};
+
+void cmd_bms_reg_read(Interaction &io, std::span<char *const>)
 {
-  const ADBMS_CmdInfo_t *cmd = find_reg_cmd(io, args, ADBMS_CMD_READ);
+  const ADBMS_CmdInfo_t *cmd = find_reg_cmd(io, ADBMS_CMD_READ);
   if (cmd == nullptr)
   {
     return;
@@ -825,19 +817,17 @@ void cmd_bms_reg_read(Interaction &io, std::span<char *const> args)
   }
 }
 
-void cmd_bms_reg_write(Interaction &io, std::span<char *const> args)
+constexpr std::array kBmsRegWriteParams = {param_str("name"), param_str("hex12")};
+
+void cmd_bms_reg_write(Interaction &io, std::span<char *const>)
 {
-  const ADBMS_CmdInfo_t *cmd = find_reg_cmd(io, args, ADBMS_CMD_WRITE);
+  const ADBMS_CmdInfo_t *cmd = find_reg_cmd(io, ADBMS_CMD_WRITE);
   if (cmd == nullptr)
   {
     return;
   }
 
-  const char *hex = io.arg_str(args, 2);
-  if (hex == nullptr)
-  {
-    return;
-  }
+  const char *hex = io.param_str(1);
   if (std::strlen(hex) != 12)
   {
     io.error("error", "bad_data_len", "need 12 hex chars (6 bytes)");
@@ -860,9 +850,11 @@ void cmd_bms_reg_write(Interaction &io, std::span<char *const> args)
   io.println("%s <- %02X%02X%02X%02X%02X%02X", cmd->name, data[0], data[1], data[2], data[3], data[4], data[5]);
 }
 
-void cmd_bms_reg_cmd(Interaction &io, std::span<char *const> args)
+constexpr std::array kBmsRegCmdParams = {param_str("name")};
+
+void cmd_bms_reg_cmd(Interaction &io, std::span<char *const>)
 {
-  const ADBMS_CmdInfo_t *cmd = find_reg_cmd(io, args, ADBMS_CMD_ACTION);
+  const ADBMS_CmdInfo_t *cmd = find_reg_cmd(io, ADBMS_CMD_ACTION);
   if (cmd == nullptr)
   {
     return;
@@ -877,13 +869,11 @@ void cmd_bms_reg_cmd(Interaction &io, std::span<char *const> args)
   io.println("Sent %s (0x%04X)", cmd->name, cmd->code);
 }
 
-void cmd_bms_reg_dump(Interaction &io, std::span<char *const> args)
+constexpr std::array kBmsRegDumpParams = {param_int("ic", 0, FEB_NUM_IC - 1)};
+
+void cmd_bms_reg_dump(Interaction &io, std::span<char *const>)
 {
-  long ic = 0;
-  if (!io.arg_int(args, 1, &ic, 0, FEB_NUM_IC - 1))
-  {
-    return;
-  }
+  const long ic = io.param_int(0);
 
   static constexpr std::uint16_t kDumpCmds[] = {RDCFGA, RDCFGB, RDSTATA, RDSTATB, RDPWMA, RDAUXA, RDAUXB, RDAUXC,
                                                 RDAUXD, RDCVA,  RDCVB,   RDCVC,   RDCVD,  RDCVE,  RDCVF,  RDSID};
@@ -930,79 +920,49 @@ void cmd_bms_reg_status(Interaction &io, std::span<char *const>)
 }
 
 constexpr std::array<Command, 6> kRegSubcommands = {{
-    {.name = "list", .description = "Every datasheet command", .handler = cmd_bms_reg_list, .read_only = true},
+    {.name = "list", .description = "Every datasheet command", .handler = cmd_bms_reg_list},
     {.name = "read",
      .description = "Read a register group from every IC",
      .handler = cmd_bms_reg_read,
-     .args = "$name",
-     .read_only = true},
+     .params = kBmsRegReadParams},
     {.name = "write",
      .description = "Write a register group to IC 0",
      .handler = cmd_bms_reg_write,
-     .args = "$name $hex12"},
-    {.name = "cmd", .description = "Send an action or poll command", .handler = cmd_bms_reg_cmd, .args = "$name"},
+     .params = kBmsRegWriteParams},
+    {.name = "cmd",
+     .description = "Send an action or poll command",
+     .handler = cmd_bms_reg_cmd,
+     .params = kBmsRegCmdParams},
     {.name = "dump",
      .description = "Key registers of one IC",
      .handler = cmd_bms_reg_dump,
-     .args = "$ic:int",
-     .read_only = true},
-    {.name = "status",
-     .description = "STATA/STATB summary and serial id",
-     .handler = cmd_bms_reg_status,
-     .read_only = true},
+     .params = kBmsRegDumpParams},
+    {.name = "status", .description = "STATA/STATB summary and serial id", .handler = cmd_bms_reg_status},
 }};
 
 // MARK: Commands Table
 
 constexpr std::array<Command, 19> kBmsSubcommands = {{
-    {.name = "status",
-     .description = "Pack summary: state, voltages, temps",
-     .handler = cmd_bms_status,
-     .read_only = true},
-    {.name = "cells",
-     .description = "Per-cell voltages (C/S) and balance flags",
-     .handler = cmd_bms_cells,
-     .read_only = true},
-    {.name = "temps", .description = "Temperatures, one line per bank", .handler = cmd_bms_temps, .read_only = true},
-    {.name = "cell",
-     .description = "One cell in detail",
-     .handler = cmd_bms_cell,
-     .args = "$bank:int $cell:int",
-     .read_only = true},
+    {.name = "status", .description = "Pack summary: state, voltages, temps", .handler = cmd_bms_status},
+    {.name = "cells", .description = "Per-cell voltages (C/S) and balance flags", .handler = cmd_bms_cells},
+    {.name = "temps", .description = "Temperatures, one line per bank", .handler = cmd_bms_temps},
+    {.name = "cell", .description = "One cell in detail", .handler = cmd_bms_cell, .params = kBmsCellParams},
     {.name = "cell-stats",
      .description = "Voltage and temp rows for every cell and sensor",
      .handler = cmd_bms_cell_stats,
-     .text_hidden = true,
-     .read_only = true},
-    {.name = "therm-raw",
-     .description = "Raw thermistor voltages and ADC codes",
-     .handler = cmd_bms_therm_raw,
-     .read_only = true},
-    {.name = "volts",
-     .description = "ADBMS supply/reference voltages per IC",
-     .handler = cmd_bms_volts,
-     .read_only = true},
-    /* Not read_only: `state <name>` transitions. The bare read flags itself. */
+     .text_hidden = true},
+    {.name = "therm-raw", .description = "Raw thermistor voltages and ADC codes", .handler = cmd_bms_therm_raw},
+    {.name = "volts", .description = "ADBMS supply/reference voltages per IC", .handler = cmd_bms_volts},
     {.name = "state", .description = "Show the state, or transition to another", .handler = cmd_bms_state},
-    {.name = "balance",
-     .description = "Cell balancing",
-     .handler = cmd_bms_balance,
-     .subs = kBalanceSubcommands,
-     .read_only = true},
-    {.name = "charger",
-     .description = "Charger telemetry and the command we send",
-     .handler = cmd_bms_charger,
-     .read_only = true},
-    {.name = "ivt", .description = "IVT current/voltage sensor", .handler = cmd_bms_ivt, .read_only = true},
-    {.name = "gpio",
-     .description = "Shutdown loop, relay sense, indicators",
-     .handler = cmd_bms_gpio,
-     .read_only = true},
-    {.name = "errors", .description = "Error type and fault summary", .handler = cmd_bms_errors, .read_only = true},
-    {.name = "config", .description = "Compile-time pack configuration", .handler = cmd_bms_config, .read_only = true},
-    {.name = "spi", .description = "isoSPI mode and failover", .handler = cmd_bms_spi, .read_only = true},
-    {.name = "tasks", .description = "FreeRTOS stack high-water marks", .handler = cmd_bms_tasks, .read_only = true},
-    {.name = "mem", .description = "Heap usage", .handler = cmd_bms_mem, .read_only = true},
+    {.name = "balance", .description = "Cell balancing", .handler = cmd_bms_balance, .subs = kBalanceSubcommands},
+    {.name = "charger", .description = "Charger telemetry and the command we send", .handler = cmd_bms_charger},
+    {.name = "ivt", .description = "IVT current/voltage sensor", .handler = cmd_bms_ivt},
+    {.name = "gpio", .description = "Shutdown loop, relay sense, indicators", .handler = cmd_bms_gpio},
+    {.name = "errors", .description = "Error type and fault summary", .handler = cmd_bms_errors},
+    {.name = "config", .description = "Compile-time pack configuration", .handler = cmd_bms_config},
+    {.name = "spi", .description = "isoSPI mode and failover", .handler = cmd_bms_spi},
+    {.name = "tasks", .description = "FreeRTOS stack high-water marks", .handler = cmd_bms_tasks},
+    {.name = "mem", .description = "Heap usage", .handler = cmd_bms_mem},
     {.name = "can", .description = "CAN ping/pong test channels", .subs = kCanSubcommands},
     {.name = "reg", .description = "ADBMS6830B register access", .subs = kRegSubcommands},
 }};
@@ -1017,6 +977,7 @@ namespace bms
 {
 inline constexpr auto kAll = concat(kSystemCommands, kBmsCommands);
 static_assert(!has_duplicate_names(kAll), "duplicate console command name");
+static_assert(params_fit(kAll), "a command declares more params than kMaxParams");
 
 inline constexpr Console kConsole{FEB_UART_INSTANCE_1, kAll};
 } // namespace bms

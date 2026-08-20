@@ -115,13 +115,10 @@ void cmd_dcu_radio_stats(Interaction &io, std::span<char *const>)
   t.row("Last SNR", "%d dB", (int)s.last_snr);
 }
 
+constexpr std::array kDcuRadioTxParams = {param_str("message")};
+
 void cmd_dcu_radio_tx(Interaction &io, std::span<char *const> args)
 {
-  if (io.arg_str(args, 1) == nullptr)
-  {
-    return;
-  }
-
   char payload[128];
   join_args(args, 1, payload, sizeof(payload));
   const std::size_t len = std::strlen(payload);
@@ -137,13 +134,11 @@ void cmd_dcu_radio_tx(Interaction &io, std::span<char *const> args)
   }
 }
 
-void cmd_dcu_radio_rx(Interaction &io, std::span<char *const> args)
+constexpr std::array kDcuRadioRxParams = {param_int("timeout_ms", 1, 60000)};
+
+void cmd_dcu_radio_rx(Interaction &io, std::span<char *const>)
 {
-  long timeout = 0;
-  if (!io.arg_int(args, 1, &timeout, 1, 60000))
-  {
-    return;
-  }
+  const long timeout = io.param_int(0);
 
   std::uint8_t buf[255];
   std::uint8_t len = 0;
@@ -201,13 +196,11 @@ void set_modem_nibble(Interaction &io, const char *label, std::uint8_t reg, long
   io.print("%s set to %ld (0x%02X -> 0x%02X)\r\n", label, value, cur, next);
 }
 
-void cmd_dcu_radio_config_freq(Interaction &io, std::span<char *const> args)
+constexpr std::array kDcuRadioConfigFreqParams = {param_int("hz", 902000000, 928000000)};
+
+void cmd_dcu_radio_config_freq(Interaction &io, std::span<char *const>)
 {
-  long hz = 0;
-  if (!io.arg_int(args, 1, &hz, 902000000, 928000000))
-  {
-    return;
-  }
+  const long hz = io.param_int(0);
   init_debug_handle();
   if (rfm95_set_frequency(&s_debug_handle, (std::uint32_t)hz))
   {
@@ -219,13 +212,11 @@ void cmd_dcu_radio_config_freq(Interaction &io, std::span<char *const> args)
   }
 }
 
-void cmd_dcu_radio_config_power(Interaction &io, std::span<char *const> args)
+constexpr std::array kDcuRadioConfigPowerParams = {param_int("dbm", -128, 127)};
+
+void cmd_dcu_radio_config_power(Interaction &io, std::span<char *const>)
 {
-  long dbm = 0;
-  if (!io.arg_int(args, 1, &dbm, -128, 127))
-  {
-    return;
-  }
+  const long dbm = io.param_int(0);
   init_debug_handle();
   if (rfm95_set_power(&s_debug_handle, (std::int8_t)dbm))
   {
@@ -237,33 +228,39 @@ void cmd_dcu_radio_config_power(Interaction &io, std::span<char *const> args)
   }
 }
 
-void cmd_dcu_radio_config_sf(Interaction &io, std::span<char *const> args)
+constexpr std::array kDcuRadioConfigSfParams = {param_int("sf", 6, 12)};
+
+void cmd_dcu_radio_config_sf(Interaction &io, std::span<char *const>)
 {
-  long sf = 0;
-  if (!io.arg_int(args, 1, &sf, 6, 12))
-  {
-    return;
-  }
   init_debug_handle();
-  set_modem_nibble(io, "SF", RFM95_REG_MODEM_CONFIG_2, sf);
+  set_modem_nibble(io, "SF", RFM95_REG_MODEM_CONFIG_2, io.param_int(0));
 }
 
-void cmd_dcu_radio_config_bw(Interaction &io, std::span<char *const> args)
+constexpr std::array kDcuRadioConfigBwParams = {param_int("code", 0, 9)};
+
+void cmd_dcu_radio_config_bw(Interaction &io, std::span<char *const>)
 {
-  long code = 0;
-  if (!io.arg_int(args, 1, &code, 0, 9))
-  {
-    return;
-  }
   init_debug_handle();
-  set_modem_nibble(io, "BW code", RFM95_REG_MODEM_CONFIG_1, code);
+  set_modem_nibble(io, "BW code", RFM95_REG_MODEM_CONFIG_1, io.param_int(0));
 }
 
 constexpr std::array<Command, 4> kRadioConfigSubcommands = {{
-    {.name = "freq", .description = "Set frequency in Hz", .handler = cmd_dcu_radio_config_freq, .args = "$hz:int"},
-    {.name = "power", .description = "Set TX power in dBm", .handler = cmd_dcu_radio_config_power, .args = "$dbm:int"},
-    {.name = "sf", .description = "Spreading factor 6-12", .handler = cmd_dcu_radio_config_sf, .args = "$sf:int"},
-    {.name = "bw", .description = "Bandwidth code 0-9", .handler = cmd_dcu_radio_config_bw, .args = "$code:int"},
+    {.name = "freq",
+     .description = "Set frequency in Hz",
+     .handler = cmd_dcu_radio_config_freq,
+     .params = kDcuRadioConfigFreqParams},
+    {.name = "power",
+     .description = "Set TX power in dBm",
+     .handler = cmd_dcu_radio_config_power,
+     .params = kDcuRadioConfigPowerParams},
+    {.name = "sf",
+     .description = "Spreading factor 6-12",
+     .handler = cmd_dcu_radio_config_sf,
+     .params = kDcuRadioConfigSfParams},
+    {.name = "bw",
+     .description = "Bandwidth code 0-9",
+     .handler = cmd_dcu_radio_config_bw,
+     .params = kDcuRadioConfigBwParams},
 }};
 
 void cmd_dcu_radio_stats_reset(Interaction &io, std::span<char *const>)
@@ -315,22 +312,17 @@ constexpr std::array<Command, 2> kRadioListenSubcommands = {{
 }};
 
 constexpr std::array<Command, 9> kRadioSubcommands = {{
-    {.name = "status",
-     .description = "RSSI/SNR + GPIO/register state",
-     .handler = cmd_dcu_radio_status,
-     .read_only = true},
-    {.name = "stats",
-     .description = "TX/RX counters",
-     .handler = cmd_dcu_radio_stats,
-     .subs = kRadioStatsSubcommands,
-     .read_only = true},
-    {.name = "tx", .description = "Transmit a string", .handler = cmd_dcu_radio_tx, .args = "$message"},
-    {.name = "rx", .description = "Receive once with timeout", .handler = cmd_dcu_radio_rx, .args = "$timeout_ms:int"},
+    {.name = "status", .description = "RSSI/SNR + GPIO/register state", .handler = cmd_dcu_radio_status},
+    {.name = "stats", .description = "TX/RX counters", .handler = cmd_dcu_radio_stats, .subs = kRadioStatsSubcommands},
+    {.name = "tx", .description = "Transmit a string", .handler = cmd_dcu_radio_tx, .params = kDcuRadioTxParams},
+    {.name = "rx",
+     .description = "Receive once with timeout",
+     .handler = cmd_dcu_radio_rx,
+     .params = kDcuRadioRxParams},
     {.name = "listen",
      .description = "Listen-only mode",
      .handler = cmd_dcu_radio_listen,
-     .subs = kRadioListenSubcommands,
-     .read_only = true},
+     .subs = kRadioListenSubcommands},
     {.name = "config", .description = "Radio configuration", .subs = kRadioConfigSubcommands},
     {.name = "reset", .description = "Hardware reset of RFM95", .handler = cmd_dcu_radio_reset},
     {.name = "spi", .description = "Low-level SPI test", .handler = cmd_dcu_radio_spi},
@@ -376,18 +368,18 @@ void cmd_dcu_can_state(Interaction &io, std::span<char *const>)
   s_print_io = nullptr;
 }
 
-void cmd_dcu_can_msg(Interaction &io, std::span<char *const> args)
+constexpr std::array kDcuCanMsgParams = {param_str("name")};
+
+void cmd_dcu_can_msg(Interaction &io, std::span<char *const>)
 {
-  if (io.arg_str(args, 1) == nullptr)
-  {
-    return;
-  }
+  const char *name = io.param_str(0);
+
   s_print_io = &io;
-  const int rc = FEB_CAN_State_PrintOne(args[1], print_thunk);
+  const int rc = FEB_CAN_State_PrintOne(name, print_thunk);
   s_print_io = nullptr;
   if (rc != 0)
   {
-    io.error("error", "unknown_message", "%s", args[1]);
+    io.error("error", "unknown_message", "%s", name);
   }
 }
 
@@ -397,20 +389,15 @@ constexpr std::array<Command, 2> kCanStreamSubcommands = {{
 }};
 
 constexpr std::array<Command, 3> kCanSubcommands = {{
-    {.name = "state",
-     .description = "Latest value of each received CAN message",
-     .handler = cmd_dcu_can_state,
-     .read_only = true},
+    {.name = "state", .description = "Latest value of each received CAN message", .handler = cmd_dcu_can_state},
     {.name = "msg",
      .description = "Show signals for one CAN message",
      .handler = cmd_dcu_can_msg,
-     .args = "$name",
-     .read_only = true},
+     .params = kDcuCanMsgParams},
     {.name = "stream",
      .description = "Live CAN-frame stream",
      .handler = cmd_dcu_can_stream,
-     .subs = kCanStreamSubcommands,
-     .read_only = true},
+     .subs = kCanStreamSubcommands},
 }};
 
 /* ============================================================================
@@ -432,6 +419,7 @@ namespace dcu
 {
 inline constexpr auto kAll = concat(kSystemCommands, kDcuCommands);
 static_assert(!has_duplicate_names(kAll), "duplicate console command name");
+static_assert(params_fit(kAll), "a command declares more params than kMaxParams");
 
 inline constexpr Console kConsole1{FEB_UART_INSTANCE_1, kAll};
 inline constexpr Console kConsole2{FEB_UART_INSTANCE_2, kAll};
