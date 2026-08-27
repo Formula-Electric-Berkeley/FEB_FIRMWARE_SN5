@@ -26,7 +26,7 @@ extern "C"
 {
 #endif
 
-#include "feb_can.h"
+#include "feb_can_db.h"
 
 #define FEB_SN_VARIANT_FRONT 1
 #define FEB_SN_VARIANT_REAR 2

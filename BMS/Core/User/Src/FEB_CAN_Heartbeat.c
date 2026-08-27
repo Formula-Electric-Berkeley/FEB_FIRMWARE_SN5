@@ -10,7 +10,7 @@
 
 #include "FEB_CAN_Heartbeat.h"
 #include "feb_can_lib.h"
-#include "feb_can.h"
+#include "feb_can_db.h"
 #include "stm32f4xx_hal.h"
 
 static volatile uint32_t hb_last_rx_tick[FEB_HB_COUNT] = {0};

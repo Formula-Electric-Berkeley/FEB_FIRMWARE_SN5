@@ -10,7 +10,7 @@
 #include "feb_can_lib.h"
 #include <stddef.h>
 #include <string.h>
-#include "feb_can.h"
+#include "feb_can_db.h"
 
 /* ============================================================================
  * API Implementation

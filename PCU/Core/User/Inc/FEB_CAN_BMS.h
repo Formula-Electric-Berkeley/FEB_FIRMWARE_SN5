@@ -9,7 +9,7 @@ extern "C"
 #include "stm32f4xx_hal.h"
 
 #include "feb_can_lib.h"
-#include "feb_can.h"
+#include "feb_can_db.h"
 
   // BMS States - values must match BMS_State_t in BMS/Core/User/Inc/FEB_CAN_State.h
   typedef enum

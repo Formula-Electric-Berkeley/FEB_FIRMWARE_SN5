@@ -10,7 +10,7 @@
 #include "FEB_CAN_Stream.h"
 #include "FEB_RFM95.h"
 #include "FEB_Task_Radio.h"
-#include "feb_can_latest.h"
+#include "feb_can_db.h"
 #include "feb_commands_2.hpp"
 #include "feb_console_2.hpp"
 #include "main.h"
@@ -364,7 +364,7 @@ void cmd_dcu_can_stream_off(Interaction &io, std::span<char *const>)
 void cmd_dcu_can_state(Interaction &io, std::span<char *const>)
 {
   s_print_io = &io;
-  FEB_CAN_State_Print(print_thunk);
+  FEB_CAN_DB_Print(print_thunk);
   s_print_io = nullptr;
 }
 
@@ -375,7 +375,7 @@ void cmd_dcu_can_msg(Interaction &io, std::span<char *const>)
   const char *name = io.param_str(0);
 
   s_print_io = &io;
-  const int rc = FEB_CAN_State_PrintOne(name, print_thunk);
+  const int rc = FEB_CAN_DB_PrintOne(name, print_thunk);
   s_print_io = nullptr;
   if (rc != 0)
   {

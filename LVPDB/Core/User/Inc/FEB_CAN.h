@@ -12,7 +12,7 @@ extern "C"
 #include <stdint.h>
 
 // Include generated pack/unpack functions from SN4 CAN library
-#include "FEB_CAN_Library_SN4/gen/feb_can.h"
+#include "FEB_CAN_Library_SN4/gen/feb_can_db.h"
 
   // **************************************** Types ****************************************
 
