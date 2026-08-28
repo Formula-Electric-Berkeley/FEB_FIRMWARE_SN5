@@ -70,6 +70,7 @@ endif()
 file(GLOB CAN_LIB_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.cpp"
 )
 
 list(APPEND ALL_SOURCES ${CAN_LIB_SOURCES})

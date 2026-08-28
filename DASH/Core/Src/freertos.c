@@ -25,7 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "FEB_Main.h"
+#include "DASH_Main.h"
 #include "feb_uart.h"
 #include "feb_console.h"
 #include "feb_can_lib.h"
@@ -53,10 +53,10 @@
 /* DASHTaskRx / DASHTaskTx stacks: set in CubeMX (DASH.ioc, FREERTOS.Tasks01). Regenerating
  * from the .ioc overwrites osThreadAttr_t blocks above; keep those tasks at 1024 words. */
 /* USER CODE END Variables */
-/* Definitions for ioLoopTask */
-osThreadId_t ioLoopTaskHandle;
-const osThreadAttr_t ioLoopTask_attributes = {
-  .name = "ioLoopTask",
+/* Definitions for ioTask */
+osThreadId_t ioTaskHandle;
+const osThreadAttr_t ioTask_attributes = {
+  .name = "ioTask",
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityHigh1,
 };
@@ -81,19 +81,26 @@ const osThreadAttr_t uartTxTask_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for DASHTaskRx */
-osThreadId_t DASHTaskRxHandle;
-const osThreadAttr_t DASHTaskRx_attributes = {
-  .name = "DASHTaskRx",
+/* Definitions for canRxTask */
+osThreadId_t canRxTaskHandle;
+const osThreadAttr_t canRxTask_attributes = {
+  .name = "canRxTask",
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityHigh2,
 };
-/* Definitions for DASHTaskTx */
-osThreadId_t DASHTaskTxHandle;
-const osThreadAttr_t DASHTaskTx_attributes = {
-  .name = "DASHTaskTx",
+/* Definitions for canTxTask */
+osThreadId_t canTxTaskHandle;
+const osThreadAttr_t canTxTask_attributes = {
+  .name = "canTxTask",
   .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityHigh3,
+};
+/* Definitions for canPubTask */
+osThreadId_t canPubTaskHandle;
+const osThreadAttr_t canPubTask_attributes = {
+  .name = "canPubTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityHigh1,
 };
 /* Definitions for canTxQueue */
 osMessageQueueId_t canTxQueueHandle;
@@ -110,10 +117,10 @@ osMessageQueueId_t uartRxQueueHandle;
 const osMessageQueueAttr_t uartRxQueue_attributes = {
   .name = "uartRxQueue"
 };
-/* Definitions for FEB_I2C_Mutex */
-osMutexId_t FEB_I2C_MutexHandle;
-const osMutexAttr_t FEB_I2C_Mutex_attributes = {
-  .name = "FEB_I2C_Mutex"
+/* Definitions for i2cMutex */
+osMutexId_t i2cMutexHandle;
+const osMutexAttr_t i2cMutex_attributes = {
+  .name = "i2cMutex"
 };
 /* Definitions for canTxMutex */
 osMutexId_t canTxMutexHandle;
@@ -151,12 +158,13 @@ const osSemaphoreAttr_t uartTxSem_attributes = {
 
 /* USER CODE END FunctionPrototypes */
 
-void StartIoLoop(void *argument);
+void StartIoTask(void *argument);
 void StartDisplayTask(void *argument);
 void StartUartRxTask(void *argument);
 void StartUartTxTask(void *argument);
-void StartDASHTaskRx(void *argument);
-void StartDASHTaskTx(void *argument);
+void StartCanRxTask(void *argument);
+void StartCanTxTask(void *argument);
+void StartCanPubTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -226,8 +234,8 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE END Init */
   /* Create the mutex(es) */
-  /* creation of FEB_I2C_Mutex */
-  FEB_I2C_MutexHandle = osMutexNew(&FEB_I2C_Mutex_attributes);
+  /* creation of i2cMutex */
+  i2cMutexHandle = osMutexNew(&i2cMutex_attributes);
 
   /* creation of canTxMutex */
   canTxMutexHandle = osMutexNew(&canTxMutex_attributes);
@@ -272,7 +280,7 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* Validate all RTOS objects - fail fast on low heap */
-  REQUIRE_RTOS_HANDLE(FEB_I2C_MutexHandle);
+  REQUIRE_RTOS_HANDLE(i2cMutexHandle);
   REQUIRE_RTOS_HANDLE(canTxMutexHandle);
   REQUIRE_RTOS_HANDLE(canRxMutexHandle);
   REQUIRE_RTOS_HANDLE(logMutexHandle);
@@ -285,8 +293,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of ioLoopTask */
-  ioLoopTaskHandle = osThreadNew(StartIoLoop, NULL, &ioLoopTask_attributes);
+  /* creation of ioTask */
+  ioTaskHandle = osThreadNew(StartIoTask, NULL, &ioTask_attributes);
 
   /* creation of displayTask */
   displayTaskHandle = osThreadNew(StartDisplayTask, NULL, &displayTask_attributes);
@@ -297,45 +305,49 @@ void MX_FREERTOS_Init(void) {
   /* creation of uartTxTask */
   uartTxTaskHandle = osThreadNew(StartUartTxTask, NULL, &uartTxTask_attributes);
 
-  /* creation of DASHTaskRx */
-  DASHTaskRxHandle = osThreadNew(StartDASHTaskRx, NULL, &DASHTaskRx_attributes);
+  /* creation of canRxTask */
+  canRxTaskHandle = osThreadNew(StartCanRxTask, NULL, &canRxTask_attributes);
 
-  /* creation of DASHTaskTx */
-  DASHTaskTxHandle = osThreadNew(StartDASHTaskTx, NULL, &DASHTaskTx_attributes);
+  /* creation of canTxTask */
+  canTxTaskHandle = osThreadNew(StartCanTxTask, NULL, &canTxTask_attributes);
+
+  /* creation of canPubTask */
+  canPubTaskHandle = osThreadNew(StartCanPubTask, NULL, &canPubTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* Validate all thread creations - fail fast on low heap */
-  REQUIRE_RTOS_HANDLE(ioLoopTaskHandle);
+  REQUIRE_RTOS_HANDLE(ioTaskHandle);
   REQUIRE_RTOS_HANDLE(displayTaskHandle);
   REQUIRE_RTOS_HANDLE(uartRxTaskHandle);
   REQUIRE_RTOS_HANDLE(uartTxTaskHandle);
-  REQUIRE_RTOS_HANDLE(DASHTaskRxHandle);
-  REQUIRE_RTOS_HANDLE(DASHTaskTxHandle);
+  REQUIRE_RTOS_HANDLE(canRxTaskHandle);
+  REQUIRE_RTOS_HANDLE(canTxTaskHandle);
+  REQUIRE_RTOS_HANDLE(canPubTaskHandle);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
-  FEB_Init();
+  DASH_Init();
   /* add events, ... */
   /* USER CODE END RTOS_EVENTS */
 
 }
 
-/* USER CODE BEGIN Header_StartIoLoop */
+/* USER CODE BEGIN Header_StartIoTask */
 /**
- * @brief  Function implementing the ioLoopTask thread.
- * @param  argument: Not used
- * @retval None
- */
-/* USER CODE END Header_StartIoLoop */
-__weak void StartIoLoop(void *argument)
+  * @brief  Function implementing the ioTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartIoTask */
+__weak void StartIoTask(void *argument)
 {
-  /* USER CODE BEGIN StartIoLoop */
+  /* USER CODE BEGIN StartIoTask */
   /* Infinite loop */
-  for (;;)
+  for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartIoLoop */
+  /* USER CODE END StartIoTask */
 }
 
 /* USER CODE BEGIN Header_StartDisplayTask */
@@ -392,40 +404,58 @@ __weak void StartUartTxTask(void *argument)
   /* USER CODE END StartUartTxTask */
 }
 
-/* USER CODE BEGIN Header_StartDASHTaskRx */
+/* USER CODE BEGIN Header_StartCanRxTask */
 /**
- * @brief Function implementing the DASHTaskRx thread.
+ * @brief Function implementing the canRxTask thread.
  * @param argument: Not used
  * @retval None
  */
-/* USER CODE END Header_StartDASHTaskRx */
-__weak void StartDASHTaskRx(void *argument)
+/* USER CODE END Header_StartCanRxTask */
+__weak void StartCanRxTask(void *argument)
 {
-  /* USER CODE BEGIN StartDASHTaskRx */
+  /* USER CODE BEGIN StartCanRxTask */
   /* Infinite loop */
   for (;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartDASHTaskRx */
+  /* USER CODE END StartCanRxTask */
 }
 
-/* USER CODE BEGIN Header_StartDASHTaskTx */
+/* USER CODE BEGIN Header_StartCanTxTask */
 /**
- * @brief Function implementing the DASHTaskTx thread.
+ * @brief Function implementing the canTxTask thread.
  * @param argument: Not used
  * @retval None
  */
-/* USER CODE END Header_StartDASHTaskTx */
-__weak void StartDASHTaskTx(void *argument)
+/* USER CODE END Header_StartCanTxTask */
+__weak void StartCanTxTask(void *argument)
 {
-  /* USER CODE BEGIN StartDASHTaskTx */
+  /* USER CODE BEGIN StartCanTxTask */
   /* Infinite loop */
   for (;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartDASHTaskTx */
+  /* USER CODE END StartCanTxTask */
+}
+
+/* USER CODE BEGIN Header_StartCanPubTask */
+/**
+ * @brief Function implementing the canPubTask thread.
+ * @param argument: Not used
+ * @retval None
+ */
+/* USER CODE END Header_StartCanPubTask */
+__weak void StartCanPubTask(void *argument)
+{
+  /* USER CODE BEGIN StartCanPubTask */
+  /* Infinite loop */
+  for (;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartCanPubTask */
 }
 
 /* Private application code --------------------------------------------------*/

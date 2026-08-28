@@ -716,6 +716,15 @@ extern "C"
   void FEB_CAN_ResetErrorCounters(void);
 
   /**
+   * @brief Millisecond tick from the library's configured time source
+   *
+   * Defaults to HAL_GetTick unless get_tick_ms was supplied in the config.
+   *
+   * @return Current tick in milliseconds (0 if not initialized)
+   */
+  uint32_t FEB_CAN_Now(void);
+
+  /**
    * @brief Convert CAN status code to human-readable string
    *
    * @param status Status code to convert

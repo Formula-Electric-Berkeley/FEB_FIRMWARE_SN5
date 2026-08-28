@@ -18,9 +18,12 @@ target_sources(feb_can INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/feb_can_rx.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/feb_can_tx.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/feb_can_filter.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Src/feb_can_scheduler.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Src/feb_can_rx_registry.cpp
 )
 
 # Add include directories
 target_include_directories(feb_can INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../FEB_CAN_Library_SN4/gen
 )
