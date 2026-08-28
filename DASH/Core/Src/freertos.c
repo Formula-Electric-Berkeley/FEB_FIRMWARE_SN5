@@ -27,7 +27,6 @@
 /* USER CODE BEGIN Includes */
 #include "DASH_Main.h"
 #include "feb_uart.h"
-#include "feb_console.h"
 #include "feb_can_lib.h"
 #include "feb_rtos_utils.h"
 #include <stdio.h>

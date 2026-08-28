@@ -12,8 +12,7 @@
 #include "main.h"
 #include "feb_uart.h"
 #include "feb_log.h"
-#include "feb_console.h"
-#include "DASH_Commands.h"
+#include "feb_time.h"
 #include "cmsis_os2.h"
 
 /* External HAL handles from CubeMX-generated code */
@@ -81,19 +80,14 @@ void DASH_Init(void)
   };
   FEB_Log_Init(&log_cfg);
 
-  /* Initialize console (registers built-in commands: echo, help, version, uptime, reboot, log) */
-  FEB_Console_Init(true);
-  DASH_RegisterCommands();
-
-  /* Initialize CAN state publisher */
-  // FEB_CAN_State_Init();
+  FEB_Time_Init();
 
   /* Startup banner */
-  FEB_Console_Printf("\r\n");
-  FEB_Console_Printf("========================================\r\n");
-  FEB_Console_Printf("        DASH Console Ready\r\n");
-  FEB_Console_Printf("========================================\r\n");
-  FEB_Console_Printf("Use | as delimiter: echo|hello world\r\n");
-  FEB_Console_Printf("Type 'help' for available commands\r\n");
-  FEB_Console_Printf("\r\n");
+  static const char banner[] = "\r\n"
+                               "========================================\r\n"
+                               "           DASH Console Ready\r\n"
+                               "========================================\r\n"
+                               "Type 'help' for available commands\r\n"
+                               "\r\n";
+  FEB_UART_Write(FEB_UART_INSTANCE_1, (const uint8_t *)banner, sizeof(banner) - 1);
 }
