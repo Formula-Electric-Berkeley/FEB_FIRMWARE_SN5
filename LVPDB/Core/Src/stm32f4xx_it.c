@@ -349,14 +349,6 @@ void CAN2_SCE_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  if (htim == &htim1)
-  { // 1 ms timer callback
-    FEB_1ms_Callback();
-  }
-}
-
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
   FEB_UART_TxCpltCallback(huart);

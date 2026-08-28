@@ -80,8 +80,6 @@ extern "C"
 #define SLEEP_TIME 10
 
   void FEB_Main_Setup(void);
-  void FEB_Main_Loop(void);
-  void FEB_1ms_Callback(void);
   void FEB_CAN1_Rx_Callback(CAN_RxHeaderTypeDef *rx_header, void *data);
 
 #ifdef __cplusplus

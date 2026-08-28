@@ -9,6 +9,7 @@
 #include "FEB_LVPDB_Commands.h"
 #include "FEB_CAN_PingPong.h"
 #include "FEB_Main.h"
+#include "cmsis_os2.h"
 #include "feb_console.h"
 #include "feb_log.h"
 #include "feb_string_utils.h"
@@ -22,6 +23,7 @@
  * ============================================================================ */
 
 extern I2C_HandleTypeDef hi2c1;
+extern osMutexId_t FEB_I2C_mutexHandle;
 extern uint8_t tps2482_i2c_addresses[NUM_TPS2482];
 extern GPIO_TypeDef *tps2482_en_ports[NUM_TPS2482 - 1];
 extern uint16_t tps2482_en_pins[NUM_TPS2482 - 1];
@@ -123,8 +125,10 @@ static const RegInfo_t *get_register_info(const char *name)
 static HAL_StatusTypeDef tps_read_reg(uint8_t i2c_addr, uint8_t reg, uint16_t *value)
 {
   uint8_t buf[2];
+  osMutexAcquire(FEB_I2C_mutexHandle, osWaitForever);
   HAL_StatusTypeDef status =
       HAL_I2C_Mem_Read(&hi2c1, (uint16_t)(i2c_addr << 1), reg, I2C_MEMADD_SIZE_8BIT, buf, 2, 100);
+  osMutexRelease(FEB_I2C_mutexHandle);
   if (status == HAL_OK)
   {
     *value = ((uint16_t)buf[0] << 8) | buf[1]; // TPS2482 sends MSB first
@@ -144,7 +148,11 @@ static HAL_StatusTypeDef tps_write_reg(uint8_t i2c_addr, uint8_t reg, uint16_t v
   uint8_t buf[2];
   buf[0] = (uint8_t)(value >> 8); // MSB first
   buf[1] = (uint8_t)(value & 0xFF);
-  return HAL_I2C_Mem_Write(&hi2c1, (uint16_t)(i2c_addr << 1), reg, I2C_MEMADD_SIZE_8BIT, buf, 2, 100);
+  osMutexAcquire(FEB_I2C_mutexHandle, osWaitForever);
+  HAL_StatusTypeDef status =
+      HAL_I2C_Mem_Write(&hi2c1, (uint16_t)(i2c_addr << 1), reg, I2C_MEMADD_SIZE_8BIT, buf, 2, 100);
+  osMutexRelease(FEB_I2C_mutexHandle);
+  return status;
 }
 
 /* ============================================================================

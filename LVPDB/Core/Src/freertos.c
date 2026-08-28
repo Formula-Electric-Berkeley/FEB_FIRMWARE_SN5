@@ -51,13 +51,6 @@
 /* USER CODE BEGIN Variables */
 
 /* USER CODE END Variables */
-/* Definitions for defaultTask */
-osThreadId_t defaultTaskHandle;
-const osThreadAttr_t defaultTask_attributes = {
-  .name = "defaultTask",
-  .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal2,
-};
 /* Definitions for UartConsoleLog */
 osThreadId_t UartConsoleLogHandle;
 const osThreadAttr_t UartConsoleLog_attributes = {
@@ -126,6 +119,11 @@ osMutexId_t FEB_I2C_mutexHandle;
 const osMutexAttr_t FEB_I2C_mutex_attributes = {
   .name = "FEB_I2C_mutex"
 };
+/* Definitions for tpsDataMutex */
+osMutexId_t tpsDataMutexHandle;
+const osMutexAttr_t tpsDataMutex_attributes = {
+  .name = "tpsDataMutex"
+};
 /* Definitions for uartTxSem */
 osSemaphoreId_t uartTxSemHandle;
 const osSemaphoreAttr_t uartTxSem_attributes = {
@@ -142,7 +140,6 @@ const osSemaphoreAttr_t canTxMailboxSem_attributes = {
 
 /* USER CODE END FunctionPrototypes */
 
-void StartDefaultTask(void *argument);
 void StartUartConsoleLog(void *argument);
 void StartTPSPowerManage(void *argument);
 void StartLVPDBTaskRx(void *argument);
@@ -174,6 +171,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of FEB_I2C_mutex */
   FEB_I2C_mutexHandle = osMutexNew(&FEB_I2C_mutex_attributes);
+
+  /* creation of tpsDataMutex */
+  tpsDataMutexHandle = osMutexNew(&tpsDataMutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -209,9 +209,6 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of defaultTask */
-  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
-
   /* creation of UartConsoleLog */
   UartConsoleLogHandle = osThreadNew(StartUartConsoleLog, NULL, &UartConsoleLog_attributes);
 
@@ -232,24 +229,6 @@ void MX_FREERTOS_Init(void) {
   /* add events, ... */
   /* USER CODE END RTOS_EVENTS */
 
-}
-
-/* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_StartDefaultTask */
-__weak void StartDefaultTask(void *argument)
-{
-  /* USER CODE BEGIN StartDefaultTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartDefaultTask */
 }
 
 /* USER CODE BEGIN Header_StartUartConsoleLog */
@@ -328,3 +307,4 @@ __weak void StartLVPDBTaskTx(void *argument)
 /* USER CODE BEGIN Application */
 
 /* USER CODE END Application */
+

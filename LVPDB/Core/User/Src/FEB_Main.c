@@ -18,7 +18,6 @@
 extern CAN_HandleTypeDef hcan1;
 extern CAN_HandleTypeDef hcan2;
 extern I2C_HandleTypeDef hi2c1;
-extern TIM_HandleTypeDef htim1;
 extern UART_HandleTypeDef huart2;
 extern DMA_HandleTypeDef hdma_usart2_tx;
 extern DMA_HandleTypeDef hdma_usart2_rx;
@@ -40,6 +39,11 @@ extern osMutexId_t canTxMutexHandle;
 extern osMutexId_t canRxMutexHandle;
 extern osSemaphoreId_t canTxMailboxSemHandle;
 #endif
+
+#if FEB_TPS_USE_FREERTOS
+extern osMutexId_t FEB_I2C_mutexHandle;
+#endif
+extern osMutexId_t tpsDataMutexHandle;
 
 static uint8_t uart_tx_buf[4096];
 static uint8_t uart_rx_buf[256];
@@ -150,6 +154,9 @@ static bool FEB_TPS_Init_Devices(void)
   FEB_TPS_LibConfig_t lib_cfg = {
       .log_func = tps_log_callback,
       .log_level = FEB_TPS_LOG_INFO,
+#if FEB_TPS_USE_FREERTOS
+      .i2c_mutex = FEB_I2C_mutexHandle,
+#endif
   };
   FEB_TPS_Status_t init_status = FEB_TPS_Init(&lib_cfg);
   if (init_status != FEB_TPS_OK)
@@ -371,141 +378,6 @@ void FEB_Main_Setup(void)
 #define MAIN_LOOP_POLL_INTERVAL_MS 50
 static bool tps_polled_success[NUM_TPS2482];
 
-/**
- * Main periodic loop. Polls each TPS via its own handle (position-aligned with
- * tps_device_configs[] so per-rail LSBs in FEB_Variable_Conversion stay correct),
- * runs the conversion, and processes any UART input.
- */
-void FEB_Main_Loop(void)
-{
-  static uint32_t last_poll_tick = 0;
-  uint32_t now = HAL_GetTick();
-
-  if (tps_init_success && (uint32_t)(now - last_poll_tick) >= MAIN_LOOP_POLL_INTERVAL_MS)
-  {
-    last_poll_tick = now;
-
-    uint8_t polled = 0;
-    for (uint8_t i = 0; i < NUM_TPS2482; i++)
-    {
-      if (tps_handles[i] == NULL)
-      {
-        tps2482_bus_voltage_raw[i] = 0;
-        tps2482_current_raw[i] = 0;
-        tps2482_shunt_voltage_raw[i] = 0;
-        continue;
-      }
-      uint16_t bv;
-      int16_t cur;
-      int16_t sv;
-      if (FEB_TPS_PollRaw(tps_handles[i], &bv, &cur, &sv) == FEB_TPS_OK)
-      {
-        tps2482_bus_voltage_raw[i] = bv;
-        tps2482_current_raw[i] = cur;
-        tps2482_shunt_voltage_raw[i] = sv;
-        tps_polled_success[i] = true;
-        polled++;
-      }
-      else
-      {
-        tps2482_bus_voltage_raw[i] = 0;
-        tps2482_current_raw[i] = 0;
-        tps2482_shunt_voltage_raw[i] = 0;
-        tps_polled_success[i] = false;
-      }
-    }
-    if (polled < tps_registered_count)
-    {
-      LOG_W(TAG_MAIN, "TPS poll: %u/%u registered devices succeeded", (unsigned)polled, (unsigned)tps_registered_count);
-    }
-
-    FEB_Variable_Conversion();
-  }
-
-  if (FEB_CAN_DASH_IsDataFresh(250))
-  {
-    DASH_State_t dash_state = FEB_CAN_DASH_GetLastState();
-
-    // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
-    FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
-    FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
-  }
-
-  // FEB_TPS_Enable(tps_handles[3], true); // BM_L
-
-  bool brake_on = FEB_CAN_BRAKE_IsDataFresh(250) && (FEB_CAN_BRAKE_GetPercent() > 10);
-  HAL_GPIO_WritePin(BL_Switch_GPIO_Port, BL_Switch_Pin, brake_on ? GPIO_PIN_SET : GPIO_PIN_RESET);
-
-  FEB_UART_ProcessRx(FEB_UART_INSTANCE_1);
-}
-
-/**
- * Handle periodic work driven by the 1 kHz system tick.
- *
- * Called from the 1 kHz timer interrupt; maintains internal 1 ms counters and, every 100 ms,
- * invokes the CAN ping/pong maintenance tick and the CAN TPS polling tick using the
- * tps2482_current_raw and tps2482_bus_voltage_raw arrays for all devices (NUM_TPS2482).
- */
-void FEB_1ms_Callback(void)
-{
-  // Process CAN ping/pong every 100ms
-  static uint16_t ping_divider = 0;
-  ping_divider++;
-  if (ping_divider >= 100)
-  {
-    ping_divider = 0;
-    FEB_CAN_PingPong_Tick();
-  }
-
-  // Process CAN TPS reading every 100ms
-  static uint16_t tps_divider = 0;
-  tps_divider++;
-  if (tps_divider >= 99)
-  {
-    tps_divider = 0;
-    if (tps_init_success)
-    {
-      FEB_Variable_Conversion();
-      FEB_CAN_TPS_Tick(tps2482_current, tps2482_bus_voltage, NUM_TPS2482);
-    }
-  }
-
-  static uint16_t heartbeat_divider = 0;
-  heartbeat_divider++;
-  if (heartbeat_divider >=
-      67) // not 100ms to offset message from other two statuses (ran into issue where mailbox got full)
-  {
-    heartbeat_divider = 0;
-
-    lvpdb_heartbeat_msg.tps_init_failed = !tps_init_success;
-
-    lvpdb_heartbeat_msg.tps_lv_poll_failed = !tps_polled_success[0];
-    lvpdb_heartbeat_msg.tps_sh_poll_failed = !tps_polled_success[1];
-    lvpdb_heartbeat_msg.tps_lt_poll_failed = !tps_polled_success[2];
-    lvpdb_heartbeat_msg.tps_bm_l_poll_failed = !tps_polled_success[3];
-    lvpdb_heartbeat_msg.tps_sm_poll_failed = !tps_polled_success[4];
-    lvpdb_heartbeat_msg.tps_af1_af2_poll_failed = !tps_polled_success[5];
-    lvpdb_heartbeat_msg.tps_cp_rf_poll_failed = !tps_polled_success[6];
-
-    lvpdb_heartbeat_msg.tps_lv_power_not_good = !tps_power_good[0];
-    lvpdb_heartbeat_msg.tps_sh_power_not_good = !tps_power_good[1];
-    lvpdb_heartbeat_msg.tps_lt_power_not_good = !tps_power_good[2];
-    lvpdb_heartbeat_msg.tps_bm_l_power_not_good = !tps_power_good[3];
-    lvpdb_heartbeat_msg.tps_sm_power_not_good = !tps_power_good[4];
-    lvpdb_heartbeat_msg.tps_af1_af2_power_not_good = !tps_power_good[5];
-    lvpdb_heartbeat_msg.tps_cp_rf_power_not_good = !tps_power_good[6];
-
-    lvpdb_heartbeat_msg.dash_state_stale = !FEB_CAN_DASH_IsDataFresh(250);
-
-    uint8_t tx_data[FEB_CAN_LVPDB_HEARTBEAT_LENGTH];
-    memset(tx_data, 0x00, sizeof(tx_data));
-    feb_can_lvpdb_heartbeat_pack(tx_data, &lvpdb_heartbeat_msg, sizeof(tx_data));
-
-    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_LVPDB_HEARTBEAT_FRAME_ID, FEB_CAN_ID_STD, tx_data,
-                    FEB_CAN_LVPDB_HEARTBEAT_LENGTH);
-  }
-}
-
 /* ============================================================================
  * Data Conversion and Filtering
  * ============================================================================ */
@@ -583,20 +455,6 @@ static void FEB_Variable_Conversion(void)
  * FreeRTOS Task Implementations - Override weak stubs in freertos.c
  * ============================================================================ */
 
-void StartDefaultTask(void *argument)
-{
-  /* USER CODE BEGIN StartDefaultTask */
-  (void)argument;
-
-  FEB_Main_Setup();
-
-  for (;;)
-  {
-    osDelay(1000);
-  }
-  /* USER CODE END StartDefaultTask */
-}
-
 void StartUartConsoleLog(void *argument)
 {
   /* USER CODE BEGIN StartUartConsoleLog */
@@ -636,6 +494,8 @@ void StartTPSPowerManage(void *argument)
   {
     if (tps_init_success)
     {
+      osMutexAcquire(tpsDataMutexHandle, osWaitForever);
+
       uint8_t polled = 0;
       for (uint8_t i = 0; i < NUM_TPS2482; i++)
       {
@@ -673,6 +533,8 @@ void StartTPSPowerManage(void *argument)
       }
 
       FEB_Variable_Conversion();
+
+      osMutexRelease(tpsDataMutexHandle);
     }
 
     osDelay(MAIN_LOOP_POLL_INTERVAL_MS);
@@ -683,9 +545,91 @@ void StartTPSPowerManage(void *argument)
 void StartLVPDBTaskRx(void *argument)
 {
   /* USER CODE BEGIN StartLVPDBTaskRx */
-  /* Infinite loop */
+  (void)argument;
+
+  while (!feb_setup_complete)
+  {
+    osDelay(5);
+  }
+
+  static uint16_t ping_divider = 0;
+  static uint16_t tps_divider = 0;
+  static uint16_t heartbeat_divider = 0;
+
   for (;;)
   {
+    FEB_CAN_RX_Process();
+
+    // Process CAN ping/pong every 100ms
+    if (++ping_divider >= 100)
+    {
+      ping_divider = 0;
+      FEB_CAN_PingPong_Tick();
+    }
+
+    // Process CAN TPS reading every 100ms
+    if (++tps_divider >= 99)
+    {
+      tps_divider = 0;
+      if (tps_init_success)
+      {
+        osMutexAcquire(tpsDataMutexHandle, osWaitForever);
+        FEB_CAN_TPS_Tick(tps2482_current, tps2482_bus_voltage, NUM_TPS2482);
+        osMutexRelease(tpsDataMutexHandle);
+      }
+    }
+
+    if (++heartbeat_divider >=
+        67) // not 100ms to offset message from other two statuses (ran into issue where mailbox got full)
+    {
+      heartbeat_divider = 0;
+
+      lvpdb_heartbeat_msg.tps_init_failed = !tps_init_success;
+
+      osMutexAcquire(tpsDataMutexHandle, osWaitForever);
+
+      lvpdb_heartbeat_msg.tps_lv_poll_failed = !tps_polled_success[0];
+      lvpdb_heartbeat_msg.tps_sh_poll_failed = !tps_polled_success[1];
+      lvpdb_heartbeat_msg.tps_lt_poll_failed = !tps_polled_success[2];
+      lvpdb_heartbeat_msg.tps_bm_l_poll_failed = !tps_polled_success[3];
+      lvpdb_heartbeat_msg.tps_sm_poll_failed = !tps_polled_success[4];
+      lvpdb_heartbeat_msg.tps_af1_af2_poll_failed = !tps_polled_success[5];
+      lvpdb_heartbeat_msg.tps_cp_rf_poll_failed = !tps_polled_success[6];
+
+      lvpdb_heartbeat_msg.tps_lv_power_not_good = !tps_power_good[0];
+      lvpdb_heartbeat_msg.tps_sh_power_not_good = !tps_power_good[1];
+      lvpdb_heartbeat_msg.tps_lt_power_not_good = !tps_power_good[2];
+      lvpdb_heartbeat_msg.tps_bm_l_power_not_good = !tps_power_good[3];
+      lvpdb_heartbeat_msg.tps_sm_power_not_good = !tps_power_good[4];
+      lvpdb_heartbeat_msg.tps_af1_af2_power_not_good = !tps_power_good[5];
+      lvpdb_heartbeat_msg.tps_cp_rf_power_not_good = !tps_power_good[6];
+
+      osMutexRelease(tpsDataMutexHandle);
+
+      lvpdb_heartbeat_msg.dash_state_stale = !FEB_CAN_DASH_IsDataFresh(250);
+
+      uint8_t tx_data[FEB_CAN_LVPDB_HEARTBEAT_LENGTH];
+      memset(tx_data, 0x00, sizeof(tx_data));
+      feb_can_lvpdb_heartbeat_pack(tx_data, &lvpdb_heartbeat_msg, sizeof(tx_data));
+
+      FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_LVPDB_HEARTBEAT_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                      FEB_CAN_LVPDB_HEARTBEAT_LENGTH);
+    }
+
+    if (FEB_CAN_DASH_IsDataFresh(250))
+    {
+      DASH_State_t dash_state = FEB_CAN_DASH_GetLastState();
+
+      // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
+      FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
+      FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
+    }
+
+    // FEB_TPS_Enable(tps_handles[3], true); // BM_L
+
+    bool brake_on = FEB_CAN_BRAKE_IsDataFresh(250) && (FEB_CAN_BRAKE_GetPercent() > 10);
+    HAL_GPIO_WritePin(BL_Switch_GPIO_Port, BL_Switch_Pin, brake_on ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
     osDelay(1);
   }
   /* USER CODE END StartLVPDBTaskRx */
@@ -694,9 +638,11 @@ void StartLVPDBTaskRx(void *argument)
 void StartLVPDBTaskTx(void *argument)
 {
   /* USER CODE BEGIN StartLVPDBTaskTx */
-  /* Infinite loop */
+  (void)argument;
+
   for (;;)
   {
+    FEB_CAN_TX_Process();
     osDelay(1);
   }
   /* USER CODE END StartLVPDBTaskTx */
