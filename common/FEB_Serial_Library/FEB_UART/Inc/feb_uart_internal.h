@@ -38,7 +38,6 @@ extern "C"
 #include "cmsis_os2.h"
 
   typedef osMutexId_t FEB_UART_Mutex_t;
-  typedef osSemaphoreId_t FEB_UART_Semaphore_t;
 
 #define FEB_UART_MUTEX_CREATE() osMutexNew(NULL)
 #define FEB_UART_MUTEX_DELETE(m) osMutexDelete(m)
@@ -46,11 +45,6 @@ extern "C"
 #define FEB_UART_MUTEX_UNLOCK(m) osMutexRelease(m)
 #define FEB_UART_MUTEX_LOCK_ISR(m) ((void)0) /* Mutexes not safe from ISR */
 #define FEB_UART_MUTEX_UNLOCK_ISR(m) ((void)0)
-
-#define FEB_UART_SEM_CREATE(max, init) osSemaphoreNew(max, init, NULL)
-#define FEB_UART_SEM_DELETE(s) osSemaphoreDelete(s)
-#define FEB_UART_SEM_GIVE(s) osSemaphoreRelease(s)
-#define FEB_UART_SEM_TAKE(s, timeout) (osSemaphoreAcquire(s, timeout) == osOK)
 
 #define FEB_UART_ENTER_CRITICAL() /* Use mutex instead in FreeRTOS */
 #define FEB_UART_EXIT_CRITICAL()
@@ -60,7 +54,6 @@ extern "C"
 #else /* Bare-metal */
 
 typedef uint32_t FEB_UART_Mutex_t;
-typedef volatile uint8_t FEB_UART_Semaphore_t;
 
 /*
  * Bare-metal sync primitive behavior depends on FEB_UART_BARE_METAL_NO_SYNC:
@@ -88,11 +81,6 @@ typedef volatile uint8_t FEB_UART_Semaphore_t;
 #define FEB_UART_MUTEX_LOCK_ISR(m) ((void)0)
 #define FEB_UART_MUTEX_UNLOCK_ISR(m) ((void)0)
 
-#define FEB_UART_SEM_CREATE(max, init) (init)
-#define FEB_UART_SEM_DELETE(s) ((void)0)
-#define FEB_UART_SEM_GIVE(s) ((void)0)
-#define FEB_UART_SEM_TAKE(s, timeout) (true)
-
 #define FEB_UART_ENTER_CRITICAL() ((void)0)
 #define FEB_UART_EXIT_CRITICAL() ((void)0)
 
@@ -109,11 +97,6 @@ typedef volatile uint8_t FEB_UART_Semaphore_t;
 #define FEB_UART_MUTEX_UNLOCK(m) __set_PRIMASK(m)
 #define FEB_UART_MUTEX_LOCK_ISR(m) ((void)0) /* Already in ISR context */
 #define FEB_UART_MUTEX_UNLOCK_ISR(m) ((void)0)
-
-#define FEB_UART_SEM_CREATE(max, init) (init)
-#define FEB_UART_SEM_DELETE(s) ((void)0)
-#define FEB_UART_SEM_GIVE(s) ((void)0)
-#define FEB_UART_SEM_TAKE(s, timeout) (true)
 
 #define FEB_UART_ENTER_CRITICAL() __disable_irq()
 #define FEB_UART_EXIT_CRITICAL() __enable_irq()

@@ -63,8 +63,7 @@ typedef struct
 
 #if FEB_UART_USE_FREERTOS
   /* User-provided sync primitives (FreeRTOS mode) */
-  FEB_UART_MutexHandle_t tx_mutex;            /* User-created mutex */
-  FEB_UART_SemaphoreHandle_t tx_complete_sem; /* User-created semaphore */
+  FEB_UART_MutexHandle_t tx_mutex; /* User-created mutex */
 #else
   FEB_UART_Mutex_t tx_mutex; /* Bare-metal: PRIMASK storage */
 #endif
@@ -175,11 +174,6 @@ int FEB_UART_Init(FEB_UART_Instance_t instance, const FEB_UART_Config_t *config)
   {
     return FEB_UART_ERR_NO_MUTEX;
   }
-  if (config->tx_complete_sem == NULL)
-  {
-    return FEB_UART_ERR_NO_SEMAPHORE;
-  }
-
   /* Validate optional queue handles if queue mode is enabled */
   if (config->enable_rx_queue && config->rx_queue == NULL)
   {
@@ -205,7 +199,6 @@ int FEB_UART_Init(FEB_UART_Instance_t instance, const FEB_UART_Config_t *config)
 #if FEB_UART_USE_FREERTOS
   /* Store user-provided sync primitives (NOT created internally) */
   ctx[inst].tx_mutex = config->tx_mutex;
-  ctx[inst].tx_complete_sem = config->tx_complete_sem;
 #endif
 
   /* Initialize RX state */
@@ -287,7 +280,6 @@ void FEB_UART_DeInit(FEB_UART_Instance_t instance)
 
 #if FEB_UART_USE_FREERTOS
   ctx[inst].tx_mutex = NULL;
-  ctx[inst].tx_complete_sem = NULL;
   ctx[inst].rx_queue = NULL;
   ctx[inst].tx_queue = NULL;
   ctx[inst].rx_queue_enabled = false;

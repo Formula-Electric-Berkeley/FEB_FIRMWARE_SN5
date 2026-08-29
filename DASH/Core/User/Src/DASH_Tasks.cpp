@@ -62,16 +62,6 @@ extern "C"
     }
   }
 
-  void StartUartTxTask(void *argument)
-  {
-    (void)argument;
-
-    for (;;)
-    {
-      osDelay(100);
-    }
-  }
-
   void StartCanRxTask(void *argument)
   {
     (void)argument;

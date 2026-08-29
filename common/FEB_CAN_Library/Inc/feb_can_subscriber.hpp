@@ -109,9 +109,9 @@ private:
       return;
     }
 
-    self->seq_++;
+    self->seq_ = self->seq_ + 1;
     self->data_ = decoded;
-    self->seq_++;
+    self->seq_ = self->seq_ + 1;
 
     self->last_rx_ms_ = FEB_CAN_Now();
     self->rx_count_++;

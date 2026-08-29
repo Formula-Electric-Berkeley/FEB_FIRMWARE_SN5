@@ -70,17 +70,15 @@ extern "C"
    * ============================================================================
    *
    * These are forward declared to avoid requiring FreeRTOS headers in user code.
-   * In FreeRTOS mode, these map to osMutexId_t, osSemaphoreId_t, osMessageQueueId_t.
+   * In FreeRTOS mode, these map to osMutexId_t, osMessageQueueId_t.
    * In bare-metal mode, these are unused but kept for API consistency.
    */
 #if FEB_UART_USE_FREERTOS
 #include "cmsis_os2.h"
   typedef osMutexId_t FEB_UART_MutexHandle_t;
-  typedef osSemaphoreId_t FEB_UART_SemaphoreHandle_t;
   typedef osMessageQueueId_t FEB_UART_QueueHandle_t;
 #else
 typedef void *FEB_UART_MutexHandle_t;
-typedef void *FEB_UART_SemaphoreHandle_t;
 typedef void *FEB_UART_QueueHandle_t;
 #endif
 
@@ -93,14 +91,13 @@ typedef void *FEB_UART_QueueHandle_t;
    */
   typedef enum
   {
-    FEB_UART_OK = 0,                /**< Success */
-    FEB_UART_ERR_INVALID_ARG = -1,  /**< Invalid argument */
-    FEB_UART_ERR_NOT_INIT = -2,     /**< Instance not initialized */
-    FEB_UART_ERR_TIMEOUT = -3,      /**< Operation timeout */
-    FEB_UART_ERR_BUFFER_FULL = -4,  /**< TX buffer full */
-    FEB_UART_ERR_NO_MUTEX = -5,     /**< Required mutex not provided (FreeRTOS) */
-    FEB_UART_ERR_NO_SEMAPHORE = -6, /**< Required semaphore not provided (FreeRTOS) */
-    FEB_UART_ERR_NO_QUEUE = -7,     /**< Required queue not provided (FreeRTOS) */
+    FEB_UART_OK = 0,               /**< Success */
+    FEB_UART_ERR_INVALID_ARG = -1, /**< Invalid argument */
+    FEB_UART_ERR_NOT_INIT = -2,    /**< Instance not initialized */
+    FEB_UART_ERR_TIMEOUT = -3,     /**< Operation timeout */
+    FEB_UART_ERR_BUFFER_FULL = -4, /**< TX buffer full */
+    FEB_UART_ERR_NO_MUTEX = -5,    /**< Required mutex not provided (FreeRTOS) */
+    FEB_UART_ERR_NO_QUEUE = -7,    /**< Required queue not provided (FreeRTOS) */
   } FEB_UART_Error_t;
 
   /* ============================================================================
@@ -176,7 +173,6 @@ typedef void *FEB_UART_QueueHandle_t;
    *
    * FreeRTOS Mode (FEB_UART_USE_FREERTOS == 1):
    *   - tx_mutex is REQUIRED (created in CubeMX .ioc, passed here)
-   *   - tx_complete_sem is REQUIRED for blocking TX operations
    *   - rx_queue/tx_queue are optional (if queue mode enabled)
    *
    * Bare-Metal Mode (FEB_UART_USE_FREERTOS == 0):
@@ -211,14 +207,11 @@ typedef void *FEB_UART_QueueHandle_t;
      * These MUST be created by the user (typically via CubeMX .ioc) and passed
      * to this config. The library does NOT create these internally.
      *
-     * Init will return FEB_UART_ERR_NO_MUTEX/SEMAPHORE if required fields are NULL.
+     * Init will return FEB_UART_ERR_NO_MUTEX if a required field is NULL.
      */
 
     /** @brief TX mutex - REQUIRED. Protects TX buffer access. Create in CubeMX. */
     FEB_UART_MutexHandle_t tx_mutex;
-
-    /** @brief TX complete semaphore - REQUIRED. Binary semaphore for DMA completion. */
-    FEB_UART_SemaphoreHandle_t tx_complete_sem;
 
     /* ========================================================================
      * Optional Queue Configuration (FreeRTOS mode)

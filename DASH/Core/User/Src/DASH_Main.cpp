@@ -25,15 +25,9 @@ static uint8_t uart_tx_buf[512];
 static uint8_t uart_rx_buf[256];
 
 /* External FreeRTOS handles from .ioc-generated code */
-#if FEB_LOG_USE_FREERTOS
 extern osMutexId_t logMutexHandle;
-#endif
-
-#if FEB_UART_USE_FREERTOS
 extern osMutexId_t uartTxMutexHandle;
-extern osSemaphoreId_t uartTxSemHandle;
 extern osMessageQueueId_t uartRxQueueHandle;
-#endif
 
 /* ============================================================================
  * Application Entry Points
@@ -51,12 +45,9 @@ void DASH_Init(void)
       .rx_buffer = uart_rx_buf,
       .rx_buffer_size = sizeof(uart_rx_buf),
       .get_tick_ms = HAL_GetTick,
-#if FEB_UART_USE_FREERTOS
       .tx_mutex = uartTxMutexHandle,
-      .tx_complete_sem = uartTxSemHandle,
       .enable_rx_queue = true,
       .rx_queue = uartRxQueueHandle,
-#endif
   };
 
   if (FEB_UART_Init(FEB_UART_INSTANCE_1, &cfg) != 0)
@@ -74,9 +65,7 @@ void DASH_Init(void)
       .colors = true,
       .timestamps = true,
       .get_tick_ms = HAL_GetTick,
-#if FEB_LOG_USE_FREERTOS
       .mutex = logMutexHandle,
-#endif
   };
   FEB_Log_Init(&log_cfg);
 

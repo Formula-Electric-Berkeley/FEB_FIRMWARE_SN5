@@ -22,7 +22,6 @@ extern DMA_HandleTypeDef hdma_usart2_tx;
 
 /* FreeRTOS handles from CubeMX (freertos.c) */
 extern osMutexId_t uartTxMutexHandle;
-extern osSemaphoreId_t uartTxSemHandle;
 extern osMessageQueueId_t uartRxQueueHandle;
 
 /* UART buffers */
@@ -51,7 +50,6 @@ void FEB_Main_Setup(void)
       .rx_buffer_size = sizeof(uart_rx_buf),
       .get_tick_ms = HAL_GetTick,
       .tx_mutex = uartTxMutexHandle,
-      .tx_complete_sem = uartTxSemHandle,
       .enable_rx_queue = true,
       .rx_queue = uartRxQueueHandle,
   };

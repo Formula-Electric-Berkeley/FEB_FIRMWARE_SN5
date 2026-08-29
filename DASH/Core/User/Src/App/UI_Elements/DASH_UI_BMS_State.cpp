@@ -97,7 +97,7 @@ void FEB_UI_Destroy_BMS_State(void)
   ui_LVPDB_low_voltage = NULL;
 }
 
-char *to_BMS_state_string(BMS_State_t state)
+const char *to_BMS_state_string(BMS_State_t state)
 {
   switch (state)
   {
