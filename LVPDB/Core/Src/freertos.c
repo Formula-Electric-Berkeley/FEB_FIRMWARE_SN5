@@ -227,6 +227,7 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
+  FEB_Main_Setup();
   /* USER CODE END RTOS_EVENTS */
 
 }
