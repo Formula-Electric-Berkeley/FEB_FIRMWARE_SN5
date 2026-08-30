@@ -11,7 +11,6 @@
 #include "feb_uart.h"
 #include "feb_uart_config.h"
 #include "feb_log.h"
-#include "feb_console.h"
 #include "FEB_Commands.h"
 #include "FEB_CAN_State.h"
 #include "FEB_CAN_PingPong.h"
@@ -91,16 +90,9 @@ void FEB_Init(void)
   };
   FEB_Log_Init(&log_cfg);
 
-  /* Initialize console (registers built-in commands) */
-  FEB_Console_Init(true);
-
-  /* Register BMS custom commands */
-  BMS_RegisterCommands();
-
   /* Initialize CAN state publisher */
   FEB_CAN_State_Init();
 
-  /* DWT microsecond clock — needed by the DRIVE shutdown-trip noise filter. */
   FEB_Time_Init();
 
   /* Initialize state machine (sets relays to safe state, transitions to LV_POWER) */
@@ -114,13 +106,13 @@ void FEB_Init(void)
    * semaphore once the TX ring fills — which can never be serviced before the
    * scheduler runs, hanging the boot. Keep this pre-scheduler output small.
    * Bench-mode override warnings are emitted post-scheduler in StartUartRxTask. */
-  FEB_Console_Printf("\r\n");
-  FEB_Console_Printf("========================================\r\n");
-  FEB_Console_Printf("        BMS Console Ready\r\n");
-  FEB_Console_Printf("========================================\r\n");
-  FEB_Console_Printf("Use | as delimiter: BMS|status\r\n");
-  FEB_Console_Printf("Type 'help' for available commands\r\n");
-  FEB_Console_Printf("\r\n");
+  static const char banner[] = "\r\n"
+                               "========================================\r\n"
+                               "        BMS Console Ready\r\n"
+                               "========================================\r\n"
+                               "Type 'help' for available commands\r\n"
+                               "\r\n";
+  FEB_UART_Write(FEB_UART_INSTANCE_1, (const uint8_t *)banner, sizeof(banner) - 1);
 }
 
 /* Emit the bench-mode override warnings. Called once from a task AFTER the
@@ -179,7 +171,7 @@ void StartUartRxTask(void *argument)
     /* Receive from queue with 10ms timeout */
     if (FEB_UART_QueueReceiveLine(FEB_UART_INSTANCE_1, line_buf, sizeof(line_buf), &line_len, 10))
     {
-      FEB_Console_ProcessLine(line_buf, line_len);
+      BMS_Console_ProcessLine(line_buf, line_len);
     }
   }
 }

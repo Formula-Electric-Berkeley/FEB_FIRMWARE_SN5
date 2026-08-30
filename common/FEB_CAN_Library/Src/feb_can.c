@@ -730,6 +730,11 @@ void FEB_CAN_ResetErrorCounters(void)
   feb_can_ctx.ewg_recovery_count = 0;
 }
 
+uint32_t FEB_CAN_Now(void)
+{
+  return feb_can_ctx.initialized && feb_can_ctx.get_tick_ms ? feb_can_ctx.get_tick_ms() : 0U;
+}
+
 const char *FEB_CAN_StatusToString(FEB_CAN_Status_t status)
 {
   switch (status)

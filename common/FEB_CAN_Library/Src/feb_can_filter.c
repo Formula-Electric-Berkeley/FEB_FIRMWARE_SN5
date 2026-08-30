@@ -104,7 +104,7 @@ FEB_CAN_Status_t FEB_CAN_Filter_Configure(FEB_CAN_Instance_t instance, uint8_t f
     filter_config.FilterIdHigh = (uint16_t)((id << 5) & 0xFFFF);
     filter_config.FilterIdLow = 0x0000;
     filter_config.FilterMaskIdHigh = (uint16_t)((mask << 5) & 0xFFFF);
-    filter_config.FilterMaskIdLow = 0x0000;
+    filter_config.FilterMaskIdLow = 0x0004;
   }
   else
   {
@@ -304,7 +304,7 @@ FEB_CAN_Status_t FEB_CAN_Filter_UpdateFromRegistry(FEB_CAN_Instance_t instance)
 
   /* Registered IDs beyond the bank budget never get a hardware filter and
    * their frames are silently dropped — make that loud and report it. */
-  uint32_t needed = unique_count + (has_wildcard ? 1u : 0u);
+  uint32_t needed = has_wildcard ? 1u : unique_count;
   uint32_t available = (uint32_t)(filter_end - filter_start);
   bool overflow = (needed > available);
   if (overflow)

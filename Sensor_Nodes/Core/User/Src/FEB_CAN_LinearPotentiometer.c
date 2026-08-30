@@ -12,7 +12,7 @@
 
 #include "FEB_LinearPotentiometer.h"
 #include "FEB_SN_Config.h"
-#include "feb_can.h"
+#include "feb_can_db.h"
 #include "feb_can_lib.h"
 
 static uint32_t can_tx_error_count = 0;

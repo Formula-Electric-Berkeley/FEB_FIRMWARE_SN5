@@ -46,7 +46,7 @@ list(FILTER HAL_SOURCES EXCLUDE REGEX "_template\\.c$")
 set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES})
 
 # CAN library generated source (from common submodule)
-list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can.c")
+list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can_db.c")
 
 # ── Middleware: FreeRTOS ─────────────────────────────────────────────
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
@@ -77,7 +77,7 @@ endif()
 # Common CAN library (submodule)
 set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4")
 list(APPEND BASE_INCLUDES
-    "${CAN_LIB_DIR}/.."          # resolves #include "FEB_CAN_Library_SN4/gen/feb_can.h"
+    "${CAN_LIB_DIR}/.."          # resolves #include "FEB_CAN_Library_SN4/gen/feb_can_db.h"
     "${CAN_LIB_DIR}/gen"         # resolves #include "feb_can.h" directly
 )
 

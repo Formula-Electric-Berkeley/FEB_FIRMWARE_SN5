@@ -21,26 +21,18 @@ static volatile uint32_t last_cyc = 0;
 
 void FEB_Time_Init(void)
 {
-  /* Idempotent: a second call must not reset the 64-bit accumulator, or
-   * previously captured timestamps would go backwards. Skip enable work
-   * and state reset once CYCCNT is already running. */
-  if ((DWT->CTRL & DWT_CTRL_CYCCNTENA_Msk) != 0U)
-  {
-    return;
-  }
-
-  /* Enable the trace unit so DWT can run. */
   CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-
-  /* Reset and enable the cycle counter. */
-  DWT->CYCCNT = 0U;
-  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
   uint32_t hz = SystemCoreClock;
   cyc_per_us = (hz >= 1000000U) ? (hz / 1000000U) : 1U;
 
-  cycle_hi = 0;
-  last_cyc = 0;
+  if ((DWT->CTRL & DWT_CTRL_CYCCNTENA_Msk) == 0U)
+  {
+    DWT->CYCCNT = 0U;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+    cycle_hi = 0;
+    last_cyc = 0;
+  }
 }
 
 static inline uint64_t sample_cycles_locked(void)
@@ -96,7 +88,7 @@ static inline uint64_t sample_cycles_locked(void)
    * reads of HAL_GetTick() and SysTick->VAL, COUNTFLAG latches high; we
    * detect that and bump ms by one to compensate. Reading CTRL clears the
    * flag, so grab VAL again afterwards for a consistent pair. */
-  uint32_t ms  = HAL_GetTick();
+  uint32_t ms = HAL_GetTick();
   uint32_t val = SysTick->VAL;
   if (SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk)
   {

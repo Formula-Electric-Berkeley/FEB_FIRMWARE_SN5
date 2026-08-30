@@ -9,23 +9,17 @@
 #ifndef FEB_COMMANDS_H
 #define FEB_COMMANDS_H
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-#include "feb_console.h"
-
 /* BMS-specific module tags */
 #define TAG_ADBMS "[ADBMS]"
 
-  /**
-   * @brief Register all BMS-specific console commands
-   *
-   * Registers: status, cells, temps, balance
-   * Call after FEB_Console_Init().
-   */
-  void BMS_RegisterCommands(void);
+  void BMS_Console_ProcessLine(const char *line, size_t len);
 
 #ifdef __cplusplus
 }

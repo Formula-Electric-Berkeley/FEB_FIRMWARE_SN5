@@ -111,6 +111,7 @@ static inline uint32_t __get_IPSR_local(void)
 static struct
 {
   FEB_Log_OutputFunc_t output;
+  FEB_Log_TapFunc_t tap;
   FEB_UART_Instance_t uart_instance;
   bool use_uart;
   uint32_t (*get_tick_ms)(void);
@@ -194,6 +195,11 @@ void FEB_Log_SetLevel(FEB_Log_Level_t level)
 FEB_Log_Level_t FEB_Log_GetLevel(void)
 {
   return log_ctx.level;
+}
+
+void FEB_Log_SetTap(FEB_Log_TapFunc_t tap)
+{
+  log_ctx.tap = tap;
 }
 
 void FEB_Log_SetColors(bool enable)
@@ -342,7 +348,9 @@ void FEB_Log_Output(FEB_Log_Level_t level, const char *tag, const char *file, in
     SAFE_OFFSET_ADD(ret);
   }
 
-  /* Add user message */
+  /* Add user message. Remember where it starts so the tap can be handed the
+     message alone, without the prefix we just built. */
+  const int msg_offset = offset;
   va_list args;
   va_start(args, format);
   ret = vsnprintf(buf + offset, buf_size - (size_t)offset, format, args);
@@ -365,6 +373,8 @@ void FEB_Log_Output(FEB_Log_Level_t level, const char *tag, const char *file, in
     SAFE_OFFSET_ADD(ret);
   }
 
+  const int msg_end = offset;
+
   /* Add color reset and newline */
   if (log_ctx.colors_enabled)
   {
@@ -379,8 +389,16 @@ void FEB_Log_Output(FEB_Log_Level_t level, const char *tag, const char *file, in
 
 #undef SAFE_OFFSET_ADD
 
-  /* Output the formatted message */
-  log_ctx.output(buf, (size_t)offset);
+  /* A tap may claim the message and suppress the text rendering. */
+  bool suppressed = false;
+  if (log_ctx.tap != NULL)
+  {
+    suppressed = log_ctx.tap(level, tag, buf + msg_offset, (size_t)(msg_end - msg_offset));
+  }
+  if (!suppressed)
+  {
+    log_ctx.output(buf, (size_t)offset);
+  }
 
   /* Release lock */
   if (!in_isr)

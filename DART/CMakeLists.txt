@@ -55,7 +55,7 @@ set(ALL_SOURCES
     ${CORE_SOURCES}
     ${STARTUP_ASM}
     ${HAL_SOURCES}
-    "${CAN_LIB_DIR}/gen/feb_can.c"
+    "${CAN_LIB_DIR}/gen/feb_can_db.c"
 )
 
 # ══════════════════════════════════════════════════════════════════════

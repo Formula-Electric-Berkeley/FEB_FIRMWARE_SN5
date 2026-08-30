@@ -323,6 +323,8 @@ extern "C"
    * API Function Declarations
    *============================================================================*/
 
+  const ADBMS_CmdInfo_t *ADBMS_CmdTable(void);
+
   /**
    * @brief Find command info by name (case-insensitive)
    * @param name Command name (e.g., "RDCFGA")
@@ -369,26 +371,6 @@ extern "C"
    * @return 0 if complete, 1 if still converting, negative on error
    */
   int ADBMS_Poll(uint16_t cmd, uint32_t timeout_us);
-
-  /**
-   * @brief Register console commands for register access
-   * Call after console initialization
-   */
-  void ADBMS_RegisterConsoleCommands(void);
-
-  /**
-   * @brief Console subcommand handler for BMS|reg|*
-   * @param argc Argument count (includes "reg")
-   * @param argv Argument vector
-   */
-  void ADBMS_RegSubcmd(int argc, char *argv[]);
-
-  /**
-   * @brief CSV-mode handler for BMS|csv|<tx>|reg|* (machine-readable)
-   * @param argc Argument count (includes "reg")
-   * @param argv Argument vector
-   */
-  void ADBMS_RegSubcmd_Csv(int argc, char *argv[]);
 
 #ifdef __cplusplus
 }

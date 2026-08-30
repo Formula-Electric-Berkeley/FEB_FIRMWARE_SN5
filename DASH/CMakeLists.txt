@@ -54,14 +54,13 @@ set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES} ${LVGL_SOURCES} ${
 file(GLOB CAN_LIB_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.cpp"
 )
 
 # CAN library generated source (from common submodule)
-list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can.c" ${CAN_LIB_SOURCES})
+list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can_db.c" ${CAN_LIB_SOURCES})
 
 list(APPEND ALL_SOURCES
-    Core/User/Src
-    Core/User/Src/UI_Elements
 
     # BSP
     Drivers/BSP/STM32469I-Discovery/stm32469i_discovery.c
@@ -94,12 +93,6 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FatFs")
     list(APPEND ALL_SOURCES ${FATFS_CORE} ${FATFS_OPTION})
 endif()
 
-# ── SN5 CAN library sources ───────────────────────────────────────────
-file(GLOB CAN_LIB_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/*.c"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.c"
-)
-list(APPEND ALL_SOURCES ${CAN_LIB_SOURCES})
 
 # ══════════════════════════════════════════════════════════════════════
 #  INCLUDE DIRECTORIES
@@ -121,7 +114,7 @@ set(BASE_INCLUDES
 # Common CAN library (submodule)
 set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4")
 list(APPEND BASE_INCLUDES
-    "${CAN_LIB_DIR}/.."          # resolves #include "FEB_CAN_Library_SN4/gen/feb_can.h"
+    "${CAN_LIB_DIR}/.."          # resolves #include "FEB_CAN_Library_SN4/gen/feb_can_db.h"
     "${CAN_LIB_DIR}/gen"         # resolves #include "feb_can.h" directly
 )
 
@@ -153,7 +146,12 @@ list(APPEND BASE_INCLUDES
 
 # Auto-discover Core/User/Inc if it exists
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
-    list(APPEND BASE_INCLUDES Core/User/Inc)
+    list(APPEND BASE_INCLUDES
+        Core/User/Inc          # standard: <BOARD>_Main / _Tasks / _CAN / _CAN_Publish / _Commands
+        Core/User/Inc/Config   # feb_board_config.hpp - the contract the CAN library includes
+        Core/User/Inc/App      # board-specific modules
+        Core/User/Inc/App/UI_Elements
+    )
 endif()
 
 list(APPEND BASE_INCLUDES

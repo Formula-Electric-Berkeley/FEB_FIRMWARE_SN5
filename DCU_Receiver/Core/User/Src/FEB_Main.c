@@ -13,7 +13,7 @@
 #include "feb_uart.h"
 #include "feb_uart_config.h"
 #include "feb_log.h"
-#include "feb_console.h"
+#include "feb_time.h"
 #include "cmsis_os2.h"
 
 /* External HAL handles from CubeMX-generated code */
@@ -113,22 +113,13 @@ void FEB_Init(void)
 
   LOG_I(TAG_MAIN, "DCU initializing...");
 
-  /* Initialize console (registers built-in commands: echo, help, version, uptime, reboot, log) */
-  FEB_Console_Init(true);
-
-  /* Register the CAN-frame stream CSV handlers (can-stream-on/off/status) so the
-   * receiver exposes the same streaming surface as the DCU. */
-  FEB_CAN_Stream_RegisterCsvHandlers();
-
-  /* Register DCU-specific commands */
-  DCU_RegisterCommands();
+  FEB_Time_Init();
 
   /* Startup banner on both consoles */
   static const char banner[] = "\r\n"
                                "========================================\r\n"
                                "      DCU_Receiver Console Ready\r\n"
                                "========================================\r\n"
-                               "Use | as delimiter: dcu|radio, dcu|can\r\n"
                                "Type 'help' for available commands\r\n"
                                "\r\n";
   FEB_UART_Write(FEB_UART_INSTANCE_1, (const uint8_t *)banner, sizeof(banner) - 1);
@@ -154,7 +145,7 @@ void StartUartRxTask(void *argument)
     /* Receive from queue with 10ms timeout */
     if (FEB_UART_QueueReceiveLine(FEB_UART_INSTANCE_1, line_buf, sizeof(line_buf), &line_len, 10))
     {
-      FEB_Console_ProcessLineOnInstance(FEB_UART_INSTANCE_1, line_buf, line_len);
+      DCU_Console_ProcessLine(FEB_UART_INSTANCE_1, line_buf, line_len);
     }
   }
 }
@@ -171,7 +162,7 @@ void StartUart4RxTask(void *argument)
     FEB_UART_ProcessRx(FEB_UART_INSTANCE_2);
     if (FEB_UART_QueueReceiveLine(FEB_UART_INSTANCE_2, line_buf, sizeof(line_buf), &line_len, 10))
     {
-      FEB_Console_ProcessLineOnInstance(FEB_UART_INSTANCE_2, line_buf, line_len);
+      DCU_Console_ProcessLine(FEB_UART_INSTANCE_2, line_buf, line_len);
     }
   }
 }

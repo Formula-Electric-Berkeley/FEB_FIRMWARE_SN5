@@ -65,11 +65,12 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
 endif()
 
 # CAN library generated source (from common submodule) #H
-# list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can.c")
+# list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can_db.c")
 # ── SN5 CAN library sources ───────────────────────────────────────────
 file(GLOB CAN_LIB_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.cpp"
 )
 
 list(APPEND ALL_SOURCES ${CAN_LIB_SOURCES})
@@ -119,7 +120,18 @@ add_executable(${PROJECT_NAME} ${ALL_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_version feb_tps feb_rtos_utils feb_time)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    m
+    feb_string_utils
+    feb_time
+    feb_uart
+    feb_log
+    feb_version
+    feb_console_2
+    feb_commands_2
+    feb_tps
+    feb_rtos_utils
+)
 
 # Embed version + build provenance (reads VERSION + git, generates feb_build_info.c)
 include(${CMAKE_SOURCE_DIR}/cmake/FEB_Version.cmake)

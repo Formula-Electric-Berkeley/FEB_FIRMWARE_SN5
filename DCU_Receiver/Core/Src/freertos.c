@@ -53,7 +53,7 @@ typedef StaticSemaphore_t osStaticMutexDef_t;
 osThreadId_t uart4RxTaskHandle;
 const osThreadAttr_t uart4RxTask_attributes = {
   .name = "uart4RxTask",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 osMutexId_t uartTxMutex2Handle;
@@ -73,7 +73,7 @@ const osMessageQueueAttr_t uartRxQueue2_attributes = {
 osThreadId_t uartRxTaskHandle;
 const osThreadAttr_t uartRxTask_attributes = {
   .name = "uartRxTask",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for radioTask */
