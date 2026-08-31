@@ -56,6 +56,7 @@ extern osMessageQueueId_t canLogQueueHandle;
 
 static char s_filename[DCU_CAN_LOG_FILENAME_MAX];
 static volatile bool s_active = false;
+static volatile bool s_capturing = false;
 static volatile uint32_t s_written_count = 0;
 static volatile uint32_t s_drop_count = 0;
 
@@ -258,16 +259,6 @@ void StartCanLogTask(void *argument)
 {
   (void)argument;
   LOG_I(TAG_CAN_LOG, "canLogTask starting");
-
-  if (!prepare_sd_file())
-  {
-    LOG_E(TAG_CAN_LOG, "SD prep failed — logger idle (CAN frames not captured)");
-    for (;;)
-    {
-      osDelay(pdMS_TO_TICKS(1000));
-    }
-  }
-
   if (!register_wildcards())
   {
     LOG_E(TAG_CAN_LOG, "Wildcard registration failed — logger idle");
@@ -276,8 +267,13 @@ void StartCanLogTask(void *argument)
       osDelay(pdMS_TO_TICKS(1000));
     }
   }
+  s_capturing = true;
 
-  s_active = true;
+  s_active = prepare_sd_file();
+  if (!s_active)
+  {
+    LOG_W(TAG_CAN_LOG, "SD prep failed — file logging off; radio forward and console stream still live");
+  }
   uint32_t last_flush_ms = HAL_GetTick();
   char line_buf[DCU_CAN_LOG_LINE_BUF_BYTES];
 
@@ -296,18 +292,21 @@ void StartCanLogTask(void *argument)
       {
         /* SD path: prepend timestamp, append CRLF.
          *   "<ts_ms>,<bus>,<can_id>,<dlc>,<d0..d7>\r\n" */
-        char ts_buf[12];
-        const int ts_len = snprintf(ts_buf, sizeof(ts_buf), "%lu,", (unsigned long)frame.ts_ms);
-        const size_t total = (size_t)ts_len + (size_t)body_len + 2U;
-        if (ts_len > 0 && (s_flush_used + total) <= sizeof(s_flush_buf))
+        if (s_active)
         {
-          memcpy(&s_flush_buf[s_flush_used], ts_buf, (size_t)ts_len);
-          s_flush_used += (size_t)ts_len;
-          memcpy(&s_flush_buf[s_flush_used], line_buf, (size_t)body_len);
-          s_flush_used += (size_t)body_len;
-          s_flush_buf[s_flush_used++] = '\r';
-          s_flush_buf[s_flush_used++] = '\n';
-          s_written_count++;
+          char ts_buf[12];
+          const int ts_len = snprintf(ts_buf, sizeof(ts_buf), "%lu,", (unsigned long)frame.ts_ms);
+          const size_t total = (size_t)ts_len + (size_t)body_len + 2U;
+          if (ts_len > 0 && (s_flush_used + total) <= sizeof(s_flush_buf))
+          {
+            memcpy(&s_flush_buf[s_flush_used], ts_buf, (size_t)ts_len);
+            s_flush_used += (size_t)ts_len;
+            memcpy(&s_flush_buf[s_flush_used], line_buf, (size_t)body_len);
+            s_flush_used += (size_t)body_len;
+            s_flush_buf[s_flush_used++] = '\r';
+            s_flush_buf[s_flush_used++] = '\n';
+            s_written_count++;
+          }
         }
 
         /* Live console stream: emit one CSV-protocol `can` row under the
@@ -346,6 +345,10 @@ bool DCU_CAN_Log_IsActive(void)
 {
   return s_active;
 }
+bool DCU_CAN_Log_IsCapturing(void)
+{
+  return s_capturing;
+}
 uint32_t DCU_CAN_Log_GetDropCount(void)
 {
   return s_drop_count;
@@ -367,8 +370,9 @@ const char *DCU_CAN_Log_GetFilename(void)
 
 void DCU_CAN_Log_PrintStats(void)
 {
-  LOG_I(TAG_CAN_LOG, "active=%d file=%s written=%lu drops=%lu qdepth=%lu", (int)s_active, DCU_CAN_Log_GetFilename(),
-        (unsigned long)s_written_count, (unsigned long)s_drop_count, (unsigned long)DCU_CAN_Log_GetQueueDepth());
+  LOG_I(TAG_CAN_LOG, "capturing=%d active=%d file=%s written=%lu drops=%lu qdepth=%lu", (int)s_capturing, (int)s_active,
+        DCU_CAN_Log_GetFilename(), (unsigned long)s_written_count, (unsigned long)s_drop_count,
+        (unsigned long)DCU_CAN_Log_GetQueueDepth());
 }
 
 /* ============================================================================

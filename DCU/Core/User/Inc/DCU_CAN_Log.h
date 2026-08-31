@@ -17,6 +17,7 @@
  *        │
  *        ▼
  *   canLogTask: format CSV → 4 KB batch buffer → DCU_SD_Append
+
  *
  * The canLogTask is the only entity that touches the SD card via this path;
  * it serializes through the project's `sdTask` like all other SD users.
@@ -64,6 +65,8 @@ extern "C"
 
   /** @return true once the SD card is open and the CSV header has been written. */
   bool DCU_CAN_Log_IsActive(void);
+
+  bool DCU_CAN_Log_IsCapturing(void);
 
   /** @return Number of frames dropped from canLogQueue (queue-full events). */
   uint32_t DCU_CAN_Log_GetDropCount(void);
