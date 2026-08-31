@@ -51,33 +51,40 @@
 /* USER CODE BEGIN Variables */
 
 /* USER CODE END Variables */
-/* Definitions for UartConsoleLog */
-osThreadId_t UartConsoleLogHandle;
-const osThreadAttr_t UartConsoleLog_attributes = {
-  .name = "UartConsoleLog",
+/* Definitions for uartRxTask */
+osThreadId_t uartRxTaskHandle;
+const osThreadAttr_t uartRxTask_attributes = {
+  .name = "uartRxTask",
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
-/* Definitions for TPSPowerManage */
-osThreadId_t TPSPowerManageHandle;
-const osThreadAttr_t TPSPowerManage_attributes = {
-  .name = "TPSPowerManage",
+/* Definitions for tpsTask */
+osThreadId_t tpsTaskHandle;
+const osThreadAttr_t tpsTask_attributes = {
+  .name = "tpsTask",
   .stack_size = 192 * 4,
   .priority = (osPriority_t) osPriorityNormal1,
 };
-/* Definitions for LVPDBTaskRx */
-osThreadId_t LVPDBTaskRxHandle;
-const osThreadAttr_t LVPDBTaskRx_attributes = {
-  .name = "LVPDBTaskRx",
-  .stack_size = 160 * 4,
+/* Definitions for canRxTask */
+osThreadId_t canRxTaskHandle;
+const osThreadAttr_t canRxTask_attributes = {
+  .name = "canRxTask",
+  .stack_size = 192 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for LVPDBTaskTx */
-osThreadId_t LVPDBTaskTxHandle;
-const osThreadAttr_t LVPDBTaskTx_attributes = {
-  .name = "LVPDBTaskTx",
+/* Definitions for canTxTask */
+osThreadId_t canTxTaskHandle;
+const osThreadAttr_t canTxTask_attributes = {
+  .name = "canTxTask",
   .stack_size = 192 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
+};
+/* Definitions for canPubTask */
+osThreadId_t canPubTaskHandle;
+const osThreadAttr_t canPubTask_attributes = {
+  .name = "canPubTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for canTxQueue */
 osMessageQueueId_t canTxQueueHandle;
@@ -140,10 +147,11 @@ const osSemaphoreAttr_t canTxMailboxSem_attributes = {
 
 /* USER CODE END FunctionPrototypes */
 
-void StartUartConsoleLog(void *argument);
-void StartTPSPowerManage(void *argument);
-void StartLVPDBTaskRx(void *argument);
-void StartLVPDBTaskTx(void *argument);
+void StartUartRxTask(void *argument);
+void StartTpsTask(void *argument);
+void StartCanRxTask(void *argument);
+void StartCanTxTask(void *argument);
+void StartCanPubTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -209,17 +217,20 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of UartConsoleLog */
-  UartConsoleLogHandle = osThreadNew(StartUartConsoleLog, NULL, &UartConsoleLog_attributes);
+  /* creation of uartRxTask */
+  uartRxTaskHandle = osThreadNew(StartUartRxTask, NULL, &uartRxTask_attributes);
 
-  /* creation of TPSPowerManage */
-  TPSPowerManageHandle = osThreadNew(StartTPSPowerManage, NULL, &TPSPowerManage_attributes);
+  /* creation of tpsTask */
+  tpsTaskHandle = osThreadNew(StartTpsTask, NULL, &tpsTask_attributes);
 
-  /* creation of LVPDBTaskRx */
-  LVPDBTaskRxHandle = osThreadNew(StartLVPDBTaskRx, NULL, &LVPDBTaskRx_attributes);
+  /* creation of canRxTask */
+  canRxTaskHandle = osThreadNew(StartCanRxTask, NULL, &canRxTask_attributes);
 
-  /* creation of LVPDBTaskTx */
-  LVPDBTaskTxHandle = osThreadNew(StartLVPDBTaskTx, NULL, &LVPDBTaskTx_attributes);
+  /* creation of canTxTask */
+  canTxTaskHandle = osThreadNew(StartCanTxTask, NULL, &canTxTask_attributes);
+
+  /* creation of canPubTask */
+  canPubTaskHandle = osThreadNew(StartCanPubTask, NULL, &canPubTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -232,76 +243,94 @@ void MX_FREERTOS_Init(void) {
 
 }
 
-/* USER CODE BEGIN Header_StartUartConsoleLog */
+/* USER CODE BEGIN Header_StartUartRxTask */
 /**
-* @brief Function implementing the UartConsoleLog thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartUartConsoleLog */
-__weak void StartUartConsoleLog(void *argument)
+  * @brief  Function implementing the uartRxTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartUartRxTask */
+__weak void StartUartRxTask(void *argument)
 {
-  /* USER CODE BEGIN StartUartConsoleLog */
+  /* USER CODE BEGIN StartUartRxTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartUartConsoleLog */
+  /* USER CODE END StartUartRxTask */
 }
 
-/* USER CODE BEGIN Header_StartTPSPowerManage */
+/* USER CODE BEGIN Header_StartTpsTask */
 /**
-* @brief Function implementing the TPSPowerManage thread.
+* @brief Function implementing the tpsTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartTPSPowerManage */
-__weak void StartTPSPowerManage(void *argument)
+/* USER CODE END Header_StartTpsTask */
+__weak void StartTpsTask(void *argument)
 {
-  /* USER CODE BEGIN StartTPSPowerManage */
+  /* USER CODE BEGIN StartTpsTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartTPSPowerManage */
+  /* USER CODE END StartTpsTask */
 }
 
-/* USER CODE BEGIN Header_StartLVPDBTaskRx */
+/* USER CODE BEGIN Header_StartCanRxTask */
 /**
-* @brief Function implementing the LVPDBTaskRx thread.
+* @brief Function implementing the canRxTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartLVPDBTaskRx */
-__weak void StartLVPDBTaskRx(void *argument)
+/* USER CODE END Header_StartCanRxTask */
+__weak void StartCanRxTask(void *argument)
 {
-  /* USER CODE BEGIN StartLVPDBTaskRx */
+  /* USER CODE BEGIN StartCanRxTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartLVPDBTaskRx */
+  /* USER CODE END StartCanRxTask */
 }
 
-/* USER CODE BEGIN Header_StartLVPDBTaskTx */
+/* USER CODE BEGIN Header_StartCanTxTask */
 /**
-* @brief Function implementing the LVPDBTaskTx thread.
+* @brief Function implementing the canTxTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartLVPDBTaskTx */
-__weak void StartLVPDBTaskTx(void *argument)
+/* USER CODE END Header_StartCanTxTask */
+__weak void StartCanTxTask(void *argument)
 {
-  /* USER CODE BEGIN StartLVPDBTaskTx */
+  /* USER CODE BEGIN StartCanTxTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartLVPDBTaskTx */
+  /* USER CODE END StartCanTxTask */
+}
+
+/* USER CODE BEGIN Header_StartCanPubTask */
+/**
+* @brief Function implementing the canPubTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartCanPubTask */
+__weak void StartCanPubTask(void *argument)
+{
+  /* USER CODE BEGIN StartCanPubTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartCanPubTask */
 }
 
 /* Private application code --------------------------------------------------*/

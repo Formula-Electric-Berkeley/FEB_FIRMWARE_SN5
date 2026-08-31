@@ -455,9 +455,9 @@ static void FEB_Variable_Conversion(void)
  * FreeRTOS Task Implementations - Override weak stubs in freertos.c
  * ============================================================================ */
 
-void StartUartConsoleLog(void *argument)
+void StartUartRxTask(void *argument)
 {
-  /* USER CODE BEGIN StartUartConsoleLog */
+  /* USER CODE BEGIN StartUartRxTask */
   (void)argument;
 
   while (!feb_setup_complete)
@@ -477,12 +477,12 @@ void StartUartConsoleLog(void *argument)
       FEB_Console_ProcessLine(line_buf, line_len);
     }
   }
-  /* USER CODE END StartUartConsoleLog */
+  /* USER CODE END StartUartRxTask */
 }
 
-void StartTPSPowerManage(void *argument)
+void StartTpsTask(void *argument)
 {
-  /* USER CODE BEGIN StartTPSPowerManage */
+  /* USER CODE BEGIN StartTpsTask */
   (void)argument;
 
   while (!feb_setup_complete)
@@ -539,12 +539,45 @@ void StartTPSPowerManage(void *argument)
 
     osDelay(MAIN_LOOP_POLL_INTERVAL_MS);
   }
-  /* USER CODE END StartTPSPowerManage */
+  /* USER CODE END StartTpsTask */
 }
 
-void StartLVPDBTaskRx(void *argument)
+void StartCanRxTask(void *argument)
 {
-  /* USER CODE BEGIN StartLVPDBTaskRx */
+  /* USER CODE BEGIN StartCanRxTask */
+  (void)argument;
+
+  while (!feb_setup_complete)
+  {
+    osDelay(5);
+  }
+
+  for (;;)
+  {
+    FEB_CAN_RX_Process();
+
+    if (FEB_CAN_DASH_IsDataFresh(250))
+    {
+      DASH_State_t dash_state = FEB_CAN_DASH_GetLastState();
+
+      // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
+      FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
+      FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
+    }
+
+    // FEB_TPS_Enable(tps_handles[3], true); // BM_L
+
+    bool brake_on = FEB_CAN_BRAKE_IsDataFresh(250) && (FEB_CAN_BRAKE_GetPercent() > 10);
+    HAL_GPIO_WritePin(BL_Switch_GPIO_Port, BL_Switch_Pin, brake_on ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+    osDelay(1);
+  }
+  /* USER CODE END StartCanRxTask */
+}
+
+void StartCanPubTask(void *argument)
+{
+  /* USER CODE BEGIN StartCanPubTask */
   (void)argument;
 
   while (!feb_setup_complete)
@@ -558,8 +591,6 @@ void StartLVPDBTaskRx(void *argument)
 
   for (;;)
   {
-    FEB_CAN_RX_Process();
-
     // Process CAN ping/pong every 100ms
     if (++ping_divider >= 100)
     {
@@ -616,34 +647,25 @@ void StartLVPDBTaskRx(void *argument)
                       FEB_CAN_LVPDB_HEARTBEAT_LENGTH);
     }
 
-    if (FEB_CAN_DASH_IsDataFresh(250))
-    {
-      DASH_State_t dash_state = FEB_CAN_DASH_GetLastState();
-
-      // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
-      FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
-      FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
-    }
-
-    // FEB_TPS_Enable(tps_handles[3], true); // BM_L
-
-    bool brake_on = FEB_CAN_BRAKE_IsDataFresh(250) && (FEB_CAN_BRAKE_GetPercent() > 10);
-    HAL_GPIO_WritePin(BL_Switch_GPIO_Port, BL_Switch_Pin, brake_on ? GPIO_PIN_SET : GPIO_PIN_RESET);
-
     osDelay(1);
   }
-  /* USER CODE END StartLVPDBTaskRx */
+  /* USER CODE END StartCanPubTask */
 }
 
-void StartLVPDBTaskTx(void *argument)
+void StartCanTxTask(void *argument)
 {
-  /* USER CODE BEGIN StartLVPDBTaskTx */
+  /* USER CODE BEGIN StartCanTxTask */
   (void)argument;
+
+  while (!feb_setup_complete)
+  {
+    osDelay(5);
+  }
 
   for (;;)
   {
     FEB_CAN_TX_Process();
     osDelay(1);
   }
-  /* USER CODE END StartLVPDBTaskTx */
+  /* USER CODE END StartCanTxTask */
 }
