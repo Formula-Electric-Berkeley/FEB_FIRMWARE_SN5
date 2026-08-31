@@ -582,21 +582,26 @@ static void evaluate_faults(void)
    * the charger-group fault (FAULT_CHARGING). */
   if (s == BMS_STATE_BALANCE)
   {
+    // LOG_D(
+    //     "SM",
+    //     "FEB_HW_Shutdown_Sense: %u, FEB_HW_AIR_Plus_Sense: %u, FEB_HW_AIR_Minus_Sense: %u, FEB_HW_Precharge_Sense:
+    //     %u", FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE, FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE,
+    //     FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE, FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_CLOSE);
     bool hv_on =
-        (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE) || (FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE) ||
+        (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN) || (FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_CLOSE) ||
         (FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE) || (FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_CLOSE);
     if (hv_on)
     {
-      if (balance_hv_start_tick == 0)
-      {
-        balance_hv_start_tick = HAL_GetTick();
-      }
-      else if ((HAL_GetTick() - balance_hv_start_tick) >= FEB_CONTACTOR_FEEDBACK_TIMEOUT_MS)
-      {
-        LOG_E(TAG_SM, "HV active during BALANCE (SDC/AIR/PrC closed)");
-        fault_begin(grp_fault);
-        return;
-      }
+      // if (balance_hv_start_tick == 0)
+      // {
+      //   balance_hv_start_tick = HAL_GetTick();
+      // }
+      // else if ((HAL_GetTick() - balance_hv_start_tick) >= FEB_CONTACTOR_FEEDBACK_TIMEOUT_MS)
+      // {
+      LOG_E(TAG_SM, "HV active during BALANCE (SDC/AIR/PrC closed)");
+      fault_begin(grp_fault);
+      //   return;
+      // }
     }
     else
     {
@@ -865,7 +870,7 @@ static void HealthCheckTransition(BMS_State_t next_state)
      * shutdown loop closes before the charger's first CAN frame arrives: we'd
      * already be in BUS_HEALTH_CHECK and would auto-enter PRECHARGE (3) below
      * within a tick, hijacking the charge session. */
-    if (!FEB_CAN_Heartbeat_OthersPresent(HB_PRESENCE_TIMEOUT_MS) && FEB_CAN_Charger_Received())
+    if (!FEB_CAN_Heartbeat_OthersPresent(HB_PRESENCE_TIMEOUT_MS))
     {
       LOG_I(TAG_SM, "Only charger on CAN, leaving health check for BATTERY_FREE");
       HealthCheckTransition(BMS_STATE_BATTERY_FREE);

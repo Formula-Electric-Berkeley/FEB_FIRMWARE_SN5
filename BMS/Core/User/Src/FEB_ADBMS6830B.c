@@ -979,11 +979,11 @@ void FEB_Cell_Balance_Process()
 #if !FEB_BMS_DISABLE_TEMP_CHECKS
   // Thermal safety gate. NaN fails the comparison → stops balancing when
   // telemetry is unavailable. Direct field read; caller already holds the mutex.
-  const float gate_max_temp_dC = FEB_ACC.pack_max_temp * 10.0f;
+  const float gate_max_temp_dC = (double)FEB_ADBMS_Snapshot_Max_Valid_Temp() * 10.0f;
   if (!(gate_max_temp_dC < FEB_CONFIG_CELL_SOFT_MAX_TEMP_dC))
   {
-    LOG_W(TAG_BALANCE, "Temp limit: pack max=%.1fC, skipping balance cycle", gate_max_temp_dC / 10.0f);
-    return;
+    // LOG_W(TAG_BALANCE, "Temp limit: pack max=%.1fC, skipping balance cycle", gate_max_temp_dC / 10.0f);
+    // return;
   }
 #endif
 

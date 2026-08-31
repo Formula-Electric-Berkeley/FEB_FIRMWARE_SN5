@@ -173,11 +173,15 @@ void cmd_bms_temps(Interaction &io, std::span<char *const>)
   for (std::uint8_t bank = 0; bank < FEB_NBANKS; bank++)
   {
     io.print("Bank %2u:", (unsigned)(bank + 1));
+    static constexpr Column kCols[] = {{"Field", 12}, {"Value", 14}};
+    Table t(io, kCols, "Temps", false);
+
     for (std::uint16_t sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
     {
-      io.print(" %.1f", (double)FEB_ADBMS_GET_Cell_Temperature(bank, sensor));
+      t.cell("Mux %u Channel %u", sensor / 7, sensor % 7);
+      t.cell(" %.1f", (double)FEB_ADBMS_GET_Cell_Temperature(bank, sensor));
+      t.end_row();
     }
-    io.print("\r\n");
   }
   io.println("Pack: min %.1f C  max %.1f C  avg %.1f C", (double)FEB_ADBMS_GET_ACC_MIN_Temp(),
              (double)FEB_ADBMS_GET_ACC_MAX_Temp(), (double)FEB_ADBMS_GET_ACC_AVG_Temp());
@@ -260,7 +264,7 @@ void cmd_bms_cell_stats(Interaction &io, std::span<char *const>)
   {
     for (std::uint16_t cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
     {
-      io.emit("voltage", "%u,%u,%.3f,%.3f,%u", (unsigned)(bank + 1), (unsigned)(cell + 1),
+      io.emit("voltage", "%u,%u,%.5f,%.5f,%u", (unsigned)(bank + 1), (unsigned)(cell + 1),
               (double)FEB_ADBMS_GET_Cell_Voltage(bank, cell), (double)FEB_ADBMS_GET_Cell_Voltage_S(bank, cell),
               (unsigned)FEB_ADBMS_GET_Cell_Discharging(bank, cell));
     }
