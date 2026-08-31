@@ -38,7 +38,8 @@ cell_asic IC_Config[FEB_NUM_IC];
 accumulator_t FEB_ACC = {0};
 
 int balancing_cycle = 0;
-uint16_t balancing_mask = 0xAAAA;
+uint16_t balancing_mask = 0x7777;
+uint16_t balancing_masks[] = {0x7777, 0xBBBB, 0xDDDD, 0xEEEE};
 
 /* Set by FEB_Stop_Balance() from any task (SM/console, lock-free); consumed by
  * FEB_Cell_Balance_ServiceStop() in ADBMSTask, which owns the bus writes. */
@@ -973,6 +974,8 @@ void FEB_Cell_Balance_Start()
   osMutexRelease(ADBMSMutexHandle);
 }
 
+static uint8_t mask_index = 0;
+
 // Caller must hold ADBMSMutexHandle.
 void FEB_Cell_Balance_Process()
 {
@@ -992,7 +995,10 @@ void FEB_Cell_Balance_Process()
 #if !FEB_CELL_BALANCE_ALL_AT_ONCE
   if (balancing_cycle == 3)
   {
-    balancing_mask = ~balancing_mask;
+    mask_index++;
+    if (mask_index > 3)
+      mask_index = 0;
+    balancing_mask = balancing_masks[mask_index];
     LOG_D(TAG_BALANCE, "Mask flipped to 0x%04X", balancing_mask);
     balancing_cycle = 0;
   }
