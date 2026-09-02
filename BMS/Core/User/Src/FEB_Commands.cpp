@@ -392,6 +392,7 @@ void cmd_bms_state(Interaction &io, std::span<char *const> args)
   if (args.size() < 2)
   {
     io.flags("read_only");
+    io.emit("state", "%s", state_name(current));
     io.println("BMS state: %s (%d)", state_name(current), (int)current);
     list_state_options(io, current);
     return;
