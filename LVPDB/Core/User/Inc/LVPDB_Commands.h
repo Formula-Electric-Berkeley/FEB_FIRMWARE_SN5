@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file           : FEB_LVPDB_Commands.h
+ * @file           : LVPDB_Commands.h
  * @brief          : LVPDB Custom Console Commands
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
@@ -35,8 +35,8 @@
  ******************************************************************************
  */
 
-#ifndef FEB_LVPDB_COMMANDS_H
-#define FEB_LVPDB_COMMANDS_H
+#ifndef LVPDB_COMMANDS_H
+#define LVPDB_COMMANDS_H
 
 #ifdef __cplusplus
 extern "C"
@@ -66,4 +66,4 @@ extern "C"
 }
 #endif
 
-#endif /* FEB_LVPDB_COMMANDS_H */
+#endif /* LVPDB_COMMANDS_H */

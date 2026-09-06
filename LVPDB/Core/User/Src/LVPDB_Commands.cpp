@@ -1,37 +1,30 @@
 /**
  ******************************************************************************
- * @file           : FEB_LVPDB_Commands.c
+ * @file           : LVPDB_Commands.cpp
  * @brief          : LVPDB Custom Console Command Implementations
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  */
 
-#include "FEB_LVPDB_Commands.h"
-#include "FEB_CAN_PingPong.h"
-#include "FEB_Main.h"
+#include "LVPDB_Commands.h"
+#include "LVPDB_PingPong.h"
+#include "LVPDB_TPS.h"
 #include "cmsis_os2.h"
 #include "feb_console.h"
 #include "feb_log.h"
 #include "feb_string_utils.h"
 #include "feb_tps.h"
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 /* ============================================================================
- * External Variables from FEB_Main.c
+ * External Variables from CubeMX-generated code
  * ============================================================================ */
 
 extern I2C_HandleTypeDef hi2c1;
 extern osMutexId_t FEB_I2C_mutexHandle;
-extern uint8_t tps2482_i2c_addresses[NUM_TPS2482];
-extern GPIO_TypeDef *tps2482_en_ports[NUM_TPS2482 - 1];
-extern uint16_t tps2482_en_pins[NUM_TPS2482 - 1];
-extern GPIO_TypeDef *tps2482_pg_ports[NUM_TPS2482];
-extern uint16_t tps2482_pg_pins[NUM_TPS2482];
-extern uint16_t tps2482_bus_voltage[NUM_TPS2482];
-extern int16_t tps2482_current[NUM_TPS2482];
-extern int16_t tps2482_shunt_voltage_raw[NUM_TPS2482];
 
 /* ============================================================================
  * Chip Name/Index Mapping
@@ -95,7 +88,7 @@ static const RegInfo_t registers[] = {
  *
  * Performs a case-insensitive lookup of the register table for the given name.
  * @param name Register name to look up (case-insensitive).
- * @returns Pointer to the matching RegInfo_t, or NULL if no register with that name exists.
+ * @returns Pointer to the matching RegInfo_t, or nullptr if no register with that name exists.
  */
 static const RegInfo_t *get_register_info(const char *name)
 {
@@ -104,7 +97,7 @@ static const RegInfo_t *get_register_info(const char *name)
     if (FEB_strcasecmp(name, registers[i].name) == 0)
       return &registers[i];
   }
-  return NULL;
+  return nullptr;
 }
 
 /* ============================================================================
@@ -392,7 +385,7 @@ static void cmd_read(int argc, char *argv[])
   }
 
   const RegInfo_t *reg = get_register_info(argv[2]);
-  if (reg == NULL)
+  if (reg == nullptr)
   {
     FEB_Console_Printf("Error: Unknown register '%s'\r\n", argv[2]);
     return;
@@ -439,7 +432,7 @@ static void cmd_write(int argc, char *argv[])
   }
 
   const RegInfo_t *reg = get_register_info(argv[2]);
-  if (reg == NULL)
+  if (reg == nullptr)
   {
     FEB_Console_Printf("Error: Unknown register '%s'\r\n", argv[2]);
     return;
@@ -698,7 +691,7 @@ static void cmd_csv_read(int argc, char *argv[])
     return;
   }
   const RegInfo_t *reg = get_register_info(argv[2]);
-  if (reg == NULL)
+  if (reg == nullptr)
   {
     FEB_Console_CsvError("error", "read_reg,%s", argv[2]);
     return;
@@ -727,7 +720,7 @@ static void cmd_csv_write(int argc, char *argv[])
     return;
   }
   const RegInfo_t *reg = get_register_info(argv[2]);
-  if (reg == NULL)
+  if (reg == nullptr)
   {
     FEB_Console_CsvError("error", "write_reg,%s", argv[2]);
     return;
@@ -898,7 +891,7 @@ static void cmd_lvpdb(int argc, char *argv[])
   {
     if (FEB_strcasecmp(LVPDB_SUBCMDS[i]->name, subcmd) == 0)
     {
-      if (LVPDB_SUBCMDS[i]->handler != NULL)
+      if (LVPDB_SUBCMDS[i]->handler != nullptr)
       {
         LVPDB_SUBCMDS[i]->handler(argc - 1, argv + 1);
       }
@@ -917,7 +910,7 @@ const FEB_Console_Cmd_t lvpdb_cmd = {
     .name = "LVPDB",
     .help = "LVPDB commands (LVPDB|<sub>) - run LVPDB alone for full list",
     .handler = cmd_lvpdb,
-    .csv_handler = NULL,
+    .csv_handler = nullptr,
 };
 
 void LVPDB_RegisterCommands(void)

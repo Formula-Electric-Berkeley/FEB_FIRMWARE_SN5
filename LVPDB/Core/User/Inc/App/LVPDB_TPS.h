@@ -1,21 +1,27 @@
-#ifndef INC_FEB__MAIN_H_
-#define INC_FEB__MAIN_H_
+/**
+ ******************************************************************************
+ * @file           : LVPDB_TPS.h
+ * @brief          : TPS2482 power rail management
+ * @author         : Formula Electric @ Berkeley
+ ******************************************************************************
+ */
+
+#ifndef LVPDB_TPS_H
+#define LVPDB_TPS_H
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-#include "FEB_CAN.h"
-#include "feb_tps.h"
-#include "feb_console.h"
-#include "feb_uart.h"
-#include "feb_log.h"
-
+/* HAL first: feb_tps.h names I2C_HandleTypeDef and GPIO_TypeDef without
+ * including the HAL header itself. */
 #include <stm32f4xx_hal.h>
+
+#include "feb_tps.h"
+
+#include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <string.h>
 
   /*
    * The LVPDB has multiple TPS chips on the bus. These are the addresses of
@@ -75,15 +81,64 @@ extern "C"
 #define AF1_AF2_POWER_LSB FEB_TPS_CALC_POWER_LSB(AF1_AF2_CURRENT_LSB)
 #define CP_RF_POWER_LSB FEB_TPS_CALC_POWER_LSB(CP_RF_CURRENT_LSB)
 
-#define FEB_BREAK_THRESHOLD (uint8_t)20
+  /* ============================================================================
+   * Device Handles and Measurement Data
+   * ============================================================================ */
 
-#define SLEEP_TIME 10
+  // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
+  extern FEB_TPS_Handle_t tps_handles[NUM_TPS2482];
 
-  void FEB_Main_Setup(void);
-  void FEB_CAN1_Rx_Callback(CAN_RxHeaderTypeDef *rx_header, void *data);
+  // Converted values
+  extern int16_t tps2482_current[NUM_TPS2482];
+  extern uint16_t tps2482_bus_voltage[NUM_TPS2482];
+  extern double tps2482_shunt_voltage[NUM_TPS2482];
+
+  // Raw measurement data (for backward compatibility with CAN transmission)
+  // Note: current and shunt voltage are now sign-corrected by the library
+  extern int16_t tps2482_shunt_voltage_raw[NUM_TPS2482];
+
+  // Exported arrays for console commands (populated from tps_device_configs)
+  extern uint8_t tps2482_i2c_addresses[NUM_TPS2482];
+  extern GPIO_TypeDef *tps2482_en_ports[NUM_TPS2482 - 1]; // No EN for LV
+  extern uint16_t tps2482_en_pins[NUM_TPS2482 - 1];
+  extern GPIO_TypeDef *tps2482_pg_ports[NUM_TPS2482];
+  extern uint16_t tps2482_pg_pins[NUM_TPS2482];
+
+  /* ============================================================================
+   * API Functions
+   * ============================================================================ */
+
+  /**
+   * @brief Initialize the TPS library, register every chip, and set the startup rail state
+   * @note Must be called after FEB_TPS_Init()'s I2C mutex exists (i.e. after MX_FREERTOS_Init)
+   */
+  void LVPDB_TPS_Setup(void);
+
+  /**
+   * @brief Whether at least one TPS2482 registered successfully
+   */
+  bool LVPDB_TPS_IsInitialized(void);
+
+  /**
+   * @brief Poll every registered chip and refresh the converted measurements
+   * @note Takes the TPS data mutex internally
+   */
+  void LVPDB_TPS_Poll(void);
+
+  /**
+   * @brief Whether the last poll of a chip succeeded
+   * @param index Device index (0..NUM_TPS2482-1)
+   */
+  bool LVPDB_TPS_PollOk(uint8_t index);
+
+  /**
+   * @brief Whether a chip's last power-good read was asserted
+   * @param index Device index (0..NUM_TPS2482-1)
+   */
+  bool LVPDB_TPS_PowerGood(uint8_t index);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+#endif /* LVPDB_TPS_H */

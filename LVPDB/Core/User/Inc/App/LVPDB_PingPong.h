@@ -1,13 +1,13 @@
 /**
  ******************************************************************************
- * @file           : FEB_CAN_PingPong.h
+ * @file           : LVPDB_PingPong.h
  * @brief          : CAN Ping/Pong Test Module Header
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  */
 
-#ifndef FEB_CAN_PINGPONG_H
-#define FEB_CAN_PINGPONG_H
+#ifndef LVPDB_PINGPONG_H
+#define LVPDB_PINGPONG_H
 
 #ifdef __cplusplus
 extern "C"
@@ -99,4 +99,4 @@ extern "C"
 }
 #endif
 
-#endif /* FEB_CAN_PINGPONG_H */
+#endif /* LVPDB_PINGPONG_H */

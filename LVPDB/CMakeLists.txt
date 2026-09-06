@@ -71,7 +71,11 @@ set(BASE_INCLUDES
 
 # Auto-discover Core/User/Inc if it exists
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
-    list(APPEND BASE_INCLUDES Core/User/Inc)
+    list(APPEND BASE_INCLUDES
+        Core/User/Inc          # standard: <BOARD>_Main / _Tasks / _CAN / _CAN_Publish / _Commands
+        Core/User/Inc/Config   # feb_board_config.hpp - the contract the CAN library includes
+        Core/User/Inc/App      # board-specific modules
+    )
 endif()
 
 # Common CAN library (submodule)

@@ -25,7 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "FEB_Main.h"
+#include "LVPDB_Main.h"
 #include "feb_uart.h"
 #include "feb_console.h"
 #include "feb_can_lib.h"
@@ -238,7 +238,7 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
-  FEB_Main_Setup();
+  LVPDB_Init();
   /* USER CODE END RTOS_EVENTS */
 
 }
