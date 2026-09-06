@@ -388,15 +388,26 @@ static void feb_can_tx_complete_callback(FEB_CAN_Handle_t hcan)
 
 #if FEB_CAN_USE_FREERTOS
   (void)hcan;
-  /* One ISR notification ↔ one successful HAL_CAN_AddTxMessage (tx_pending_count++).
-   * Only release the counting semaphore when we had a matching pending TX.
-   * Spurious TX-mailbox-empty edges during bring-up or errata can otherwise
-   * inflate the sem above the 3 hardware mailboxes and corrupt TX flow. */
+  /* A mailbox just freed in hardware, so release a permit unconditionally: the
+   * semaphore tracks the peripheral, not our bookkeeping.
+   *
+   * This used to be gated on tx_pending_count > 0 to stop spurious
+   * TX-mailbox-empty edges from inflating the semaphore. That gate cost far
+   * more than it bought. tx_pending_count is a non-atomic read-modify-write on
+   * a volatile byte shared between task context and three ISR paths, so it can
+   * drift below the true number of loaded mailboxes; once it did, the gate
+   * silently swallowed real permits and TX wedged for good. Inflation was never
+   * the hazard it was guarded against either — FEB_CAN_SEM_GIVE saturates at the
+   * semaphore's max count (one permit per mailbox).
+   *
+   * tx_pending_count is diagnostics only now, and
+   * feb_can_tx_resync_mailbox_sem() re-anchors the semaphore on the hardware
+   * free level every TX cycle. */
   if (feb_can_ctx.tx_pending_count > 0)
   {
     feb_can_ctx.tx_pending_count--;
-    FEB_CAN_SEM_GIVE_ISR(feb_can_ctx.tx_sem);
   }
+  FEB_CAN_SEM_GIVE_ISR(feb_can_ctx.tx_sem);
 #else
   /* Bare-metal: a hardware mailbox just freed up — load the next queued frame
    * for this instance so the software TX FIFO keeps draining without waiting
@@ -710,6 +721,11 @@ uint32_t FEB_CAN_GetErrorCallbackCount(void)
   return feb_can_ctx.error_callback_count;
 }
 
+uint32_t FEB_CAN_GetTxSemResyncCount(void)
+{
+  return feb_can_ctx.tx_sem_resync_count;
+}
+
 uint32_t FEB_CAN_GetLastErrorEsr(void)
 {
   return feb_can_ctx.last_error_esr;
@@ -728,6 +744,7 @@ void FEB_CAN_ResetErrorCounters(void)
   feb_can_ctx.hal_error_count = 0;
   feb_can_ctx.bus_off_count = 0;
   feb_can_ctx.ewg_recovery_count = 0;
+  feb_can_ctx.tx_sem_resync_count = 0;
 }
 
 uint32_t FEB_CAN_Now(void)

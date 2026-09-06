@@ -694,6 +694,20 @@ extern "C"
   uint32_t FEB_CAN_GetErrorCallbackCount(void);
 
   /**
+   * @brief Get the number of TX mailbox permits recovered from the hardware
+   *
+   * FEB_CAN_TX_Process re-anchors the mailbox semaphore on the peripheral's
+   * free level every cycle. Each permit it has to hand back is one that was
+   * lost to a race between the task-context increment of tx_pending_count and
+   * one of the ISR paths that decrement it. Non-zero means the reconciliation
+   * is doing real work — before it existed, three of these would stop the board
+   * transmitting for good.
+   *
+   * @return Number of permits restored by hardware reconciliation
+   */
+  uint32_t FEB_CAN_GetTxSemResyncCount(void);
+
+  /**
    * @brief Get the CAN_ESR snapshot from the most recent error interrupt
    *
    * Raw bxCAN Error Status Register: bit0 EWGF, bit1 EPVF, bit2 BOFF,

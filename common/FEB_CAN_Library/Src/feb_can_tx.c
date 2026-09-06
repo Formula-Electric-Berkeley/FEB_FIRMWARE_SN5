@@ -94,6 +94,78 @@ int feb_can_tx_hal_transmit(FEB_CAN_Instance_t instance, uint32_t can_id, uint8_
   return FEB_CAN_OK;
 }
 
+#if FEB_CAN_USE_FREERTOS
+/* ============================================================================
+ * TX Mailbox Semaphore / Hardware Reconciliation
+ * ============================================================================ */
+
+/**
+ * @brief Top the mailbox semaphore back up to the hardware free level.
+ *
+ * tx_sem models the free bxCAN TX mailboxes and is the gate every outgoing
+ * frame passes through in FEB_CAN_TX_Process. Its bookkeeping counterpart,
+ * tx_pending_count, is a non-atomic read-modify-write on a volatile byte that
+ * is incremented from task context and decremented from three separate ISR
+ * paths (TX complete, TX abort, and the ALST/TERR branch of the error
+ * callback). A CAN TX or SCE interrupt landing inside one of those windows
+ * leaves a permit unaccounted for, and nothing short of a bus-off ever gave it
+ * back: the board went progressively quieter on the bus and, once all three
+ * permits were gone, stopped transmitting altogether while every other task
+ * kept running normally.
+ *
+ * The peripheral is the authority. This runs in task context at the top of
+ * FEB_CAN_TX_Process, before the drain loop and therefore at a point where no
+ * permit is checked out — TX_Process is the only taker, and each board drives
+ * it from a single task — so the hardware free level IS the correct permit
+ * count. Reconciling here turns a lost permit into a one-cycle hiccup instead
+ * of a permanent TX stall.
+ *
+ * Raise-only on purpose: FEB_CAN_SEM_GIVE saturates at the semaphore's max
+ * count (created with one permit per mailbox), so this can never hand out more
+ * permits than there are mailboxes, and it never takes a permit it might then
+ * fail to give back.
+ */
+static void feb_can_tx_resync_mailbox_sem(FEB_CAN_Context_t *ctx)
+{
+  if (ctx->tx_sem == NULL)
+  {
+    return;
+  }
+
+  /* One semaphore fronts every configured peripheral, so a permit is warranted
+   * as soon as any of them can accept a frame; feb_can_tx_hal_transmit
+   * re-checks the free level of the specific instance before submitting. */
+  uint32_t free_level = 0;
+  for (uint32_t i = 0; i < FEB_CAN_INSTANCE_COUNT; i++)
+  {
+    CAN_HandleTypeDef *hcan = (CAN_HandleTypeDef *)ctx->hcan[i];
+    if (hcan == NULL)
+    {
+      continue;
+    }
+
+    uint32_t level = HAL_CAN_GetTxMailboxesFreeLevel(hcan);
+    if (level > free_level)
+    {
+      free_level = level;
+    }
+  }
+
+  /* Read order matters, and it is the hardware first and the semaphore second.
+   * A TX-complete ISR can preempt us between the two reads; sampling the
+   * semaphore last means its release is already visible here, so the race
+   * under-corrects (and the next 1 ms cycle finishes the job) instead of
+   * handing out a permit for a mailbox that is about to be refilled. The free
+   * level itself cannot fall between the reads — this task is the only
+   * submitter and has not entered the drain loop yet. */
+  for (uint32_t permits = FEB_CAN_SEM_COUNT(ctx->tx_sem); permits < free_level; permits++)
+  {
+    FEB_CAN_SEM_GIVE(ctx->tx_sem);
+    ctx->tx_sem_resync_count++;
+  }
+}
+#endif /* FEB_CAN_USE_FREERTOS */
+
 #if !FEB_CAN_USE_FREERTOS
 /* ============================================================================
  * Bare-Metal Software TX FIFO
@@ -550,6 +622,10 @@ void FEB_CAN_TX_Process(void)
     feb_can_recover_bus_off();
     LOG_W("[CAN-BOF]", "Bus-off recovery ran (total=%lu)", (unsigned long)ctx->bus_off_count);
   }
+
+  /* Re-anchor the mailbox semaphore on the peripheral before draining, so a
+   * permit lost to an ISR race cannot wedge TX permanently. */
+  feb_can_tx_resync_mailbox_sem(ctx);
 
   FEB_CAN_Message_t msg;
 

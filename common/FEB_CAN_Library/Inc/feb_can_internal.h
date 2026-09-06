@@ -62,6 +62,7 @@ extern "C"
 #define FEB_CAN_SEM_GIVE_ISR(s) osSemaphoreRelease(s)
 #define FEB_CAN_SEM_TAKE(s, timeout) (osSemaphoreAcquire(s, timeout) == osOK)
 #define FEB_CAN_SEM_TAKE_ISR(s) (osSemaphoreAcquire(s, 0) == osOK)
+#define FEB_CAN_SEM_COUNT(s) osSemaphoreGetCount(s)
 
 #define FEB_CAN_ENTER_CRITICAL() /* Use mutex instead in FreeRTOS */
 #define FEB_CAN_EXIT_CRITICAL()
@@ -110,6 +111,7 @@ typedef volatile uint8_t FEB_CAN_Semaphore_t;
 #define FEB_CAN_SEM_GIVE_ISR(s) ((s) = 1)
 #define FEB_CAN_SEM_TAKE(s, timeout) ((s) ? ((s) = 0, true) : false)
 #define FEB_CAN_SEM_TAKE_ISR(s) ((s) ? ((s) = 0, true) : false)
+#define FEB_CAN_SEM_COUNT(s) ((uint32_t)(s))
 
 #define FEB_CAN_ENTER_CRITICAL() __disable_irq()
 #define FEB_CAN_EXIT_CRITICAL() __enable_irq()
@@ -128,6 +130,7 @@ typedef volatile uint8_t FEB_CAN_Semaphore_t;
 #define FEB_CAN_SEM_GIVE_ISR(s) ((void)0)
 #define FEB_CAN_SEM_TAKE(s, timeout) (true)
 #define FEB_CAN_SEM_TAKE_ISR(s) (true)
+#define FEB_CAN_SEM_COUNT(s) (1U)
 
 #define FEB_CAN_ENTER_CRITICAL() ((void)0)
 #define FEB_CAN_EXIT_CRITICAL() ((void)0)
@@ -276,6 +279,7 @@ typedef volatile uint8_t FEB_CAN_Semaphore_t;
     volatile uint32_t error_callback_count;    /**< Times HAL_CAN_ErrorCallback fired */
     volatile uint32_t bus_off_count;           /**< Times bus-off recovery ran */
     volatile uint32_t ewg_recovery_count;      /**< Times EWG/EPV HAL state reset ran */
+    volatile uint32_t tx_sem_resync_count;     /**< Mailbox permits recovered by hardware reconciliation */
     volatile uint32_t last_error_esr;          /**< ESR snapshot from most recent error IRQ */
     volatile uint32_t last_error_code;         /**< HAL ErrorCode snapshot from most recent error IRQ */
 

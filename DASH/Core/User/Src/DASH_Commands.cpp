@@ -56,6 +56,7 @@ void cmd_dash_can_status(Interaction &io, std::span<char *const>)
   t.row("TX timeout", "%lu", (unsigned long)FEB_CAN_GetTxTimeoutCount());
   t.row("TX queue overflow", "%lu", (unsigned long)FEB_CAN_GetTxQueueOverflowCount());
   t.row("RX queue overflow", "%lu", (unsigned long)FEB_CAN_GetRxQueueOverflowCount());
+  t.row("TX sem resyncs", "%lu", (unsigned long)FEB_CAN_GetTxSemResyncCount());
 }
 
 void set_pingpong_mode(Interaction &io, long ch, FEB_PingPong_Mode_t mode)
