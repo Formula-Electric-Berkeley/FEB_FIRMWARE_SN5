@@ -82,7 +82,7 @@ extern "C"
 #define FEB_CELL_MIN_VOLTAGE_MV 2780      // Minimum safe cell voltage
 #define FEB_CELL_BALANCE_THRESHOLD_MV 10  // Start balancing if cell is >10mV above minimum
 #define FEB_CELL_BALANCE_INTERVAL_MS 1000 // Balancing cycle interval (1 second)
-#define FEB_CELL_BALANCE_ALL_AT_ONCE 1    // 1=balance all qualifying cells, 0=alternate odd/even
+#define FEB_CELL_BALANCE_ALL_AT_ONCE 0    // 1=balance all qualifying cells, 0=alternate odd/even
 
 // Cell temperature limits (in deci-Celsius, 1 dC = 0.1°C)
 #define FEB_CELL_MAX_TEMP_DC 600             // 60.0°C maximum cell temperature
@@ -156,7 +156,7 @@ extern "C"
 // Charger: Elcon/HK HK-J-H650-12 GEN3 (170-650 VDC). Keep the target voltage
 // inside that window. Frames pack/unpack via the generated CAN lib (elcon.dbc).
 // Charger command (BMS -> charger) targets, in charger units (deci-amps / deci-volts).
-#define FEB_CHARGE_CURRENT_dA 60 // TUNE: 4.0 A nominal charge current
+#define FEB_CHARGE_CURRENT_dA 45 // TUNE: 4.5 A nominal charge current
 #define FEB_TRICKLE_CHARGE_CURRENT_dA (FEB_CHARGE_CURRENT_dA / 2)
 #define FEB_TRICKLE_CHARGE_INTERVAL_MS 5000 // toggle interval near full charge
 #define FEB_CHARGE_TARGET_VOLTAGE_dV ((uint16_t)(FEB_CONFIG_PACK_HARD_MAX_VOLTAGE_V * 10.0f * 0.99f))        // TUNE

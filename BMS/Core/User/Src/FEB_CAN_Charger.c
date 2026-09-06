@@ -159,6 +159,8 @@ int8_t FEB_CAN_Charging_Status(void)
         rx_msg.input_voltage == FEB_CAN_CHARGER_STATUS_INPUT_VOLTAGE_INPUT_VOLTAGE_FAULT_CHOICE ||
         rx_msg.communication_state == FEB_CAN_CHARGER_STATUS_COMMUNICATION_STATE_COMM_STATE_TIMEOUT_CHOICE)
     {
+      LOG_W("CHARGER", "Temp: %u, Input Voltage: %u, Comm State: %u", rx_msg.temperature, rx_msg.input_voltage,
+            rx_msg.communication_state);
       return 1;
     }
   }
@@ -170,6 +172,7 @@ int8_t FEB_CAN_Charging_Status(void)
   /* No cell data yet (before the first voltage scan): not ready to charge. */
   if (pack_v <= 0.0f)
   {
+    LOG_W("CHARGER", "Pack voltage sense not ready");
     return 1;
   }
 
@@ -179,6 +182,7 @@ int8_t FEB_CAN_Charging_Status(void)
   float max_cell_mV = FEB_ADBMS_Snapshot_Max_Cell_Voltage() * 1000.0f;
   if (max_cell_mV >= FEB_CONFIG_CELL_SOFT_MAX_VOLTAGE_mV)
   {
+    LOG_W("CHARGER", "Max cell voltage too high");
     return 1;
   }
 #endif
@@ -192,6 +196,7 @@ int8_t FEB_CAN_Charging_Status(void)
   float max_temp_dC = FEB_ADBMS_Snapshot_Max_Valid_Temp() * 10.0f;
   if (max_temp_dC >= FEB_CONFIG_CELL_SOFT_MAX_TEMP_dC)
   {
+    LOG_W("CHARGER", "Max cell temp too high");
     return 1;
   }
 #endif

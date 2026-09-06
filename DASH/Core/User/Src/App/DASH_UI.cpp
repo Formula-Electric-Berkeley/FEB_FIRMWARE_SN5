@@ -2,7 +2,6 @@
 
 #include "DASH_UI.h"
 #include "cmsis_os.h"
-#include "feb_console.h"
 #include "main.h"
 #include "portmacro.h"
 #include "stm32469i_discovery.h"

@@ -83,6 +83,7 @@ static void cmd_tps_csv(int argc, char *argv[])
 static void cmd_can_log(void)
 {
   FEB_Console_Printf("CAN CSV Logger:\r\n");
+  FEB_Console_Printf("  Capturing:      %s\r\n", DCU_CAN_Log_IsCapturing() ? "Yes" : "No");
   FEB_Console_Printf("  Active:         %s\r\n", DCU_CAN_Log_IsActive() ? "Yes" : "No");
   FEB_Console_Printf("  Filename:       %s\r\n", DCU_CAN_Log_GetFilename());
   FEB_Console_Printf("  Frames written: %lu\r\n", (unsigned long)DCU_CAN_Log_GetWrittenCount());

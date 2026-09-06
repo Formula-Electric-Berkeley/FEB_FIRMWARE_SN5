@@ -1,469 +1,207 @@
 /**
  ******************************************************************************
- * @file           : FEB_Commands.c
- * @brief          : DASH-specific console commands
+ * @file           : DASH_Commands.cpp
+ * @brief          : Console commands for DASH (CAN telemetry, ping/pong, I2C)
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  */
 
 #include "DASH_Commands.h"
-#include "feb_console.h"
-#include "feb_string_utils.h"
-#include "DASH_PingPong.h"
-#include "feb_can_lib.h"
-#include <ctype.h>
-#include <stdlib.h>
-#include <string.h>
-#include "DASH_CAN.h"
+
 #include "DASH_I2C.h"
 #include "DASH_IO.h"
+#include "DASH_PingPong.h"
+#include "feb_can_lib.h"
 #include "feb_can_subscriber.hpp"
+#include "feb_commands_2.hpp"
+#include "feb_console_2.hpp"
+#include "i2c.h"
+
+#include <cstdint>
 
 namespace fc = feb::can;
 namespace fm = feb::can::msg;
 
-extern I2C_HandleTypeDef hi2c1;
+using namespace feb::console;
 
-/* ============================================================================
- * CAN Ping/Pong Commands
- * ============================================================================ */
-
-static const char *mode_names[] = {"OFF", "PING", "PONG", "PINGPONG"};
-static const uint32_t pingpong_frame_ids[] = {0xE0, 0xE1, 0xE2, 0xE3};
-
-static FEB_PingPong_Mode_t pong_target_mode(uint8_t channel)
+namespace
 {
-  return (FEB_CAN_PingPong_GetMode(channel) == PINGPONG_MODE_PING) ? PINGPONG_MODE_PINGPONG : PINGPONG_MODE_PONG;
-}
 
-static void cmd_ping(int argc, char *argv[])
+constexpr const char *kPingPongModeNames[] = {"OFF", "PING", "PONG", "PINGPONG"};
+constexpr std::uint32_t kPingPongFrameIds[] = {0xE0, 0xE1, 0xE2, 0xE3};
+
+void cmd_dash_can_status(Interaction &io, std::span<char *const>)
 {
-  if (argc < 2)
   {
-    FEB_Console_Printf("Usage: ping|<channel>\r\n");
-    FEB_Console_Printf("Channels: 1-4 (Frame IDs 0xE0-0xE3)\r\n");
-    return;
-  }
+    static constexpr Column kCols[] = {{"Ch", 4},       {"Frame", 6}, {"Mode", 8},    {"TX OK", 10},
+                                       {"TX Fail", 10}, {"RX", 10},   {"Last RX", 10}};
+    Table t(io, kCols, "CAN Ping/Pong");
 
-  int ch = atoi(argv[1]);
-  if (ch < 1 || ch > 4)
-  {
-    FEB_Console_Printf("Error: Channel must be 1-4\r\n");
-    return;
-  }
-
-  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PING);
-  FEB_Console_Printf("Channel %d (0x%02X): PING mode started\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
-}
-
-static void cmd_ping_csv(int argc, char *argv[])
-{
-  if (argc < 2)
-  {
-    FEB_Console_CsvError("error", "ping_usage,channel=1..4");
-    return;
-  }
-  int ch = atoi(argv[1]);
-  if (ch < 1 || ch > 4)
-  {
-    FEB_Console_CsvError("error", "ping_channel,%s", argv[1]);
-    return;
-  }
-  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PING);
-  FEB_Console_CsvEmit("ping", "%d,0x%02X", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
-}
-
-static const FEB_Console_Cmd_t dash_cmd_ping = {
-    .name = "ping",
-    .help = "Start CAN ping mode: ping|<1-4>",
-    .handler = cmd_ping,
-    .csv_handler = cmd_ping_csv,
-    .hidden = true,
-};
-
-static void cmd_pong(int argc, char *argv[])
-{
-  if (argc < 2)
-  {
-    FEB_Console_Printf("Usage: pong|<channel>\r\n");
-    FEB_Console_Printf("Channels: 1-4 (Frame IDs 0xE0-0xE3)\r\n");
-    return;
-  }
-
-  int ch = atoi(argv[1]);
-  if (ch < 1 || ch > 4)
-  {
-    FEB_Console_Printf("Error: Channel must be 1-4\r\n");
-    return;
-  }
-
-  FEB_PingPong_Mode_t mode = pong_target_mode((uint8_t)ch);
-  FEB_CAN_PingPong_SetMode((uint8_t)ch, mode);
-  FEB_Console_Printf("Channel %d (0x%02X): %s mode started\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1],
-                     mode_names[mode]);
-}
-
-static void cmd_pong_csv(int argc, char *argv[])
-{
-  if (argc < 2)
-  {
-    FEB_Console_CsvError("error", "pong_usage,channel=1..4");
-    return;
-  }
-  int ch = atoi(argv[1]);
-  if (ch < 1 || ch > 4)
-  {
-    FEB_Console_CsvError("error", "pong_channel,%s", argv[1]);
-    return;
-  }
-  FEB_PingPong_Mode_t mode = pong_target_mode((uint8_t)ch);
-  FEB_CAN_PingPong_SetMode((uint8_t)ch, mode);
-  FEB_Console_CsvEmit("pong", "%d,0x%02X,%s", ch, (unsigned int)pingpong_frame_ids[ch - 1], mode_names[mode]);
-}
-
-static const FEB_Console_Cmd_t dash_cmd_pong = {
-    .name = "pong",
-    .help = "Start CAN pong mode: pong|<1-4>",
-    .handler = cmd_pong,
-    .csv_handler = cmd_pong_csv,
-    .hidden = true,
-};
-
-static void cmd_canstop(int argc, char *argv[])
-{
-  if (argc < 2)
-  {
-    FEB_Console_Printf("Usage: canstop|<channel|all>\r\n");
-    return;
-  }
-
-  if (FEB_strcasecmp(argv[1], "all") == 0)
-  {
-    FEB_CAN_PingPong_Reset();
-    FEB_Console_Printf("All channels stopped\r\n");
-    return;
-  }
-
-  int ch = atoi(argv[1]);
-  if (ch < 1 || ch > 4)
-  {
-    FEB_Console_Printf("Error: Channel must be 1-4 or 'all'\r\n");
-    return;
-  }
-
-  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_OFF);
-  FEB_Console_Printf("Channel %d stopped\r\n", ch);
-}
-
-static void cmd_canstop_csv(int argc, char *argv[])
-{
-  if (argc < 2)
-  {
-    FEB_Console_CsvError("error", "canstop_usage,channel=1..4|all");
-    return;
-  }
-  if (FEB_strcasecmp(argv[1], "all") == 0)
-  {
-    FEB_CAN_PingPong_Reset();
-    FEB_Console_CsvEmit("canstop", "all");
-    return;
-  }
-  int ch = atoi(argv[1]);
-  if (ch < 1 || ch > 4)
-  {
-    FEB_Console_CsvError("error", "canstop_channel,%s", argv[1]);
-    return;
-  }
-  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_OFF);
-  FEB_Console_CsvEmit("canstop", "%d", ch);
-}
-
-static const FEB_Console_Cmd_t dash_cmd_canstop = {
-    .name = "canstop",
-    .help = "Stop CAN ping/pong: canstop|<1-4|all>",
-    .handler = cmd_canstop,
-    .csv_handler = cmd_canstop_csv,
-    .hidden = true,
-};
-
-static void cmd_canstatus(int argc, char *argv[])
-{
-  (void)argc;
-  (void)argv;
-
-  FEB_Console_Printf("CAN Ping/Pong Status:\r\n");
-  FEB_Console_Printf("%-3s %-6s %-5s %8s %8s %8s %10s\r\n", "Ch", "FrameID", "Mode", "TX OK", "TX Fail", "RX",
-                     "Last RX");
-  FEB_Console_Printf("--- ------ ----- -------- -------- -------- ----------\r\n");
-
-  for (int ch = 1; ch <= 4; ch++)
-  {
-    FEB_PingPong_Mode_t mode = FEB_CAN_PingPong_GetMode((uint8_t)ch);
-    uint32_t tx_count = FEB_CAN_PingPong_GetTxCount((uint8_t)ch);
-    uint32_t tx_fail = FEB_CAN_PingPong_GetTxFailCount((uint8_t)ch);
-    uint32_t rx_count = FEB_CAN_PingPong_GetRxCount((uint8_t)ch);
-    int32_t last_rx = FEB_CAN_PingPong_GetLastCounter((uint8_t)ch);
-
-    FEB_Console_Printf("%-3d 0x%02X   %-5s %8u %8u %8u %10d\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1],
-                       mode_names[mode], (unsigned int)tx_count, (unsigned int)tx_fail, (unsigned int)rx_count,
-                       (int)last_rx);
-  }
-
-  /* Display CAN library error counters */
-  FEB_Console_Printf("\r\nCAN Library Errors:\r\n");
-  FEB_Console_Printf("  HAL Errors:        %lu\r\n", (unsigned long)FEB_CAN_GetHalErrorCount());
-  FEB_Console_Printf("  TX Timeout:        %lu\r\n", (unsigned long)FEB_CAN_GetTxTimeoutCount());
-  FEB_Console_Printf("  TX Queue Overflow: %lu\r\n", (unsigned long)FEB_CAN_GetTxQueueOverflowCount());
-  FEB_Console_Printf("  RX Queue Overflow: %lu\r\n", (unsigned long)FEB_CAN_GetRxQueueOverflowCount());
-}
-
-static void cmd_canstatus_csv(int argc, char *argv[])
-{
-  (void)argc;
-  (void)argv;
-  for (int ch = 1; ch <= 4; ch++)
-  {
-    FEB_PingPong_Mode_t mode = FEB_CAN_PingPong_GetMode((uint8_t)ch);
-    uint32_t tx_count = FEB_CAN_PingPong_GetTxCount((uint8_t)ch);
-    uint32_t tx_fail = FEB_CAN_PingPong_GetTxFailCount((uint8_t)ch);
-    uint32_t rx_count = FEB_CAN_PingPong_GetRxCount((uint8_t)ch);
-    int32_t last_rx = FEB_CAN_PingPong_GetLastCounter((uint8_t)ch);
-    FEB_Console_CsvEmit("can", "%d,0x%02X,%s,%u,%u,%u,%d", ch, (unsigned int)pingpong_frame_ids[ch - 1],
-                        mode_names[mode], (unsigned int)tx_count, (unsigned int)tx_fail, (unsigned int)rx_count,
-                        (int)last_rx);
-  }
-  FEB_Console_CsvEmit("can_err", "%lu,%lu,%lu,%lu", (unsigned long)FEB_CAN_GetHalErrorCount(),
-                      (unsigned long)FEB_CAN_GetTxTimeoutCount(), (unsigned long)FEB_CAN_GetTxQueueOverflowCount(),
-                      (unsigned long)FEB_CAN_GetRxQueueOverflowCount());
-}
-
-static const FEB_Console_Cmd_t dash_cmd_canstatus = {
-    .name = "canstatus",
-    .help = "Show CAN ping/pong status",
-    .handler = cmd_canstatus,
-    .csv_handler = cmd_canstatus_csv,
-    .hidden = true,
-};
-
-/* ============================================================================
- * LVPDB Commands for DASH Display
- * ============================================================================ */
-
-static void cmd_lvpdb(int argc, char *argv[])
-{
-  (void)argc; // note to anyone reading this:
-  (void)argv; // this is so that the compiler won't complain about unused parameters & this matches the FEB UART library
-
-  uint16_t v24 = fc::rx<fm::LvpdbLv24vBusAnd12vBusVoltages>.v().lv_24v_voltage;
-  uint16_t v12 = fc::rx<fm::LvpdbLv24vBusAnd12vBusVoltages>.v().lv_12v_voltage;
-
-  FEB_Console_Printf("LVPDB Voltages:\r\n");
-  FEB_Console_Printf("  24V Bus: %u (raw)\r\n", (unsigned int)v24);
-  FEB_Console_Printf("  12V Bus: %u (raw)\r\n", (unsigned int)v12);
-}
-
-static void cmd_lvpdb_csv(int argc, char *argv[])
-{
-  (void)argc;
-  (void)argv;
-  FEB_Console_CsvEmit("lvpdb", "%u,%u", (unsigned int)fc::rx<fm::LvpdbLv24vBusAnd12vBusVoltages>.v().lv_24v_voltage,
-                      (unsigned int)fc::rx<fm::LvpdbLv24vBusAnd12vBusVoltages>.v().lv_12v_voltage);
-}
-
-static const FEB_Console_Cmd_t dash_cmd_lvpdb = {
-    .name = "lvpdb",
-    .help = "Show LVPDB bus voltages",
-    .handler = cmd_lvpdb,
-    .csv_handler = cmd_lvpdb_csv,
-    .hidden = true,
-};
-
-/* ============================================================================
- * BMS Commands for DASH Display
- * ============================================================================ */
-
-static void cmd_bms(int argc, char *argv[])
-{
-  (void)argc;
-  (void)argv;
-
-  BMS_State_t state = static_cast<BMS_State_t>(fc::rx<fm::BmsState>.v().bms_state);
-  int16_t temp = fc::rx<fm::BmsAccumulatorTemperature>.v().max_cell_temperature;
-  uint16_t voltage = fc::rx<fm::BmsAccumulatorVoltage>.v().total_pack_voltage;
-
-  FEB_Console_Printf("BMS Status:\r\n");
-  FEB_Console_Printf("  State:       %d (raw)\r\n", (int)state);
-  FEB_Console_Printf("  Max Cell Temp: %d (raw)\r\n", (int)temp);
-  FEB_Console_Printf("  Pack Voltage:  %u (raw)\r\n", (unsigned int)voltage);
-}
-
-static void cmd_bms_csv(int argc, char *argv[])
-{
-  (void)argc;
-  (void)argv;
-  FEB_Console_CsvEmit("bms", "%d,%d,%u", (int)static_cast<BMS_State_t>(fc::rx<fm::BmsState>.v().bms_state),
-                      (int)fc::rx<fm::BmsAccumulatorTemperature>.v().max_cell_temperature,
-                      (unsigned int)fc::rx<fm::BmsAccumulatorVoltage>.v().total_pack_voltage);
-}
-
-static const FEB_Console_Cmd_t dash_cmd_bms = {
-    .name = "bms",
-    .help = "Show BMS state, max cell temperature, and pack voltage",
-    .handler = cmd_bms,
-    .csv_handler = cmd_bms_csv,
-    .hidden = true,
-};
-
-/* ============================================================================
- * PCU Commands for DASH Display
- * ============================================================================ */
-static void cmd_pcu(int argc, char *argv[])
-{
-  (void)argc;
-  (void)argv;
-
-  const auto &inv = fc::rx<fm::M192CommandMessage>.v();
-  const auto &brake = fc::rx<fm::Brake>.v();
-
-  FEB_Console_Printf("PCU / RMS Status:\r\n");
-  FEB_Console_Printf("  Torque:         %d (raw)\r\n", (int)inv.vcu_inv_torque_command);
-  FEB_Console_Printf("  Direction:      %d (raw)\r\n", (int)inv.vcu_inv_direction_command);
-  FEB_Console_Printf("  RMS Enabled:    %d (raw)\r\n", (int)inv.vcu_inv_inverter_enable);
-  FEB_Console_Printf("  Brake Position: %u (raw)\r\n", (unsigned int)brake.brake_position);
-}
-
-static void cmd_pcu_csv(int argc, char *argv[])
-{
-  (void)argc;
-  (void)argv;
-  const auto &inv = fc::rx<fm::M192CommandMessage>.v();
-  FEB_Console_CsvEmit("pcu", "%d,%d,%d,%u", (int)inv.vcu_inv_torque_command, (int)inv.vcu_inv_direction_command,
-                      (int)inv.vcu_inv_inverter_enable, (unsigned int)fc::rx<fm::Brake>.v().brake_position);
-}
-
-static const FEB_Console_Cmd_t dash_cmd_pcu = {
-    .name = "pcu",
-    .help = "Show PCU torque, direction, RMS enable, and brake position",
-    .handler = cmd_pcu,
-    .csv_handler = cmd_pcu_csv,
-    .hidden = true,
-};
-
-/* ============================================================================
- * I2C Bus Scan (diagnostic)
- * ============================================================================ */
-
-static void cmd_i2cscan(int argc, char *argv[])
-{
-  (void)argc;
-  (void)argv;
-
-  FEB_Console_Printf("Scanning I2C1 (0x08-0x77)...\r\n");
-  int found = 0;
-  for (uint8_t addr = 0x08; addr <= 0x77; addr++)
-  {
-    if (FEB_I2C_IsDeviceReady(&hi2c1, (uint16_t)(addr << 1), 1, 5) == HAL_OK)
+    for (std::uint8_t ch = 1; ch <= FEB_PINGPONG_NUM_CHANNELS; ch++)
     {
-      FEB_Console_Printf("  0x%02X%s\r\n", addr, (addr == IOEXP_ADDR) ? "  <- IO expander" : "");
+      t.cell("%u", (unsigned)ch);
+      t.cell("0x%02X", (unsigned)kPingPongFrameIds[ch - 1]);
+      t.cell("%s", kPingPongModeNames[FEB_CAN_PingPong_GetMode(ch)]);
+      t.cell("%lu", (unsigned long)FEB_CAN_PingPong_GetTxCount(ch));
+      t.cell("%lu", (unsigned long)FEB_CAN_PingPong_GetTxFailCount(ch));
+      t.cell("%lu", (unsigned long)FEB_CAN_PingPong_GetRxCount(ch));
+      t.cell("%ld", (long)FEB_CAN_PingPong_GetLastCounter(ch));
+      t.end_row();
+    }
+  }
+
+  KVTable t(io, 18, 12, "CAN Library Errors");
+
+  t.row("HAL errors", "%lu", (unsigned long)FEB_CAN_GetHalErrorCount());
+  t.row("TX timeout", "%lu", (unsigned long)FEB_CAN_GetTxTimeoutCount());
+  t.row("TX queue overflow", "%lu", (unsigned long)FEB_CAN_GetTxQueueOverflowCount());
+  t.row("RX queue overflow", "%lu", (unsigned long)FEB_CAN_GetRxQueueOverflowCount());
+}
+
+void set_pingpong_mode(Interaction &io, long ch, FEB_PingPong_Mode_t mode)
+{
+  FEB_CAN_PingPong_SetMode((std::uint8_t)ch, mode);
+  io.println("Channel %ld (0x%02X): %s mode started", ch, (unsigned)kPingPongFrameIds[ch - 1],
+             kPingPongModeNames[mode]);
+}
+
+constexpr std::array kDashCanPingParams = {param_int("channel", 1, FEB_PINGPONG_NUM_CHANNELS)};
+
+void cmd_dash_can_ping(Interaction &io, std::span<char *const>)
+{
+  set_pingpong_mode(io, io.param_int(0), PINGPONG_MODE_PING);
+}
+
+constexpr std::array kDashCanPongParams = {param_int("channel", 1, FEB_PINGPONG_NUM_CHANNELS)};
+
+void cmd_dash_can_pong(Interaction &io, std::span<char *const>)
+{
+  const long ch = io.param_int(0);
+  const FEB_PingPong_Mode_t mode =
+      (FEB_CAN_PingPong_GetMode((std::uint8_t)ch) == PINGPONG_MODE_PING) ? PINGPONG_MODE_PINGPONG : PINGPONG_MODE_PONG;
+  set_pingpong_mode(io, ch, mode);
+}
+
+constexpr std::array kDashCanStopParams = {param_str("channel")};
+
+void cmd_dash_can_stop(Interaction &io, std::span<char *const> args)
+{
+  if (iequal(io.param_str(0), "all"))
+  {
+    FEB_CAN_PingPong_Reset();
+    io.println("All channels stopped");
+    return;
+  }
+
+  long ch = 0;
+  if (!io.arg_int(args, 1, &ch, 1, FEB_PINGPONG_NUM_CHANNELS))
+  {
+    return;
+  }
+  FEB_CAN_PingPong_SetMode((std::uint8_t)ch, PINGPONG_MODE_OFF);
+  io.println("Channel %ld stopped", ch);
+}
+
+constexpr std::array<Command, 4> kCanSubcommands = {{
+    {.name = "status", .description = "Channel modes, counters, and library errors", .handler = cmd_dash_can_status},
+    {.name = "ping",
+     .description = "Transmit on a channel",
+     .handler = cmd_dash_can_ping,
+     .params = kDashCanPingParams},
+    {.name = "pong",
+     .description = "Answer a channel (PINGPONG if it already pings)",
+     .handler = cmd_dash_can_pong,
+     .params = kDashCanPongParams},
+    {.name = "stop",
+     .description = "Stop one channel or all of them",
+     .handler = cmd_dash_can_stop,
+     .params = kDashCanStopParams},
+}};
+
+void cmd_dash_lvpdb(Interaction &io, std::span<char *const>)
+{
+  const auto &v = fc::rx<fm::LvpdbLv24vBusAnd12vBusVoltages>.v();
+
+  KVTable t(io, 10, 12, "LVPDB Voltages");
+
+  t.row("24V bus", "%u raw", (unsigned)v.lv_24v_voltage);
+  t.row("12V bus", "%u raw", (unsigned)v.lv_12v_voltage);
+}
+
+void cmd_dash_bms(Interaction &io, std::span<char *const>)
+{
+  KVTable t(io, 14, 12, "BMS Status");
+
+  t.row("State", "%d raw", (int)fc::rx<fm::BmsState>.v().bms_state);
+  t.row("Max cell temp", "%d raw", (int)fc::rx<fm::BmsAccumulatorTemperature>.v().max_cell_temperature);
+  t.row("Pack voltage", "%u raw", (unsigned)fc::rx<fm::BmsAccumulatorVoltage>.v().total_pack_voltage);
+}
+
+void cmd_dash_pcu(Interaction &io, std::span<char *const>)
+{
+  const auto &inv = fc::rx<fm::M192CommandMessage>.v();
+
+  KVTable t(io, 14, 12, "PCU / RMS Status");
+
+  t.row("Torque", "%d raw", (int)inv.vcu_inv_torque_command);
+  t.row("Direction", "%d raw", (int)inv.vcu_inv_direction_command);
+  t.row("RMS enabled", "%d raw", (int)inv.vcu_inv_inverter_enable);
+  t.row("Brake position", "%u raw", (unsigned)fc::rx<fm::Brake>.v().brake_position);
+}
+
+void cmd_dash_i2c_scan(Interaction &io, std::span<char *const>)
+{
+  int found = 0;
+
+  {
+    static constexpr Column kCols[] = {{"Address", 8}, {"Device", 14}};
+    Table t(io, kCols, "I2C1 Scan");
+
+    for (std::uint8_t addr = 0x08; addr <= 0x77; addr++)
+    {
+      if (FEB_I2C_IsDeviceReady(&hi2c1, (std::uint16_t)(addr << 1), 1, 5) != HAL_OK)
+      {
+        continue;
+      }
+      t.cell("0x%02X", (unsigned)addr);
+      t.cell("%s", (addr == IOEXP_ADDR) ? "IO expander" : "");
+      t.end_row();
       found++;
     }
   }
-  FEB_Console_Printf("Done. %d device(s) found.\r\n", found);
-  if (FEB_I2C_IsDeviceReady(&hi2c1, (uint16_t)(IOEXP_ADDR << 1), 2, 5) != HAL_OK)
+
+  io.println("%d device(s) found", found);
+
+  if (FEB_I2C_IsDeviceReady(&hi2c1, (std::uint16_t)(IOEXP_ADDR << 1), 2, 5) != HAL_OK)
   {
-    FEB_Console_Printf("WARNING: IO expander 0x%02X NOT responding!\r\n", (unsigned int)IOEXP_ADDR);
+    io.error("warn", "ioexp_not_responding", "0x%02X", (unsigned)IOEXP_ADDR);
   }
 }
 
-static void cmd_i2cscan_csv(int argc, char *argv[])
+constexpr std::array<Command, 5> kDashSubcommands = {{
+    {.name = "lvpdb", .description = "LVPDB 24V and 12V bus voltages", .handler = cmd_dash_lvpdb},
+    {.name = "bms", .description = "BMS state, max cell temperature, pack voltage", .handler = cmd_dash_bms},
+    {.name = "pcu", .description = "Torque, direction, RMS enable, brake position", .handler = cmd_dash_pcu},
+    {.name = "i2c-scan", .description = "Scan I2C1 and list responding addresses", .handler = cmd_dash_i2c_scan},
+    {.name = "can", .description = "CAN ping/pong test channels", .subs = kCanSubcommands},
+}};
+
+constexpr std::array<Command, 1> kDashCommands = {{
+    group("dash", "DASH board commands", kDashSubcommands),
+}};
+
+} // namespace
+
+namespace dash
 {
-  (void)argc;
-  (void)argv;
-  for (uint8_t addr = 0x08; addr <= 0x77; addr++)
-  {
-    if (FEB_I2C_IsDeviceReady(&hi2c1, (uint16_t)(addr << 1), 1, 5) == HAL_OK)
-    {
-      FEB_Console_CsvEmit("i2c", "0x%02X", addr);
-    }
-  }
-}
+inline constexpr auto kAll = concat(kSystemCommands, kDashCommands);
+static_assert(!has_duplicate_names(kAll), "duplicate console command name");
+static_assert(params_fit(kAll), "a command declares more params than kMaxParams");
 
-static const FEB_Console_Cmd_t dash_cmd_i2cscan = {
-    .name = "i2cscan",
-    .help = "Scan I2C1 and list responding addresses",
-    .handler = cmd_i2cscan,
-    .csv_handler = cmd_i2cscan_csv,
-    .hidden = true,
-};
+inline constexpr Console kConsole{FEB_UART_INSTANCE_1, kAll};
+} // namespace dash
 
-/* ============================================================================
- * Mega-dispatcher and Registration
- *
- * Each subcommand above is one unified FEB_Console_Cmd_t with both .handler
- * and .csv_handler. The DASH_SUBCMDS table is the single source of truth;
- * cmd_dash iterates it for `DASH|<sub>` text dispatch, and registration
- * registers each entry top-level so `DASH|csv|<tx_id>|<sub>` resolves.
- * ============================================================================ */
-
-static const FEB_Console_Cmd_t *const DASH_SUBCMDS[] = {
-    &dash_cmd_ping,  &dash_cmd_pong, &dash_cmd_canstop, &dash_cmd_canstatus,
-    &dash_cmd_lvpdb, &dash_cmd_bms,  &dash_cmd_pcu,     &dash_cmd_i2cscan,
-};
-#define DASH_SUBCMDS_COUNT (sizeof(DASH_SUBCMDS) / sizeof(DASH_SUBCMDS[0]))
-
-static void print_dash_help(void)
+extern "C" void DASH_Console_ProcessLine(const char *line, size_t len)
 {
-  FEB_Console_Printf("DASH Commands (DASH|<sub>):\r\n");
-  for (size_t i = 0; i < DASH_SUBCMDS_COUNT; i++)
-  {
-    FEB_Console_Printf("  DASH|%-12s - %s\r\n", DASH_SUBCMDS[i]->name, DASH_SUBCMDS[i]->help);
-  }
-  FEB_Console_Printf("\r\n");
-  FEB_Console_Printf("CSV Protocol (machine-readable):\r\n");
-  FEB_Console_Printf("  DASH|csv|<tx_id>|<sub>  - any subcommand above also works as CSV\r\n");
-  FEB_Console_Printf("  *|csv|<tx_id>|hello     - Discover all boards (system command)\r\n");
-  FEB_Console_Printf("Each request emits: ack -> [rows] -> done\r\n");
-}
-
-static void cmd_dash(int argc, char *argv[])
-{
-  if (argc < 2)
-  {
-    print_dash_help();
-    return;
-  }
-  const char *subcmd = argv[1];
-  for (size_t i = 0; i < DASH_SUBCMDS_COUNT; i++)
-  {
-    if (FEB_strcasecmp(DASH_SUBCMDS[i]->name, subcmd) == 0)
-    {
-      if (DASH_SUBCMDS[i]->handler != NULL)
-      {
-        DASH_SUBCMDS[i]->handler(argc - 1, argv + 1);
-      }
-      else
-      {
-        FEB_Console_Printf("Subcommand %s is CSV-only\r\n", subcmd);
-      }
-      return;
-    }
-  }
-  FEB_Console_Printf("Unknown subcommand: %s\r\n", subcmd);
-  print_dash_help();
-}
-
-static const FEB_Console_Cmd_t dash_cmd = {
-    .name = "DASH",
-    .help = "DASH commands (DASH|<sub>) - run DASH alone for full list",
-    .handler = cmd_dash,
-    .csv_handler = NULL,
-};
-
-void DASH_RegisterCommands(void)
-{
-  FEB_Console_Register(&dash_cmd);
-  for (size_t i = 0; i < DASH_SUBCMDS_COUNT; i++)
-  {
-    FEB_Console_Register(DASH_SUBCMDS[i]);
-  }
+  dash::kConsole.process_line(line, len);
 }

@@ -27,7 +27,6 @@
 /* USER CODE BEGIN Includes */
 #include "DASH_Main.h"
 #include "feb_uart.h"
-#include "feb_console.h"
 #include "feb_can_lib.h"
 #include "feb_rtos_utils.h"
 #include <stdio.h>
@@ -73,13 +72,6 @@ const osThreadAttr_t uartRxTask_attributes = {
   .name = "uartRxTask",
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal1,
-};
-/* Definitions for uartTxTask */
-osThreadId_t uartTxTaskHandle;
-const osThreadAttr_t uartTxTask_attributes = {
-  .name = "uartTxTask",
-  .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for canRxTask */
 osThreadId_t canRxTaskHandle;
@@ -147,11 +139,6 @@ osSemaphoreId_t canTxMailboxSemHandle;
 const osSemaphoreAttr_t canTxMailboxSem_attributes = {
   .name = "canTxMailboxSem"
 };
-/* Definitions for uartTxSem */
-osSemaphoreId_t uartTxSemHandle;
-const osSemaphoreAttr_t uartTxSem_attributes = {
-  .name = "uartTxSem"
-};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -161,7 +148,6 @@ const osSemaphoreAttr_t uartTxSem_attributes = {
 void StartIoTask(void *argument);
 void StartDisplayTask(void *argument);
 void StartUartRxTask(void *argument);
-void StartUartTxTask(void *argument);
 void StartCanRxTask(void *argument);
 void StartCanTxTask(void *argument);
 void StartCanPubTask(void *argument);
@@ -257,9 +243,6 @@ void MX_FREERTOS_Init(void) {
   /* creation of canTxMailboxSem */
   canTxMailboxSemHandle = osSemaphoreNew(3, 3, &canTxMailboxSem_attributes);
 
-  /* creation of uartTxSem */
-  uartTxSemHandle = osSemaphoreNew(1, 0, &uartTxSem_attributes);
-
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
@@ -286,7 +269,6 @@ void MX_FREERTOS_Init(void) {
   REQUIRE_RTOS_HANDLE(logMutexHandle);
   REQUIRE_RTOS_HANDLE(uartTxMutexHandle);
   REQUIRE_RTOS_HANDLE(canTxMailboxSemHandle);
-  REQUIRE_RTOS_HANDLE(uartTxSemHandle);
   REQUIRE_RTOS_HANDLE(canTxQueueHandle);
   REQUIRE_RTOS_HANDLE(canRxQueueHandle);
   REQUIRE_RTOS_HANDLE(uartRxQueueHandle);
@@ -302,9 +284,6 @@ void MX_FREERTOS_Init(void) {
   /* creation of uartRxTask */
   uartRxTaskHandle = osThreadNew(StartUartRxTask, NULL, &uartRxTask_attributes);
 
-  /* creation of uartTxTask */
-  uartTxTaskHandle = osThreadNew(StartUartTxTask, NULL, &uartTxTask_attributes);
-
   /* creation of canRxTask */
   canRxTaskHandle = osThreadNew(StartCanRxTask, NULL, &canRxTask_attributes);
 
@@ -319,7 +298,6 @@ void MX_FREERTOS_Init(void) {
   REQUIRE_RTOS_HANDLE(ioTaskHandle);
   REQUIRE_RTOS_HANDLE(displayTaskHandle);
   REQUIRE_RTOS_HANDLE(uartRxTaskHandle);
-  REQUIRE_RTOS_HANDLE(uartTxTaskHandle);
   REQUIRE_RTOS_HANDLE(canRxTaskHandle);
   REQUIRE_RTOS_HANDLE(canTxTaskHandle);
   REQUIRE_RTOS_HANDLE(canPubTaskHandle);
@@ -384,24 +362,6 @@ __weak void StartUartRxTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END StartUartRxTask */
-}
-
-/* USER CODE BEGIN Header_StartUartTxTask */
-/**
- * @brief Function implementing the uartTxTask thread.
- * @param argument: Not used
- * @retval None
- */
-/* USER CODE END Header_StartUartTxTask */
-__weak void StartUartTxTask(void *argument)
-{
-  /* USER CODE BEGIN StartUartTxTask */
-  /* Infinite loop */
-  for (;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartUartTxTask */
 }
 
 /* USER CODE BEGIN Header_StartCanRxTask */

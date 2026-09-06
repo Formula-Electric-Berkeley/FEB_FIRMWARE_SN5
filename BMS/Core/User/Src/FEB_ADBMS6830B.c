@@ -38,11 +38,14 @@ cell_asic IC_Config[FEB_NUM_IC];
 accumulator_t FEB_ACC = {0};
 
 int balancing_cycle = 0;
-uint16_t balancing_mask = 0xAAAA;
+uint16_t balancing_mask = 0x7777;
+uint16_t balancing_masks[] = {0x7777, 0xBBBB, 0xDDDD, 0xEEEE};
 
 /* Set by FEB_Stop_Balance() from any task (SM/console, lock-free); consumed by
  * FEB_Cell_Balance_ServiceStop() in ADBMSTask, which owns the bus writes. */
 static volatile bool balance_stop_pending = false;
+
+static volatile int32_t forced_balance_cell = -1;
 
 uint8_t ERROR_TYPE = 0; // HEXDIGIT 1 voltage faults; HEXDIGIT 2 temp faults; HEXDIGIT 3 relay faults
 
@@ -382,7 +385,7 @@ static void read_aux_voltages()
 //   MUX6 input 5 (1-indexed) = mux==5, channel==4 (SEL3 only) -> sensor 39.
 static inline bool feb_temp_sensor_ignored(uint8_t mux, uint8_t channel)
 {
-  return (mux == 5 && channel == 4);
+  return (mux == 5 && channel == 4) || (mux == 3 && channel == 0);
 }
 
 static void store_cell_temps(uint8_t channel)
@@ -961,6 +964,39 @@ float FEB_ADBMS_GET_Therm_Raw_mV(uint8_t bank, uint16_t sensor)
 
 // ********************************** Balancing **********************************
 
+void FEB_Cell_Balance_Force_Cell(uint8_t bank, uint16_t cell)
+{
+  if (bank >= FEB_NBANKS || cell >= FEB_NUM_CELLS_PER_BANK)
+  {
+    return;
+  }
+  forced_balance_cell = (int32_t)bank * FEB_NUM_CELLS_PER_BANK + (int32_t)cell;
+  LOG_I(TAG_BALANCE, "Forcing discharge of bank %u cell %u only", (unsigned)(bank + 1), (unsigned)(cell + 1));
+}
+
+void FEB_Cell_Balance_Clear_Force(void)
+{
+  forced_balance_cell = -1;
+}
+
+bool FEB_Cell_Balance_Get_Forced_Cell(uint8_t *bank, uint16_t *cell)
+{
+  const int32_t index = forced_balance_cell;
+  if (index < 0)
+  {
+    return false;
+  }
+  if (bank != NULL)
+  {
+    *bank = (uint8_t)(index / FEB_NUM_CELLS_PER_BANK);
+  }
+  if (cell != NULL)
+  {
+    *cell = (uint16_t)(index % FEB_NUM_CELLS_PER_BANK);
+  }
+  return true;
+}
+
 void FEB_Cell_Balance_Start()
 {
   LOG_I(TAG_BALANCE, "Starting cell balancing");
@@ -973,26 +1009,68 @@ void FEB_Cell_Balance_Start()
   osMutexRelease(ADBMSMutexHandle);
 }
 
+static uint8_t mask_index = 0;
+
+static void balance_force_process(uint8_t bank, uint16_t cell)
+{
+  const float voltage_V = FEB_ACC.banks[bank].cells[cell].voltage_V;
+  if (!(voltage_V > FEB_CELL_MIN_VOLTAGE_MV / 1000.0f))
+  {
+    LOG_W(TAG_BALANCE, "Bank %u cell %u at %.3fV, forced discharge released", (unsigned)(bank + 1),
+          (unsigned)(cell + 1), voltage_V);
+    FEB_Stop_Balance(); // also clears forced_balance_cell
+    return;
+  }
+
+  const uint8_t target_ic = (uint8_t)(bank * FEB_NUM_ICPBANK + cell / FEB_NUM_CELLS_PER_IC);
+  const uint16_t target_bits = (uint16_t)(0b1 << (cell % FEB_NUM_CELLS_PER_IC));
+
+  for (uint8_t icn = 0; icn < FEB_NUM_IC; icn++)
+  {
+    const uint16_t applied = (icn == target_ic) ? target_bits : 0x0000;
+    for (uint8_t c = 0; c < FEB_NUM_CELLS_PER_IC; c++)
+    {
+      FEB_ACC.banks[icn / FEB_NUM_ICPBANK].cells[c + FEB_NUM_CELLS_PER_IC * (icn % FEB_NUM_ICPBANK)].discharging =
+          (uint8_t)((applied >> c) & 0b1);
+    }
+    ADBMS6830B_set_cfgr(icn, IC_Config, refon, cth_bits, gpio_bits, applied, dcto_bits, uv, ov);
+  }
+
+  LOG_D(TAG_BALANCE, "Forced: IC%u discharge=0x%04X (%.3fV)", (unsigned)target_ic, target_bits, voltage_V);
+  ADBMS6830B_wrcfgb(FEB_NUM_IC, IC_Config);
+}
+
 // Caller must hold ADBMSMutexHandle.
 void FEB_Cell_Balance_Process()
 {
 #if !FEB_BMS_DISABLE_TEMP_CHECKS
   // Thermal safety gate. NaN fails the comparison → stops balancing when
   // telemetry is unavailable. Direct field read; caller already holds the mutex.
-  const float gate_max_temp_dC = FEB_ACC.pack_max_temp * 10.0f;
+  const float gate_max_temp_dC = (double)FEB_ADBMS_Snapshot_Max_Valid_Temp() * 10.0f;
   if (!(gate_max_temp_dC < FEB_CONFIG_CELL_SOFT_MAX_TEMP_dC))
   {
-    LOG_W(TAG_BALANCE, "Temp limit: pack max=%.1fC, skipping balance cycle", gate_max_temp_dC / 10.0f);
-    return;
+    // LOG_W(TAG_BALANCE, "Temp limit: pack max=%.1fC, skipping balance cycle", gate_max_temp_dC / 10.0f);
+    // return;
   }
 #endif
+
+  uint8_t forced_bank = 0;
+  uint16_t forced_cell = 0;
+  if (FEB_Cell_Balance_Get_Forced_Cell(&forced_bank, &forced_cell))
+  {
+    balance_force_process(forced_bank, forced_cell);
+    return;
+  }
 
   determineMinV();
 
 #if !FEB_CELL_BALANCE_ALL_AT_ONCE
   if (balancing_cycle == 3)
   {
-    balancing_mask = ~balancing_mask;
+    mask_index++;
+    if (mask_index > 3)
+      mask_index = 0;
+    balancing_mask = balancing_masks[mask_index];
     LOG_D(TAG_BALANCE, "Mask flipped to 0x%04X", balancing_mask);
     balancing_cycle = 0;
   }
@@ -1175,9 +1253,9 @@ void FEB_Stop_Balance()
 {
   LOG_D(TAG_BALANCE, "Stopping all cell discharge");
 
-  // Reset balancing mask and cycle
   balancing_mask = 0x0000;
   balancing_cycle = 0;
+  forced_balance_cell = -1;
 
   // Clear the per-cell discharge flags so the console/CSV readout reflects the
   // hardware (DCC=0, written below by ServiceStop) once balancing stops.

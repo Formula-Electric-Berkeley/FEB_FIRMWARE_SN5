@@ -10,7 +10,6 @@
 #include "DASH_PingPong.h"
 #include "cmsis_os2.h"
 #include "feb_can_subscriber.hpp"
-#include "feb_console.h"
 #include "feb_log.h"
 #include "main.h"
 

@@ -173,11 +173,15 @@ void cmd_bms_temps(Interaction &io, std::span<char *const>)
   for (std::uint8_t bank = 0; bank < FEB_NBANKS; bank++)
   {
     io.print("Bank %2u:", (unsigned)(bank + 1));
+    static constexpr Column kCols[] = {{"Field", 12}, {"Value", 14}};
+    Table t(io, kCols, "Temps", false);
+
     for (std::uint16_t sensor = 0; sensor < FEB_NUM_TEMP_SENSORS; sensor++)
     {
-      io.print(" %.1f", (double)FEB_ADBMS_GET_Cell_Temperature(bank, sensor));
+      t.cell("Mux %u Channel %u", sensor / 7, sensor % 7);
+      t.cell(" %.1f", (double)FEB_ADBMS_GET_Cell_Temperature(bank, sensor));
+      t.end_row();
     }
-    io.print("\r\n");
   }
   io.println("Pack: min %.1f C  max %.1f C  avg %.1f C", (double)FEB_ADBMS_GET_ACC_MIN_Temp(),
              (double)FEB_ADBMS_GET_ACC_MAX_Temp(), (double)FEB_ADBMS_GET_ACC_AVG_Temp());
@@ -260,7 +264,7 @@ void cmd_bms_cell_stats(Interaction &io, std::span<char *const>)
   {
     for (std::uint16_t cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
     {
-      io.emit("voltage", "%u,%u,%.3f,%.3f,%u", (unsigned)(bank + 1), (unsigned)(cell + 1),
+      io.emit("voltage", "%u,%u,%.5f,%.5f,%u", (unsigned)(bank + 1), (unsigned)(cell + 1),
               (double)FEB_ADBMS_GET_Cell_Voltage(bank, cell), (double)FEB_ADBMS_GET_Cell_Voltage_S(bank, cell),
               (unsigned)FEB_ADBMS_GET_Cell_Discharging(bank, cell));
     }
@@ -388,6 +392,7 @@ void cmd_bms_state(Interaction &io, std::span<char *const> args)
   if (args.size() < 2)
   {
     io.flags("read_only");
+    io.emit("state", "%s", state_name(current));
     io.println("BMS state: %s (%d)", state_name(current), (int)current);
     list_state_options(io, current);
     return;
@@ -428,6 +433,26 @@ bool is_balancing_allowed()
   return (state == BMS_STATE_BATTERY_FREE || state == BMS_STATE_BALANCE);
 }
 
+bool enter_balance_state(Interaction &io)
+{
+  if (!is_balancing_allowed())
+  {
+    io.error("error", "not_allowed", "%s", state_name(FEB_SM_Get_Current_State()));
+    return false;
+  }
+
+  if (FEB_SM_Get_Current_State() == BMS_STATE_BATTERY_FREE)
+  {
+    FEB_SM_Transition(BMS_STATE_BALANCE); /* 6->9 begin_balance */
+  }
+  if (FEB_SM_Get_Current_State() != BMS_STATE_BALANCE)
+  {
+    io.error("error", "enter_balance_failed", "%s", state_name(FEB_SM_Get_Current_State()));
+    return false;
+  }
+  return true;
+}
+
 void cmd_bms_balance(Interaction &io, std::span<char *const>)
 {
   const BMS_State_t state = FEB_SM_Get_Current_State();
@@ -439,31 +464,47 @@ void cmd_bms_balance(Interaction &io, std::span<char *const>)
   {
     io.println("Balancing: off");
   }
+
+  std::uint8_t forced_bank = 0;
+  std::uint16_t forced_cell = 0;
+  if (FEB_Cell_Balance_Get_Forced_Cell(&forced_bank, &forced_cell))
+  {
+    io.println("Mode: single cell B%u C%02u (continuous)", (unsigned)(forced_bank + 1), (unsigned)(forced_cell + 1));
+  }
+  else
+  {
+    io.println("Mode: whole pack");
+  }
   io.println("Needs balance: %s", FEB_Cell_Balance_Needed() ? "yes" : "no");
   io.println("State: %s (balancing needs BATTERY_FREE or BALANCE)", state_name(state));
 }
 
 void cmd_bms_balance_on(Interaction &io, std::span<char *const>)
 {
-  if (!is_balancing_allowed())
+  if (!enter_balance_state(io))
   {
-    io.error("error", "not_allowed", "%s", state_name(FEB_SM_Get_Current_State()));
     return;
   }
 
-  /* Enter BALANCE first so no balance pass ever runs in BATTERY_FREE. */
-  if (FEB_SM_Get_Current_State() == BMS_STATE_BATTERY_FREE)
-  {
-    FEB_SM_Transition(BMS_STATE_BALANCE); /* 6->9 begin_balance */
-  }
-  if (FEB_SM_Get_Current_State() != BMS_STATE_BALANCE)
-  {
-    io.error("error", "enter_balance_failed", "%s", state_name(FEB_SM_Get_Current_State()));
-    return;
-  }
-
+  FEB_Cell_Balance_Clear_Force();
   FEB_Cell_Balance_Start();
   io.println("Balancing started");
+}
+
+void cmd_bms_balance_cell(Interaction &io, std::span<char *const>)
+{
+  const long bank = io.param_int(0);
+  const long cell = io.param_int(1);
+
+  if (!enter_balance_state(io))
+  {
+    return;
+  }
+
+  FEB_Cell_Balance_Force_Cell((std::uint8_t)(bank - 1), (std::uint16_t)(cell - 1));
+  FEB_Cell_Balance_Start();
+  io.println("Balancing B%ld C%02ld only (%.3f V). \"bms balance off\" to stop", bank, cell,
+             (double)FEB_ADBMS_GET_Cell_Voltage((std::uint8_t)(bank - 1), (std::uint16_t)(cell - 1)));
 }
 
 void cmd_bms_balance_off(Interaction &io, std::span<char *const>)
@@ -476,9 +517,13 @@ void cmd_bms_balance_off(Interaction &io, std::span<char *const>)
   io.println("Balancing stopped");
 }
 
-constexpr std::array<Command, 2> kBalanceSubcommands = {{
+constexpr std::array<Command, 3> kBalanceSubcommands = {{
     {.name = "on", .description = "Start balancing", .handler = cmd_bms_balance_on},
     {.name = "off", .description = "Stop balancing", .handler = cmd_bms_balance_off},
+    {.name = "cell",
+     .description = "Continuously balance one cell only",
+     .handler = cmd_bms_balance_cell,
+     .params = kBmsCellParams},
 }};
 
 // MARK: Hardware and peripherals
