@@ -32,7 +32,6 @@ extern osMutexId_t logMutexHandle;
 
 #if FEB_UART_USE_FREERTOS
 extern osMutexId_t uartTxMutexHandle;
-extern osSemaphoreId_t uartTxSemHandle;
 extern osMessageQueueId_t uartRxQueueHandle;
 #endif
 
@@ -75,7 +74,6 @@ void LVPDB_Init(void)
       .get_tick_ms = HAL_GetTick,
 #if FEB_UART_USE_FREERTOS
       .tx_mutex = uartTxMutexHandle,
-      .tx_complete_sem = uartTxSemHandle,
       .enable_rx_queue = true,
       .rx_queue = uartRxQueueHandle,
 #endif
