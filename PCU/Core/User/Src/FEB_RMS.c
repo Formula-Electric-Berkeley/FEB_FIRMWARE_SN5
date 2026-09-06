@@ -246,6 +246,8 @@ float FEB_RMS_GetMaxTorque(void)
   return maxTorque;
 }
 
+static bool acc_brake_simultaneous = false;
+
 /**
  * @brief Main torque control function - reads sensors and commands motor
  *
@@ -337,6 +339,12 @@ void FEB_RMS_Torque(void)
   FEB_ADC_AcknowledgeAPPSImplausibility();
   FEB_ADC_AcknowledgeBrakeImplausibility();
 
+  // EV ACTIVE: Torque production MUST stop when accelerator and brake pedal are pressed simultaneously
+  if (brake_position > 20.0f && APPS_Data.acceleration > 25.0f)
+    acc_brake_simultaneous = true;
+  if (brake_position < 10.0f && APPS_Data.acceleration < 5.0f)
+    acc_brake_simultaneous = false;
+
   // Determine operating mode: regen braking vs acceleration
   if (brake_position > REGEN_BRAKE_POS_THRESH && sensors_plausible)
   {
@@ -347,7 +355,7 @@ void FEB_RMS_Torque(void)
     // torque_command = -1 * 10 * brake% * filtered_regen / 100
     RMS_CONTROL_MESSAGE.torque = (int16_t)(-10.0f * brake_position * filtered_regen / 100.0f);
   }
-  else if (brake_position < BRAKE_POSITION_THRESHOLD && sensors_plausible)
+  else if (brake_position < BRAKE_POSITION_THRESHOLD && sensors_plausible && !acc_brake_simultaneous)
   {
     // ACCELERATION MODE: No brake and sensors are plausible
     // Calculate commanded torque: acceleration (0-100%) * max_torque
