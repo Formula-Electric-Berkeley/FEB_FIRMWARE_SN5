@@ -156,7 +156,7 @@ extern "C"
 // Charger: Elcon/HK HK-J-H650-12 GEN3 (170-650 VDC). Keep the target voltage
 // inside that window. Frames pack/unpack via the generated CAN lib (elcon.dbc).
 // Charger command (BMS -> charger) targets, in charger units (deci-amps / deci-volts).
-#define FEB_CHARGE_CURRENT_dA 60 // TUNE: 4.0 A nominal charge current
+#define FEB_CHARGE_CURRENT_dA 45 // TUNE: 4.5 A nominal charge current
 #define FEB_TRICKLE_CHARGE_CURRENT_dA (FEB_CHARGE_CURRENT_dA / 2)
 #define FEB_TRICKLE_CHARGE_INTERVAL_MS 5000 // toggle interval near full charge
 #define FEB_CHARGE_TARGET_VOLTAGE_dV ((uint16_t)(FEB_CONFIG_PACK_HARD_MAX_VOLTAGE_V * 10.0f * 0.99f))        // TUNE

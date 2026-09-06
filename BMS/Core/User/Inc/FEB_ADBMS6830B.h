@@ -122,6 +122,10 @@ extern "C"
   float FEB_ADBMS_GET_Cell_Voltage_Delta_mV(void);   // pack max-min cell delta in mV, -1 if no valid data
   bool FEB_Cell_Balance_Complete(void);              // true when valid readings AND delta < threshold
 
+  void FEB_Cell_Balance_Force_Cell(uint8_t bank, uint16_t cell);
+  void FEB_Cell_Balance_Clear_Force(void);
+  bool FEB_Cell_Balance_Get_Forced_Cell(uint8_t *bank, uint16_t *cell);
+
   // ********************************** Error Type *********************************
 
   uint8_t FEB_ADBMS_Get_Error_Type(void);
