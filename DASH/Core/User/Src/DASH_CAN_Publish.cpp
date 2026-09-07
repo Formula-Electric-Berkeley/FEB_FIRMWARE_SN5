@@ -19,8 +19,8 @@ namespace
 bool fill_dash_state(feb_can_dash_state_t &m)
 {
   const IO_States_t io = FEB_IO_GetLastIOStates();
-  m.button1 = io.button_rtd;
-  m.button2 = io.button_2;
+  m.button1 = io.button_1;
+  m.button2 = io.button_rtd;
   m.button3 = io.button_3;
   m.button4 = io.button_4;
   m.switch1 = io.switch_accumulator_fans;

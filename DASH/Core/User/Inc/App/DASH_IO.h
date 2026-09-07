@@ -37,8 +37,8 @@ extern "C"
     bool switch_4;
 
     // Button states
+    bool button_1;
     bool button_rtd;
-    bool button_2;
     bool button_3;
     bool button_4;
 

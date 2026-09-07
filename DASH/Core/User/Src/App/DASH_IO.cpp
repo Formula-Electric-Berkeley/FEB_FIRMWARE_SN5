@@ -20,8 +20,8 @@ static uint32_t end_buzzer_tick = 0;
 static IO_States_t state = {.switch_coolant_pump_radiator_fan = false,
                             .switch_accumulator_fans = false,
                             .switch_logging = false,
+                            .button_1 = false,
                             .button_rtd = false,
-                            .button_2 = false,
                             .button_3 = false,
                             .button_4 = false,
                             .buzzer_enabled = false};
@@ -72,8 +72,8 @@ void FEB_IO_Update_GPIO(void)
 
   // printf("[-] %X %X\n", received_data[0], received_data[1]);
 
-  state.button_rtd = (bool)(received_data[0] & (1 << 1));
-  state.button_2 = (bool)(received_data[0] & (1 << 2));
+  state.button_rtd = (bool)(received_data[0] & (1 << 2));
+  state.button_1 = (bool)(received_data[0] & (1 << 1));
   state.button_3 = (bool)(received_data[0] & (1 << 3));
   state.button_4 = (bool)(received_data[0] & (1 << 4));
 
