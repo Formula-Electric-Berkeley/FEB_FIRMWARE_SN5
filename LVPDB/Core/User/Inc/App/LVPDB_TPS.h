@@ -125,6 +125,8 @@ extern "C"
    */
   void LVPDB_TPS_Poll(void);
 
+  void LVPDB_TPS_SetRail(uint8_t index, bool enable);
+
   /**
    * @brief Whether the last poll of a chip succeeded
    * @param index Device index (0..NUM_TPS2482-1)

@@ -108,6 +108,22 @@ void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg)
   }
 }
 
+// Pin/address topology for the console commands
+void tps_populate_export_arrays(void)
+{
+  for (uint8_t i = 0; i < NUM_TPS2482; i++)
+  {
+    tps2482_i2c_addresses[i] = tps_device_configs[i].i2c_addr;
+    tps2482_pg_ports[i] = tps_device_configs[i].pg_port;
+    tps2482_pg_pins[i] = tps_device_configs[i].pg_pin;
+    if (i > 0)
+    { // EN arrays don't include LV (index 0)
+      tps2482_en_ports[i - 1] = tps_device_configs[i].en_port;
+      tps2482_en_pins[i - 1] = tps_device_configs[i].en_pin;
+    }
+  }
+}
+
 /**
  * Initialize the TPS library and register every TPS2482 in tps_device_configs.
  *
@@ -130,19 +146,6 @@ bool tps_init_devices(void)
   {
     LOG_E(TAG_MAIN, "TPS library init failed: %s", FEB_TPS_StatusToString(init_status));
     return false;
-  }
-
-  // Populate exported arrays for console commands
-  for (uint8_t i = 0; i < NUM_TPS2482; i++)
-  {
-    tps2482_i2c_addresses[i] = tps_device_configs[i].i2c_addr;
-    tps2482_pg_ports[i] = tps_device_configs[i].pg_port;
-    tps2482_pg_pins[i] = tps_device_configs[i].pg_pin;
-    if (i > 0)
-    { // EN arrays don't include LV (index 0)
-      tps2482_en_ports[i - 1] = tps_device_configs[i].en_port;
-      tps2482_en_pins[i - 1] = tps_device_configs[i].en_pin;
-    }
   }
 
   uint8_t ok_count = 0;
@@ -283,35 +286,38 @@ void tps_variable_conversion(void)
 
 void LVPDB_TPS_Setup(void)
 {
-  // Initialize TPS devices. One attempt per chip; failures are logged and skipped.
+  tps_populate_export_arrays();
+
+  // One attempt per chip; failures are logged and skipped.
   tps_init_success = tps_init_devices();
+
+  // Rail state is GPIO-only, so it applies even to chips that never answered.
+  for (uint8_t i = 0; i < NUM_TPS2482; i++)
+  {
+    LVPDB_TPS_SetRail(i, false);
+  }
+  LVPDB_TPS_SetRail(1, true); // SH must be powered for the car to come up
+
   if (tps_init_success)
   {
     LOG_I(TAG_MAIN, "TPS2482 I2C init complete");
-
-    // Start with all rails disabled (LV has no EN pin and is skipped).
-    for (uint8_t i = 0; i < NUM_TPS2482; i++)
-    {
-      if (tps_handles[i] != nullptr && tps_device_configs[i].en_port != nullptr)
-      {
-        FEB_TPS_Enable(tps_handles[i], false);
-      }
-    }
-
-    // The shutdown circuit must be powered for the car to come up.
-    if (tps_handles[1] != nullptr)
-    {
-      FEB_TPS_Enable(tps_handles[1], true); // SH
-    }
-
     tps_check_power_good();
-
     LOG_I(TAG_MAIN, "TPS2482 power rails configured");
   }
   else
   {
-    LOG_E(TAG_MAIN, "TPS2482 init failed - all chips unreachable, skipping power rail config");
+    LOG_E(TAG_MAIN, "TPS2482 init failed - all chips unreachable, rails still under GPIO control");
   }
+}
+
+void LVPDB_TPS_SetRail(uint8_t index, bool enable)
+{
+  if (index >= NUM_TPS2482 || tps_device_configs[index].en_port == nullptr)
+  {
+    return;
+  }
+  HAL_GPIO_WritePin(tps_device_configs[index].en_port, tps_device_configs[index].en_pin,
+                    enable ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 bool LVPDB_TPS_IsInitialized(void)

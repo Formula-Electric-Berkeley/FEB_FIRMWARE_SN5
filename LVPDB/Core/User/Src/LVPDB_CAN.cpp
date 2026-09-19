@@ -29,8 +29,6 @@ extern osSemaphoreId_t canTxMailboxSemHandle;
 namespace
 {
 volatile bool can_ready = false;
-
-constexpr uint32_t kRxTimeoutMs = 250;
 } // namespace
 
 bool LVPDB_CAN_IsReady(void)
@@ -62,18 +60,17 @@ void LVPDB_CAN_Init()
 
 void LVPDB_CAN_ApplyRxState(void)
 {
-  if (fc::rx<fm::DashState>.age_ms() < kRxTimeoutMs)
-  {
-    const auto dash_state = fc::rx<fm::DashState>.snapshot();
+  // Rails fall back to off when DASH goes quiet.
+  const bool dash_fresh = fc::rx<fm::DashState>.fresh();
+  const auto dash_state = fc::rx<fm::DashState>.snapshot();
 
-    // Device handles (in order: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF)
-    FEB_TPS_Enable(tps_handles[5], dash_state.switch1); // AF1_AF2
-    FEB_TPS_Enable(tps_handles[6], dash_state.switch2); // CP_RF
-  }
+  // Rail indices: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF
+  LVPDB_TPS_SetRail(5, dash_fresh && dash_state.switch1); // AF1_AF2
+  LVPDB_TPS_SetRail(6, dash_fresh && dash_state.switch2); // CP_RF
 
-  // FEB_TPS_Enable(tps_handles[3], true); // BM_L
+  // LVPDB_TPS_SetRail(3, true); // BM_L
 
   /* brake_position is centi-percent (0-10000); compare whole percent (0-100). */
-  bool brake_on = fc::rx<fm::Brake>.age_ms() < kRxTimeoutMs && ((fc::rx<fm::Brake>.v().brake_position / 100u) > 10);
+  bool brake_on = fc::rx<fm::Brake>.fresh() && (fc::rx<fm::Brake>.v().brake_position > 1000u);
   HAL_GPIO_WritePin(BL_Switch_GPIO_Port, BL_Switch_Pin, brake_on ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }

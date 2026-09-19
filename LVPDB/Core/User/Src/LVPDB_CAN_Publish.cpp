@@ -89,7 +89,7 @@ bool fill_heartbeat(feb_can_lvpdb_heartbeat_t &m)
 
   osMutexRelease(tpsDataMutexHandle);
 
-  m.dash_state_stale = fc::rx<fm::DashState>.age_ms() >= 250;
+  m.dash_state_stale = !fc::rx<fm::DashState>.fresh();
   return true;
 }
 
@@ -97,7 +97,6 @@ fc::Publisher<fm::LvpdbLv24vBusAnd12vBusVoltages> voltages_tx{fill_voltages, 99}
 fc::Publisher<fm::LvpdbLvShLtBmLCurrents> lv_sh_lt_bm_l_currents_tx{fill_lv_sh_lt_bm_l_currents, 99};
 fc::Publisher<fm::LvpdbSmAf1Af2CpRfCurrents> sm_af1_af2_cp_rf_currents_tx{fill_sm_af1_af2_cp_rf_currents, 99};
 
-// not 100ms to offset message from other two statuses (ran into issue where mailbox got full)
 fc::Publisher<fm::LvpdbHeartbeat> heartbeat_tx{fill_heartbeat, 67};
 
 } // namespace
