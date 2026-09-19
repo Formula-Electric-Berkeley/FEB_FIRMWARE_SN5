@@ -10,6 +10,7 @@
 #include "LVPDB_PingPong.h"
 #include "LVPDB_TPS.h"
 #include "cmsis_os2.h"
+#include "feb_can_subscriber.hpp"
 #include "feb_console.h"
 #include "feb_log.h"
 #include "feb_string_utils.h"
@@ -18,6 +19,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+namespace fc = feb::can;
+namespace fm = feb::can::msg;
 
 /* ============================================================================
  * External Variables from CubeMX-generated code
@@ -166,6 +170,7 @@ static void print_lvpdb_help(void)
   FEB_Console_Printf("  LVPDB|pong|<ch>           - Start pong mode (respond to pings) on channel 1-4\r\n");
   FEB_Console_Printf("  LVPDB|stop|<ch|all>       - Stop channel (1-4) or all\r\n");
   FEB_Console_Printf("  LVPDB|canstatus           - Show CAN ping/pong status\r\n");
+  FEB_Console_Printf("  LVPDB|canrx               - Show CAN RX subscriber state (DashState, Brake)\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("Chips: LV(0), SH(1), LT(2), BM_L(3), SM(4), AF1_AF2(5), CP_RF(6)\r\n");
   FEB_Console_Printf("  Note: LV cannot be enabled/disabled (always on)\r\n");
@@ -600,6 +605,58 @@ static void cmd_canstatus(int argc, char *argv[])
 }
 
 /* ============================================================================
+ * CAN RX Subscriber
+ * ============================================================================ */
+
+template <class M> static void print_sub_row(const char *name)
+{
+  const auto &s = fc::rx<M>;
+
+  char age_buf[16];
+  const char *age_str;
+  if (s.present())
+  {
+    snprintf(age_buf, sizeof(age_buf), "%u", (unsigned int)s.age_ms());
+    age_str = age_buf;
+  }
+  else
+  {
+    age_str = "--";
+  }
+
+  FEB_Console_Printf("%-10s %-4s %-5s %10u %6u %8s %-5s\r\n", name, s.registered() ? "Y" : "N", s.present() ? "Y" : "N",
+                     (unsigned int)s.rx_count(), (unsigned int)s.error_count(), age_str, s.fresh() ? "Y" : "N");
+}
+
+static void cmd_canrx(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  FEB_Console_Printf("CAN RX Subscribers:\r\n");
+  FEB_Console_Printf("%-10s %-4s %-5s %10s %6s %8s %-5s\r\n", "Message", "Reg", "Pres", "RX Count", "Errs", "Age(ms)",
+                     "Fresh");
+  FEB_Console_Printf("---------- ---- ----- ---------- ------ -------- -----\r\n");
+
+  print_sub_row<fm::DashState>("DashState");
+  print_sub_row<fm::Brake>("Brake");
+
+  const auto dash = fc::rx<fm::DashState>.snapshot();
+  const auto brake = fc::rx<fm::Brake>.snapshot();
+
+  FEB_Console_Printf("\r\nDashState: switch1(AF1_AF2)=%u switch2(CP_RF)=%u\r\n", (unsigned int)dash.switch1,
+                     (unsigned int)dash.switch2);
+  FEB_Console_Printf("Brake:     position=%u pressed=%u plausible=%u b1=%u b2=%u\r\n",
+                     (unsigned int)brake.brake_position, (unsigned int)brake.brake_pressed,
+                     (unsigned int)brake.plausible, (unsigned int)brake.brake1_pct, (unsigned int)brake.brake2_pct);
+
+  const bool fresh = fc::rx<fm::Brake>.fresh();
+  const bool over = brake.brake_position > 1000u;
+  FEB_Console_Printf("Brake light: %s (fresh=%s position>1000=%s)\r\n", (fresh && over) ? "ON" : "OFF",
+                     fresh ? "Y" : "N", over ? "Y" : "N");
+}
+
+/* ============================================================================
  * CSV Subcommand Helpers
  * ============================================================================ */
 
@@ -822,6 +879,30 @@ static void cmd_csv_canstatus(int argc, char *argv[])
   }
 }
 
+template <class M> static void emit_sub_csv(const char *name)
+{
+  const auto &s = fc::rx<M>;
+  FEB_Console_CsvEmit("canrx", "%s,%d,%d,%u,%u,%u,%d", name, s.registered() ? 1 : 0, s.present() ? 1 : 0,
+                      (unsigned int)s.rx_count(), (unsigned int)s.error_count(),
+                      (unsigned int)(s.present() ? s.age_ms() : 0u), s.fresh() ? 1 : 0);
+}
+
+static void cmd_csv_canrx(int argc, char *argv[])
+{
+  (void)argc;
+  (void)argv;
+
+  emit_sub_csv<fm::DashState>("DashState");
+  emit_sub_csv<fm::Brake>("Brake");
+
+  const auto dash = fc::rx<fm::DashState>.snapshot();
+  const auto brake = fc::rx<fm::Brake>.snapshot();
+
+  FEB_Console_CsvEmit("dash_state", "%u,%u", (unsigned int)dash.switch1, (unsigned int)dash.switch2);
+  FEB_Console_CsvEmit("brake", "%u,%u,%u,%u,%u", (unsigned int)brake.brake_position, (unsigned int)brake.brake_pressed,
+                      (unsigned int)brake.plausible, (unsigned int)brake.brake1_pct, (unsigned int)brake.brake2_pct);
+}
+
 /* ============================================================================
  * Command Descriptors
  *
@@ -873,9 +954,15 @@ static const FEB_Console_Cmd_t lvpdb_canstatus_cmd = {.name = "canstatus",
                                                       .csv_handler = cmd_csv_canstatus,
                                                       .hidden = true};
 
+static const FEB_Console_Cmd_t lvpdb_canrx_cmd = {.name = "canrx",
+                                                  .help = "CAN RX subscriber state",
+                                                  .handler = cmd_canrx,
+                                                  .csv_handler = cmd_csv_canrx,
+                                                  .hidden = true};
+
 static const FEB_Console_Cmd_t *const LVPDB_SUBCMDS[] = {
     &lvpdb_status_cmd, &lvpdb_enable_cmd, &lvpdb_disable_cmd, &lvpdb_read_cmd,      &lvpdb_write_cmd,
-    &lvpdb_ping_cmd,   &lvpdb_pong_cmd,   &lvpdb_stop_cmd,    &lvpdb_canstatus_cmd,
+    &lvpdb_ping_cmd,   &lvpdb_pong_cmd,   &lvpdb_stop_cmd,    &lvpdb_canstatus_cmd, &lvpdb_canrx_cmd,
 };
 #define LVPDB_SUBCMDS_COUNT (sizeof(LVPDB_SUBCMDS) / sizeof(LVPDB_SUBCMDS[0]))
 
