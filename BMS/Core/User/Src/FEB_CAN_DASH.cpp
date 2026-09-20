@@ -1,5 +1,5 @@
 /**
- * @file FEB_CAN_DASH.c
+ * @file FEB_CAN_DASH.cpp
  * @brief DASH CAN message reception for BMS
  *
  * Receives the dash_state CAN message (FEB_CAN_DASH_STATE_FRAME_ID, 0x10)
@@ -17,9 +17,12 @@
 #include "feb_can.h"
 #include "stm32f4xx_hal.h"
 
-DASH_IO_t DASH_IO = {0};
+DASH_IO_t DASH_IO = {};
 
-static void FEB_CAN_DASH_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
+namespace
+{
+
+void FEB_CAN_DASH_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                   const uint8_t *data, uint8_t length, void *user_data)
 {
   (void)instance;
@@ -32,7 +35,7 @@ static void FEB_CAN_DASH_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, 
     return;
   }
 
-  struct feb_can_dash_state_t msg;
+  feb_can_dash_state_t msg;
   feb_can_dash_state_unpack(&msg, data, length);
 
   DASH_IO.ready_to_drive = (msg.ready_to_drive != 0);
@@ -45,6 +48,8 @@ static void FEB_CAN_DASH_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, 
 
   DASH_IO.last_rx_tick = HAL_GetTick();
 }
+
+} // namespace
 
 void FEB_CAN_DASH_Init(void)
 {
@@ -63,7 +68,7 @@ void FEB_CAN_DASH_Init(void)
       .mask = 0,
       .fifo = FEB_CAN_FIFO_0,
       .callback = FEB_CAN_DASH_Callback,
-      .user_data = NULL,
+      .user_data = nullptr,
   };
 
   FEB_CAN_RX_Register(&params);
