@@ -24,7 +24,7 @@ extern osMutexId_t tpsI2cMutexHandle;
 #define BMS_TPS_I_MAX 5.0f     /* 5A fuse max */
 
 /* Device handle */
-static FEB_TPS_Handle_t bms_tps_handle = NULL;
+static FEB_TPS_Handle_t bms_tps_handle = nullptr;
 
 /**
  * Forward TPS library log messages to the application logger with level mapping.
@@ -127,7 +127,7 @@ void StartTPSTask(void *argument)
 
   for (;;)
   {
-    if (bms_tps_handle != NULL)
+    if (bms_tps_handle != nullptr)
     {
       status = FEB_TPS_Poll(bms_tps_handle, &meas);
 

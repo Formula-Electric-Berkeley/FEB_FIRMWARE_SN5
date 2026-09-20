@@ -25,12 +25,12 @@ static uint16_t s_cc_mismatch_count = 0;
 static uint8_t s_per_ic_offset[FEB_NUM_IC]; // last logged (ref - cc) & 0x3F
 static bool s_per_ic_drifting[FEB_NUM_IC];  // was this IC drifting at last check?
 
-void ADBMS_CC_Advance(void)
+void ADBMS_CC_Advance()
 {
-  s_expected_cc = (uint8_t)((s_expected_cc + 1u) & 0x3Fu);
+  s_expected_cc = static_cast<uint8_t>((s_expected_cc + 1u) & 0x3Fu);
 }
 
-void ADBMS_CC_Reset(void)
+void ADBMS_CC_Reset()
 {
   s_expected_cc = 0;
   s_cc_mismatch_count = 0;
@@ -50,8 +50,8 @@ void ADBMS_CC_Check(uint8_t observed)
   // Rate-limit logging: log on the first mismatch and then every 64th.
   if ((s_cc_mismatch_count & 0x3F) == 1)
   {
-    LOG_D(TAG_BMS, "CC drift: expected=%u observed=%u count=%u", (unsigned)s_expected_cc, (unsigned)observed,
-          (unsigned)s_cc_mismatch_count);
+    LOG_D(TAG_BMS, "CC drift: expected=%u observed=%u count=%u", static_cast<unsigned>(s_expected_cc), static_cast<unsigned>(observed),
+          static_cast<unsigned>(s_cc_mismatch_count));
   }
   s_expected_cc = observed; // resync so we don't keep flagging the same drift
 }
@@ -68,7 +68,7 @@ void ADBMS_CC_CheckIC(uint8_t icn, uint8_t ic_cc, uint8_t ref_cc)
     // Back in sync — log the recovery edge once, then stay quiet.
     if (s_per_ic_drifting[icn])
     {
-      LOG_D(TAG_BMS, "CC drift IC%u cleared (cc=%u)", (unsigned)icn, (unsigned)ic_cc);
+      LOG_D(TAG_BMS, "CC drift IC%u cleared (cc=%u)", static_cast<unsigned>(icn), static_cast<unsigned>(ic_cc));
       s_per_ic_drifting[icn] = false;
     }
     return;
@@ -76,16 +76,16 @@ void ADBMS_CC_CheckIC(uint8_t icn, uint8_t ic_cc, uint8_t ref_cc)
 
   // Drifting: log only on a new drift or when the offset changes, so a stable
   // offset (the common case) prints a single line instead of flooding at 10 Hz.
-  uint8_t offset = (uint8_t)((ref_cc - ic_cc) & 0x3F);
+  uint8_t offset = static_cast<uint8_t>((ref_cc - ic_cc) & 0x3F);
   if (!s_per_ic_drifting[icn] || offset != s_per_ic_offset[icn])
   {
-    LOG_D(TAG_BMS, "CC drift IC%u: cc=%u (first=%u)", (unsigned)icn, (unsigned)ic_cc, (unsigned)ref_cc);
+    LOG_D(TAG_BMS, "CC drift IC%u: cc=%u (first=%u)", static_cast<unsigned>(icn), static_cast<unsigned>(ic_cc), static_cast<unsigned>(ref_cc));
     s_per_ic_drifting[icn] = true;
     s_per_ic_offset[icn] = offset;
   }
 }
 
-uint16_t ADBMS_CC_GetMismatchCount(void)
+uint16_t ADBMS_CC_GetMismatchCount()
 {
   return s_cc_mismatch_count;
 }
@@ -144,7 +144,7 @@ uint16_t Pec10_calc(bool bIsRxCmd, uint8_t nLength, uint8_t *pDataBuf)
   for (nByteIndex = 0u; nByteIndex < nLength; ++nByteIndex)
   {
     /* Bring the next byte into the remainder. */
-    nRemainder ^= (uint16_t)((uint16_t)pDataBuf[nByteIndex] << 2u);
+    nRemainder ^= static_cast<uint16_t>(static_cast<uint16_t>(pDataBuf[nByteIndex]) << 2u);
 
     /* Perform modulo-2 division, a bit at a time. */
     for (nBitIndex = 8u; nBitIndex > 0u; --nBitIndex)
@@ -152,12 +152,12 @@ uint16_t Pec10_calc(bool bIsRxCmd, uint8_t nLength, uint8_t *pDataBuf)
       /* Try to divide the current data bit. */
       if ((nRemainder & 0x200u) > 0u)
       {
-        nRemainder = (uint16_t)((nRemainder << 1u));
-        nRemainder = (uint16_t)(nRemainder ^ nPolynomial);
+        nRemainder = static_cast<uint16_t>((nRemainder << 1u));
+        nRemainder = static_cast<uint16_t>(nRemainder ^ nPolynomial);
       }
       else
       {
-        nRemainder = (uint16_t)(nRemainder << 1u);
+        nRemainder = static_cast<uint16_t>(nRemainder << 1u);
       }
     }
   }
@@ -167,7 +167,7 @@ uint16_t Pec10_calc(bool bIsRxCmd, uint8_t nLength, uint8_t *pDataBuf)
    * is XOR'd here. */
   if (bIsRxCmd == true)
   {
-    nRemainder ^= (uint16_t)(((uint16_t)pDataBuf[nLength] & (uint8_t)0xFC) << 2u);
+    nRemainder ^= static_cast<uint16_t>((static_cast<uint16_t>(pDataBuf[nLength]) & static_cast<uint8_t>(0xFC)) << 2u);
   }
 
   /* The 6-bit register-group field is always part of PEC10: it carries the
@@ -179,15 +179,15 @@ uint16_t Pec10_calc(bool bIsRxCmd, uint8_t nLength, uint8_t *pDataBuf)
   {
     if ((nRemainder & 0x200u) > 0u)
     {
-      nRemainder = (uint16_t)((nRemainder << 1u));
-      nRemainder = (uint16_t)(nRemainder ^ nPolynomial);
+      nRemainder = static_cast<uint16_t>((nRemainder << 1u));
+      nRemainder = static_cast<uint16_t>(nRemainder ^ nPolynomial);
     }
     else
     {
-      nRemainder = (uint16_t)((nRemainder << 1u));
+      nRemainder = static_cast<uint16_t>((nRemainder << 1u));
     }
   }
-  return ((uint16_t)(nRemainder & 0x3FFu));
+  return (static_cast<uint16_t>(nRemainder & 0x3FFu));
 }
 //***************** Read and Write to SPI ****************
 /* Generic function to write 68xx commands. Function calculates PEC for tx_cmd data. */
@@ -199,8 +199,8 @@ void cmd_68(uint8_t tx_cmd[2])
   cmd[0] = tx_cmd[0];
   cmd[1] = tx_cmd[1];
   cmd_pec = pec15_calc(2, cmd);
-  cmd[2] = (uint8_t)(cmd_pec >> 8);
-  cmd[3] = (uint8_t)(cmd_pec);
+  cmd[2] = static_cast<uint8_t>(cmd_pec >> 8);
+  cmd[3] = static_cast<uint8_t>(cmd_pec);
   wakeup_idle(FEB_NUM_IC);
   FEB_cs_low();
   FEB_spi_write_array(4, cmd);
@@ -216,8 +216,8 @@ void cmd_68_r(uint8_t tx_cmd[2], uint8_t *data, uint8_t len)
   cmd[0] = tx_cmd[0];
   cmd[1] = tx_cmd[1];
   cmd_pec = pec15_calc(2, cmd);
-  cmd[2] = (uint8_t)(cmd_pec >> 8);
-  cmd[3] = (uint8_t)(cmd_pec);
+  cmd[2] = static_cast<uint8_t>(cmd_pec >> 8);
+  cmd[3] = static_cast<uint8_t>(cmd_pec);
   wakeup_idle(FEB_NUM_IC);
   FEB_cs_low();
   FEB_spi_write_read(cmd, 4, data, len);
@@ -247,7 +247,7 @@ void write_68(uint8_t total_ic,  // Number of ICs to be written to
   const uint8_t BYTES_PER_IC = BYTES_IN_REG + 2;   // data + 2 bytes PEC
   uint8_t CMD_LEN = 4 + (BYTES_PER_IC * total_ic); // 4 bytes for cmd + data for all ICs
   uint8_t *cmd = (uint8_t *)pvPortMalloc(CMD_LEN * sizeof(uint8_t));
-  if (cmd == NULL)
+  if (cmd == nullptr)
   {
     // Could print error here if needed
     return;
@@ -259,8 +259,8 @@ void write_68(uint8_t total_ic,  // Number of ICs to be written to
 
   // Calculate and append the PEC for the command
   uint16_t cmd_pec = pec15_calc(2, cmd);
-  cmd[2] = (uint8_t)(cmd_pec >> 8);
-  cmd[3] = (uint8_t)(cmd_pec);
+  cmd[2] = static_cast<uint8_t>(cmd_pec >> 8);
+  cmd[3] = static_cast<uint8_t>(cmd_pec);
 
   uint8_t cmd_index = 4;
 
@@ -276,9 +276,9 @@ void write_68(uint8_t total_ic,  // Number of ICs to be written to
     }
 
     // Calculate and append PEC for this IC's data
-    uint16_t data_pec = (uint16_t)Pec10_calc(false, BYTES_IN_REG, &data[src_offset]);
-    cmd[cmd_index++] = (uint8_t)(data_pec >> 8);
-    cmd[cmd_index++] = (uint8_t)data_pec;
+    uint16_t data_pec = static_cast<uint16_t>(Pec10_calc(false, BYTES_IN_REG, &data[src_offset]));
+    cmd[cmd_index++] = static_cast<uint8_t>(data_pec >> 8);
+    cmd[cmd_index++] = static_cast<uint8_t>(data_pec);
   }
 
   // Send command and payload

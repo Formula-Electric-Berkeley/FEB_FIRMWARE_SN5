@@ -147,24 +147,24 @@ static const ADBMS_CmdInfo_t cmd_table[] = {
     {RDRR, ADBMS_CMD_READ, 6, "RDRR", "Read Retention Reg"},
 
     /* Sentinel */
-    {0, 0, 0, NULL, NULL}};
+    {0, ADBMS_CMD_WRITE, 0, nullptr, nullptr}};
 
 /*============================================================================
  * API: Find Command by Name
  *============================================================================*/
 const ADBMS_CmdInfo_t *ADBMS_FindCmdByName(const char *name)
 {
-  if (name == NULL)
-    return NULL;
+  if (name == nullptr)
+    return nullptr;
 
-  for (const ADBMS_CmdInfo_t *cmd = cmd_table; cmd->name != NULL; cmd++)
+  for (const ADBMS_CmdInfo_t *cmd = cmd_table; cmd->name != nullptr; cmd++)
   {
     if (FEB_strcasecmp(name, cmd->name) == 0)
     {
       return cmd;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 /*============================================================================
@@ -172,14 +172,14 @@ const ADBMS_CmdInfo_t *ADBMS_FindCmdByName(const char *name)
  *============================================================================*/
 const ADBMS_CmdInfo_t *ADBMS_FindCmdByCode(uint16_t code)
 {
-  for (const ADBMS_CmdInfo_t *cmd = cmd_table; cmd->name != NULL; cmd++)
+  for (const ADBMS_CmdInfo_t *cmd = cmd_table; cmd->name != nullptr; cmd++)
   {
     if (cmd->code == code)
     {
       return cmd;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 /*============================================================================
@@ -268,7 +268,7 @@ static void subcmd_list(int argc, char *argv[])
 
   const char *type_str[] = {"WR", "RD", "ACT", "POLL"};
 
-  for (const ADBMS_CmdInfo_t *cmd = cmd_table; cmd->name != NULL; cmd++)
+  for (const ADBMS_CmdInfo_t *cmd = cmd_table; cmd->name != nullptr; cmd++)
   {
     FEB_Console_Printf("%-10s 0x%04X %-4s %s\r\n", cmd->name, cmd->code, type_str[cmd->type], cmd->desc);
   }
@@ -287,7 +287,7 @@ static void subcmd_read(int argc, char *argv[])
   }
 
   const ADBMS_CmdInfo_t *cmd = ADBMS_FindCmdByName(argv[1]);
-  if (cmd == NULL)
+  if (cmd == nullptr)
   {
     FEB_Console_Printf("Unknown command: %s\r\n", argv[1]);
     return;
@@ -310,7 +310,7 @@ static void subcmd_read(int argc, char *argv[])
       FEB_Console_Printf("IC must be 0-%d\r\n", FEB_NUM_IC - 1);
       return;
     }
-    ic_start = (uint8_t)ic;
+    ic_start = static_cast<uint8_t>(ic);
     ic_end = ic_start + 1;
   }
 
@@ -350,7 +350,7 @@ static void subcmd_write(int argc, char *argv[])
   }
 
   const ADBMS_CmdInfo_t *cmd = ADBMS_FindCmdByName(argv[1]);
-  if (cmd == NULL)
+  if (cmd == nullptr)
   {
     FEB_Console_Printf("Unknown command: %s\r\n", argv[1]);
     return;
@@ -375,7 +375,7 @@ static void subcmd_write(int argc, char *argv[])
   for (int i = 0; i < 6; i++)
   {
     char byte_str[3] = {hex[i * 2], hex[i * 2 + 1], '\0'};
-    data[i] = (uint8_t)strtoul(byte_str, NULL, 16);
+    data[i] = static_cast<uint8_t>(strtoul(byte_str, nullptr, 16));
   }
 
   FEB_Console_Printf("Writing %s: ", cmd->name);
@@ -409,7 +409,7 @@ static void subcmd_cmd(int argc, char *argv[])
   }
 
   const ADBMS_CmdInfo_t *cmd = ADBMS_FindCmdByName(argv[1]);
-  if (cmd == NULL)
+  if (cmd == nullptr)
   {
     FEB_Console_Printf("Unknown command: %s\r\n", argv[1]);
     return;
@@ -441,7 +441,7 @@ static void subcmd_dump(int argc, char *argv[])
   uint8_t ic = 0;
   if (argc >= 2)
   {
-    ic = (uint8_t)atoi(argv[1]);
+    ic = static_cast<uint8_t>(atoi(argv[1]));
     if (ic >= FEB_NUM_IC)
     {
       FEB_Console_Printf("IC must be 0-%d\r\n", FEB_NUM_IC - 1);
@@ -458,7 +458,7 @@ static void subcmd_dump(int argc, char *argv[])
   for (size_t i = 0; i < sizeof(dump_cmds) / sizeof(dump_cmds[0]); i++)
   {
     const ADBMS_CmdInfo_t *cmd = ADBMS_FindCmdByCode(dump_cmds[i]);
-    if (cmd == NULL)
+    if (cmd == nullptr)
       continue;
 
     uint8_t data[6];
@@ -484,7 +484,7 @@ static void subcmd_status(int argc, char *argv[])
   FEB_Console_Printf("\r\n=== ADBMS6830B Status ===\r\n");
 
   /* Read STATA */
-  ADBMS_STATA_t stata = {0};
+  ADBMS_STATA_t stata = {};
   ADBMS_ReadReg(RDSTATA, 0, stata.raw);
 
   float vref2 = ADBMS_CodeToVoltage_mV(stata.values.VREF2) / 1000.0f;
@@ -496,12 +496,12 @@ static void subcmd_status(int argc, char *argv[])
   FEB_Console_Printf("VA:     %.3f V\r\n", va);
 
   /* Read STATB */
-  ADBMS_STATB_t statb = {0};
+  ADBMS_STATB_t statb = {};
   ADBMS_ReadReg(RDSTATB, 0, statb.raw);
 
   float vd = ADBMS_CodeToVoltage_mV(statb.bits.VD) / 1000.0f;
-  uint16_t uv_flags = statb.bits.C_UV_LO | ((uint16_t)statb.bits.C_UV_HI << 8);
-  uint16_t ov_flags = statb.bits.C_OV_LO | ((uint16_t)statb.bits.C_OV_HI << 8);
+  uint16_t uv_flags = statb.bits.C_UV_LO | (static_cast<uint16_t>(statb.bits.C_UV_HI) << 8);
+  uint16_t ov_flags = statb.bits.C_OV_LO | (static_cast<uint16_t>(statb.bits.C_OV_HI) << 8);
 
   FEB_Console_Printf("VD:     %.3f V\r\n", vd);
   FEB_Console_Printf("UV:     0x%04X\r\n", uv_flags);
@@ -583,7 +583,7 @@ void ADBMS_RegSubcmd_Csv(int argc, char *argv[])
   if (FEB_strcasecmp(action, "list") == 0)
   {
     const char *type_str[] = {"WR", "RD", "ACT", "POLL"};
-    for (const ADBMS_CmdInfo_t *cmd = cmd_table; cmd->name != NULL; cmd++)
+    for (const ADBMS_CmdInfo_t *cmd = cmd_table; cmd->name != nullptr; cmd++)
     {
       /* Body: name,code,type,"desc" (desc quoted; may contain spaces). */
       FEB_Console_CsvEmit("reg-cmd", "%s,0x%04X,%s,\"%s\"", cmd->name, cmd->code, type_str[cmd->type], cmd->desc);
@@ -597,7 +597,7 @@ void ADBMS_RegSubcmd_Csv(int argc, char *argv[])
       return;
     }
     const ADBMS_CmdInfo_t *cmd = ADBMS_FindCmdByName(argv[2]);
-    if (cmd == NULL)
+    if (cmd == nullptr)
     {
       FEB_Console_CsvError("error", "unknown_command,%s", argv[2]);
       return;
@@ -617,7 +617,7 @@ void ADBMS_RegSubcmd_Csv(int argc, char *argv[])
         FEB_Console_CsvError("error", "invalid_ic,%d", ic);
         return;
       }
-      ic_start = (uint8_t)ic;
+      ic_start = static_cast<uint8_t>(ic);
       ic_end = ic_start + 1;
     }
     for (uint8_t ic = ic_start; ic < ic_end; ic++)
@@ -644,7 +644,7 @@ void ADBMS_RegSubcmd_Csv(int argc, char *argv[])
       return;
     }
     const ADBMS_CmdInfo_t *cmd = ADBMS_FindCmdByName(argv[2]);
-    if (cmd == NULL)
+    if (cmd == nullptr)
     {
       FEB_Console_CsvError("error", "unknown_command,%s", argv[2]);
       return;
@@ -664,7 +664,7 @@ void ADBMS_RegSubcmd_Csv(int argc, char *argv[])
     for (int i = 0; i < 6; i++)
     {
       char byte_str[3] = {hex[i * 2], hex[i * 2 + 1], '\0'};
-      data[i] = (uint8_t)strtoul(byte_str, NULL, 16);
+      data[i] = static_cast<uint8_t>(strtoul(byte_str, nullptr, 16));
     }
     int err = ADBMS_WriteReg(cmd->code, 0, data);
     FEB_Console_CsvEmit("reg-write", "%s,%s", cmd->name, err < 0 ? "fail" : "ok");
@@ -677,7 +677,7 @@ void ADBMS_RegSubcmd_Csv(int argc, char *argv[])
       return;
     }
     const ADBMS_CmdInfo_t *cmd = ADBMS_FindCmdByName(argv[2]);
-    if (cmd == NULL)
+    if (cmd == nullptr)
     {
       FEB_Console_CsvError("error", "unknown_command,%s", argv[2]);
       return;
@@ -695,7 +695,7 @@ void ADBMS_RegSubcmd_Csv(int argc, char *argv[])
     uint8_t ic = 0;
     if (argc >= 3)
     {
-      ic = (uint8_t)atoi(argv[2]);
+      ic = static_cast<uint8_t>(atoi(argv[2]));
       if (ic >= FEB_NUM_IC)
       {
         FEB_Console_CsvError("error", "invalid_ic,%d", ic);
@@ -707,7 +707,7 @@ void ADBMS_RegSubcmd_Csv(int argc, char *argv[])
     for (size_t i = 0; i < sizeof(dump_cmds) / sizeof(dump_cmds[0]); i++)
     {
       const ADBMS_CmdInfo_t *cmd = ADBMS_FindCmdByCode(dump_cmds[i]);
-      if (cmd == NULL)
+      if (cmd == nullptr)
         continue;
       uint8_t data[6];
       ADBMS_ReadReg(cmd->code, ic, data);
@@ -718,17 +718,17 @@ void ADBMS_RegSubcmd_Csv(int argc, char *argv[])
   }
   else if (FEB_strcasecmp(action, "status") == 0)
   {
-    ADBMS_STATA_t stata = {0};
+    ADBMS_STATA_t stata = {};
     ADBMS_ReadReg(RDSTATA, 0, stata.raw);
     float vref2 = ADBMS_CodeToVoltage_mV(stata.values.VREF2) / 1000.0f;
     float temp = ADBMS_CodeToTemp_C(stata.values.ITMP);
     float va = ADBMS_CodeToVoltage_mV(stata.values.VA) / 1000.0f;
 
-    ADBMS_STATB_t statb = {0};
+    ADBMS_STATB_t statb = {};
     ADBMS_ReadReg(RDSTATB, 0, statb.raw);
     float vd = ADBMS_CodeToVoltage_mV(statb.bits.VD) / 1000.0f;
-    uint16_t uv_flags = statb.bits.C_UV_LO | ((uint16_t)statb.bits.C_UV_HI << 8);
-    uint16_t ov_flags = statb.bits.C_OV_LO | ((uint16_t)statb.bits.C_OV_HI << 8);
+    uint16_t uv_flags = statb.bits.C_UV_LO | (static_cast<uint16_t>(statb.bits.C_UV_HI) << 8);
+    uint16_t ov_flags = statb.bits.C_OV_LO | (static_cast<uint16_t>(statb.bits.C_OV_HI) << 8);
 
     uint8_t sid[6];
     ADBMS_ReadReg(RDSID, 0, sid);
@@ -746,7 +746,7 @@ void ADBMS_RegSubcmd_Csv(int argc, char *argv[])
 /*============================================================================
  * Registration (called from BMS_RegisterCommands)
  *============================================================================*/
-void ADBMS_RegisterConsoleCommands(void)
+void ADBMS_RegisterConsoleCommands()
 {
   /* Registration is handled via FEB_Commands.c dispatch */
   /* This function exists for API completeness */

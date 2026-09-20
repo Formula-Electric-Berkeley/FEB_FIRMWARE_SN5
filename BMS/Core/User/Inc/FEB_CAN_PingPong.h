@@ -12,6 +12,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /* ============================================================================
  * Channel Definitions
  * ============================================================================ */
@@ -89,5 +94,9 @@ int32_t FEB_CAN_PingPong_GetLastCounter(uint8_t channel);
  * @brief Reset all counters and turn off all channels
  */
 void FEB_CAN_PingPong_Reset(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FEB_CAN_PINGPONG_H */

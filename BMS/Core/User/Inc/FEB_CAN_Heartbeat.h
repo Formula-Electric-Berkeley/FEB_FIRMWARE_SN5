@@ -17,6 +17,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 typedef enum
 {
   FEB_HB_PCU = 0,
@@ -42,5 +47,9 @@ bool FEB_CAN_Heartbeat_DevFresh(FEB_HB_Device_t dev, uint32_t timeout_ms);
  *        Mirrors SN4 FEB_COMBINED_STATUS(), which keys on DASH/PCU.
  */
 bool FEB_CAN_Heartbeat_OthersPresent(uint32_t timeout_ms);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_CAN_HEARTBEAT_H_ */

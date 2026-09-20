@@ -19,6 +19,15 @@ extern "C"
    */
   void FEB_Init(void);
 
+  /**
+   * @brief FreeRTOS task entry points. These override the weak stubs in the
+   *        CubeMX-generated freertos.c, so they MUST have C linkage: a C++
+   *        definition without it is silently name-mangled and the weak stub
+   *        wins at link time.
+   */
+  void StartUartRxTask(void *argument);
+  void StartSMTask(void *argument);
+
 #ifdef __cplusplus
 }
 #endif

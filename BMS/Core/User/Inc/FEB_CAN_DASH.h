@@ -14,6 +14,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 typedef struct
 {
   volatile bool ready_to_drive;
@@ -54,5 +59,9 @@ bool FEB_CAN_DASH_GetR2DRaw(void);
  * @return HAL_GetTick() value when last message was received, 0 if never
  */
 uint32_t FEB_CAN_DASH_GetLastRxTick(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FEB_CAN_DASH_H */

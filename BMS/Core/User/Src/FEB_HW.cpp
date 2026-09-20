@@ -9,12 +9,15 @@
 
 // ********************************** Global State *******************************
 
-spi_redundancy_state_t g_spi_redundancy = {0};
+spi_redundancy_state_t g_spi_redundancy = {};
 
 // ********************************** Private Functions **************************
 
+namespace
+{
+
 // Perform the actual failover operation
-static void perform_failover(void)
+void perform_failover()
 {
   // Swap active and backup channels
   SPI_HandleTypeDef *temp_spi = g_spi_redundancy.active_spi;
@@ -43,7 +46,7 @@ static void perform_failover(void)
 }
 
 // Check if failover lockout period has expired
-static bool is_lockout_expired(void)
+bool is_lockout_expired()
 {
   if (!g_spi_redundancy.failover_locked)
   {
@@ -62,7 +65,13 @@ static bool is_lockout_expired(void)
   return false;
 }
 
+} // namespace
+
 // ********************************** Public Functions ***************************
+
+extern "C"
+{
+
 
 void FEB_spi_init_redundancy(void)
 {
@@ -143,5 +152,7 @@ void FEB_spi_force_failover(void)
   // Force failover regardless of lockout (for testing)
   perform_failover();
 }
+
+} // extern "C"
 
 #endif // ISOSPI_MODE_REDUNDANT

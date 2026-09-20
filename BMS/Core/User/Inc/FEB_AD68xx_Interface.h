@@ -7,6 +7,11 @@
 #include <stdbool.h>
 #include "main.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 // ********************************** Functions **********************************
 
 // ****************** Error Correction *******************
@@ -75,5 +80,9 @@ void write_68(uint8_t total_ic,  //!< Number of ICs in the daisy chain
 void transmitCMD(uint16_t cmdcode);
 void transmitCMDR(uint16_t cmdcode, uint8_t *data, uint8_t len);
 void transmitCMDW(uint16_t cmdcode, uint8_t *data);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -24,7 +24,7 @@ uint16_t SetOverVoltageThreshold(float voltage)
   uint8_t rbits = 12;
   voltage = (voltage - 1.5);
   voltage = voltage / (16 * 0.000150);
-  vov_value = (uint16_t)(voltage + 2 * (1 << (rbits - 1)));
+  vov_value = static_cast<uint16_t>(voltage + 2 * (1 << (rbits - 1)));
   vov_value &= 0xFFF;
   return vov_value;
 }
@@ -35,7 +35,7 @@ uint16_t SetUnderVoltageThreshold(float voltage)
   uint8_t rbits = 12;
   voltage = (voltage - 1.5);
   voltage = voltage / (16 * 0.000150);
-  vuv_value = (uint16_t)(voltage + 2 * (1 << (rbits - 1)));
+  vuv_value = static_cast<uint16_t>(voltage + 2 * (1 << (rbits - 1)));
   vuv_value &= 0xFFF;
   return vuv_value;
 }
@@ -176,8 +176,8 @@ void ADBMS6830B_set_cfgr_gpio(uint8_t nIC, cell_asic *ic, bool gpio[10])
 /* Helper function to control discharge */
 void ADBMS6830B_set_cfgr_dis(uint8_t nIC, cell_asic *ic, uint16_t dcc)
 {
-  ic[nIC].configb.tx_data[4] = (uint8_t)(dcc & BYTE_MASK);
-  ic[nIC].configb.tx_data[5] = (uint8_t)((dcc >> 8) & BYTE_MASK);
+  ic[nIC].configb.tx_data[4] = static_cast<uint8_t>(dcc & BYTE_MASK);
+  ic[nIC].configb.tx_data[5] = static_cast<uint8_t>((dcc >> 8) & BYTE_MASK);
 }
 
 /* Helper function to control discharge time value */
@@ -297,7 +297,7 @@ uint8_t ADBMS6830B_rdcv(uint8_t total_ic, // The number of ICs in the system
     // One command on the wire -> one CC tick. Check the global counter once
     // using the first IC's CC; below we compare each IC's CC against it to
     // surface per-IC drift without resyncing s_expected_cc N times.
-    uint8_t first_ic_cc = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+    uint8_t first_ic_cc = static_cast<uint8_t>((cell_data[6] >> 2) & 0x3F);
     ADBMS_CC_Check(first_ic_cc);
 
     for (int icn = 0; icn < total_ic; icn++)
@@ -310,7 +310,7 @@ uint8_t ADBMS6830B_rdcv(uint8_t total_ic, // The number of ICs in the system
         if (byte % 2 == 0)
           ic[icn].cells.c_codes[code_idx] = ic_data[byte];
         else
-          ic[icn].cells.c_codes[code_idx] |= (uint16_t)ic_data[byte] << 8;
+          ic[icn].cells.c_codes[code_idx] |= static_cast<uint16_t>(ic_data[byte]) << 8;
       }
 
       // Per-IC PEC: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
@@ -319,8 +319,8 @@ uint8_t ADBMS6830B_rdcv(uint8_t total_ic, // The number of ICs in the system
       // worst-of-two. Consumer at FEB_ADBMS6830B.c:174 gates use of
       // c_codes (rdcv data) on this flag.
       uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
-      uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
-      uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+      uint16_t rx_pec = (static_cast<uint16_t>(ic_data[6] & 0x03) << 8) | ic_data[7];
+      uint8_t ic_cc = static_cast<uint8_t>((ic_data[6] >> 2) & 0x3F);
       ADBMS_CC_CheckIC(icn, ic_cc, first_ic_cc);
       bool mismatch = (calc_pec != rx_pec);
       ic[icn].cells.pec_match[REGGRP] = mismatch ? 1 : 0;
@@ -346,7 +346,7 @@ uint8_t ADBMS6830B_rdsv(uint8_t total_ic, // The number of ICs in the system
     uint8_t bytesInGroup = (REGGRP == 5) ? 2 : 6;
 
     // One command on the wire -> one CC tick. See rdcv for rationale.
-    uint8_t first_ic_cc = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+    uint8_t first_ic_cc = static_cast<uint8_t>((cell_data[6] >> 2) & 0x3F);
     ADBMS_CC_Check(first_ic_cc);
 
     for (int icn = 0; icn < total_ic; icn++)
@@ -359,7 +359,7 @@ uint8_t ADBMS6830B_rdsv(uint8_t total_ic, // The number of ICs in the system
         if (byte % 2 == 0)
           ic[icn].cells.s_codes[code_idx] = ic_data[byte];
         else
-          ic[icn].cells.s_codes[code_idx] |= (uint16_t)ic_data[byte] << 8;
+          ic[icn].cells.s_codes[code_idx] |= static_cast<uint16_t>(ic_data[byte]) << 8;
       }
 
       // Per-IC PEC: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
@@ -369,8 +369,8 @@ uint8_t ADBMS6830B_rdsv(uint8_t total_ic, // The number of ICs in the system
       // consumer at FEB_ADBMS6830B.c:174 gates use of c_codes (rdcv data)
       // on this flag.
       uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
-      uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
-      uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+      uint16_t rx_pec = (static_cast<uint16_t>(ic_data[6] & 0x03) << 8) | ic_data[7];
+      uint8_t ic_cc = static_cast<uint8_t>((ic_data[6] >> 2) & 0x3F);
       ADBMS_CC_CheckIC(icn, ic_cc, first_ic_cc);
       bool mismatch = (calc_pec != rx_pec);
       ic[icn].cells.pec_match[REGGRP] |= mismatch ? 1 : 0;
@@ -391,26 +391,26 @@ static int8_t verify_cfg_readback(uint8_t total_ic, cell_asic ic[])
   {
     if (ic[icn].configa.rx_pec_match != 0 || ic[icn].configb.rx_pec_match != 0)
     {
-      LOG_W(TAG_ADBMS, "Config readback PEC error on IC%u", (unsigned)icn);
-      return (int8_t)icn;
+      LOG_W(TAG_ADBMS, "Config readback PEC error on IC%u", static_cast<unsigned>(icn));
+      return static_cast<int8_t>(icn);
     }
     if (memcmp(ic[icn].configa.tx_data, ic[icn].configa.rx_data, 6) != 0)
     {
       LOG_W(TAG_ADBMS, "CFGA readback mismatch IC%u: wrote %02X%02X%02X%02X%02X%02X read %02X%02X%02X%02X%02X%02X",
-            (unsigned)icn, ic[icn].configa.tx_data[0], ic[icn].configa.tx_data[1], ic[icn].configa.tx_data[2],
+            static_cast<unsigned>(icn), ic[icn].configa.tx_data[0], ic[icn].configa.tx_data[1], ic[icn].configa.tx_data[2],
             ic[icn].configa.tx_data[3], ic[icn].configa.tx_data[4], ic[icn].configa.tx_data[5],
             ic[icn].configa.rx_data[0], ic[icn].configa.rx_data[1], ic[icn].configa.rx_data[2],
             ic[icn].configa.rx_data[3], ic[icn].configa.rx_data[4], ic[icn].configa.rx_data[5]);
-      return (int8_t)icn;
+      return static_cast<int8_t>(icn);
     }
     if (memcmp(ic[icn].configb.tx_data, ic[icn].configb.rx_data, 6) != 0)
     {
       LOG_W(TAG_ADBMS, "CFGB readback mismatch IC%u: wrote %02X%02X%02X%02X%02X%02X read %02X%02X%02X%02X%02X%02X",
-            (unsigned)icn, ic[icn].configb.tx_data[0], ic[icn].configb.tx_data[1], ic[icn].configb.tx_data[2],
+            static_cast<unsigned>(icn), ic[icn].configb.tx_data[0], ic[icn].configb.tx_data[1], ic[icn].configb.tx_data[2],
             ic[icn].configb.tx_data[3], ic[icn].configb.tx_data[4], ic[icn].configb.tx_data[5],
             ic[icn].configb.rx_data[0], ic[icn].configb.rx_data[1], ic[icn].configb.rx_data[2],
             ic[icn].configb.rx_data[3], ic[icn].configb.rx_data[4], ic[icn].configb.rx_data[5]);
-      return (int8_t)icn;
+      return static_cast<int8_t>(icn);
     }
   }
   return -1;
@@ -478,7 +478,7 @@ void ADBMS6830B_rdcfga(uint8_t total_ic, // The number of ICs being written to
   uint8_t TxSize = 8;
   uint8_t *cell_data;
   cell_data = (uint8_t *)pvPortMalloc(TxSize * total_ic * sizeof(uint8_t));
-  if (cell_data == NULL)
+  if (cell_data == nullptr)
   {
     // Memory allocation failed - set error flags and return
     for (int bank = 0; bank < total_ic; bank++)
@@ -491,7 +491,7 @@ void ADBMS6830B_rdcfga(uint8_t total_ic, // The number of ICs being written to
   transmitCMDR(RDCFGA, cell_data, 8 * total_ic);
 
   /* One command on the wire -> one CC tick. See rdcv for rationale. */
-  uint8_t first_ic_cc = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+  uint8_t first_ic_cc = static_cast<uint8_t>((cell_data[6] >> 2) & 0x3F);
   ADBMS_CC_Check(first_ic_cc);
 
   /* Parse data and validate PEC for each IC individually */
@@ -504,8 +504,8 @@ void ADBMS6830B_rdcfga(uint8_t total_ic, // The number of ICs being written to
     /* On-wire layout: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
      * Mask 0x03 strips the command counter so only PEC[9:0] is compared. */
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
-    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
-    uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+    uint16_t rx_pec = (static_cast<uint16_t>(ic_data[6] & 0x03) << 8) | ic_data[7];
+    uint8_t ic_cc = static_cast<uint8_t>((ic_data[6] >> 2) & 0x3F);
     ADBMS_CC_CheckIC(bank, ic_cc, first_ic_cc);
     ic[bank].configa.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
@@ -541,7 +541,7 @@ void ADBMS6830B_rdcfgb(uint8_t total_ic, // The number of ICs being written to
   uint8_t TxSize = 8;
   uint8_t *cell_data;
   cell_data = (uint8_t *)pvPortMalloc(TxSize * total_ic * sizeof(uint8_t));
-  if (cell_data == NULL)
+  if (cell_data == nullptr)
   {
     // Memory allocation failed - set error flags and return
     for (int bank = 0; bank < total_ic; bank++)
@@ -553,7 +553,7 @@ void ADBMS6830B_rdcfgb(uint8_t total_ic, // The number of ICs being written to
   transmitCMDR(RDCFGB, cell_data, 8 * total_ic);
 
   /* One command on the wire -> one CC tick. See rdcv for rationale. */
-  uint8_t first_ic_cc = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+  uint8_t first_ic_cc = static_cast<uint8_t>((cell_data[6] >> 2) & 0x3F);
   ADBMS_CC_Check(first_ic_cc);
 
   /* Parse data and validate PEC for each IC individually */
@@ -566,8 +566,8 @@ void ADBMS6830B_rdcfgb(uint8_t total_ic, // The number of ICs being written to
     /* On-wire layout: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
      * Mask 0x03 strips the command counter so only PEC[9:0] is compared. */
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
-    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
-    uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+    uint16_t rx_pec = (static_cast<uint16_t>(ic_data[6] & 0x03) << 8) | ic_data[7];
+    uint8_t ic_cc = static_cast<uint8_t>((ic_data[6] >> 2) & 0x3F);
     ADBMS_CC_CheckIC(bank, ic_cc, first_ic_cc);
     ic[bank].configb.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
@@ -615,7 +615,7 @@ void ADBMS6830B_rdpwmga(uint8_t total_ic, // The number of ICs being written to
   uint8_t TxSize = 8;
   uint8_t *cell_data;
   cell_data = (uint8_t *)pvPortMalloc(TxSize * total_ic * sizeof(uint8_t));
-  if (cell_data == NULL)
+  if (cell_data == nullptr)
   {
     for (int bank = 0; bank < total_ic; bank++)
       ic[bank].pwm.rx_pec_match = -1;
@@ -624,18 +624,18 @@ void ADBMS6830B_rdpwmga(uint8_t total_ic, // The number of ICs being written to
   transmitCMDR(RDPWMA, cell_data, 8 * total_ic);
 
   // One command on the wire -> one CC tick. See rdcv for rationale.
-  uint8_t first_ic_cc = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+  uint8_t first_ic_cc = static_cast<uint8_t>((cell_data[6] >> 2) & 0x3F);
   ADBMS_CC_Check(first_ic_cc);
 
   for (int bank = 0; bank < total_ic; bank++)
   {
     uint8_t *ic_data = cell_data + bank * TxSize;
-    memcpy(&(ic[bank].pwm.rx_data), ic_data, (size_t)8);
+    memcpy(&(ic[bank].pwm.rx_data), ic_data, static_cast<size_t>(8));
 
     // Per-IC PEC: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
-    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
-    uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+    uint16_t rx_pec = (static_cast<uint16_t>(ic_data[6] & 0x03) << 8) | ic_data[7];
+    uint8_t ic_cc = static_cast<uint8_t>((ic_data[6] >> 2) & 0x3F);
     ADBMS_CC_CheckIC(bank, ic_cc, first_ic_cc);
     ic[bank].pwm.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
@@ -668,7 +668,7 @@ void ADBMS6830B_rdpwmgb(uint8_t total_ic, // The number of ICs being written to
   uint8_t TxSize = 8;
   uint8_t *cell_data;
   cell_data = (uint8_t *)pvPortMalloc(TxSize * total_ic * sizeof(uint8_t));
-  if (cell_data == NULL)
+  if (cell_data == nullptr)
   {
     for (int bank = 0; bank < total_ic; bank++)
       ic[bank].pwmb.rx_pec_match = -1;
@@ -677,18 +677,18 @@ void ADBMS6830B_rdpwmgb(uint8_t total_ic, // The number of ICs being written to
   transmitCMDR(RDPWMB, cell_data, 8 * total_ic);
 
   // One command on the wire -> one CC tick. See rdcv for rationale.
-  uint8_t first_ic_cc = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+  uint8_t first_ic_cc = static_cast<uint8_t>((cell_data[6] >> 2) & 0x3F);
   ADBMS_CC_Check(first_ic_cc);
 
   for (int bank = 0; bank < total_ic; bank++)
   {
     uint8_t *ic_data = cell_data + bank * TxSize;
-    memcpy(&(ic[bank].pwmb.rx_data), ic_data, (size_t)8);
+    memcpy(&(ic[bank].pwmb.rx_data), ic_data, static_cast<size_t>(8));
 
     // Per-IC PEC: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
-    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
-    uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+    uint16_t rx_pec = (static_cast<uint16_t>(ic_data[6] & 0x03) << 8) | ic_data[7];
+    uint8_t ic_cc = static_cast<uint8_t>((ic_data[6] >> 2) & 0x3F);
     ADBMS_CC_CheckIC(bank, ic_cc, first_ic_cc);
     ic[bank].pwmb.rx_pec_match = (calc_pec != rx_pec) ? 1 : 0;
   }
@@ -706,7 +706,7 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
   uint8_t pec_error = 0;
   uint8_t *cell_data;
   cell_data = (uint8_t *)pvPortMalloc((NUM_RX_BYT * total_ic) * sizeof(uint8_t));
-  if (cell_data == NULL)
+  if (cell_data == nullptr)
   {
     return 1;
   }
@@ -715,7 +715,7 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
   transmitCMDR(RDAUXA, cell_data, NUM_RX_BYT * total_ic);
 
   // One command on the wire -> one CC tick. See rdcv for rationale.
-  uint8_t first_ic_cc_a = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+  uint8_t first_ic_cc_a = static_cast<uint8_t>((cell_data[6] >> 2) & 0x3F);
   ADBMS_CC_Check(first_ic_cc_a);
 
   for (int i = 0; i < total_ic; i++)
@@ -728,8 +728,8 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
     // Record per-IC match so downstream consumers like
     // check_and_report_pec_errors() can drive redundancy failover.
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
-    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
-    uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+    uint16_t rx_pec = (static_cast<uint16_t>(ic_data[6] & 0x03) << 8) | ic_data[7];
+    uint8_t ic_cc = static_cast<uint8_t>((ic_data[6] >> 2) & 0x3F);
     ADBMS_CC_CheckIC(i, ic_cc, first_ic_cc_a);
     bool mismatch = (calc_pec != rx_pec);
     ic[i].aux.pec_match[0] = mismatch ? 1 : 0;
@@ -740,7 +740,7 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
   // RDAUXB: GPIO4-6 -> a_codes[3..5]
   transmitCMDR(RDAUXB, cell_data, NUM_RX_BYT * total_ic);
 
-  uint8_t first_ic_cc_b = (uint8_t)((cell_data[6] >> 2) & 0x3F);
+  uint8_t first_ic_cc_b = static_cast<uint8_t>((cell_data[6] >> 2) & 0x3F);
   ADBMS_CC_Check(first_ic_cc_b);
 
   for (int i = 0; i < total_ic; i++)
@@ -749,8 +749,8 @@ uint8_t ADBMS6830B_rdaux(uint8_t total_ic, // The number of ICs in the system
     memcpy(&ic[i].aux.a_codes[3], ic_data, 6);
 
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
-    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
-    uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+    uint16_t rx_pec = (static_cast<uint16_t>(ic_data[6] & 0x03) << 8) | ic_data[7];
+    uint8_t ic_cc = static_cast<uint8_t>((ic_data[6] >> 2) & 0x3F);
     ADBMS_CC_CheckIC(i, ic_cc, first_ic_cc_b);
     bool mismatch = (calc_pec != rx_pec);
     ic[i].aux.pec_match[1] = mismatch ? 1 : 0;
@@ -774,7 +774,7 @@ uint8_t ADBMS6830B_rdsid(uint8_t total_ic, // The number of ICs in the system
   uint8_t pec_error = 0;
   uint8_t *sid_data;
   sid_data = (uint8_t *)pvPortMalloc((NUM_RX_BYT * total_ic) * sizeof(uint8_t));
-  if (sid_data == NULL)
+  if (sid_data == nullptr)
   {
     return 1; // Memory allocation failed
   }
@@ -782,7 +782,7 @@ uint8_t ADBMS6830B_rdsid(uint8_t total_ic, // The number of ICs in the system
   transmitCMDR(RDSID, sid_data, NUM_RX_BYT * total_ic);
 
   // One command on the wire -> one CC tick. See rdcv for rationale.
-  uint8_t first_ic_cc = (uint8_t)((sid_data[6] >> 2) & 0x3F);
+  uint8_t first_ic_cc = static_cast<uint8_t>((sid_data[6] >> 2) & 0x3F);
   ADBMS_CC_Check(first_ic_cc);
 
   for (int i = 0; i < total_ic; i++)
@@ -796,8 +796,8 @@ uint8_t ADBMS6830B_rdsid(uint8_t total_ic, // The number of ICs in the system
     // On-wire layout: byte 6 = {CC[5:0], PEC[9:8]}, byte 7 = PEC[7:0].
     // Mask 0x03 strips the command counter so only PEC[9:0] is compared.
     uint16_t calc_pec = Pec10_calc(true, 6, ic_data);
-    uint16_t rx_pec = ((uint16_t)(ic_data[6] & 0x03) << 8) | ic_data[7];
-    uint8_t ic_cc = (uint8_t)((ic_data[6] >> 2) & 0x3F);
+    uint16_t rx_pec = (static_cast<uint16_t>(ic_data[6] & 0x03) << 8) | ic_data[7];
+    uint8_t ic_cc = static_cast<uint8_t>((ic_data[6] >> 2) & 0x3F);
     ADBMS_CC_CheckIC(i, ic_cc, first_ic_cc);
     if (calc_pec != rx_pec)
     {

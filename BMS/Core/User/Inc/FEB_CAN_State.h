@@ -8,6 +8,11 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /**
  * @brief BMS state machine states (aligned with SN4)
  * @note Values match CAN bms_state signal (5-bit, 0-31 valid range)
@@ -82,5 +87,9 @@ const char *FEB_CAN_State_GetStateName(BMS_State_t state);
  *          generated wiring; remove once confirmed unused everywhere.
  */
 void FEB_CAN_State_ProcessTransitions(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FEB_CAN_STATE_H */

@@ -125,7 +125,7 @@ static void subcmd_cells(int argc, char *argv[])
     }
   }
   FEB_Console_Printf("Balancing: %u cells active | delta %.0fmV | done: %s\r\n",
-                     (unsigned int)FEB_ADBMS_GET_Balancing_Cell_Count(), FEB_ADBMS_GET_Cell_Voltage_Delta_mV(),
+                     static_cast<unsigned int>(FEB_ADBMS_GET_Balancing_Cell_Count()), FEB_ADBMS_GET_Cell_Voltage_Delta_mV(),
                      FEB_Cell_Balance_Complete() ? "YES" : "NO");
 }
 
@@ -170,8 +170,8 @@ static void subcmd_therm_raw(int argc, char *argv[])
         FEB_Console_Printf("  MUX%d ch0..6:", mux + 1);
         for (int ch = 0; ch < 7; ch++)
         {
-          uint16_t sensor = (uint16_t)(ic * FEB_NUM_TEMP_SENSE_PER_IC + mux * 7 + ch);
-          FEB_Console_Printf(" %7.1f", FEB_ADBMS_GET_Therm_Raw_mV((uint8_t)bank, sensor));
+          uint16_t sensor = static_cast<uint16_t>(ic * FEB_NUM_TEMP_SENSE_PER_IC + mux * 7 + ch);
+          FEB_Console_Printf(" %7.1f", FEB_ADBMS_GET_Therm_Raw_mV(static_cast<uint8_t>(bank), sensor));
         }
         FEB_Console_Printf("\r\n");
       }
@@ -188,8 +188,8 @@ static void subcmd_therm_raw(int argc, char *argv[])
         FEB_Console_Printf("  MUX%d ch0..6:", mux + 1);
         for (int ch = 0; ch < 7; ch++)
         {
-          uint16_t sensor = (uint16_t)(ic * FEB_NUM_TEMP_SENSE_PER_IC + mux * 7 + ch);
-          FEB_Console_Printf(" 0x%04X", FEB_ADBMS_GET_Therm_Raw_Code((uint8_t)bank, sensor));
+          uint16_t sensor = static_cast<uint16_t>(ic * FEB_NUM_TEMP_SENSE_PER_IC + mux * 7 + ch);
+          FEB_Console_Printf(" 0x%04X", FEB_ADBMS_GET_Therm_Raw_Code(static_cast<uint8_t>(bank), sensor));
         }
         FEB_Console_Printf("\r\n");
       }
@@ -211,7 +211,7 @@ static void subcmd_therm_raw(int argc, char *argv[])
  * - BATTERY_FREE: Accumulator isolated, safest for balancing
  * - BALANCE: Explicit balancing state
  */
-static bool is_balancing_allowed(void)
+static bool is_balancing_allowed()
 {
   BMS_State_t state = FEB_SM_Get_Current_State();
   return (state == BMS_STATE_BATTERY_FREE || state == BMS_STATE_BALANCE);
@@ -445,7 +445,7 @@ static void subcmd_charger(int argc, char *argv[])
   else
   {
     FEB_Console_Printf("  Link:          %s (age %lu ms, rx %lu)\r\n", s.present ? "PRESENT" : "TIMEOUT",
-                       (unsigned long)s.age_ms, (unsigned long)s.rx_count);
+                       static_cast<unsigned long>(s.age_ms), static_cast<unsigned long>(s.rx_count));
     FEB_Console_Printf("  Output V:      %.1f V\r\n", s.op_voltage_dV / 10.0f);
     FEB_Console_Printf("  Output I:      %.1f A\r\n", s.op_current_dA / 10.0f);
     FEB_Console_Printf("  HW status:     %s\r\n", s.hw_status ? "FAIL" : "OK");
@@ -473,10 +473,10 @@ static void cmd_charger_csv(int argc, char *argv[])
   FEB_CAN_Charger_GetSnapshot(&s);
   /* fields: present,age_ms,rx_count,out_v,out_a,hw,temp,inV,state,comm,cmd_v,cmd_a,control,trickle,done */
   FEB_Console_CsvEmit("charger", "%d,%lu,%lu,%.1f,%.1f,%u,%u,%u,%u,%u,%.1f,%.1f,%u,%d,%d", s.present ? 1 : 0,
-                      (unsigned long)s.age_ms, (unsigned long)s.rx_count, s.op_voltage_dV / 10.0f,
-                      s.op_current_dA / 10.0f, (unsigned)s.hw_status, (unsigned)s.temperature,
-                      (unsigned)s.input_voltage, (unsigned)s.state, (unsigned)s.communication_state,
-                      s.cmd_voltage_dV / 10.0f, s.cmd_current_dA / 10.0f, (unsigned)s.control, s.trickle_active ? 1 : 0,
+                      static_cast<unsigned long>(s.age_ms), static_cast<unsigned long>(s.rx_count), s.op_voltage_dV / 10.0f,
+                      s.op_current_dA / 10.0f, static_cast<unsigned>(s.hw_status), static_cast<unsigned>(s.temperature),
+                      static_cast<unsigned>(s.input_voltage), static_cast<unsigned>(s.state), static_cast<unsigned>(s.communication_state),
+                      s.cmd_voltage_dV / 10.0f, s.cmd_current_dA / 10.0f, static_cast<unsigned>(s.control), s.trickle_active ? 1 : 0,
                       s.done_charging ? 1 : 0);
 }
 
@@ -500,7 +500,7 @@ static void subcmd_ivt(int argc, char *argv[])
   FEB_Console_Printf("Voltage 3:     %.2f V\r\n", ivt->voltage_3_mV / 1000.0f);
   FEB_Console_Printf("Pack Voltage:  %.2f V (U%d)\r\n", FEB_CAN_IVT_GetVoltage(), FEB_IVT_PACK_VOLTAGE_CHANNEL);
   FEB_Console_Printf("Temperature:   %.1f C\r\n", ivt->temperature_C);
-  FEB_Console_Printf("Data Age:      %lu ms (%s)\r\n", (unsigned long)age, fresh ? "FRESH" : "STALE");
+  FEB_Console_Printf("Data Age:      %lu ms (%s)\r\n", static_cast<unsigned long>(age), fresh ? "FRESH" : "STALE");
 }
 
 /* ============================================================================
@@ -527,11 +527,11 @@ static void subcmd_tasks(int argc, char *argv[])
 
   for (size_t i = 0; i < sizeof(tasks) / sizeof(tasks[0]); i++)
   {
-    if (tasks[i].handle != NULL)
+    if (tasks[i].handle != nullptr)
     {
       UBaseType_t hwm = uxTaskGetStackHighWaterMark((TaskHandle_t)tasks[i].handle);
       const char *status = (hwm < 50) ? "LOW!" : "OK";
-      FEB_Console_Printf("%-12s %-18u %s\r\n", tasks[i].name, (unsigned int)hwm, status);
+      FEB_Console_Printf("%-12s %-18u %s\r\n", tasks[i].name, static_cast<unsigned int>(hwm), status);
     }
   }
 }
@@ -551,10 +551,10 @@ static void subcmd_mem(int argc, char *argv[])
   uint32_t percent = (used * 100) / (total > 0 ? total : 1);
 
   FEB_Console_Printf("\r\n=== Memory Usage ===\r\n");
-  FEB_Console_Printf("Total Heap:    %u bytes\r\n", (unsigned int)total);
-  FEB_Console_Printf("Free Heap:     %u bytes\r\n", (unsigned int)free_heap);
-  FEB_Console_Printf("Min Free Ever: %u bytes\r\n", (unsigned int)min_free);
-  FEB_Console_Printf("Used:          %u bytes (%u%%)\r\n", (unsigned int)used, (unsigned int)percent);
+  FEB_Console_Printf("Total Heap:    %u bytes\r\n", static_cast<unsigned int>(total));
+  FEB_Console_Printf("Free Heap:     %u bytes\r\n", static_cast<unsigned int>(free_heap));
+  FEB_Console_Printf("Min Free Ever: %u bytes\r\n", static_cast<unsigned int>(min_free));
+  FEB_Console_Printf("Used:          %u bytes (%u%%)\r\n", static_cast<unsigned int>(used), static_cast<unsigned int>(percent));
 }
 
 /* ============================================================================
@@ -586,10 +586,10 @@ static void subcmd_cell(int argc, char *argv[])
 
   int bank_idx = bank - 1;
   int cell_idx = cell - 1;
-  float voltage_c = FEB_ADBMS_GET_Cell_Voltage((uint8_t)bank_idx, (uint16_t)cell_idx);
-  float voltage_s = FEB_ADBMS_GET_Cell_Voltage_S((uint8_t)bank_idx, (uint16_t)cell_idx);
-  float temp = FEB_ADBMS_GET_Cell_Temperature((uint8_t)bank_idx, (uint16_t)cell_idx);
-  uint8_t violations = FEB_ADBMS_GET_Cell_Violations((uint8_t)bank_idx, (uint16_t)cell_idx);
+  float voltage_c = FEB_ADBMS_GET_Cell_Voltage(static_cast<uint8_t>(bank_idx), static_cast<uint16_t>(cell_idx));
+  float voltage_s = FEB_ADBMS_GET_Cell_Voltage_S(static_cast<uint8_t>(bank_idx), static_cast<uint16_t>(cell_idx));
+  float temp = FEB_ADBMS_GET_Cell_Temperature(static_cast<uint8_t>(bank_idx), static_cast<uint16_t>(cell_idx));
+  uint8_t violations = FEB_ADBMS_GET_Cell_Violations(static_cast<uint8_t>(bank_idx), static_cast<uint16_t>(cell_idx));
   float delta = voltage_c - voltage_s;
 
   FEB_Console_Printf("\r\n=== Cell [Bank %d, Cell %d] ===\r\n", bank, cell);
@@ -745,8 +745,8 @@ static void subcmd_ping(int argc, char *argv[])
     return;
   }
 
-  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PING);
-  FEB_Console_Printf("Channel %d (0x%02X): PING mode started\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+  FEB_CAN_PingPong_SetMode(static_cast<uint8_t>(ch), PINGPONG_MODE_PING);
+  FEB_Console_Printf("Channel %d (0x%02X): PING mode started\r\n", ch, static_cast<unsigned int>(pingpong_frame_ids[ch - 1]));
 }
 
 static void subcmd_pong(int argc, char *argv[])
@@ -765,8 +765,8 @@ static void subcmd_pong(int argc, char *argv[])
     return;
   }
 
-  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PONG);
-  FEB_Console_Printf("Channel %d (0x%02X): PONG mode started\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+  FEB_CAN_PingPong_SetMode(static_cast<uint8_t>(ch), PINGPONG_MODE_PONG);
+  FEB_Console_Printf("Channel %d (0x%02X): PONG mode started\r\n", ch, static_cast<unsigned int>(pingpong_frame_ids[ch - 1]));
 }
 
 static void subcmd_canstop(int argc, char *argv[])
@@ -791,7 +791,7 @@ static void subcmd_canstop(int argc, char *argv[])
     return;
   }
 
-  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_OFF);
+  FEB_CAN_PingPong_SetMode(static_cast<uint8_t>(ch), PINGPONG_MODE_OFF);
   FEB_Console_Printf("Channel %d stopped\r\n", ch);
 }
 
@@ -806,13 +806,13 @@ static void subcmd_canstatus(int argc, char *argv[])
 
   for (int ch = 1; ch <= 4; ch++)
   {
-    FEB_PingPong_Mode_t mode = FEB_CAN_PingPong_GetMode((uint8_t)ch);
-    uint32_t tx_count = FEB_CAN_PingPong_GetTxCount((uint8_t)ch);
-    uint32_t rx_count = FEB_CAN_PingPong_GetRxCount((uint8_t)ch);
-    int32_t last_rx = FEB_CAN_PingPong_GetLastCounter((uint8_t)ch);
+    FEB_PingPong_Mode_t mode = FEB_CAN_PingPong_GetMode(static_cast<uint8_t>(ch));
+    uint32_t tx_count = FEB_CAN_PingPong_GetTxCount(static_cast<uint8_t>(ch));
+    uint32_t rx_count = FEB_CAN_PingPong_GetRxCount(static_cast<uint8_t>(ch));
+    int32_t last_rx = FEB_CAN_PingPong_GetLastCounter(static_cast<uint8_t>(ch));
 
-    FEB_Console_Printf("%-3d 0x%02X   %-5s %10u %10u %12d\r\n", ch, (unsigned int)pingpong_frame_ids[ch - 1],
-                       mode_names[mode], (unsigned int)tx_count, (unsigned int)rx_count, (int)last_rx);
+    FEB_Console_Printf("%-3d 0x%02X   %-5s %10u %10u %12d\r\n", ch, static_cast<unsigned int>(pingpong_frame_ids[ch - 1]),
+                       mode_names[mode], static_cast<unsigned int>(tx_count), static_cast<unsigned int>(rx_count), static_cast<int>(last_rx));
   }
 }
 
@@ -823,14 +823,14 @@ static void subcmd_cell_stats(int argc, char *argv[])
 {
   (void)argc;
   (void)argv;
-  subcmd_cells(0, NULL);
-  subcmd_temps(0, NULL);
+  subcmd_cells(0, nullptr);
+  subcmd_temps(0, nullptr);
 }
 
 /* ============================================================================
  * Help Display
  * ============================================================================ */
-static void print_bms_help(void)
+static void print_bms_help()
 {
   FEB_Console_Printf("BMS Commands:\r\n");
   FEB_Console_Printf("  BMS|status              - Show BMS status summary\r\n");
@@ -997,9 +997,9 @@ static void cmd_therm_raw_csv(int argc, char *argv[])
       {
         for (int ch = 0; ch < 7; ch++)
         {
-          uint16_t sensor = (uint16_t)(ic * FEB_NUM_TEMP_SENSE_PER_IC + mux * 7 + ch);
-          uint16_t code = FEB_ADBMS_GET_Therm_Raw_Code((uint8_t)bank, sensor);
-          float mV = FEB_ADBMS_GET_Therm_Raw_mV((uint8_t)bank, sensor);
+          uint16_t sensor = static_cast<uint16_t>(ic * FEB_NUM_TEMP_SENSE_PER_IC + mux * 7 + ch);
+          uint16_t code = FEB_ADBMS_GET_Therm_Raw_Code(static_cast<uint8_t>(bank), sensor);
+          float mV = FEB_ADBMS_GET_Therm_Raw_mV(static_cast<uint8_t>(bank), sensor);
           FEB_Console_CsvEmit("therm-raw", "%d,%d,%d,%d,0x%04X,%.1f", bank + 1, ic + 1, mux + 1, ch, code, mV);
         }
       }
@@ -1012,7 +1012,7 @@ static void cmd_state_csv(int argc, char *argv[])
   (void)argc;
   (void)argv;
   BMS_State_t s = FEB_SM_Get_Current_State();
-  FEB_Console_CsvEmit("state", "%s,%d", FEB_CAN_State_GetStateName(s), (int)s);
+  FEB_Console_CsvEmit("state", "%s,%d", FEB_CAN_State_GetStateName(s), static_cast<int>(s));
 }
 
 static void cmd_ivt_csv(int argc, char *argv[])
@@ -1024,7 +1024,7 @@ static void cmd_ivt_csv(int argc, char *argv[])
   uint32_t age = now - ivt->last_rx_tick;
   bool fresh = FEB_CAN_IVT_IsDataFresh(1000);
   FEB_Console_CsvEmit("ivt", "%.3f,%.3f,%.3f,%.3f,%.1f,%lu,%d", ivt->current_mA / 1000.0f, ivt->voltage_1_mV / 1000.0f,
-                      ivt->voltage_2_mV / 1000.0f, ivt->voltage_3_mV / 1000.0f, ivt->temperature_C, (unsigned long)age,
+                      ivt->voltage_2_mV / 1000.0f, ivt->voltage_3_mV / 1000.0f, ivt->temperature_C, static_cast<unsigned long>(age),
                       fresh ? 1 : 0);
 }
 
@@ -1090,8 +1090,8 @@ static void cmd_mem_csv(int argc, char *argv[])
   size_t min_free = xPortGetMinimumEverFreeHeapSize();
   size_t used = total - free_heap;
   uint32_t percent = (used * 100) / (total > 0 ? total : 1);
-  FEB_Console_CsvEmit("mem", "%u,%u,%u,%u,%u", (unsigned)total, (unsigned)free_heap, (unsigned)min_free, (unsigned)used,
-                      (unsigned)percent);
+  FEB_Console_CsvEmit("mem", "%u,%u,%u,%u,%u", static_cast<unsigned>(total), static_cast<unsigned>(free_heap), static_cast<unsigned>(min_free), static_cast<unsigned>(used),
+                      static_cast<unsigned>(percent));
 }
 
 static void cmd_tasks_csv(int argc, char *argv[])
@@ -1109,10 +1109,10 @@ static void cmd_tasks_csv(int argc, char *argv[])
                {"BMSTaskTx", BMSTaskTxHandle}};
   for (size_t i = 0; i < sizeof(tasks) / sizeof(tasks[0]); i++)
   {
-    if (tasks[i].handle != NULL)
+    if (tasks[i].handle != nullptr)
     {
       UBaseType_t hwm = uxTaskGetStackHighWaterMark((TaskHandle_t)tasks[i].handle);
-      FEB_Console_CsvEmit("task", "%s,%u", tasks[i].name, (unsigned)hwm);
+      FEB_Console_CsvEmit("task", "%s,%u", tasks[i].name, static_cast<unsigned>(hwm));
     }
   }
 }
@@ -1123,12 +1123,12 @@ static void cmd_canstatus_csv(int argc, char *argv[])
   (void)argv;
   for (int ch = 1; ch <= 4; ch++)
   {
-    FEB_PingPong_Mode_t mode = FEB_CAN_PingPong_GetMode((uint8_t)ch);
-    uint32_t tx_count = FEB_CAN_PingPong_GetTxCount((uint8_t)ch);
-    uint32_t rx_count = FEB_CAN_PingPong_GetRxCount((uint8_t)ch);
-    int32_t last_rx = FEB_CAN_PingPong_GetLastCounter((uint8_t)ch);
-    FEB_Console_CsvEmit("can", "%d,0x%02X,%s,%u,%u,%d", ch, (unsigned int)pingpong_frame_ids[ch - 1], mode_names[mode],
-                        (unsigned)tx_count, (unsigned)rx_count, (int)last_rx);
+    FEB_PingPong_Mode_t mode = FEB_CAN_PingPong_GetMode(static_cast<uint8_t>(ch));
+    uint32_t tx_count = FEB_CAN_PingPong_GetTxCount(static_cast<uint8_t>(ch));
+    uint32_t rx_count = FEB_CAN_PingPong_GetRxCount(static_cast<uint8_t>(ch));
+    int32_t last_rx = FEB_CAN_PingPong_GetLastCounter(static_cast<uint8_t>(ch));
+    FEB_Console_CsvEmit("can", "%d,0x%02X,%s,%u,%u,%d", ch, static_cast<unsigned int>(pingpong_frame_ids[ch - 1]), mode_names[mode],
+                        static_cast<unsigned>(tx_count), static_cast<unsigned>(rx_count), static_cast<int>(last_rx));
   }
 }
 
@@ -1156,8 +1156,8 @@ static void subcmd_volts(int argc, char *argv[])
 
   for (uint8_t ic = 0; ic < FEB_NUM_IC; ic++)
   {
-    ADBMS_STATA_t a = {0};
-    ADBMS_STATB_t b = {0};
+    ADBMS_STATA_t a = {};
+    ADBMS_STATB_t b = {};
     ADBMS_ReadReg(RDSTATA, ic, a.raw);
     ADBMS_ReadReg(RDSTATB, ic, b.raw);
 
@@ -1166,7 +1166,7 @@ static void subcmd_volts(int argc, char *argv[])
     float vd = ADBMS_CodeToVoltage_mV(b.bits.VD) / 1000.0f;
     float itmp = ADBMS_CodeToTemp_C(a.values.ITMP);
 
-    FEB_Console_Printf("%-2u   %7.3f   %7.3f  %7.3f  %6.1f\r\n", (unsigned)ic, vref2, va, vd, itmp);
+    FEB_Console_Printf("%-2u   %7.3f   %7.3f  %7.3f  %6.1f\r\n", static_cast<unsigned>(ic), vref2, va, vd, itmp);
   }
 }
 
@@ -1243,10 +1243,10 @@ static void cmd_cell_csv(int argc, char *argv[])
   }
   int bank_idx = bank - 1;
   int cell_idx = cell - 1;
-  float voltage_c = FEB_ADBMS_GET_Cell_Voltage((uint8_t)bank_idx, (uint16_t)cell_idx);
-  float voltage_s = FEB_ADBMS_GET_Cell_Voltage_S((uint8_t)bank_idx, (uint16_t)cell_idx);
-  float temp = FEB_ADBMS_GET_Cell_Temperature((uint8_t)bank_idx, (uint16_t)cell_idx);
-  uint8_t violations = FEB_ADBMS_GET_Cell_Violations((uint8_t)bank_idx, (uint16_t)cell_idx);
+  float voltage_c = FEB_ADBMS_GET_Cell_Voltage(static_cast<uint8_t>(bank_idx), static_cast<uint16_t>(cell_idx));
+  float voltage_s = FEB_ADBMS_GET_Cell_Voltage_S(static_cast<uint8_t>(bank_idx), static_cast<uint16_t>(cell_idx));
+  float temp = FEB_ADBMS_GET_Cell_Temperature(static_cast<uint8_t>(bank_idx), static_cast<uint16_t>(cell_idx));
+  uint8_t violations = FEB_ADBMS_GET_Cell_Violations(static_cast<uint8_t>(bank_idx), static_cast<uint16_t>(cell_idx));
   /* Body: bank,cell,v_primary,v_secondary,delta,temp,violations */
   FEB_Console_CsvEmit("cell", "%d,%d,%.3f,%.3f,%.4f,%.1f,%d", bank, cell, voltage_c, voltage_s, voltage_c - voltage_s,
                       temp, violations);
@@ -1289,9 +1289,9 @@ static void cmd_ping_csv(int argc, char *argv[])
     FEB_Console_CsvError("error", "invalid_channel,%d", ch);
     return;
   }
-  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PING);
+  FEB_CAN_PingPong_SetMode(static_cast<uint8_t>(ch), PINGPONG_MODE_PING);
   /* Body: channel,frame_id,mode */
-  FEB_Console_CsvEmit("ping", "%d,0x%02X,started", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+  FEB_Console_CsvEmit("ping", "%d,0x%02X,started", ch, static_cast<unsigned int>(pingpong_frame_ids[ch - 1]));
 }
 
 static void cmd_pong_csv(int argc, char *argv[])
@@ -1307,9 +1307,9 @@ static void cmd_pong_csv(int argc, char *argv[])
     FEB_Console_CsvError("error", "invalid_channel,%d", ch);
     return;
   }
-  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_PONG);
+  FEB_CAN_PingPong_SetMode(static_cast<uint8_t>(ch), PINGPONG_MODE_PONG);
   /* Body: channel,frame_id,mode */
-  FEB_Console_CsvEmit("pong", "%d,0x%02X,started", ch, (unsigned int)pingpong_frame_ids[ch - 1]);
+  FEB_Console_CsvEmit("pong", "%d,0x%02X,started", ch, static_cast<unsigned int>(pingpong_frame_ids[ch - 1]));
 }
 
 static void cmd_canstop_csv(int argc, char *argv[])
@@ -1331,7 +1331,7 @@ static void cmd_canstop_csv(int argc, char *argv[])
     FEB_Console_CsvError("error", "invalid_channel,%d", ch);
     return;
   }
-  FEB_CAN_PingPong_SetMode((uint8_t)ch, PINGPONG_MODE_OFF);
+  FEB_CAN_PingPong_SetMode(static_cast<uint8_t>(ch), PINGPONG_MODE_OFF);
   FEB_Console_CsvEmit("canstop", "%d,stopped", ch);
 }
 
@@ -1345,15 +1345,15 @@ static void cmd_volts_csv(int argc, char *argv[])
   osDelay(pdMS_TO_TICKS(1));
   for (uint8_t ic = 0; ic < FEB_NUM_IC; ic++)
   {
-    ADBMS_STATA_t a = {0};
-    ADBMS_STATB_t b = {0};
+    ADBMS_STATA_t a = {};
+    ADBMS_STATB_t b = {};
     ADBMS_ReadReg(RDSTATA, ic, a.raw);
     ADBMS_ReadReg(RDSTATB, ic, b.raw);
     float vref2 = ADBMS_CodeToVoltage_mV(a.values.VREF2) / 1000.0f;
     float va = ADBMS_CodeToVoltage_mV(a.values.VA) / 1000.0f;
     float vd = ADBMS_CodeToVoltage_mV(b.bits.VD) / 1000.0f;
     float itmp = ADBMS_CodeToTemp_C(a.values.ITMP);
-    FEB_Console_CsvEmit("volts", "%u,%.3f,%.3f,%.3f,%.1f", (unsigned)ic, vref2, va, vd, itmp);
+    FEB_Console_CsvEmit("volts", "%u,%.3f,%.3f,%.3f,%.1f", static_cast<unsigned>(ic), vref2, va, vd, itmp);
   }
 }
 
@@ -1508,13 +1508,13 @@ static const FEB_Console_Cmd_t bms_cmd = {
     .name = "BMS",
     .help = "BMS commands (BMS|<sub>) - run BMS alone for full list",
     .handler = cmd_bms,
-    .csv_handler = NULL,
+    .csv_handler = nullptr,
 };
 
 /* ============================================================================
  * Registration
  * ============================================================================ */
-void BMS_RegisterCommands(void)
+void BMS_RegisterCommands()
 {
   int rc = FEB_Console_Register(&bms_cmd);
   if (rc != 0)

@@ -37,6 +37,11 @@
 
 #if (ISOSPI_MODE == ISOSPI_MODE_REDUNDANT)
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 typedef struct
 {
   SPI_HandleTypeDef *active_spi; // Currently active SPI handle
@@ -69,6 +74,10 @@ uint16_t FEB_spi_get_failover_count(void);
 
 // Force failover (for testing)
 void FEB_spi_force_failover(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // ISOSPI_MODE_REDUNDANT
 

@@ -1,5 +1,5 @@
 /**
- * @file FEB_CAN_Heartbeat.c
+ * @file FEB_CAN_Heartbeat.cpp
  * @brief CAN-presence (heartbeat) tracking for the BMS
  * @author Formula Electric @ Berkeley
  *
@@ -13,9 +13,12 @@
 #include "feb_can.h"
 #include "stm32f4xx_hal.h"
 
-static volatile uint32_t hb_last_rx_tick[FEB_HB_COUNT] = {0};
+namespace
+{
 
-static int8_t frame_to_dev(uint32_t can_id)
+volatile uint32_t hb_last_rx_tick[FEB_HB_COUNT] = {};
+
+int8_t frame_to_dev(uint32_t can_id)
 {
   switch (can_id)
   {
@@ -36,7 +39,7 @@ static int8_t frame_to_dev(uint32_t can_id)
   }
 }
 
-static void FEB_CAN_Heartbeat_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
+void FEB_CAN_Heartbeat_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                        const uint8_t *data, uint8_t length, void *user_data)
 {
   (void)instance;
@@ -53,9 +56,11 @@ static void FEB_CAN_Heartbeat_Callback(FEB_CAN_Instance_t instance, uint32_t can
   hb_last_rx_tick[dev] = HAL_GetTick();
 }
 
+} // namespace
+
 void FEB_CAN_Heartbeat_Init(void)
 {
-  for (int i = 0; i < FEB_HB_COUNT; i++)
+  for (uint8_t i = 0; i < FEB_HB_COUNT; i++)
   {
     hb_last_rx_tick[i] = 0;
   }
@@ -72,7 +77,7 @@ void FEB_CAN_Heartbeat_Init(void)
       .mask = 0x7F8, /* match 0xD0-0xD7 */
       .fifo = FEB_CAN_FIFO_0,
       .callback = FEB_CAN_Heartbeat_Callback,
-      .user_data = NULL,
+      .user_data = nullptr,
   };
   FEB_CAN_RX_Register(&params);
 }

@@ -18,6 +18,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /* Relay state definitions (matches GPIO logic) */
 typedef enum
 {
@@ -149,5 +154,9 @@ void FEB_HW_Open_All_Relays(void);
  * @return true if all relays sensed open, false otherwise
  */
 bool FEB_HW_Is_HV_Safe(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_HW_RELAY_H_ */

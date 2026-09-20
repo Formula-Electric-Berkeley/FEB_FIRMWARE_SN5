@@ -7,6 +7,11 @@
 #include <stdbool.h>
 #include "main.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 // ********************************** ADBMS6830B Configuration *******************
 
 typedef enum
@@ -171,5 +176,9 @@ float FEB_ADBMS_Snapshot_Max_Cell_Voltage(void);
 
 /** @brief Highest pack temperature [C] from the last scan (NaN until first scan). */
 float FEB_ADBMS_Snapshot_Max_Temp(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_ADBMS6830B_H_ */

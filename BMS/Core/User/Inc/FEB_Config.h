@@ -13,6 +13,11 @@
 #include "FEB_Const.h"
 #include "main.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /**
  * @brief Get cell balancing voltage threshold
  * @return Threshold in millivolts (mV)
@@ -21,5 +26,9 @@ static inline uint16_t FEB_Config_Get_Balance_Threshold_mV(void)
 {
   return FEB_CELL_BALANCE_THRESHOLD_MV;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // FEB_CONFIG_H

@@ -19,7 +19,10 @@
  * Internal State
  * ============================================================================ */
 
-typedef struct
+namespace
+{
+
+struct PingPong_Channel_t
 {
   FEB_PingPong_Mode_t mode;
   int32_t tx_counter;
@@ -28,11 +31,11 @@ typedef struct
   uint32_t rx_count;
   int32_t rx_handle;
   bool pending_rx_log;
-} PingPong_Channel_t;
+};
 
-static PingPong_Channel_t channels[FEB_PINGPONG_NUM_CHANNELS];
+PingPong_Channel_t channels[FEB_PINGPONG_NUM_CHANNELS];
 
-static const uint32_t frame_ids[FEB_PINGPONG_NUM_CHANNELS] = {
+const uint32_t frame_ids[FEB_PINGPONG_NUM_CHANNELS] = {
     FEB_PINGPONG_FRAME_ID_1,
     FEB_PINGPONG_FRAME_ID_2,
     FEB_PINGPONG_FRAME_ID_3,
@@ -43,7 +46,7 @@ static const uint32_t frame_ids[FEB_PINGPONG_NUM_CHANNELS] = {
  * RX Callback Handlers
  * ============================================================================ */
 
-static void pingpong_rx_callback(uint8_t channel_idx, const uint8_t *data, uint8_t length)
+void pingpong_rx_callback(uint8_t channel_idx, const uint8_t *data, uint8_t length)
 {
   if (channel_idx >= FEB_PINGPONG_NUM_CHANNELS)
   {
@@ -68,7 +71,7 @@ static void pingpong_rx_callback(uint8_t channel_idx, const uint8_t *data, uint8
   if (ch->mode == PINGPONG_MODE_PONG)
   {
     int32_t response = counter + 1;
-    uint8_t tx_data[8] = {0};
+    uint8_t tx_data[8] = {};
 
     /* Pack response (int32_t, little-endian) */
     tx_data[0] = (uint8_t)(response & 0xFF);
@@ -81,7 +84,7 @@ static void pingpong_rx_callback(uint8_t channel_idx, const uint8_t *data, uint8
   }
 }
 
-static void rx_callback_ch1(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
+void rx_callback_ch1(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                             const uint8_t *data, uint8_t length, void *user_data)
 {
   (void)instance;
@@ -91,7 +94,7 @@ static void rx_callback_ch1(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CA
   pingpong_rx_callback(0, data, length);
 }
 
-static void rx_callback_ch2(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
+void rx_callback_ch2(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                             const uint8_t *data, uint8_t length, void *user_data)
 {
   (void)instance;
@@ -101,7 +104,7 @@ static void rx_callback_ch2(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CA
   pingpong_rx_callback(1, data, length);
 }
 
-static void rx_callback_ch3(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
+void rx_callback_ch3(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                             const uint8_t *data, uint8_t length, void *user_data)
 {
   (void)instance;
@@ -111,7 +114,7 @@ static void rx_callback_ch3(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CA
   pingpong_rx_callback(2, data, length);
 }
 
-static void rx_callback_ch4(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
+void rx_callback_ch4(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                             const uint8_t *data, uint8_t length, void *user_data)
 {
   (void)instance;
@@ -121,12 +124,14 @@ static void rx_callback_ch4(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CA
   pingpong_rx_callback(3, data, length);
 }
 
-static FEB_CAN_RX_Callback_t rx_callbacks[FEB_PINGPONG_NUM_CHANNELS] = {
+FEB_CAN_RX_Callback_t rx_callbacks[FEB_PINGPONG_NUM_CHANNELS] = {
     rx_callback_ch1,
     rx_callback_ch2,
     rx_callback_ch3,
     rx_callback_ch4,
 };
+
+} // namespace
 
 /* ============================================================================
  * API Implementation
@@ -213,7 +218,7 @@ void FEB_CAN_PingPong_Tick(void)
     if (ch->mode == PINGPONG_MODE_PING)
     {
       /* Pack and send the counter */
-      uint8_t tx_data[8] = {0};
+      uint8_t tx_data[8] = {};
 
       tx_data[0] = (uint8_t)(ch->tx_counter & 0xFF);
       tx_data[1] = (uint8_t)((ch->tx_counter >> 8) & 0xFF);

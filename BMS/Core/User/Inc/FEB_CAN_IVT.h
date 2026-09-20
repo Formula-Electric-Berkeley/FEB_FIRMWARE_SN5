@@ -28,6 +28,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /* ============================================================================
  * IVT Data Structure
  * ============================================================================ */
@@ -83,5 +88,9 @@ bool FEB_CAN_IVT_IsDataFresh(uint32_t timeout_ms);
  * @return Pointer to IVT data (read-only)
  */
 const FEB_CAN_IVT_Data_t *FEB_CAN_IVT_GetData(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_CAN_IVT_H_ */

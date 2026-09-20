@@ -50,7 +50,7 @@ extern osMessageQueueId_t uartRxQueueHandle;
  * Application Entry Points
  * ============================================================================ */
 
-void FEB_Init(void)
+void FEB_Init()
 {
   /* Initialize UART library */
   FEB_UART_Config_t cfg = {
@@ -125,13 +125,13 @@ void FEB_Init(void)
 
 /* Emit the bench-mode override warnings. Called once from a task AFTER the
  * scheduler is running — never from FEB_Init() (see banner note above). */
-static void log_bench_overrides(void)
+static void log_bench_overrides()
 {
 #if FEB_BMS_DISABLE_ADBMS_CHECKS
   LOG_W(TAG_MAIN, "ALL ADBMS CHECKS DISABLED (FEB_BMS_DISABLE_ADBMS_CHECKS=1)");
   LOG_W(TAG_MAIN, "Bench mode: voltage/temp enforcement AND the cell-monitor");
   LOG_W(TAG_MAIN, "data-timeout fault are BYPASSED. Do NOT run a real pack.");
-  LOG_W(TAG_MAIN, "Pack voltage FORCED to %.1fV for bench precharge", (double)FEB_BMS_BENCH_PACK_VOLTAGE_V);
+  LOG_W(TAG_MAIN, "Pack voltage FORCED to %.1fV for bench precharge", static_cast<double>(FEB_BMS_BENCH_PACK_VOLTAGE_V));
   LOG_W(TAG_MAIN, "Shutdown/AIR- backouts and contactor-feedback fault DISABLED");
 #endif
 #if FEB_BMS_DISABLE_TEMP_CHECKS
