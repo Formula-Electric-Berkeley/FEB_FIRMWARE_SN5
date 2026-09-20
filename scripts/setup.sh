@@ -48,6 +48,16 @@ log_step() {
     echo -e "${CYAN}→${NC} $1"
 }
 
+# State carried from the steps into show_summary.
+#   SESSION_PATH_PATCHED - toolchain PATH was applied to this process only; the
+#                          terminal that launched us still lacks it.
+#   CUBECLT_PROFILE      - profile file holding the exports (empty if the user
+#                          declined the edit, so there is nothing to source).
+#   HOOKS_OK             - false when setup-hooks.sh failed. Hooks are optional.
+SESSION_PATH_PATCHED=false
+CUBECLT_PROFILE=""
+HOOKS_OK=true
+
 # Check if a command exists
 command_exists() {
     command -v "$1" &> /dev/null
@@ -134,7 +144,11 @@ find_cubeclt_install() {
 }
 
 # Step 1: Check toolchain
+# Pass "retry" on the second pass (after PATH was auto-configured) so a CubeCLT
+# install that is present but incomplete can't send us round in circles.
 check_toolchain() {
+    local retry="${1:-}"
+
     log_header "Step 1/5: Checking Toolchain"
 
     local all_good=true
@@ -199,26 +213,32 @@ check_toolchain() {
         echo ""
 
         # Try to auto-configure PATH on platforms where we know where the tools land.
-        case "$(uname -s)" in
-            MINGW*|MSYS*|CYGWIN*)
-                if configure_windows_path; then
-                    echo ""
-                    log_info "Retrying tool detection..."
-                    echo ""
-                    check_toolchain
-                    return $?
-                fi
-                ;;
-            Darwin*)
-                if configure_macos_path; then
-                    echo ""
-                    log_info "Retrying tool detection..."
-                    echo ""
-                    check_toolchain
-                    return $?
-                fi
-                ;;
-        esac
+        if [ "$retry" != "retry" ]; then
+            case "$(uname -s)" in
+                MINGW*|MSYS*|CYGWIN*)
+                    if configure_windows_path; then
+                        echo ""
+                        log_info "Retrying tool detection..."
+                        echo ""
+                        check_toolchain retry
+                        return $?
+                    fi
+                    ;;
+                Darwin*)
+                    if configure_macos_path; then
+                        echo ""
+                        log_info "Retrying tool detection..."
+                        echo ""
+                        check_toolchain retry
+                        return $?
+                    fi
+                    ;;
+            esac
+        else
+            log_warn "STM32CubeCLT at $CUBE_BUNDLE_PATH is on PATH for this run, but tools are still missing."
+            echo "  That install looks incomplete — reinstall it, or install the missing tools separately."
+            echo ""
+        fi
 
         show_install_instructions
         return 1
@@ -271,16 +291,42 @@ show_install_instructions() {
     esac
 }
 
-# Append STM32CubeCLT exports to the given profile file. Idempotent.
+# Put the STM32CubeCLT tool dirs on this process's PATH so setup can continue.
+# Deliberately separate from the profile edit: a script can't change the PATH of
+# the terminal that launched it, so every run that finds the tools missing needs
+# this, whether or not the profile is already set up.
+_export_cubeclt_session() {
+    local cubeclt_path="$1"
+
+    export PATH="$cubeclt_path/GNU-tools-for-STM32/bin:$PATH"
+    export PATH="$cubeclt_path/CMake/bin:$PATH"
+    export PATH="$cubeclt_path/Ninja/bin:$PATH"
+    export PATH="$cubeclt_path/STM32CubeProgrammer/bin:$PATH"
+    export CUBE_BUNDLE_PATH="$cubeclt_path"
+    SESSION_PATH_PATCHED=true
+    log_info "PATH updated for current session"
+}
+
+# Append STM32CubeCLT exports to the given profile file (idempotent) and apply
+# them to this process. Returns 0 whenever the tools are now on our PATH.
 _append_cubeclt_exports() {
     local profile="$1"
     local cubeclt_path="$2"
 
-    # Check if already configured
+    CUBECLT_PROFILE="$profile"
+
+    # Already configured: the profile is fine, but the terminal that launched us
+    # hasn't loaded it. Typical on a re-run in the same terminal as the first
+    # setup — that run's exports died with its process.
     if grep -q "STM32CubeCLT" "$profile" 2>/dev/null; then
-        log_info "PATH already configured in $profile"
-        echo "  Try running: source $profile"
-        return 1
+        log_info "PATH already configured in $profile, but not loaded in this terminal"
+        if ! grep -qF "$cubeclt_path" "$profile" 2>/dev/null; then
+            log_warn "$profile points at a different STM32CubeCLT than the one found:"
+            echo "    $cubeclt_path"
+            echo "  Update the STM32CubeCLT lines in $profile to match."
+        fi
+        _export_cubeclt_session "$cubeclt_path"
+        return 0
     fi
 
     echo ""
@@ -298,8 +344,10 @@ _append_cubeclt_exports() {
     prompt_yes_no "Add to $profile? [Y/n]" "Y"
 
     if [[ $REPLY =~ ^[Nn]$ ]]; then
-        log_warn "Skipping PATH configuration. You'll need to configure manually."
-        return 1
+        log_warn "Skipping profile edit. New terminals won't find the tools until you add the lines above yourself."
+        CUBECLT_PROFILE=""
+        _export_cubeclt_session "$cubeclt_path"
+        return 0
     fi
 
     cat >> "$profile" << BASHRC_EOF
@@ -315,13 +363,7 @@ BASHRC_EOF
     log_info "PATH configuration added to $profile"
     echo ""
 
-    # Apply to the current session so setup can continue
-    export PATH="$cubeclt_path/GNU-tools-for-STM32/bin:$PATH"
-    export PATH="$cubeclt_path/CMake/bin:$PATH"
-    export PATH="$cubeclt_path/Ninja/bin:$PATH"
-    export PATH="$cubeclt_path/STM32CubeProgrammer/bin:$PATH"
-    export CUBE_BUNDLE_PATH="$cubeclt_path"
-    log_info "PATH updated for current session"
+    _export_cubeclt_session "$cubeclt_path"
     return 0
 }
 
@@ -398,8 +440,14 @@ install_hooks() {
 
     if [ -f "scripts/setup-hooks.sh" ]; then
         # Use the dedicated setup script (handles Homebrew, pipx, etc.)
+        # Hooks are optional: a failure here must not stop CMake configure/build.
         log_step "Running setup-hooks.sh..."
-        bash scripts/setup-hooks.sh
+        if ! bash scripts/setup-hooks.sh; then
+            HOOKS_OK=false
+            echo ""
+            log_warn "Pre-commit hook setup failed - continuing without hooks (they're optional)."
+            echo "  Fix the issue above, then run: ./scripts/setup-hooks.sh"
+        fi
     elif [ -f ".pre-commit-config.yaml" ]; then
         if command_exists pre-commit; then
             log_step "Installing pre-commit hooks..."
@@ -456,6 +504,22 @@ initial_build() {
 show_summary() {
     log_header "Setup Complete!"
 
+    if [ "$SESSION_PATH_PATCHED" = true ]; then
+        echo -e "${YELLOW}${BOLD}Before you build:${NC} this terminal doesn't have the toolchain on its PATH yet."
+        if [ -n "$CUBECLT_PROFILE" ]; then
+            echo "  Run: source $CUBECLT_PROFILE   (or open a new terminal)"
+        else
+            echo "  Add the STM32CubeCLT exports from Step 1 to your shell profile."
+        fi
+        echo ""
+    fi
+
+    if [ "$HOOKS_OK" = false ]; then
+        echo -e "${YELLOW}${BOLD}Pre-commit hooks were NOT installed${NC} (optional - see Step 3 output)."
+        echo "  Retry any time with: ./scripts/setup-hooks.sh"
+        echo ""
+    fi
+
     echo -e "${BOLD}Next steps:${NC}"
     echo ""
     echo "  1. Build a specific board:"
@@ -495,7 +559,7 @@ Usage:
 Steps performed:
   1. Check toolchain (ARM GCC, CMake, Ninja)
   2. Initialize git submodules
-  3. Install pre-commit hooks (if configured)
+  3. Install pre-commit hooks (optional - a failure here doesn't stop setup)
   4. Configure CMake
   5. Run initial build (optional with --quick)
 
