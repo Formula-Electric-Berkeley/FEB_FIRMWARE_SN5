@@ -138,14 +138,14 @@ static bool imd_armed = false;
 static bool isFaultState(BMS_State_t state);
 static void fault_begin(BMS_State_t fault_type);
 static void fault_begin_shutdown(bool loop_open);
-static void fault_recover(void);
-static bool fault_process(void);
-static void check_reset_button(void);
-static void evaluate_faults(void);
+static void fault_recover();
+static bool fault_process();
+static void check_reset_button();
+static void evaluate_faults();
 
 /* TODO(spec 5->10 BSPD): no BSPD GPIO/CAN input on SN5 yet. Drive-only fault.
  * Safe default: never trips until a real BSPD source is wired in. */
-static inline bool BSPD_brake_fault(void)
+static inline bool BSPD_brake_fault()
 {
   return false;
 }
@@ -307,7 +307,7 @@ static void fault_begin_shutdown(bool loop_open)
  *        contactors are left commanded open; the driver must redo precharge/RTD
  *        to drive again.
  */
-static void fault_recover(void)
+static void fault_recover()
 {
   LOG_W(TAG_SM, "Shutdown loop restored, recovering fault -> LV_POWER");
 
@@ -340,7 +340,7 @@ static void fault_recover(void)
  * @brief Process pending fault delay
  * @return true if fault handling is complete
  */
-static bool fault_process(void)
+static bool fault_process()
 {
   if (!fault_pending)
   {
@@ -373,7 +373,7 @@ static bool isFaultState(BMS_State_t state)
 /**
  * @brief Check reset button state with debouncing
  */
-static void check_reset_button(void)
+static void check_reset_button()
 {
   bool current_state = FEB_HW_Reset_Button_Pressed();
 
@@ -413,7 +413,7 @@ static void check_reset_button(void)
  * (FEB_ADBMS_Get_Fault_Flags / _Get_Last_Update_Tick). IVT current, IMD, and
  * contactor sense are single-register reads. No mutex is taken on this path.
  */
-static void evaluate_faults(void)
+static void evaluate_faults()
 {
   BMS_State_t s = SM_Current_State;
 
@@ -433,7 +433,7 @@ static void evaluate_faults(void)
   uint32_t af = FEB_ADBMS_Get_Fault_Flags();
   if (af & (ADBMS_FAULT_FLAG_VOLTAGE | ADBMS_FAULT_FLAG_TEMP | ADBMS_FAULT_FLAG_SENSOR))
   {
-    LOG_E(TAG_SM, "Cell V/T/sensor violation (flags=0x%02lX)", (unsigned long)af);
+    LOG_E(TAG_SM, "Cell V/T/sensor violation (flags=0x%02lX)", static_cast<unsigned long>(af));
     fault_begin(grp_fault);
     return;
   }
@@ -488,7 +488,7 @@ static void evaluate_faults(void)
       }
       else if ((HAL_GetTick() - overcurrent_start_tick) >= FEB_OVERCURRENT_CONFIRM_MS)
       {
-        LOG_E(TAG_SM, "Overcurrent event (|I| > %.0fA)", (double)ilim);
+        LOG_E(TAG_SM, "Overcurrent event (|I| > %.0fA)", static_cast<double>(ilim));
         fault_begin(grp_fault);
         return;
       }
@@ -614,7 +614,7 @@ static void evaluate_faults(void)
  * Public Interface
  * ============================================================================ */
 
-void FEB_SM_Init(void)
+void FEB_SM_Init()
 {
   LOG_I(TAG_SM, "State machine initializing");
 
@@ -643,7 +643,7 @@ void FEB_SM_Init(void)
   FEB_SM_Transition(BMS_STATE_LV_POWER);
 }
 
-BMS_State_t FEB_SM_Get_Current_State(void)
+BMS_State_t FEB_SM_Get_Current_State()
 {
   return SM_Current_State;
 }
@@ -656,7 +656,7 @@ void FEB_SM_Transition(BMS_State_t next_state)
   }
 }
 
-void FEB_SM_Process(void)
+void FEB_SM_Process()
 {
   /* Check reset button */
   check_reset_button();
@@ -715,25 +715,25 @@ void FEB_SM_Fault(BMS_State_t fault_type)
   }
 }
 
-bool FEB_SM_Is_Faulted(void)
+bool FEB_SM_Is_Faulted()
 {
   return isFaultState(SM_Current_State);
 }
 
-bool FEB_SM_Is_HV_Active(void)
+bool FEB_SM_Is_HV_Active()
 {
   BMS_State_t state = SM_Current_State;
   return (state == BMS_STATE_ENERGIZED || state == BMS_STATE_DRIVE || state == BMS_STATE_CHARGING ||
           state == BMS_STATE_BALANCE);
 }
 
-bool FEB_SM_Is_Drive_Ready(void)
+bool FEB_SM_Is_Drive_Ready()
 {
   BMS_State_t state = SM_Current_State;
   return (state == BMS_STATE_ENERGIZED || state == BMS_STATE_DRIVE);
 }
 
-bool FEB_SM_IMD_Armed(void)
+bool FEB_SM_IMD_Armed()
 {
   return imd_armed;
 }
@@ -955,12 +955,12 @@ static void PrechargeTransition(BMS_State_t next_state)
           /* Completed implausibly fast: bypassed precharge resistor / contactor
            * inrush. Fault instead of energizing. */
           LOG_E(TAG_SM, "Precharge too fast (%lums < %dms), entering fault: IVT=%.1fV Pack=%.1fV",
-                (unsigned long)precharge_elapsed, PRECHARGE_MIN_TIME_MS, (double)ivt_voltage, (double)pack_voltage);
+                static_cast<unsigned long>(precharge_elapsed), PRECHARGE_MIN_TIME_MS, static_cast<double>(ivt_voltage), static_cast<double>(pack_voltage));
           fault_begin(BMS_STATE_FAULT_BMS);
           precharge_start_time = 0;
           break;
         }
-        LOG_I(TAG_SM, "Precharge complete: IVT=%.1fV Pack=%.1fV", (double)ivt_voltage, (double)pack_voltage);
+        LOG_I(TAG_SM, "Precharge complete: IVT=%.1fV Pack=%.1fV", static_cast<double>(ivt_voltage), static_cast<double>(pack_voltage));
         precharge_start_time = 0;
         shutdown_open_count = 0; /* Reset debounce counter */
         PrechargeTransition(BMS_STATE_ENERGIZED);
@@ -1031,7 +1031,7 @@ static void EnergizedTransition(BMS_State_t next_state)
  * on the microsecond clock (osDelay's 1 ms tick is too coarse for 10 us
  * spacing); this only runs after a candidate OPEN, i.e. right before a
  * would-be fault, so the ~1 ms block is acceptable. */
-static bool shutdown_trip_confirmed(void)
+static bool shutdown_trip_confirmed()
 {
   uint32_t open_count = 0;
 
@@ -1266,7 +1266,7 @@ static void ChargingPrechargeTransition(BMS_State_t next_state)
         /* Completed implausibly fast: bypassed precharge resistor / contactor
          * inrush. Fault instead of charging. */
         LOG_E(TAG_SM, "Charger precharge too fast (%lums < %dms), entering fault: IVT=%.1fV Pack=%.1fV",
-              (unsigned long)precharge_elapsed, PRECHARGE_MIN_TIME_MS, (double)ivt_voltage, (double)pack_voltage);
+              static_cast<unsigned long>(precharge_elapsed), PRECHARGE_MIN_TIME_MS, static_cast<double>(ivt_voltage), static_cast<double>(pack_voltage));
         fault_begin(BMS_STATE_FAULT_CHARGING);
         charger_precharge_start_time = 0;
         break;

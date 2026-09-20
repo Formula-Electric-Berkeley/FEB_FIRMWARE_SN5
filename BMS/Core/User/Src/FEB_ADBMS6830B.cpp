@@ -35,7 +35,7 @@ extern osMutexId_t ADBMSMutexHandle;
 // ********************************** Variables **********************************
 
 cell_asic IC_Config[FEB_NUM_IC];
-accumulator_t FEB_ACC = {0};
+accumulator_t FEB_ACC = {};
 
 int balancing_cycle = 0;
 uint16_t balancing_mask = 0xAAAA;
@@ -184,7 +184,7 @@ static void check_and_report_pec_errors()
     pec_error_count++;
     if ((pec_error_count % 10) == 1)
     { // Log every 10th error to avoid spam
-      printf("[ADBMS] PEC error detected (count: %u)\r\n", (unsigned int)pec_error_count);
+      printf("[ADBMS] PEC error detected (count: %u)\r\n", static_cast<unsigned int>(pec_error_count));
     }
   }
   else
@@ -438,7 +438,7 @@ static void store_cell_temps(uint8_t channel)
   }
 }
 
-static void compute_pack_temp_stats(void)
+static void compute_pack_temp_stats()
 {
   float min_C = FLT_MAX;
   float max_C = -FLT_MAX;
@@ -468,7 +468,7 @@ static void compute_pack_temp_stats(void)
   {
     FEB_ACC.pack_min_temp = min_C;
     FEB_ACC.pack_max_temp = max_C;
-    FEB_ACC.average_pack_temp = sum_C / (float)count;
+    FEB_ACC.average_pack_temp = sum_C / static_cast<float>(count);
     DEBUG_TEMP_PRINT("Pack stats: Count=%d Min=%.1fC Max=%.1fC Avg=%.1fC", count, min_C, max_C,
                      FEB_ACC.average_pack_temp);
   }
@@ -552,7 +552,7 @@ static void validate_temps()
       // faulty sense connection (cells cannot differ this much), NOT a cell
       // over/under-temp. Exclude it from coverage and clear its violation counter
       // so it can never latch a fault.
-      if (have_median && fabsf(temp - median_dC) > (float)FEB_TEMP_OUTLIER_MARGIN_DC)
+      if (have_median && fabsf(temp - median_dC) > static_cast<float>(FEB_TEMP_OUTLIER_MARGIN_DC))
       {
         DEBUG_TEMP_PRINT("Outlier temp ignored: Bank %d Sensor %d Temp=%.1fC (bank median %.1fC)", bank, sensor,
                          temp / 10.0f, median_dC / 10.0f);
@@ -572,7 +572,7 @@ static void validate_temps()
         continue;
       }
 
-      if (temp > tMax || temp < (float)tMin)
+      if (temp > tMax || temp < static_cast<float>(tMin))
       {
         DEBUG_TEMP_PRINT("Temperature violation: Bank %d Sensor %d Temp=%.1fC violations=%d", bank, sensor,
                          temp / 10.0f, FEB_ACC.banks[bank].temp_violations[sensor] + 1);
@@ -611,7 +611,7 @@ static void validate_temps()
    * 42-wide array: index 39 / MUX6[4] is unconnected by design), so a healthy
    * pack reads ~100%, not ~98%, and the fault threshold below is meaningful. */
   const int expected_reads = FEB_TEMP_SENSORS_POPULATED_PER_BANK * FEB_NBANKS;
-  float read_ratio = totalReads / (float)expected_reads;
+  float read_ratio = totalReads / static_cast<float>(expected_reads);
   DEBUG_TEMP_PRINT("Total reads: %d/%d (%.1f%%)", totalReads, expected_reads, read_ratio * 100.0f);
   bool telemetry_low = (read_ratio < FEB_TEMP_MIN_VALID_FRACTION);
   if (telemetry_low)
@@ -637,7 +637,7 @@ static void validate_temps()
     else if ((now - temp_telemetry_loss_tick) >= FEB_TEMP_TELEMETRY_TIMEOUT_MS)
     {
       printf("[ADBMS] FAULT: temperature telemetry lost - %d/%d sensors valid (%.0f%%)\r\n", totalReads, expected_reads,
-             (double)(read_ratio * 100.0f));
+             static_cast<double>(read_ratio * 100.0f));
       adbms_fault_flags |= ADBMS_FAULT_FLAG_SENSOR;
     }
   }
@@ -662,7 +662,7 @@ static void determineMinV()
 
 // ********************************** Functions **********************************
 
-bool FEB_ADBMS_Init(void)
+bool FEB_ADBMS_Init()
 {
   printf("[ADBMS] Initializing ADBMS\r\n");
   for (uint8_t bank = 0; bank < FEB_NBANKS; bank++)
@@ -876,7 +876,7 @@ uint8_t FEB_ADBMS_GET_Cell_Discharging(uint8_t bank, uint16_t cell)
   return discharging;
 }
 
-bool FEB_ADBMS_Precharge_Complete(void)
+bool FEB_ADBMS_Precharge_Complete()
 {
   // float voltage_V = (float)FEB_IVT_V1_Voltage() * 0.001f;
   // return (voltage_V >= (0.9f * FEB_ADBMS_GET_ACC_Total_Voltage()));
@@ -1042,7 +1042,7 @@ void FEB_Cell_Balance_Process()
   ADBMS6830B_wrcfgb(FEB_NUM_IC, IC_Config);
 }
 
-bool FEB_Cell_Balancing_Status(void)
+bool FEB_Cell_Balancing_Status()
 {
 #if !FEB_BMS_DISABLE_TEMP_CHECKS
   // The per-cell loop used to index temp_sensor_readings by cell index, which
@@ -1099,7 +1099,7 @@ bool FEB_Cell_Balancing_Status(void)
   return false;
 }
 
-uint16_t FEB_ADBMS_GET_Balancing_Cell_Count(void)
+uint16_t FEB_ADBMS_GET_Balancing_Cell_Count()
 {
   uint16_t count = 0;
   osMutexAcquire(ADBMSMutexHandle, osWaitForever);
@@ -1119,7 +1119,7 @@ uint16_t FEB_ADBMS_GET_Balancing_Cell_Count(void)
 
 // Pack-wide max-min cell-voltage spread in mV (single source of truth for the
 // balancing delta). Returns -1.0f when no valid cell readings are available.
-float FEB_ADBMS_GET_Cell_Voltage_Delta_mV(void)
+float FEB_ADBMS_GET_Cell_Voltage_Delta_mV()
 {
   float min_v = FLT_MAX;
   float max_v = -FLT_MAX;
@@ -1150,7 +1150,7 @@ float FEB_ADBMS_GET_Cell_Voltage_Delta_mV(void)
 // "Done balancing": valid readings AND pack converged below the slippage
 // threshold. Distinct from !FEB_Cell_Balancing_Status(), which also returns
 // false when balancing is blocked (too hot / no telemetry).
-bool FEB_Cell_Balance_Complete(void)
+bool FEB_Cell_Balance_Complete()
 {
   const float delta_mV = FEB_ADBMS_GET_Cell_Voltage_Delta_mV();
   return (delta_mV >= 0.0f && delta_mV < FEB_MIN_SLIPPAGE_V * 1000.0f);
@@ -1220,12 +1220,12 @@ void FEB_ADBMS_Update_Error_Type(uint8_t error)
 
 // ********************************** Fault Flags (SM handoff) *******************
 
-uint32_t FEB_ADBMS_Get_Fault_Flags(void)
+uint32_t FEB_ADBMS_Get_Fault_Flags()
 {
   return adbms_fault_flags;
 }
 
-uint32_t FEB_ADBMS_Get_Last_Update_Tick(void)
+uint32_t FEB_ADBMS_Get_Last_Update_Tick()
 {
   return adbms_last_update_tick;
 }
@@ -1244,7 +1244,7 @@ void FEB_ADBMS_Set_Validation_Profile(FEB_Validation_Profile_t profile)
          (profile == FEB_VALIDATION_PROFILE_CHARGING) ? "CHARGING" : "NORMAL");
 }
 
-FEB_Validation_Profile_t FEB_ADBMS_Get_Validation_Profile(void)
+FEB_Validation_Profile_t FEB_ADBMS_Get_Validation_Profile()
 {
   return active_validation_profile;
 }
@@ -1252,7 +1252,7 @@ FEB_Validation_Profile_t FEB_ADBMS_Get_Validation_Profile(void)
 // ********************************** Lock-free Snapshots ************************
 // For the 1ms SM task / charger logic. Never blocks on ADBMSMutexHandle.
 
-float FEB_ADBMS_Snapshot_Total_Voltage(void)
+float FEB_ADBMS_Snapshot_Total_Voltage()
 {
 #if FEB_BMS_DISABLE_ADBMS_CHECKS
   /* Bench: no cell monitor — report the forced pack voltage (see FEB_Const.h) */
@@ -1262,12 +1262,12 @@ float FEB_ADBMS_Snapshot_Total_Voltage(void)
 #endif
 }
 
-float FEB_ADBMS_Snapshot_Max_Cell_Voltage(void)
+float FEB_ADBMS_Snapshot_Max_Cell_Voltage()
 {
   return adbms_snap_max_cell_V;
 }
 
-float FEB_ADBMS_Snapshot_Max_Temp(void)
+float FEB_ADBMS_Snapshot_Max_Temp()
 {
   return adbms_snap_max_temp_C;
 }
