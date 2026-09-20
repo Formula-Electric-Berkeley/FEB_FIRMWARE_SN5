@@ -5,6 +5,11 @@
 #include <math.h>
 #include "FEB_Const.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 // ********************************** Thermistor Beta Parameter Conversion *********
 // Converts thermistor voltage to temperature using the Beta parameter equation
 //
@@ -62,5 +67,9 @@ static inline float FEB_Thermistor_Voltage_To_Temp_C(float voltage_mV)
   // Convert to Celsius
   return T_kelvin - THERM_KELVIN_OFFSET;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_THERMISTOR_H_ */

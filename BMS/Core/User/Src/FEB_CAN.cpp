@@ -30,27 +30,30 @@
 #include "FEB_CAN_Heartbeat.h"
 
 /* ========================== External HAL handles ========================== */
-extern CAN_HandleTypeDef hcan1;
+extern "C" CAN_HandleTypeDef hcan1;
 
 /* ========================== External FreeRTOS handles (from CubeMX) ========================== */
 /* NOTE: These are created in CubeMX .ioc and defined in freertos.c */
 /* Names in .ioc are without "Handle" suffix; CubeMX adds it automatically */
-extern osMessageQueueId_t canTxQueueHandle;
-extern osMessageQueueId_t canRxQueueHandle;
-extern osMutexId_t canTxMutexHandle;
-extern osMutexId_t canRxMutexHandle;
-extern osSemaphoreId_t canTxMailboxSemHandle;
-
-/* ========================== Local Prototypes ========================== */
-static void BMS_CAN_Init(void);
+extern "C"
+{
+  extern osMessageQueueId_t canTxQueueHandle;
+  extern osMessageQueueId_t canRxQueueHandle;
+  extern osMutexId_t canTxMutexHandle;
+  extern osMutexId_t canRxMutexHandle;
+  extern osSemaphoreId_t canTxMailboxSemHandle;
+}
 
 /* ========================== CAN Initialization ========================== */
 
-static void BMS_CAN_Init(void)
+namespace
+{
+
+void BMS_CAN_Init()
 {
   FEB_CAN_Config_t cfg = {
       .hcan1 = &hcan1,
-      .hcan2 = NULL,
+      .hcan2 = nullptr,
       .get_tick_ms = HAL_GetTick,
 #if FEB_CAN_USE_FREERTOS
       .tx_queue = canTxQueueHandle,
@@ -75,9 +78,14 @@ static void BMS_CAN_Init(void)
    * ranges) so dynamic ones (PingPong) always fit. */
 }
 
+} // namespace
+
 /* ============================================================================
  * FreeRTOS Tasks (override CubeMX weak stubs)
  * ============================================================================ */
+
+extern "C"
+{
 
 /**
  * @brief BMS CAN RX task
@@ -132,3 +140,5 @@ void StartBMSTaskTx(void *argument)
     osDelay(1);
   }
 }
+
+} // extern "C"

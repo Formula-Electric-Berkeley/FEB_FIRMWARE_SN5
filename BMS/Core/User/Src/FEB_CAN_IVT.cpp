@@ -1,5 +1,5 @@
 /**
- * @file FEB_CAN_IVT.c
+ * @file FEB_CAN_IVT.cpp
  * @brief IVT (Isabellenhutte) Current/Voltage Sensor CAN Interface
  * @author Formula Electric @ Berkeley
  *
@@ -22,14 +22,17 @@
  * ============================================================================ */
 
 /* IVT data timeout in milliseconds */
-#define IVT_DATA_TIMEOUT_MS 1000
+constexpr uint32_t IVT_DATA_TIMEOUT_MS = 1000;
 
 /* ============================================================================
  * Internal State
  * ============================================================================ */
 
 /* IVT data storage */
-static FEB_CAN_IVT_Data_t ivt_data = {0};
+namespace
+{
+FEB_CAN_IVT_Data_t ivt_data = {};
+} // namespace
 
 /* ============================================================================
  * CAN Callback
@@ -43,7 +46,10 @@ static FEB_CAN_IVT_Data_t ivt_data = {0};
  * IVTTemperature). Decoding is delegated to the generated unpack functions;
  * the raw int32 value is then scaled into engineering units below.
  */
-static void FEB_CAN_IVT_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
+namespace
+{
+
+void FEB_CAN_IVT_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                  const uint8_t *data, uint8_t length, void *user_data)
 {
   (void)instance;
@@ -54,13 +60,13 @@ static void FEB_CAN_IVT_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
   {
   case FEB_CAN_IVT_CURRENT_FRAME_ID:
   {
-    struct feb_can_ivt_current_t msg;
+    feb_can_ivt_current_t msg;
     if (feb_can_ivt_current_unpack(&msg, data, length) < 0)
     {
       return;
     }
     /* Current in mA, negate for reversed direction */
-    ivt_data.current_mA = (float)msg.current * (-0.001f) * 1000.0f;
+    ivt_data.current_mA = static_cast<float>(msg.current) * (-0.001f) * 1000.0f;
     __DMB(); /* Memory barrier to ensure data write completes before timestamp */
     ivt_data.last_rx_tick = HAL_GetTick();
     break;
@@ -68,13 +74,13 @@ static void FEB_CAN_IVT_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
 
   case FEB_CAN_IVT_VOLTAGE1_FRAME_ID:
   {
-    struct feb_can_ivt_voltage1_t msg;
+    feb_can_ivt_voltage1_t msg;
     if (feb_can_ivt_voltage1_unpack(&msg, data, length) < 0)
     {
       return;
     }
     /* Voltage 1 (pack voltage) in mV */
-    ivt_data.voltage_1_mV = (float)msg.voltage1;
+    ivt_data.voltage_1_mV = static_cast<float>(msg.voltage1);
     __DMB();
     ivt_data.last_rx_tick = HAL_GetTick();
     break;
@@ -82,12 +88,12 @@ static void FEB_CAN_IVT_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
 
   case FEB_CAN_IVT_VOLTAGE2_FRAME_ID:
   {
-    struct feb_can_ivt_voltage2_t msg;
+    feb_can_ivt_voltage2_t msg;
     if (feb_can_ivt_voltage2_unpack(&msg, data, length) < 0)
     {
       return;
     }
-    ivt_data.voltage_2_mV = (float)msg.voltage2;
+    ivt_data.voltage_2_mV = static_cast<float>(msg.voltage2);
     __DMB();
     ivt_data.last_rx_tick = HAL_GetTick();
     break;
@@ -95,12 +101,12 @@ static void FEB_CAN_IVT_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
 
   case FEB_CAN_IVT_VOLTAGE3_FRAME_ID:
   {
-    struct feb_can_ivt_voltage3_t msg;
+    feb_can_ivt_voltage3_t msg;
     if (feb_can_ivt_voltage3_unpack(&msg, data, length) < 0)
     {
       return;
     }
-    ivt_data.voltage_3_mV = (float)msg.voltage3;
+    ivt_data.voltage_3_mV = static_cast<float>(msg.voltage3);
     __DMB();
     ivt_data.last_rx_tick = HAL_GetTick();
     break;
@@ -108,13 +114,13 @@ static void FEB_CAN_IVT_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
 
   case FEB_CAN_IVT_TEMPERATURE_FRAME_ID:
   {
-    struct feb_can_ivt_temperature_t msg;
+    feb_can_ivt_temperature_t msg;
     if (feb_can_ivt_temperature_unpack(&msg, data, length) < 0)
     {
       return;
     }
     /* Temperature in 0.1 degrees C */
-    ivt_data.temperature_C = (float)msg.temperature * 0.1f;
+    ivt_data.temperature_C = static_cast<float>(msg.temperature) * 0.1f;
     __DMB();
     ivt_data.last_rx_tick = HAL_GetTick();
     break;
@@ -124,6 +130,8 @@ static void FEB_CAN_IVT_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
     break;
   }
 }
+
+} // namespace
 
 /* ============================================================================
  * Public Interface
@@ -151,7 +159,7 @@ void FEB_CAN_IVT_Init(void)
       .mask = 0x7F8, /* match 0x520-0x527 */
       .fifo = FEB_CAN_FIFO_0,
       .callback = FEB_CAN_IVT_Callback,
-      .user_data = NULL,
+      .user_data = nullptr,
   };
   FEB_CAN_RX_Register(&rx_params);
 }

@@ -21,6 +21,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /**
  * @brief Register charger CAN reception. Call from the CAN RX task before
  *        FEB_CAN_Filter_UpdateFromRegistry().
@@ -89,5 +94,9 @@ typedef struct
  * @brief Fill @p out with the latest charger telemetry + current command.
  */
 void FEB_CAN_Charger_GetSnapshot(FEB_Charger_Snapshot_t *out);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_CAN_CHARGER_H_ */

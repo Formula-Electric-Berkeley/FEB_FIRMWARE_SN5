@@ -11,6 +11,11 @@
 
 #include "feb_console.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /* BMS-specific module tags */
 #define TAG_ADBMS "[ADBMS]"
 
@@ -21,5 +26,9 @@
  * Call after FEB_Console_Init().
  */
 void BMS_RegisterCommands(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FEB_COMMANDS_H */

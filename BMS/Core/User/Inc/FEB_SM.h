@@ -28,6 +28,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /* ============================================================================
  * State Machine Interface
  * ============================================================================ */
@@ -97,5 +102,9 @@ bool FEB_SM_Is_Drive_Ready(void);
  * @return true once the IMD status latch has been seen high (operator reset)
  */
 bool FEB_SM_IMD_Armed(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_SM_H_ */

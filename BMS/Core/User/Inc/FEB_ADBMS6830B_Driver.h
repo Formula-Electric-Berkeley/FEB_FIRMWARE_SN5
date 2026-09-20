@@ -7,6 +7,11 @@
 #include <stdbool.h>
 #include "main.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 // ********************************** Macros *************************************
 
 #define NUM_RX_BYT 8
@@ -334,5 +339,9 @@ void ADBMS6830B_check_pec(uint8_t total_ic, //!< Number of ICs in the daisy chai
                           cell_asic *ic     //!< A two dimensional array that will store the data
 );
 void ADBMS6830B_CLRFLAG(uint8_t total_ic);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* INC_FEB_ADBMS6830B_DRIVER_H_ */

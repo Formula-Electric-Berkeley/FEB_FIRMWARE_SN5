@@ -13,6 +13,11 @@
 #include <stdbool.h>
 #include "ADBMS6830B_Commands.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /*============================================================================
  * Constants
  *============================================================================*/
@@ -384,5 +389,9 @@ void ADBMS_RegSubcmd(int argc, char *argv[]);
  * @param argv Argument vector
  */
 void ADBMS_RegSubcmd_Csv(int argc, char *argv[]);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ADBMS6830B_REGISTERS_H */
