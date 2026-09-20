@@ -1225,6 +1225,7 @@ static void ChargingPrechargeTransition(BMS_State_t next_state)
     break;
 
   case BMS_STATE_DEFAULT:
+  {
     /* Go back to FREE if shutdown opens */
     if (FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_OPEN)
     {
@@ -1274,6 +1275,7 @@ static void ChargingPrechargeTransition(BMS_State_t next_state)
       ChargingPrechargeTransition(BMS_STATE_CHARGING);
     }
     break;
+  }
 
   default:
     break;

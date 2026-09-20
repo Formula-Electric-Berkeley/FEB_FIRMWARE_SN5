@@ -155,6 +155,15 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMENT "Generating .bin/.hex for ${PROJECT_NAME}"
 )
 
+# ── Post-build: task entry points must not be the weak CubeMX stubs ──
+# (a C++ definition missing extern "C" links silently to the stub instead)
+string(REPLACE "objcopy" "nm" BMS_NM "${CMAKE_OBJCOPY}")
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND bash ${CMAKE_SOURCE_DIR}/scripts/check-bms-task-linkage.sh
+            $<TARGET_FILE:${PROJECT_NAME}> ${BMS_NM}
+    COMMENT "Checking task entry-point linkage for ${PROJECT_NAME}"
+)
+
 set_target_properties(${PROJECT_NAME} PROPERTIES
     ADDITIONAL_CLEAN_FILES "${PROJECT_NAME}.map;${PROJECT_NAME}.bin;${PROJECT_NAME}.hex"
 )
