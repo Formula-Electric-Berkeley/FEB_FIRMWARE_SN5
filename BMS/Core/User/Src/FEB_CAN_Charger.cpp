@@ -1,5 +1,5 @@
 /**
- * @file FEB_CAN_Charger.c
+ * @file FEB_CAN_Charger.cpp
  * @brief Charger CAN interface (ported from SN4 BMS, adapted to SN5)
  * @author Formula Electric @ Berkeley
  *
@@ -32,15 +32,18 @@
 
 #define TAG_CHARGER "[CHG]"
 
-typedef struct
+namespace
+{
+
+struct bms_to_charger_t
 {
   uint16_t max_voltage_dV;
   uint16_t max_current_dA;
   uint8_t control; /* 0 = start charge, 1 = stop charge */
   bool done_charging;
-} bms_to_charger_t;
+};
 
-typedef struct
+struct charger_to_bms_t
 {
   volatile uint16_t op_voltage_dV;
   volatile uint16_t op_current_dA;
@@ -51,21 +54,26 @@ typedef struct
   volatile uint8_t communication_state; /* 0 OK, 1 TIMEOUT */
   volatile uint32_t rx_count;
   volatile uint32_t last_rx_tick;
-} charger_to_bms_t;
+};
 
-static bms_to_charger_t tx_msg = {0};
-static charger_to_bms_t rx_msg = {0};
+bms_to_charger_t tx_msg = {};
+charger_to_bms_t rx_msg = {};
 
 /* Trickle-charge state (near top of charge). */
-static bool trickle_enabled = false;
-static uint32_t last_trickle_toggle = 0;
-static bool trickle_on = true;
+bool trickle_enabled = false;
+uint32_t last_trickle_toggle = 0;
+bool trickle_on = true;
+
+} // namespace
 
 /* ============================================================================
  * CAN reception
  * ============================================================================ */
 
-static void FEB_CAN_Charger_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
+namespace
+{
+
+void FEB_CAN_Charger_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                      const uint8_t *data, uint8_t length, void *user_data)
 {
   (void)instance;
@@ -77,7 +85,7 @@ static void FEB_CAN_Charger_Callback(FEB_CAN_Instance_t instance, uint32_t can_i
     return;
   }
 
-  struct feb_can_charger_status_t s;
+  feb_can_charger_status_t s;
   if (feb_can_charger_status_unpack(&s, data, length) != 0)
   {
     return; /* short / malformed frame */
@@ -95,6 +103,8 @@ static void FEB_CAN_Charger_Callback(FEB_CAN_Instance_t instance, uint32_t can_i
   rx_msg.last_rx_tick = HAL_GetTick();
 }
 
+} // namespace
+
 void FEB_CAN_Charger_Init(void)
 {
   tx_msg.max_voltage_dV = FEB_CHARGE_TARGET_VOLTAGE_dV;
@@ -111,7 +121,7 @@ void FEB_CAN_Charger_Init(void)
       .mask = 0,
       .fifo = FEB_CAN_FIFO_0,
       .callback = FEB_CAN_Charger_Callback,
-      .user_data = NULL,
+      .user_data = nullptr,
   };
   FEB_CAN_RX_Register(&params);
 }
@@ -215,25 +225,27 @@ void FEB_CAN_Charger_Stop_Charge(void)
  * Charger command transmission + trickle charge
  * ============================================================================ */
 
-static void charger_can_transmit(void)
+namespace
 {
-  struct feb_can_charger_limits_t cmd = {
-      .max_voltage = tx_msg.max_voltage_dV,
-      .max_current = tx_msg.max_current_dA,
-      .control = tx_msg.control,
-  };
+
+void charger_can_transmit()
+{
+  feb_can_charger_limits_t cmd = {};
+  cmd.max_voltage = tx_msg.max_voltage_dV;
+  cmd.max_current = tx_msg.max_current_dA;
+  cmd.control = tx_msg.control;
   uint8_t data[FEB_CAN_CHARGER_LIMITS_LENGTH];
   int packed = feb_can_charger_limits_pack(data, &cmd, sizeof(data));
   if (packed < 0)
   {
     return;
   }
-  FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_CHARGER_LIMITS_FRAME_ID, FEB_CAN_ID_EXT, data, (uint8_t)packed);
+  FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_CHARGER_LIMITS_FRAME_ID, FEB_CAN_ID_EXT, data, static_cast<uint8_t>(packed));
 }
 
 /* Edge-triggered logging of charger-reported faults so the reason behind a
  * charge stop/fault is visible on the console without spamming each tick. */
-static void log_charger_faults(void)
+void log_charger_faults()
 {
   static uint8_t prev_hw = 0, prev_temp = 0, prev_in = 0, prev_comm = 0;
 
@@ -266,6 +278,8 @@ static void log_charger_faults(void)
   }
 }
 
+} // namespace
+
 void FEB_CAN_Charger_Process(void)
 {
   log_charger_faults();
@@ -295,7 +309,7 @@ void FEB_CAN_Charger_Process(void)
   }
 
   float pack_v = FEB_ADBMS_Snapshot_Total_Voltage(); /* lock-free, SM-task safe */
-  uint16_t pack_v_dV = (uint16_t)(pack_v * 10.0f);
+  uint16_t pack_v_dV = static_cast<uint16_t>(pack_v * 10.0f);
 
   if (pack_v_dV >= FEB_TRICKLE_CHARGE_START_VOLTAGE_dV)
   {
@@ -335,7 +349,7 @@ void FEB_CAN_Charger_Process(void)
 
 void FEB_CAN_Charger_GetSnapshot(FEB_Charger_Snapshot_t *out)
 {
-  if (out == NULL)
+  if (out == nullptr)
   {
     return;
   }
