@@ -134,6 +134,13 @@ The repository scripts are bash-based and work with Git Bash (included with [Git
    ./scripts/setup.sh
    ```
    The script will detect STM32CubeCLT and offer to configure your PATH automatically.
+4. **Open a new Git Bash** (or run `source ~/.bashrc`) before building. The script
+   can only update its own PATH, not the terminal it ran in, so that terminal won't
+   find `cmake`/`ninja`/`arm-none-eabi-gcc` until it reloads `~/.bashrc`. Re-running
+   `setup.sh` in the old terminal is safe; it re-applies the PATH for itself.
+
+Pre-commit hooks are optional. If pip warns that `...\Python\Python3xx\Scripts` is
+not on PATH, the hooks still work; see [`scripts/README.md`](scripts/README.md#setup-hookssh--pre-commit-hooks).
 
 **Manual Setup (if needed):**
 

@@ -28,6 +28,10 @@ Everyday tooling for the FEB_FIRMWARE_SN5 repo. All scripts are POSIX `bash` and
 
 Steps: toolchain check → submodule init → pre-commit install → CMake configure → initial build.
 
+Pre-commit hooks are **optional**: if step 3 fails, setup warns, carries on to configure + build, and repeats the warning in the final summary. Fix the cause and run `./scripts/setup-hooks.sh` on its own.
+
+**Re-running in the same terminal is fine.** A script can't change the `PATH` of the terminal that launched it, so after the first run that terminal still lacks the toolchain. When setup finds the tools missing but your profile already has the STM32CubeCLT block, it applies the exports to its own process and continues (and warns if the profile points at a different CubeCLT version than the one installed). The summary reminds you to `source` your profile or open a new terminal before using `build.sh` / `flash.sh`.
+
 **Cross-platform behavior:**
 
 - **macOS** — globs `/opt/ST/STM32CubeCLT*`, `/Applications/STMicroelectronics/STM32CubeCLT*`, and `$HOME/STM32CubeCLT*`. Picks the highest version via `sort -V`. Detects your shell (`zsh` vs `bash`) and writes the exports to `~/.zshrc` or `~/.bash_profile` accordingly.
@@ -108,7 +112,11 @@ Uses the repo's top-level `.clang-format` (LLVM base, 2-space indent, 120 column
 ./scripts/setup-hooks.sh -h
 ```
 
-Installs `pre-commit` via (in order) Homebrew → `pipx` → `pip --user`. Then installs the hooks from `.pre-commit-config.yaml`. Hooks: trailing-whitespace, end-of-file-fixer, check-added-large-files, check-merge-conflict, mixed-line-ending, `clang-format`, `cppcheck`, CAN validation.
+Installs `pre-commit` via (in order) Homebrew → `pipx` → `python -m pip install --user`. Then installs the hooks from `.pre-commit-config.yaml`. Hooks: trailing-whitespace, end-of-file-fixer, check-added-large-files, check-merge-conflict, `clang-format`, `cppcheck`, check-bench-flags, auto-bump-patch.
+
+`pre-commit` does **not** need to be on `PATH`. A `pip --user` install lands in a per-user scripts dir that usually isn't (on Windows: `%APPDATA%\Python\Python3xx\Scripts`), so when the `pre-commit` command isn't found the script falls back to `python -m pre_commit`. The git hook that `pre-commit install` writes calls that same Python directly, so commits are checked either way. The script prints the exact `export PATH=…` line if you want the bare command too.
+
+Python lookup tries `python3`, `python`, then `py -3`, and only accepts one that actually runs — on Windows, `python3` is often the Microsoft Store alias, which is on `PATH` but isn't Python.
 
 ## `cubemx.sh` — Headless STM32CubeMX
 
