@@ -1,5 +1,5 @@
 /**
- * @file FEB_CAN_State.c
+ * @file FEB_CAN_State.cpp
  * @brief BMS CAN state publishing module
  */
 
@@ -16,19 +16,22 @@
 /* Note: Critical sections removed - current_state is volatile and 1 byte (atomic on ARM) */
 
 /* R2D timeout for state transitions */
-#define R2D_TIMEOUT_MS 500
+constexpr uint32_t R2D_TIMEOUT_MS = 500;
+
+namespace
+{
 
 /* CAN ready flag - prevents transmission before CAN is initialized */
-static volatile bool can_ready = false;
+volatile bool can_ready = false;
 
 /* Current BMS state - volatile for ISR/task access */
-static volatile BMS_State_t current_state = BMS_STATE_BOOT;
+volatile BMS_State_t current_state = BMS_STATE_BOOT;
 
 /* BMS state message data */
-static struct feb_can_bms_state_t bms_state_msg;
+feb_can_bms_state_t bms_state_msg;
 
 /* State name lookup table - must match BMS_State_t enum order */
-static const char *state_names[] = {
+const char *const state_names[] = {
     "BOOT",              // 0
     "LV_POWER",          // 1
     "BUS_HEALTH_CHECK",  // 2
@@ -44,6 +47,8 @@ static const char *state_names[] = {
     "FAULT_IMD",         // 12
     "FAULT_CHARGING",    // 13
 };
+
+} // namespace
 
 void FEB_CAN_State_Init(void)
 {
@@ -97,7 +102,7 @@ void FEB_CAN_State_Tick(void)
     state_divider = 0;
 
     /* Use authoritative state from FEB_SM so PCU always gets most recent state */
-    bms_state_msg.bms_state = (uint8_t)FEB_SM_Get_Current_State();
+    bms_state_msg.bms_state = static_cast<uint8_t>(FEB_SM_Get_Current_State());
 
     /* Pack and send */
     uint8_t tx_data[FEB_CAN_BMS_STATE_LENGTH];
@@ -141,13 +146,12 @@ void FEB_CAN_State_Tick(void)
 
     /* Pack and send */
     uint8_t tx_data[FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_LENGTH];
-    feb_can_bms_accumulator_voltage_pack(tx_data,
-                                         &((struct feb_can_bms_accumulator_voltage_t){
-                                             .total_pack_voltage = (int)(FEB_ADBMS_GET_ACC_Total_Voltage() * 10),
-                                             .min_cell_voltage = (int)(min_c * 10),
-                                             .max_cell_voltage = (int)(max_c * 10),
-                                             .send_time = HAL_GetTick()}),
-                                         sizeof(tx_data));
+    feb_can_bms_accumulator_voltage_t volt_msg = {};
+    volt_msg.total_pack_voltage = static_cast<int>(FEB_ADBMS_GET_ACC_Total_Voltage() * 10);
+    volt_msg.min_cell_voltage = static_cast<int>(min_c * 10);
+    volt_msg.max_cell_voltage = static_cast<int>(max_c * 10);
+    volt_msg.send_time = HAL_GetTick();
+    feb_can_bms_accumulator_voltage_pack(tx_data, &volt_msg, sizeof(tx_data));
 
     FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
                     FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_LENGTH);
@@ -162,13 +166,12 @@ void FEB_CAN_State_Tick(void)
     temp_divider = 0;
     /* Pack and send */
     uint8_t tx_data[FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_LENGTH];
-    feb_can_bms_accumulator_temperature_pack(tx_data,
-                                             &((struct feb_can_bms_accumulator_temperature_t){
-                                                 .average_pack_temperature = (int)(FEB_ADBMS_GET_ACC_AVG_Temp() * 10),
-                                                 .max_cell_temperature = (int)(FEB_ADBMS_GET_ACC_MAX_Temp() * 10),
-                                                 .min_cell_temperature = (int)(FEB_ADBMS_GET_ACC_MIN_Temp() * 10),
-                                                 .send_time = HAL_GetTick()}),
-                                             sizeof(tx_data));
+    feb_can_bms_accumulator_temperature_t temp_msg = {};
+    temp_msg.average_pack_temperature = static_cast<int>(FEB_ADBMS_GET_ACC_AVG_Temp() * 10);
+    temp_msg.max_cell_temperature = static_cast<int>(FEB_ADBMS_GET_ACC_MAX_Temp() * 10);
+    temp_msg.min_cell_temperature = static_cast<int>(FEB_ADBMS_GET_ACC_MIN_Temp() * 10);
+    temp_msg.send_time = HAL_GetTick();
+    feb_can_bms_accumulator_temperature_pack(tx_data, &temp_msg, sizeof(tx_data));
 
     FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
                     FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_LENGTH);
