@@ -100,8 +100,13 @@
 // under budget, so it cannot silently regress if the period or threshold changes.
 #define FEB_TEMP_SCAN_PERIOD_MS 100  // temperature scan cadence (10 Hz)
 #define FEB_TEMP_FAULT_BUDGET_MS 900 // margin under the 1 s FSAE temperature window
-_Static_assert((FEB_TEMP_ERROR_THRESH + 1) * FEB_TEMP_SCAN_PERIOD_MS <= FEB_TEMP_FAULT_BUDGET_MS,
-               "Over/under-temp fault must latch within the FSAE temperature window");
+#ifdef __cplusplus
+#define FEB_STATIC_ASSERT static_assert
+#else
+#define FEB_STATIC_ASSERT _Static_assert
+#endif
+FEB_STATIC_ASSERT((FEB_TEMP_ERROR_THRESH + 1) * FEB_TEMP_SCAN_PERIOD_MS <= FEB_TEMP_FAULT_BUDGET_MS,
+                  "Over/under-temp fault must latch within the FSAE temperature window");
 
 // Temperature-telemetry-loss fail-safe (FSAE: a disconnected temperature sense
 // wire must open the shutdown circuit within 1 s). If fewer than
