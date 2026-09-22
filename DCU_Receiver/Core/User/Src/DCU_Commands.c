@@ -18,7 +18,7 @@
 #include "FEB_RFM95.h"
 #include "FEB_Task_Radio.h"
 #include "FEB_CAN_Stream.h"
-#include "feb_can_latest.h"
+#include "feb_can_db.h"
 #include "feb_console.h"
 #include "feb_string_utils.h"
 #include "feb_log.h"
@@ -520,7 +520,7 @@ static void cmd_radio_csv(int argc, char *argv[])
 /* ============================================================================
  * CAN State Commands
  *
- * The generated FEB_CAN_State_Print / PrintOne emit human text via a
+ * The generated FEB_CAN_DB_Print / PrintOne emit human text via a
  * printf-style callback. csv_line_emit adapts that to CSV: each callback call
  * is one full line, so we strip the trailing CRLF and wrap it as a single `log`
  * row, keeping CSV framing intact.
@@ -585,7 +585,7 @@ static void sub_can(int argc, char *argv[])
   const char *sub = argv[1];
   if (FEB_strcasecmp(sub, "state") == 0)
   {
-    FEB_CAN_State_Print(FEB_Console_Printf);
+    FEB_CAN_DB_Print(FEB_Console_Printf);
   }
   else if (FEB_strcasecmp(sub, "stream") == 0)
   {
@@ -598,7 +598,7 @@ static void sub_can(int argc, char *argv[])
       FEB_Console_Printf("Usage: dcu|can|msg|<name>\r\n");
       return;
     }
-    if (FEB_CAN_State_PrintOne(argv[2], FEB_Console_Printf) != 0)
+    if (FEB_CAN_DB_PrintOne(argv[2], FEB_Console_Printf) != 0)
     {
       FEB_Console_Printf("Unknown CAN message: %s\r\n", argv[2]);
     }
@@ -619,7 +619,7 @@ static void cmd_can_csv(int argc, char *argv[])
   const char *sub = argv[1];
   if (FEB_strcasecmp(sub, "state") == 0)
   {
-    FEB_CAN_State_Print(csv_line_emit);
+    FEB_CAN_DB_Print(csv_line_emit);
   }
   else if (FEB_strcasecmp(sub, "stream") == 0)
   {
@@ -651,7 +651,7 @@ static void cmd_can_csv(int argc, char *argv[])
       FEB_Console_CsvError("error", "usage,can|msg|<name>");
       return;
     }
-    if (FEB_CAN_State_PrintOne(argv[2], csv_line_emit) != 0)
+    if (FEB_CAN_DB_PrintOne(argv[2], csv_line_emit) != 0)
     {
       FEB_Console_CsvError("error", "unknown_message,%s", argv[2]);
     }

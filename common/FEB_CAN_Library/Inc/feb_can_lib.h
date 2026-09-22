@@ -344,7 +344,7 @@ extern "C"
     void *data_ptr;                                    /**< Pointer to data structure (for periodic TX) */
     size_t data_size;                                  /**< Size of data structure */
     uint32_t period_ms;                                /**< Periodic interval (0 = manual TX only) */
-    int (*pack_func)(uint8_t *, const void *, size_t); /**< Pack function (from feb_can.h) */
+    int (*pack_func)(uint8_t *, const void *, size_t); /**< Pack function (from feb_can_db.h) */
   } FEB_CAN_TX_Params_t;
 
   /**

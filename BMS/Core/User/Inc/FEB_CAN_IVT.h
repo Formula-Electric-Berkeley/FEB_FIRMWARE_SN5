@@ -16,7 +16,7 @@
  * The frame IDs and byte layout live in the shared CAN library
  * (common/FEB_CAN_Library_SN4, message defs IVTCurrent / IVTVoltage1-3 /
  * IVTTemperature) and are consumed here via the generated FEB_CAN_IVT_*_FRAME_ID
- * macros and feb_can_ivt_*_unpack() functions from feb_can.h.
+ * macros and feb_can_ivt_*_unpack() functions from feb_can_db.h.
  *
  * The IVT sensor provides high-accuracy current and voltage measurements
  * for battery management and motor control systems.

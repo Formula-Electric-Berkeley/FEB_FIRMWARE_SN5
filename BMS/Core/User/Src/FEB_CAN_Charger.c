@@ -7,7 +7,7 @@
  * DBC vendored at common/FEB_CAN_Library_SN4/elcon.dbc (upstream
  * https://github.com/karlding/elcon-charger-dbc, message names prefixed
  * Charger_*) and fused into the generated CAN library, so the frames are packed
- * and unpacked through feb_can.h rather than by hand:
+ * and unpacked through feb_can_db.h rather than by hand:
  *   - charger -> BMS : Charger_Status (0x18FF50E5)
  *   - BMS  -> charger: Charger_Limits (0x1806E5F4)
  *
@@ -21,7 +21,7 @@
 
 #include "FEB_CAN_Charger.h"
 #include "feb_can_lib.h"
-#include "feb_can.h"
+#include "feb_can_db.h"
 #include "feb_log.h"
 #include "FEB_Const.h"
 #include "FEB_ADBMS6830B.h"

@@ -71,7 +71,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 #include "feb_log.h"
 #include "feb_console.h"
 #include "feb_commands.h"
-#include "feb_can.h"
+#include "feb_can_db.h"
 
 #define TAG "MAIN"
 
@@ -166,7 +166,7 @@ common/
 │   └── README.md
 │
 ├── FEB_CAN_Library_SN4/        # CAN message defs + generator (git submodule)
-│   ├── gen/                    # Generated feb_can.c / feb_can.h
+│   ├── gen/                    # Generated feb_can_db.c / feb_can_db.h
 │   ├── msg_defs/
 │   ├── generate.py
 │   ├── generate_can.sh
@@ -204,7 +204,7 @@ See [`FEB_Serial_Library/README.md`](FEB_Serial_Library/README.md) for detailed 
 ### FEB CAN Library
 
 ```c
-#include "feb_can.h"
+#include "feb_can_db.h"
 
 // Initialize with configuration
 FEB_CAN_Config_t can_cfg = {

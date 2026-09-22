@@ -21,7 +21,7 @@
 #ifndef FEB_SN_CONFIG_H
 #define FEB_SN_CONFIG_H
 
-#include "feb_can.h"
+#include "feb_can_db.h"
 
 #define FEB_SN_VARIANT_FRONT 1
 #define FEB_SN_VARIANT_REAR 2

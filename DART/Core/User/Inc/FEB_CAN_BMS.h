@@ -5,7 +5,7 @@
 
 #include <stm32f0xx_hal.h>
 #include <stdint.h>
-#include "FEB_CAN_Library_SN4/gen/feb_can.h"
+#include "FEB_CAN_Library_SN4/gen/feb_can_db.h"
 #include "FEB_Fan.h"
 
 // ******************************** Functions ********************************

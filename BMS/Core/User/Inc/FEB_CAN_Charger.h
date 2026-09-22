@@ -5,7 +5,7 @@
  *
  * Charger: Elcon / HK "TC" family, part HK-J-H650-12 GEN3 (170-650 VDC).
  * DBC vendored at common/FEB_CAN_Library_SN4/elcon.dbc and fused into the
- * generated CAN library, so pack/unpack go through feb_can.h:
+ * generated CAN library, so pack/unpack go through feb_can_db.h:
  *   - charger -> BMS  : Charger_Status (0x18FF50E5) operating V / I / status flags
  *   - BMS  -> charger : Charger_Limits (0x1806E5F4) max V / max I / control
  *

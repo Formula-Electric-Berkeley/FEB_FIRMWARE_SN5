@@ -8,7 +8,7 @@
 #include "FEB_RFM95.h"
 #include "FEB_Radio_Protocol.h"
 #include "FEB_CAN_Stream.h"
-#include "feb_can_latest.h"
+#include "feb_can_db.h"
 #include "feb_log.h"
 #include "feb_uart.h"
 #include "cmsis_os.h"
@@ -50,7 +50,7 @@ static void on_decoded_frame(uint32_t can_id, uint8_t id_type, uint8_t bus, cons
   (void)id_type;
   (void)ctx;
 
-  int rc = FEB_CAN_State_Update(can_id, data, dlc, HAL_GetTick());
+  int rc = FEB_CAN_DB_Update(can_id, data, dlc, HAL_GetTick());
   if (rc != 0)
   {
     LOG_W(TAG, "CAN frame 0x%03X update failed (%d)", (unsigned)can_id, rc);

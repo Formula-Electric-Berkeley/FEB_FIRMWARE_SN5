@@ -55,7 +55,7 @@ file(GLOB CAN_LIB_SOURCES
 )
 
 # CAN library generated source (from common submodule)
-list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can.c" ${CAN_LIB_SOURCES})
+list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can_db.c" ${CAN_LIB_SOURCES})
 
 list(APPEND ALL_SOURCES
     Core/User/Src
@@ -119,8 +119,8 @@ set(BASE_INCLUDES
 # Common CAN library (submodule)
 set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4")
 list(APPEND BASE_INCLUDES
-    "${CAN_LIB_DIR}/.."          # resolves #include "FEB_CAN_Library_SN4/gen/feb_can.h"
-    "${CAN_LIB_DIR}/gen"         # resolves #include "feb_can.h" directly
+    "${CAN_LIB_DIR}/.."          # resolves #include "FEB_CAN_Library_SN4/gen/feb_can_db.h"
+    "${CAN_LIB_DIR}/gen"         # resolves #include "feb_can_db.h" directly
 )
 
 # FATFS includes
