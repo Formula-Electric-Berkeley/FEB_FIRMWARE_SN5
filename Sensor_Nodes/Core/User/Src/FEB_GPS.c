@@ -23,7 +23,19 @@ extern DMA_HandleTypeDef hdma_uart4_tx;
 
 /* Buffer sizes */
 #define GPS_TX_BUFFER_SIZE 256
-#define GPS_RX_BUFFER_SIZE 512
+#define GPS_RX_BUFFER_SIZE 1024
+
+/* Baud negotiation.
+ *
+ * UART4 is configured for GPS_BAUD_FAST in Sensor_Nodes.ioc, because 9600 baud
+ * (960 B/s) cannot carry GGA+GSA+RMC (~210 B) at anything above ~4 Hz. The
+ * MTK3339 keeps a PMTK251-set rate across an MCU-only reset but reverts to
+ * GPS_BAUD_DEFAULT whenever GPS_EN power-cycles it, so neither rate can be
+ * assumed at boot — probe for traffic and command the module up if needed. */
+#define GPS_BAUD_DEFAULT 9600U
+#define GPS_BAUD_FAST 115200U
+#define GPS_BOOT_SETTLE_MS 300U /* module needs to come up after GPS_EN rises */
+#define GPS_PROBE_WINDOW_MS 600U
 
 /* Static buffers */
 static uint8_t gps_tx_buffer[GPS_TX_BUFFER_SIZE];
@@ -39,9 +51,95 @@ static bool gps_data_updated = false;
 /* Module state */
 static bool gps_initialized = false;
 static bool gps_had_fix = false; /* Track previous fix state for change detection */
+static uint32_t gps_baud = GPS_BAUD_FAST;
+static volatile bool gps_sentence_seen = false; /* set by the line callback, read by the probe */
 
 /* Forward declaration */
 static void gps_rx_line_callback(const char *line, size_t len);
+
+/**
+ * @brief Match an NMEA sentence type, ignoring the talker ID.
+ *
+ * Sentences are "$ttXXX,..." — two talker chars (GP, GN, GL, ... depending on
+ * which constellations the module is using) then a three-char type. Matching on
+ * the type alone keeps this working if the talker changes.
+ */
+static inline bool nmea_is_sentence(const char *line, size_t len, const char *type)
+{
+  return (len >= 6u) && (memcmp(&line[3], type, 3u) == 0);
+}
+
+/**
+ * @brief Block until a well-formed NMEA sentence arrives, or the window closes.
+ *
+ * Used only during init to decide which rate the module is currently talking at
+ * — a wrong-baud line decodes as noise and never passes the '$' test.
+ */
+static bool gps_listen_for_nmea(uint32_t window_ms)
+{
+  gps_sentence_seen = false;
+
+  const uint32_t start = HAL_GetTick();
+  while ((uint32_t)(HAL_GetTick() - start) < window_ms)
+  {
+    FEB_UART_ProcessRx(FEB_UART_INSTANCE_2);
+    if (gps_sentence_seen)
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * @brief Bring the link up at GPS_BAUD_FAST, whatever rate the module booted at.
+ *
+ * @return the rate actually in use — GPS_BAUD_FAST on success, GPS_BAUD_DEFAULT
+ *         if the module had to be left slow. Never returns with the MCU and the
+ *         module on different rates, so GPS degrades rather than going dark.
+ */
+static uint32_t gps_negotiate_baud(void)
+{
+  /* Case 1: warm reset — the module kept its fast rate from a previous run. */
+  if (gps_listen_for_nmea(GPS_PROBE_WINDOW_MS))
+  {
+    return GPS_BAUD_FAST;
+  }
+
+  /* Case 2: cold start — it reverted to 9600. Drop down and command it up. */
+  LOG_T(TAG_GPS, "No NMEA at %lu, trying %lu", (unsigned long)GPS_BAUD_FAST, (unsigned long)GPS_BAUD_DEFAULT);
+  if (FEB_UART_SetBaudRate(FEB_UART_INSTANCE_2, GPS_BAUD_DEFAULT) != FEB_UART_OK)
+  {
+    LOG_E(TAG_GPS, "Cannot switch UART to %lu", (unsigned long)GPS_BAUD_DEFAULT);
+    return GPS_BAUD_FAST; /* UART is untouched, so it is still at the fast rate */
+  }
+
+  const bool heard_slow = gps_listen_for_nmea(GPS_PROBE_WINDOW_MS);
+  if (!heard_slow)
+  {
+    /* Silent at both rates. Still send the command — the module may just have
+     * been mid-boot — but report the slow rate so the caller can back off. */
+    LOG_W(TAG_GPS, "No NMEA at either baud; module may be absent");
+  }
+
+  FEB_GPS_SendPMTKCommand("PMTK251,115200");
+  HAL_Delay(250); /* let the command drain and the module re-latch */
+
+  if (FEB_UART_SetBaudRate(FEB_UART_INSTANCE_2, GPS_BAUD_FAST) != FEB_UART_OK)
+  {
+    return GPS_BAUD_DEFAULT;
+  }
+  if (gps_listen_for_nmea(GPS_PROBE_WINDOW_MS))
+  {
+    return GPS_BAUD_FAST;
+  }
+
+  /* PMTK251 did not take. Go back to whatever we could actually hear so the
+   * module stays usable at 1 Hz instead of silent at 10 Hz. */
+  LOG_W(TAG_GPS, "PMTK251 did not take; staying at %lu", (unsigned long)GPS_BAUD_DEFAULT);
+  (void)FEB_UART_SetBaudRate(FEB_UART_INSTANCE_2, GPS_BAUD_DEFAULT);
+  return GPS_BAUD_DEFAULT;
+}
 
 /**
  * @brief Initialize the GPS subsystem
@@ -84,10 +182,35 @@ int FEB_GPS_Init(void)
   /* Enable GPS module */
   FEB_GPS_SetEnabled(true);
 
+  /* Mark initialized before negotiating: SendPMTKCommand refuses to transmit
+   * until this is set, and the negotiation needs it. */
   gps_initialized = true;
-  LOG_T(TAG_GPS, "GPS initialized");
+  gps_baud = GPS_BAUD_FAST;
+
+  HAL_Delay(GPS_BOOT_SETTLE_MS);
+  gps_baud = gps_negotiate_baud();
+
+  LOG_T(TAG_GPS, "GPS initialized @ %lu baud", (unsigned long)gps_baud);
 
   return 0;
+}
+
+uint32_t FEB_GPS_GetBaudRate(void)
+{
+  return gps_baud;
+}
+
+uint32_t FEB_GPS_GetLastUpdateMs(void)
+{
+  /* Deliberately does not go through FEB_GPS_GetLatestData(): that call
+   * consumes the "new data" flag. This accessor is what lets callers detect a
+   * new fix without racing every other reader for that single flag. */
+  return gps_data.last_update_ms;
+}
+
+bool FEB_GPS_IsFastLink(void)
+{
+  return gps_baud >= GPS_BAUD_FAST;
 }
 
 /**
@@ -141,6 +264,9 @@ static void gps_rx_line_callback(const char *line, size_t len)
     return;
   }
 
+  /* Any well-formed sentence proves the link is at the right baud. */
+  gps_sentence_seen = true;
+
   /* Log raw NMEA sentence */
   LOG_T(TAG_GPS, "RX: %.*s", (int)len, line);
 
@@ -167,20 +293,22 @@ static void gps_rx_line_callback(const char *line, size_t len)
 
   LOG_T(TAG_GPS, "Parsed %d statement(s)", result);
 
-  /* Track previous timestamp to detect actual data updates */
-  static uint8_t prev_hours = 0xFF, prev_minutes = 0xFF, prev_seconds = 0xFF;
-  bool time_changed =
-      (gps_handle.hours != prev_hours) || (gps_handle.minutes != prev_minutes) || (gps_handle.seconds != prev_seconds);
-
-  /* Only update data if timestamp has changed (indicates new GPS fix) */
-  if (!time_changed && prev_hours != 0xFF)
+  /* Commit once per fix cycle, triggered by RMC.
+   *
+   * This used to gate on the UTC timestamp changing, but NMEA time has only
+   * one-second resolution and lwgps_t stores h/m/s as uint8_t with no
+   * fractional field — so above 1 Hz every fix after the first in a given
+   * second was silently dropped, capping the whole pipeline at 1 Hz no matter
+   * what PMTK220 asked for.
+   *
+   * The module emits one RMC per fix cycle, after GGA and GSA, so committing on
+   * RMC captures a complete, self-consistent snapshot (position + time from RMC,
+   * altitude from GGA, DOP from GSA) exactly once per cycle, at any update rate.
+   * Every sentence is still parsed; only the snapshot is gated. */
+  if (!nmea_is_sentence(line, len, "RMC"))
   {
-    LOG_T(TAG_GPS, "Skipping update - no new timestamp");
     return;
   }
-  prev_hours = gps_handle.hours;
-  prev_minutes = gps_handle.minutes;
-  prev_seconds = gps_handle.seconds;
 
   /* Update our data structure from LwGPS */
   gps_data.latitude = gps_handle.latitude;

@@ -288,9 +288,8 @@ void FEB_RMS_Torque(void)
 
   // Effective brake state used for gating and mode select below. With the bench
   // brake bypass on, the brake is assumed disconnected: treat it as released and
-  // plausible so the accelerator alone commands torque (no regen/coast
-  // diversion), and skip the BSPD check so a floating brake input can't latch a
-  // fault. Otherwise run the BSPD/brake-plausibility check so faults latch.
+  // plausible so the accelerator alone commands torque, and skip the brake fault
+  // checks so a floating brake input can't latch a fault.
   // brake_plausible folds in: the brake-pressure disagreement + latched BSE
   // open/short fault (both via Brake_Data.plausible) AND the EV.4.7 brake+throttle
   // latch (FEB_ADC_CheckBrakePlausibility). Detection/latching run in the 1 ms
@@ -337,7 +336,13 @@ void FEB_RMS_Torque(void)
   FEB_ADC_AcknowledgeAPPSImplausibility();
   FEB_ADC_AcknowledgeBrakeImplausibility();
 
-  // Determine operating mode: regen braking vs acceleration
+  /* Determine operating mode.
+   *
+   * With FEB_PCU_ENABLE_REGEN == 0 this collapses to a single rule: below
+   * BRAKE_POSITION_THRESHOLD the accelerator commands torque, otherwise torque
+   * is zero. That deliberately removes the old [15, 20] dead band, which fell
+   * through to zero with no log line at all. */
+#if FEB_PCU_ENABLE_REGEN
   if (brake_position > REGEN_BRAKE_POS_THRESH && sensors_plausible)
   {
     // REGEN MODE: Brake is pressed and sensors are plausible
@@ -347,7 +352,9 @@ void FEB_RMS_Torque(void)
     // torque_command = -1 * 10 * brake% * filtered_regen / 100
     RMS_CONTROL_MESSAGE.torque = (int16_t)(-10.0f * brake_position * filtered_regen / 100.0f);
   }
-  else if (brake_position < BRAKE_POSITION_THRESHOLD && sensors_plausible)
+  else
+#endif
+      if (brake_position < BRAKE_POSITION_THRESHOLD && sensors_plausible)
   {
     // ACCELERATION MODE: No brake and sensors are plausible
     // Calculate commanded torque: acceleration (0-100%) * max_torque

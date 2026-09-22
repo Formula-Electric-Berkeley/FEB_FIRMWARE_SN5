@@ -7,6 +7,17 @@
 extern I2C_HandleTypeDef hi2c3;
 extern stmdev_ctx_t lsm6dsox_ctx;
 
+/* Both sensors share the I2C3 platform layer below, so their addresses live
+ * here rather than being defined twice in the two .c files. */
+#define LSM6DSOX_I2C_ADDR 0x6A
+#define LIS3MDL_I2C_ADDR 0x1C
+
+/* Cumulative I2C3 transaction failures, attributed by device address. The
+ * read_* functions return void, so these counters are the only way to tell a
+ * chip that has fallen off the bus from one that is merely reading zero. */
+extern volatile uint32_t imu_bus_error_count;
+extern volatile uint32_t mag_bus_error_count;
+
 extern int16_t data_raw_acceleration[3];
 extern float_t acceleration_mg[3];
 

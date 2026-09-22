@@ -16,11 +16,21 @@
 #define WSS_STALE_US 200000u // 200 ms without an edge -> wheel considered stopped
 #define WSS_MPH_X100_MAX 65535u
 
-// Ground-speed conversion constants.  Rolling wheel: 85 mm diameter.
-//   circumference = pi * 85 mm = 267035.4 um  (round to 267035, error ~1.4e-6)
+// Ground-speed conversion constants.  Rolling wheel: 16 in tire, 406.4 mm OD.
+//   circumference = pi * 406.4 mm = 1276743.4 um  (round to 1276743)
 //   1 m/s = 2.2369363 mph  ->  223694 = round(2.2369363 * 1e5); the /1000 below
 //   rescales (um/us = m/s) into 0.01 mph units.
-#define WSS_WHEEL_CIRC_UM 267035u
+//
+// This was previously 267035 um, i.e. an 85 mm (3.3 in) diameter wheel — not the
+// car's tire. Every reported speed was therefore 4.78x too low; a DCU log peak of
+// 2.25 mph was really ~10.8 mph. DASH consumes 0x25 wss_rear_data, so displayed
+// speed was wrong by the same factor.
+//
+// This is the GEOMETRIC circumference. Loaded rolling circumference is typically
+// 2-3% smaller (~1245000 um). To calibrate properly: mark the tire, roll the car
+// one full revolution at ride height, measure the ground distance — or compare
+// 0x25 against GPS ground speed (0x52 gps_motion_data) over a steady run.
+#define WSS_WHEEL_CIRC_UM 1276743u
 #define WSS_MPH_PER_MPS_X1E5 223694u
 
 // Quadrature decode table indexed by ((last_cos << 3) | (last_sin << 2) | (cos_now << 1) | sin_now).
@@ -181,4 +191,14 @@ void WSS_Main(void)
 
   LOG_T(TAG_WSS, "L: pos=%ld mph_x100=%u dir=%d | R: pos=%ld mph_x100=%u dir=%d", (long)wheel_left.pos_edges,
         (unsigned)left_mph_x100, (int)left_dir, (long)wheel_right.pos_edges, (unsigned)right_mph_x100, (int)right_dir);
+}
+
+bool FEB_WSS_LeftHasSignal(void)
+{
+  return wheel_left.fill > 0u;
+}
+
+bool FEB_WSS_RightHasSignal(void)
+{
+  return wheel_right.fill > 0u;
 }

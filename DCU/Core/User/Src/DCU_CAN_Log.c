@@ -49,13 +49,21 @@ _Static_assert(sizeof(DCU_CAN_Frame_t) == 20, "DCU_CAN_Frame_t layout changed �
 #define DCU_CAN_LOG_SD_IO_TIMEOUT_MS 5000U
 #define DCU_CAN_LOG_MAX_SESSION_ID 9999U
 
+/* How often to re-attempt SD bring-up after a failed mount, so a card inserted
+ * after power-on still starts logging. The retry blocks on the SD task, so it
+ * is only ever attempted when there is no pending frame work (see the loop). */
+#define DCU_CAN_LOG_SD_RETRY_INTERVAL_MS 10000U
+
 /* External RTOS handles defined in freertos.c ----------------------------- */
 extern osMessageQueueId_t canLogQueueHandle;
 
 /* Module state ------------------------------------------------------------- */
 
 static char s_filename[DCU_CAN_LOG_FILENAME_MAX];
+/* s_active: CAN capture is running (wildcards registered). Independent of SD —
+ * see StartCanLogTask. s_sd_ok: an SD file is open and being written. */
 static volatile bool s_active = false;
+static volatile bool s_sd_ok = false;
 static volatile uint32_t s_written_count = 0;
 static volatile uint32_t s_drop_count = 0;
 
@@ -259,15 +267,15 @@ void StartCanLogTask(void *argument)
   (void)argument;
   LOG_I(TAG_CAN_LOG, "canLogTask starting");
 
-  if (!prepare_sd_file())
-  {
-    LOG_E(TAG_CAN_LOG, "SD prep failed — logger idle (CAN frames not captured)");
-    for (;;)
-    {
-      osDelay(pdMS_TO_TICKS(1000));
-    }
-  }
-
+  /* Register the CAN wildcards FIRST, and unconditionally.
+   *
+   * This used to run after prepare_sd_file(), behind an early `for(;;) osDelay`
+   * bail-out — so a missing or unmountable card meant the RX handlers were never
+   * registered at all. Because this is the only place they are registered, and
+   * because FEB_Task_Radio_ForwardCanFrame() is only ever called from this
+   * task's loop below, "no SD card" silently killed *everything*: no capture, no
+   * console stream, and a dead radio link. Losing the card must cost us the card,
+   * nothing else. */
   if (!register_wildcards())
   {
     LOG_E(TAG_CAN_LOG, "Wildcard registration failed — logger idle");
@@ -278,7 +286,15 @@ void StartCanLogTask(void *argument)
   }
 
   s_active = true;
+
+  s_sd_ok = prepare_sd_file();
+  if (!s_sd_ok)
+  {
+    LOG_W(TAG_CAN_LOG, "SD prep failed — continuing without SD (radio + console stream still live)");
+  }
+
   uint32_t last_flush_ms = HAL_GetTick();
+  uint32_t last_sd_retry_ms = HAL_GetTick();
   char line_buf[DCU_CAN_LOG_LINE_BUF_BYTES];
 
   for (;;)
@@ -297,9 +313,9 @@ void StartCanLogTask(void *argument)
         /* SD path: prepend timestamp, append CRLF.
          *   "<ts_ms>,<bus>,<can_id>,<dlc>,<d0..d7>\r\n" */
         char ts_buf[12];
-        const int ts_len = snprintf(ts_buf, sizeof(ts_buf), "%lu,", (unsigned long)frame.ts_ms);
+        const int ts_len = s_sd_ok ? snprintf(ts_buf, sizeof(ts_buf), "%lu,", (unsigned long)frame.ts_ms) : 0;
         const size_t total = (size_t)ts_len + (size_t)body_len + 2U;
-        if (ts_len > 0 && (s_flush_used + total) <= sizeof(s_flush_buf))
+        if (s_sd_ok && ts_len > 0 && (s_flush_used + total) <= sizeof(s_flush_buf))
         {
           memcpy(&s_flush_buf[s_flush_used], ts_buf, (size_t)ts_len);
           s_flush_used += (size_t)ts_len;
@@ -337,6 +353,22 @@ void StartCanLogTask(void *argument)
       flush_buffer();
       last_flush_ms = HAL_GetTick();
     }
+
+    /* Card inserted after power-on? Retry bring-up so the session starts logging
+     * from here. prepare_sd_file() blocks on sdTask (mount + header write), so
+     * only attempt it while nothing is queued — otherwise the stall would back
+     * canLogQueue up and start dropping frames on the radio path too. */
+    if (!s_sd_ok && (uint32_t)(HAL_GetTick() - last_sd_retry_ms) >= DCU_CAN_LOG_SD_RETRY_INTERVAL_MS &&
+        DCU_CAN_Log_GetQueueDepth() == 0U)
+    {
+      last_sd_retry_ms = HAL_GetTick();
+      s_sd_ok = prepare_sd_file();
+      if (s_sd_ok)
+      {
+        LOG_I(TAG_CAN_LOG, "SD became available — logging to %s", s_filename);
+        last_flush_ms = HAL_GetTick();
+      }
+    }
   }
 }
 
@@ -345,6 +377,11 @@ void StartCanLogTask(void *argument)
 bool DCU_CAN_Log_IsActive(void)
 {
   return s_active;
+}
+
+bool DCU_CAN_Log_IsSdActive(void)
+{
+  return s_sd_ok;
 }
 uint32_t DCU_CAN_Log_GetDropCount(void)
 {
@@ -367,8 +404,9 @@ const char *DCU_CAN_Log_GetFilename(void)
 
 void DCU_CAN_Log_PrintStats(void)
 {
-  LOG_I(TAG_CAN_LOG, "active=%d file=%s written=%lu drops=%lu qdepth=%lu", (int)s_active, DCU_CAN_Log_GetFilename(),
-        (unsigned long)s_written_count, (unsigned long)s_drop_count, (unsigned long)DCU_CAN_Log_GetQueueDepth());
+  LOG_I(TAG_CAN_LOG, "active=%d sd=%d file=%s written=%lu drops=%lu qdepth=%lu", (int)s_active, (int)s_sd_ok,
+        DCU_CAN_Log_GetFilename(), (unsigned long)s_written_count, (unsigned long)s_drop_count,
+        (unsigned long)DCU_CAN_Log_GetQueueDepth());
 }
 
 /* ============================================================================

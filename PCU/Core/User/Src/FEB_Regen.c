@@ -12,6 +12,11 @@
 #include "FEB_Regen.h"
 #include "feb_log.h"
 
+/* Compiled out on SN5 (see FEB_PCU_ENABLE_REGEN in FEB_RMS_Config.h). The
+ * #include above stays outside the guard so this translation unit still has
+ * declarations in it — the file stays in the CMake source glob, so it is always compiled. */
+#if FEB_PCU_ENABLE_REGEN
+
 /* External references to RMS and BMS data */
 extern RMS_MESSAGE_TYPE RMS_MESSAGE;
 
@@ -183,3 +188,5 @@ bool FEB_Regen_IsAllowedByBMS(void)
   }
   return allowed;
 }
+
+#endif /* FEB_PCU_ENABLE_REGEN */

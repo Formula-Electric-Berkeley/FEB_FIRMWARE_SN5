@@ -20,6 +20,7 @@
 #include "FEB_CAN_LinearPotentiometer.h"
 #include "FEB_SN_PingPong.h"
 #include "FEB_CAN_IRTSSensorConfig.h"
+#include "FEB_CAN_Heartbeat.h"
 
 #include "feb_uart.h"
 #include "feb_log.h"
@@ -36,12 +37,13 @@
  * filled the 16-deep TX FIFO — starving lower-rate frames (notably WSS, which
  * appeared to "stop after one send"). 10 Hz drops Fusion to 50 frames/s and
  * leaves the bus comfortable. Fusion still uses a µs-accurate dt from TIM5. */
-#define TICK_PERIOD_IMU_MS 100u   /* 10 Hz: IMU + mag sample + Fusion update + IMU/mag/fusion CAN */
-#define TICK_PERIOD_WSS_MS 20u    /* 50 Hz: WSS computation + CAN */
-#define TICK_PERIOD_LP_MS 20u     /* 50 Hz: linear potentiometer sample + CAN */
-#define TICK_PERIOD_GPS_MS 200u   /* 5  Hz: GPS frames (six per tick) */
-#define TICK_PERIOD_TEMP_MS 1000u /* 1  Hz: temperatures */
-#define TICK_PERIOD_PING_MS 100u  /* 10 Hz: CAN ping/pong test service */
+#define TICK_PERIOD_IMU_MS 100u       /* 10 Hz: IMU + mag sample + Fusion update + IMU/mag/fusion CAN */
+#define TICK_PERIOD_WSS_MS 20u        /* 50 Hz: WSS computation + CAN */
+#define TICK_PERIOD_LP_MS 20u         /* 50 Hz: linear potentiometer sample + CAN */
+#define TICK_PERIOD_GPS_MS 20u        /* 50 Hz poll; the reporter self-gates on new fixes */
+#define TICK_PERIOD_TEMP_MS 1000u     /* 1  Hz: temperatures */
+#define TICK_PERIOD_PING_MS 100u      /* 10 Hz: CAN ping/pong test service */
+#define TICK_PERIOD_HEARTBEAT_MS 100u /* 10 Hz: node liveness + fault flags (0xD4/0xD5) */
 
 static bool gps_ready = false;
 
@@ -88,6 +90,9 @@ void FEB_Init(void)
 
   FEB_Console_Printf("Sensor Node (%s) Starting\r\n", FEB_SN_VARIANT_NAME);
 
+  /* Reset the heartbeat fault table before the drivers start reporting into it. */
+  FEB_CAN_Heartbeat_Init();
+
   /* Free-running 1 MHz µs counter for Fusion dt and WSS edge timestamps. */
   HAL_TIM_Base_Start(&htim5);
 
@@ -95,6 +100,7 @@ void FEB_Init(void)
   if (lsm6dsox_init() != 0)
   {
     LOG_E(TAG_MAIN, "IMU init failed");
+    FEB_CAN_Heartbeat_SetFault(FEB_SN_FAULT_IMU_INIT, true);
   }
   else
   {
@@ -105,8 +111,15 @@ void FEB_Init(void)
 #endif
 
 #if FEB_SN_HAS_MAG
-  lis3mdl_init();
-  FEB_Console_Printf("Magnetometer initialized\r\n");
+  if (lis3mdl_init() != 0)
+  {
+    LOG_E(TAG_MAIN, "Magnetometer init failed");
+    FEB_CAN_Heartbeat_SetFault(FEB_SN_FAULT_MAG_INIT, true);
+  }
+  else
+  {
+    FEB_Console_Printf("Magnetometer initialized\r\n");
+  }
 #else
   FEB_Console_Printf("Magnetometer absent on this variant\r\n");
 #endif
@@ -141,6 +154,7 @@ void FEB_Init(void)
   if (gps_result != 0)
   {
     LOG_E(TAG_MAIN, "GPS init failed: %d", gps_result);
+    FEB_CAN_Heartbeat_SetFault(FEB_SN_FAULT_GPS_INIT, true);
     gps_ready = false;
   }
   else
@@ -149,12 +163,27 @@ void FEB_Init(void)
     if (cfg_result < 0)
     {
       LOG_W(TAG_MAIN, "GPS config output failed: %d", cfg_result);
-      FEB_Console_Printf("GPS initialized (degraded)\r\n");
     }
-    else
+
+    /* Ask for the fastest fix rate the link can carry. The module powers up at
+     * its 1 Hz default and stays there unless told otherwise — this call was
+     * missing, which is why GPS ran at 1 Hz regardless of how often we polled.
+     * 10 Hz needs the 115200 link negotiated in FEB_GPS_Init(); at 9600 the
+     * sentences would not fit in the interval, so stay at 1 Hz there. */
+    const bool gps_fast = FEB_GPS_IsFastLink();
+    const uint8_t gps_hz = gps_fast ? 10u : 1u;
+    if (FEB_GPS_SetUpdateRate(gps_hz) < 0)
     {
-      FEB_Console_Printf("GPS initialized\r\n");
+      LOG_W(TAG_MAIN, "GPS update rate %u Hz rejected", (unsigned)gps_hz);
     }
+
+    /* SBAS/WAAS differential corrections: roughly 2.5 m CEP -> 1-2 m. Free
+     * accuracy, costs nothing on the wire. */
+    FEB_GPS_SendPMTKCommand("PMTK313,1"); /* enable SBAS satellite search */
+    FEB_GPS_SendPMTKCommand("PMTK301,2"); /* use SBAS for DGPS corrections */
+
+    FEB_Console_Printf("GPS initialized (%lu baud, %u Hz%s)\r\n", (unsigned long)FEB_GPS_GetBaudRate(),
+                       (unsigned)gps_hz, cfg_result < 0 ? ", degraded" : "");
     gps_ready = true;
   }
 #else
@@ -259,6 +288,7 @@ void FEB_Main_Loop(void)
   static uint32_t t_gps_ms = 0;
   static uint32_t t_temp_ms = 0;
   static uint32_t t_ping_ms = 0;
+  static uint32_t t_heartbeat_ms = 0;
   static uint32_t prev_fusion_us = 0;
   static bool fusion_dt_primed = false;
 
@@ -366,6 +396,16 @@ void FEB_Main_Loop(void)
   {
     FEB_SN_PingPong_Tick();
     t_ping_ms = now_ms;
+  }
+
+  /* 10 Hz: node heartbeat (0xD4 FRONT / 0xD5 REAR). Deliberately unconditional
+   * and outside every sensor gate — the rest of the car uses its arrival to
+   * tell a live node from a dead one, so it must keep going out even when the
+   * sensors themselves are faulted. */
+  if ((uint32_t)(now_ms - t_heartbeat_ms) >= TICK_PERIOD_HEARTBEAT_MS)
+  {
+    FEB_CAN_Heartbeat_Tick();
+    t_heartbeat_ms = now_ms;
   }
 
   /* IRTS sensor-config burst: self-gates on its own 1 Hz cadence and stops

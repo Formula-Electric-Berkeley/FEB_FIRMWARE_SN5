@@ -11,7 +11,6 @@
 
 stmdev_ctx_t lis3mdl_ctx;
 extern I2C_HandleTypeDef hi2c3;
-#define LIS3MDL_I2C_ADDR 0x1C
 
 int16_t data_raw_magnetometer[3];
 float_t magnetic_mG[3];
@@ -30,7 +29,7 @@ int32_t lis3mdl_write(void *handle, uint8_t reg, const uint8_t *bufp, uint16_t l
   return platform_write(handle, LIS3MDL_I2C_ADDR, reg, bufp, len); // TODO: adjust Devaddress
 }
 
-void lis3mdl_init()
+int lis3mdl_init(void)
 {
   lis3mdl_ctx.write_reg = lis3mdl_write;
   lis3mdl_ctx.read_reg = lis3mdl_read;
@@ -44,7 +43,7 @@ void lis3mdl_init()
   if (whoamI != LIS3MDL_ID)
   {
     LOG_E(TAG_MAG, "Magnetometer not found (WHO_AM_I: 0x%02X)", whoamI);
-    return;
+    return -1;
   }
 
   lis3mdl_block_data_update_set(&lis3mdl_ctx, PROPERTY_ENABLE);
@@ -52,6 +51,8 @@ void lis3mdl_init()
   lis3mdl_data_rate_set(&lis3mdl_ctx, LIS3MDL_UHP_155Hz);
   lis3mdl_full_scale_set(&lis3mdl_ctx, LIS3MDL_16_GAUSS);
   lis3mdl_operating_mode_set(&lis3mdl_ctx, LIS3MDL_CONTINUOUS_MODE);
+
+  return 0;
 }
 
 void read_Magnetic_Field_Data()

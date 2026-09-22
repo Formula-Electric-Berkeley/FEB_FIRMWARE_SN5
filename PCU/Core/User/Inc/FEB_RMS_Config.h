@@ -23,6 +23,26 @@ extern "C"
 #endif
 
 /* ========================================================================== */
+/*                           FEATURE GATES                                    */
+/* ========================================================================== */
+
+/**
+ * @brief Compile regenerative braking in (1) or out (0)
+ *
+ * SN5 does not use regen. Leaving the code live was not harmless: the mode
+ * selector in FEB_RMS_Torque() picked the regen branch purely on brake
+ * position, with no accelerator check and without consulting
+ * FEB_Regen_IsAllowedByBMS() (which has no callers at all) — so brake > 20%
+ * commanded NEGATIVE torque while the driver was on the throttle, and 15-20%
+ * fell through to a silent zero.
+ *
+ * With this at 0 the selector is one rule: below BRAKE_POSITION_THRESHOLD the
+ * accelerator commands torque, at or above it torque is zero. FEB_Regen.{c,h}
+ * still compile (they stay in the CMake source glob) but emit nothing.
+ */
+#define FEB_PCU_ENABLE_REGEN 0
+
+/* ========================================================================== */
 /*                           MOTOR CONFIGURATION                              */
 /* ========================================================================== */
 

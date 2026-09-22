@@ -322,6 +322,26 @@ typedef void *FEB_UART_QueueHandle_t;
   void FEB_UART_DeInit(FEB_UART_Instance_t instance);
 
   /**
+   * @brief Change the line rate of an already-initialized instance
+   *
+   * Reconfigures the underlying HAL handle to @p baud and restarts DMA
+   * reception, keeping the registered buffers, callbacks and operating mode
+   * intact (unlike DeInit + Init, which clears all of them).
+   *
+   * Any bytes still in flight were clocked at the previous rate and would
+   * decode as garbage, so the RX ring and the partial-line buffer are dropped.
+   * Let the peer settle before trusting the first sentence afterwards.
+   *
+   * Intended for peers whose rate is negotiated at runtime — e.g. sending a
+   * GPS module a "switch to 115200" command, then following it up.
+   *
+   * @param instance UART instance to reconfigure (must be initialized)
+   * @param baud     New baud rate, e.g. 9600 or 115200
+   * @return 0 on success, negative error code on failure
+   */
+  int FEB_UART_SetBaudRate(FEB_UART_Instance_t instance, uint32_t baud);
+
+  /**
    * @brief Check if instance is initialized
    *
    * @param instance UART instance to check

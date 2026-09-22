@@ -22,6 +22,8 @@ extern "C"
 #include <stdbool.h>
 #include <math.h>
 
+#if FEB_PCU_ENABLE_REGEN
+
 /* ========================================================================== */
 /*                          REGEN CONSTANTS (SN3)                            */
 /* ========================================================================== */
@@ -105,6 +107,8 @@ extern "C"
 /* Helper macros */
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+#endif /* FEB_PCU_ENABLE_REGEN */
 
 #ifdef __cplusplus
 }

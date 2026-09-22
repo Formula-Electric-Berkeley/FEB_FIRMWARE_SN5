@@ -16,17 +16,17 @@ From [`Sensor_Nodes.ioc`](Sensor_Nodes.ioc):
 
 - **CAN1, CAN2** — dual-bus CAN
 - **I2C1, I2C3** — IMU + magnetometer
-- **UART4** — GPS (NMEA)
+- **UART4** — GPS (NMEA) @ 115200 (see *GPS update rate* below)
 - **USART2** — debug console
 - **ADC1** — wheel-speed sensing
 - **DMA**, **NVIC**
 
 ## Variants
 
-| Variant | Output ELF | WSS | IMU accel/gyro | Mag | GPS (6 frames) | Fusion (5 frames) | Sensor temps |
-|---|---|---|---|---|---|---|---|
-| FRONT (default) | `Sensor_Nodes_FRONT.elf` | 0x24 | 0x26 / 0x28 | 0x2A | 0x40–0x45 | 0x47–0x4B | 0x4C |
-| REAR            | `Sensor_Nodes_REAR.elf`  | 0x25 | 0x27 / 0x29 | 0x2B | 0x50–0x55 | 0x57–0x5B | 0x4D |
+| Variant | Output ELF | WSS | IMU accel/gyro | Mag | GPS (6 frames) | Fusion (5 frames) | Sensor temps | LinPot | Heartbeat |
+|---|---|---|---|---|---|---|---|---|---|
+| FRONT (default) | `Sensor_Nodes_FRONT.elf` | 0x24 | 0x26 / 0x28 | 0x2A | 0x40–0x45 | 0x47–0x4B | 0x4C | 0x1E | 0xD4 |
+| REAR            | `Sensor_Nodes_REAR.elf`  | 0x25 | 0x27 / 0x29 | 0x2B | 0x50–0x55 | 0x57–0x5B | 0x4D | 0x1F | 0xD5 |
 
 ### Selecting a variant
 
@@ -95,6 +95,23 @@ CAN pack/unpack is compiled from [`common/FEB_CAN_Library_SN4/gen/feb_can.c`](..
 
 `Core/User/Src/FEB_main.c` (lowercase `main`, same as DART). User modules include `FEB_IMU.c`, `FEB_Magnetometer.c`, `FEB_GPS.c`, `FEB_WSS.c`, and `FEB_CAN_IMU.c`. The variant config header is `Core/User/Inc/FEB_SN_Config.h`.
 
+## GPS update rate
+
+The receiver runs at **10 Hz**, and the six GPS frames are published **as each fix
+lands** rather than on a fixed timer. Four things have to line up for that, and all
+four used to be wrong — the pipeline was effectively 1 Hz:
+
+| Stage | Mechanism |
+|---|---|
+| Link rate | UART4 is 115200 in the `.ioc`. 9600 (960 B/s) cannot carry GGA+GSA+RMC (~210 B) above ~4 Hz. |
+| Baud negotiation | `FEB_GPS_Init()` probes for NMEA, and if the module came up at its 9600 default sends `PMTK251,115200` and follows it up. Falls back to 9600 @ 1 Hz rather than going silent. |
+| Fix rate | `FEB_GPS_SetUpdateRate(10)` (`PMTK220,100`) at boot. Without it the MTK3339 stays at its 1 Hz factory default. |
+| Commit trigger | The snapshot is committed once per RMC. It used to gate on the UTC second changing, but NMEA time is whole-second only, so every fix after the first in a given second was dropped. |
+
+Accuracy is helped by SBAS/WAAS (`PMTK313,1` + `PMTK301,2`, ~2.5 m CEP → 1–2 m). The
+parser is double-precision (`LWGPS_CFG_DOUBLE`) and lat/lon go out as int32 at 1e-7 deg
+(~1.1 cm), so neither the parser nor the wire format limits precision — the receiver does.
+
 ## Notes
 
 - **Bare-metal polling.** No FreeRTOS — all sensors are polled from the main loop.
@@ -102,7 +119,9 @@ CAN pack/unpack is compiled from [`common/FEB_CAN_Library_SN4/gen/feb_can.c`](..
 - **Largest LOC.** More user code than any other board — be mindful of the `Core/User/` tree when navigating.
 - **LwGPS** lives outside `common/` on purpose: it's a third-party drop-in, not a FEB library.
 - **Single `.ioc`.** Both variants share `Sensor_Nodes.ioc` (same PCB). If FRONT/REAR ever require different pin maps, split into two `.ioc` files and gate the generated `Core/Src/main.c` by `SENSOR_NODE_VARIANT`.
-- **Heartbeat (0xD4 / 0xD5).** Defined in the DBC but not yet transmitted by this firmware — deferred to a follow-up.
+- **Heartbeat (0xD4 / 0xD5).** Transmitted at 10 Hz by `FEB_CAN_Heartbeat.c`. Carries named error bits (see
+  `common/FEB_CAN_Library_SN4/msg_defs/sensor_nodes_messages.py`) grouped by byte: device faults, data
+  freshness, CAN health. The BMS keys node presence off its arrival (`FEB_HB_FSN` / `FEB_HB_RSN`).
 
 ## See Also
 

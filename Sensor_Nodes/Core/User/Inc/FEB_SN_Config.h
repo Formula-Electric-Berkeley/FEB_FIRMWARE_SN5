@@ -255,6 +255,14 @@ extern const char FEB_SN_VARIANT_NAME[];
 #define feb_sn_linpot_left linear_potentiometer_1_front
 #define feb_sn_linpot_right linear_potentiometer_2_front
 
+/* ---------------- Node heartbeat (0xD4 FRONT / 0xD5 REAR) ----------------
+ * Both variants carry an identical named-bit layout, so only the frame ID,
+ * length, struct and pack fn need aliasing — the signal members are shared. */
+#define FEB_SN_HEARTBEAT_FRAME_ID FEB_CAN_FRONT_SENSOR_HEARTBEAT_MESSAGE_FRAME_ID
+#define FEB_SN_HEARTBEAT_LENGTH FEB_CAN_FRONT_SENSOR_HEARTBEAT_MESSAGE_LENGTH
+#define feb_sn_heartbeat_t feb_can_front_sensor_heartbeat_message_t
+#define feb_sn_heartbeat_pack feb_can_front_sensor_heartbeat_message_pack
+
 #else /* REAR */
 
 /* ---------------- IMU acceleration (REAR = 0x27) ---------------- */
@@ -415,6 +423,12 @@ extern const char FEB_SN_VARIANT_NAME[];
 #define feb_sn_linpot_pack feb_can_linear_potentiometer_rear_pack
 #define feb_sn_linpot_left linear_potentiometer_1_rear
 #define feb_sn_linpot_right linear_potentiometer_2_rear
+
+/* ---------------- Node heartbeat (REAR = 0xD5) ---------------- */
+#define FEB_SN_HEARTBEAT_FRAME_ID FEB_CAN_REAR_SENSOR_HEARTBEAT_MESSAGE_FRAME_ID
+#define FEB_SN_HEARTBEAT_LENGTH FEB_CAN_REAR_SENSOR_HEARTBEAT_MESSAGE_LENGTH
+#define feb_sn_heartbeat_t feb_can_rear_sensor_heartbeat_message_t
+#define feb_sn_heartbeat_pack feb_can_rear_sensor_heartbeat_message_pack
 
 #endif
 

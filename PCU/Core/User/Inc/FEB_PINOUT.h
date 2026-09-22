@@ -168,10 +168,30 @@ extern "C"
 /* Brake Pressure Sensor Default Calibration — per-sensor, sensor-side mV
  * (i.e. before the 5V->3.3V PCB divider; FEB_ADC_GetBrakePressureNVoltage()
  * already multiplies by VOLTAGE_DIVIDER_RATIO_BRAKE to give sensor-side V). */
-#define BRAKE_PRESSURE_1_MIN_MV 465                         /* Sensor 1 @ 0% brake: */
-#define BRAKE_PRESSURE_1_MAX_MV 1130                        /* Sensor 1 @ 100% brake: */
-#define BRAKE_PRESSURE_2_MIN_MV 555                         /* Sensor 2 @ 0% brake: */
-#define BRAKE_PRESSURE_2_MAX_MV 1455                        /* Sensor 2 @ 100% brake: */
+/* Calibrated 2026-09-20 from DCU log LOG_0030 (0x39 pcu_pedal_voltages telemetry,
+ * 99 s / 108820 frames). The previous values did not match the installed sensors:
+ *
+ *            measured rest   was    error        measured peak   was
+ *   brake1        428 mV     465   -37 mV             997 mV    1130
+ *   brake2        576 mV     555   +21 mV            1512 mV    1455
+ *
+ * Symptoms that came from this and should now be gone:
+ *   - brake1 rest sat BELOW its configured zero, so MapRange+Constrain clamped it to
+ *     0.00% in 868/967 logged frames (90%) — this is what tripped the "0 sensor" check.
+ *   - brake2 rest read ~2.6%, above BRAKE_PRESSURE_THRESHOLD_PERCENT (2.5), arming the
+ *     EV.4.7 brake+throttle latch in 611/967 frames.
+ *   - The configured span ratio (900/665 = 1.353) disagreed with the measured sensor
+ *     relationship (brake2_mv = 1.601*brake1_mv - 80.7), so the two channels diverged
+ *     under pressure and blew past BRAKE_PRESSURE_PLAUSIBILITY_TOLERANCE_PERCENT in
+ *     77/967 frames -> "Brake sensor implausible, cutting torque".
+ *
+ * NOTE: the MAX values are the hardest brake application present in that log, which may
+ * not have been full pedal. Re-measure with a known full-pressure application and update
+ * if brake_position saturates early. The MIN values are solid either way. */
+#define BRAKE_PRESSURE_1_MIN_MV 428                         /* Sensor 1 @ 0% brake: measured */
+#define BRAKE_PRESSURE_1_MAX_MV 997                         /* Sensor 1 @ 100% brake: measured peak */
+#define BRAKE_PRESSURE_2_MIN_MV 576                         /* Sensor 2 @ 0% brake: measured */
+#define BRAKE_PRESSURE_2_MAX_MV 1512                        /* Sensor 2 @ 100% brake: measured peak */
 #define BRAKE_PRESSURE_MIN_PHYSICAL_BAR 0.0f                /* Physical minimum: 0 bar */
 #define BRAKE_PRESSURE_MAX_PHYSICAL_BAR 200.0f              /* Physical maximum: 200 bar */
 #define BRAKE_PRESSURE_THRESHOLD_BAR 5                      /* Brake activation threshold */

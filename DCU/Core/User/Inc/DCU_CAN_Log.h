@@ -36,7 +36,7 @@ extern "C"
 #include <stdint.h>
 
   /**
-   * @brief Captured CAN frame, sized to match the canLogQueue item width (24 B).
+   * @brief Captured CAN frame, sized to match the canLogQueue item width (20 B).
    *
    * The struct layout is asserted at build time inside DCU_CAN_Log.c so any
    * change here that breaks the queue contract fails loudly. The tag name
@@ -50,7 +50,7 @@ extern "C"
     uint8_t dlc;       /**< 0..8 */
     uint8_t bus;       /**< 1 = CAN1, 2 = CAN2 */
     uint8_t id_type;   /**< 0 = standard 11-bit, 1 = extended 29-bit */
-    uint8_t reserved_; /**< Padding to keep sizeof == 24 */
+    uint8_t reserved_; /**< Padding to keep sizeof == 20 */
   };
 
   typedef struct DCU_CAN_Frame DCU_CAN_Frame_t;
@@ -62,8 +62,17 @@ extern "C"
    */
   void DCU_CAN_Log_PrintStats(void);
 
-  /** @return true once the SD card is open and the CSV header has been written. */
+  /**
+   * @return true once CAN capture is running (wildcards registered).
+   *
+   * Deliberately independent of the SD card: capture, the console stream and
+   * radio forwarding all keep working with no card present. Use
+   * DCU_CAN_Log_IsSdActive() to ask specifically about SD logging.
+   */
   bool DCU_CAN_Log_IsActive(void);
+
+  /** @return true when an SD file is open and rows are being written to it. */
+  bool DCU_CAN_Log_IsSdActive(void);
 
   /** @return Number of frames dropped from canLogQueue (queue-full events). */
   uint32_t DCU_CAN_Log_GetDropCount(void);

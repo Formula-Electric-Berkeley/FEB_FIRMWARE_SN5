@@ -22,7 +22,13 @@
 #include "feb_can.h"
 #include "FEB_GPS.h"
 #include "FEB_SN_Config.h"
+#include "stm32f4xx_hal.h"
 #include <stdint.h>
+
+/* Longest gap between bursts when the receiver has nothing new. Keeps the six
+ * IDs alive on the bus (so a consumer can tell "no new fix" from "node dead")
+ * without spending bandwidth re-sending an unchanged fix at the full rate. */
+#define GPS_KEEPALIVE_MS 1000u
 
 static uint32_t can_tx_error_count = 0;
 
@@ -43,6 +49,30 @@ void FEB_CAN_GPS_Tick(void)
 #if FEB_SN_HAS_GPS
   FEB_GPS_Data_t gps;
   (void)FEB_GPS_GetLatestData(&gps);
+
+  /* Event-driven: emit the burst when a new fix actually lands, so the CAN rate
+   * tracks the receiver's update rate exactly instead of re-sending one 1 Hz fix
+   * five times a second. This tick is polled far faster than fixes arrive (see
+   * TICK_PERIOD_GPS_MS).
+   *
+   * Freshness is decided by comparing the fix timestamp against the last one we
+   * published, NOT by FEB_GPS_GetLatestData()'s return value: that flag is
+   * cleared by whoever reads it first, and the SN|gps|* console commands read
+   * the same data. Keying on the timestamp means a console query cannot swallow
+   * a CAN burst. */
+  static uint32_t last_tx_ms = 0;
+  static uint32_t last_published_fix_ms = 0;
+
+  const uint32_t now_ms = HAL_GetTick();
+  const uint32_t fix_ms = FEB_GPS_GetLastUpdateMs();
+  const bool fresh = (fix_ms != last_published_fix_ms);
+
+  if (!fresh && (uint32_t)(now_ms - last_tx_ms) < GPS_KEEPALIVE_MS)
+  {
+    return;
+  }
+  last_published_fix_ms = fix_ms;
+  last_tx_ms = now_ms;
 
   /* ---------------- Position (FRONT 0x40 / REAR 0x50) ---------------- */
   {

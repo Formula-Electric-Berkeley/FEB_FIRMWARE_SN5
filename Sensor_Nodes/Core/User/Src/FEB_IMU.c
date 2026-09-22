@@ -11,7 +11,6 @@
 
 stmdev_ctx_t lsm6dsox_ctx;
 extern I2C_HandleTypeDef hi2c3;
-#define LSM6DSOX_I2C_ADDR 0x6A
 #define I2C_TIMEOUT_MS 5
 extern UART_HandleTypeDef huart2;
 
@@ -26,10 +25,36 @@ float_t imu_temp_c;
 
 // static uint8_t tx_buffer[1000];
 
+/* Per-device I2C3 failure tallies.
+ *
+ * Both the IMU and the magnetometer hang off this one platform layer and the
+ * read_* entry points all return void, so a chip that drops off the bus used to
+ * be completely silent — the last good sample just kept being republished on
+ * CAN. Counting failures here, attributed by device address, is what lets the
+ * heartbeat report imu_read_failed / mag_read_failed. */
+volatile uint32_t imu_bus_error_count = 0;
+volatile uint32_t mag_bus_error_count = 0;
+
+static void platform_note_error(uint8_t devaddress)
+{
+  if (devaddress == LSM6DSOX_I2C_ADDR)
+  {
+    imu_bus_error_count++;
+  }
+  else if (devaddress == LIS3MDL_I2C_ADDR)
+  {
+    mag_bus_error_count++;
+  }
+}
+
 int32_t platform_write(void *handle, uint8_t devaddress, uint8_t reg, const uint8_t *bufp, uint16_t len)
 {
   HAL_StatusTypeDef ret;
   ret = HAL_I2C_Mem_Write(handle, devaddress << 1, reg, I2C_MEMADD_SIZE_8BIT, (uint8_t *)bufp, len, I2C_TIMEOUT_MS);
+  if (ret != HAL_OK)
+  {
+    platform_note_error(devaddress);
+  }
   return (ret == HAL_OK) ? 0 : -1;
 }
 
@@ -37,6 +62,10 @@ int32_t platform_read(void *handle, uint8_t devaddress, uint8_t reg, uint8_t *bu
 {
   HAL_StatusTypeDef ret;
   ret = HAL_I2C_Mem_Read(handle, devaddress << 1, reg, I2C_MEMADD_SIZE_8BIT, (uint8_t *)bufp, len, I2C_TIMEOUT_MS);
+  if (ret != HAL_OK)
+  {
+    platform_note_error(devaddress);
+  }
   return (ret == HAL_OK) ? 0 : -1;
 }
 // 0x6a or 0x6b

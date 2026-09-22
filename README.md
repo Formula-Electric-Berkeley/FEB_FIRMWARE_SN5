@@ -9,7 +9,8 @@ Firmware for the FEB SN5 Formula E vehicle. Each subdirectory corresponds to a b
 | `BMS/` | Battery Management System | STM32F446RE | FreeRTOS, cell-monitor front-end | [BMS/README.md](BMS/README.md) |
 | `DART/` | Fan / Tachometer Controller | STM32F042K6Tx | Cortex-M0, bare-metal, `-Os` | [DART/README.md](DART/README.md) |
 | `DASH/` | Driver Dashboard | STM32F469NI | FreeRTOS, LVGL, SDRAM, FATFS | [DASH/README.md](DASH/README.md) |
-| `DCU/` | Data Control Unit | STM32F446RE | Placeholder (empty user code) | [DCU/README.md](DCU/README.md) |
+| `DCU/` | Data Control Unit | STM32F446RE | FreeRTOS, dual CAN logger → SD + RFM95 LoRa telemetry | [DCU/README.md](DCU/README.md) |
+| `DCU_Receiver/` | Telemetry Ground Station | STM32F446RE | FreeRTOS, RFM95 LoRa RX → CSV over UART | [DCU_Receiver/README.md](DCU_Receiver/README.md) |
 | `LVPDB/` | Low Voltage Power Distribution | STM32F446RE | Dual CAN, 7× TPS | [LVPDB/README.md](LVPDB/README.md) |
 | `PCU/` | Powertrain Control Unit | STM32F446RE | Dual CAN, triple ADC, RMS gateway | [PCU/README.md](PCU/README.md) |
 | `Sensor_Nodes/` | Sensor Aggregator | STM32F446RE | IMU + GPS + WSS; third-party lwgps | [Sensor_Nodes/README.md](Sensor_Nodes/README.md) |

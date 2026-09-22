@@ -113,6 +113,27 @@ extern "C"
   bool FEB_GPS_HasFix(void);
 
   /**
+   * @brief Baud rate the GPS link actually settled on during init
+   *
+   * Normally 115200. Reads 9600 if the boot-time negotiation could not move the
+   * module up, which also means the update rate is capped near 1 Hz.
+   */
+  uint32_t FEB_GPS_GetBaudRate(void);
+
+  /**
+   * @brief True when the link is fast enough to sustain a >1 Hz update rate
+   */
+  bool FEB_GPS_IsFastLink(void);
+
+  /**
+   * @brief HAL tick at which the last fix was committed, 0 if never
+   *
+   * Non-destructive, unlike FEB_GPS_GetLatestData(), which consumes the
+   * "new data" flag. Use this for staleness checks.
+   */
+  uint32_t FEB_GPS_GetLastUpdateMs(void);
+
+  /**
    * @brief Send a PMTK command to the GPS module
    *
    * Automatically calculates and appends the checksum.

@@ -13,8 +13,10 @@ extern "C"
   extern I2C_HandleTypeDef hi2c3;
   extern stmdev_ctx_t lis3mdl_ctx;
 
-  /* Public initialization */
-  void lis3mdl_init(void);
+  /* Public initialization - returns 0 on success, negative on failure.
+   * (Matches lsm6dsox_init; the WHO_AM_I mismatch was previously detected
+   * and logged but swallowed, so callers could not report it.) */
+  int lis3mdl_init(void);
 
   /* Read functions */
   void read_Magnetic_Field_Data(void);

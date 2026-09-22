@@ -265,6 +265,71 @@ int FEB_UART_Init(FEB_UART_Instance_t instance, const FEB_UART_Config_t *config)
   return FEB_UART_OK;
 }
 
+int FEB_UART_SetBaudRate(FEB_UART_Instance_t instance, uint32_t baud)
+{
+  int inst = (int)instance;
+  if (inst >= FEB_UART_MAX_INSTANCES)
+  {
+    return FEB_UART_ERR_INVALID_ARG;
+  }
+  if (!ctx[inst].initialized)
+  {
+    return FEB_UART_ERR_NOT_INIT;
+  }
+  if (baud == 0u)
+  {
+    return FEB_UART_ERR_INVALID_ARG;
+  }
+
+  UART_HandleTypeDef *huart = ctx[inst].huart;
+
+  if (huart->Init.BaudRate == baud)
+  {
+    return FEB_UART_OK; /* already there — don't disturb a live DMA stream */
+  }
+
+  /* Quiesce: stop DMA and silence the IDLE line interrupt before touching BRR. */
+  __HAL_UART_DISABLE_IT(huart, UART_IT_IDLE);
+  HAL_UART_DMAStop(huart);
+
+  /* HAL_UART_Init() only runs MspInit when gState == RESET, so the GPIO, DMA
+   * links and clocks configured by CubeMX survive this re-init; only the baud
+   * register is recomputed. */
+  huart->Init.BaudRate = baud;
+  if (HAL_UART_Init(huart) != HAL_OK)
+  {
+    return FEB_UART_ERR_INVALID_ARG;
+  }
+
+  /* Whatever sat in the ring was clocked at the old rate — drop it along with
+   * any partially-assembled line so the next callback starts on a clean edge. */
+  ctx[inst].rx_head = 0;
+  ctx[inst].rx_tail = 0;
+  ctx[inst].line_buffer.len = 0;
+  ctx[inst].last_was_line_ending = false;
+  ctx[inst].rx_in_frame = false;
+  ctx[inst].rx_escape_next = false;
+
+  if (ctx[inst].hdma_rx != NULL)
+  {
+    HAL_StatusTypeDef status = HAL_UARTEx_ReceiveToIdle_DMA(huart, ctx[inst].rx_buffer, ctx[inst].rx_buffer_size);
+    if (status != HAL_OK)
+    {
+      HAL_UART_Abort(huart);
+      status = HAL_UARTEx_ReceiveToIdle_DMA(huart, ctx[inst].rx_buffer, ctx[inst].rx_buffer_size);
+    }
+    if (status != HAL_OK)
+    {
+      return FEB_UART_ERR_TIMEOUT;
+    }
+    __HAL_DMA_DISABLE_IT(ctx[inst].hdma_rx, DMA_IT_HT);
+  }
+
+  __HAL_UART_ENABLE_IT(huart, UART_IT_IDLE);
+
+  return FEB_UART_OK;
+}
+
 void FEB_UART_DeInit(FEB_UART_Instance_t instance)
 {
   VALIDATE_INSTANCE_VOID(instance);
