@@ -1,6 +1,6 @@
 // ********************************** Includes & External **********************************
 #include "FEB_Fan.h"
-#include "FEB_CAN_Library_SN4/gen/feb_can.h"
+#include "FEB_CAN_Library_SN4/gen/feb_can_db.h"
 #include "main.h"
 #include "stm32f0xx_hal_gpio.h"
 

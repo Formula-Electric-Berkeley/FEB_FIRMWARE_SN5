@@ -4,11 +4,11 @@
 #include "stm32f4xx_hal.h"
 
 #include "feb_can_lib.h"
-#include "feb_can.h"
+#include "feb_can_db.h"
 #include <stdbool.h>
 #include <string.h>
 
-/* RMS Motor Controller CAN IDs — resolved from generated feb_can.h.
+/* RMS Motor Controller CAN IDs — resolved from generated feb_can_db.h.
  * VOLTAGE is the real DC bus voltage broadcast (M167 / 0x0A7); STATES is the
  * inverter Internal States (M170 / 0x0AA, has VSM state + enable lockout) and
  * FAULTS is the POST/Run fault codes (M171 / 0x0AB). Subscribing to STATES and

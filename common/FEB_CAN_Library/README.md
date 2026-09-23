@@ -120,7 +120,7 @@ FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, 0x100, FEB_CAN_ID_STD, data, sizeof(data));
 Register a message for manual or periodic transmission:
 
 ```c
-#include "FEB_CAN_Library_SN4/gen/feb_can.h"  // For message structs
+#include "FEB_CAN_Library_SN4/gen/feb_can_db.h"  // For message structs
 
 // Data struct (must have static lifetime for periodic TX)
 static struct feb_can_lvpdb_heartbeat_t heartbeat_data = {0};
@@ -166,7 +166,7 @@ FEB_CAN_TX_SendFromISR(FEB_CAN_INSTANCE_1, 0x100, FEB_CAN_ID_STD, data, len);
 ### Register RX Callback
 
 ```c
-#include "FEB_CAN_Library_SN4/gen/feb_can.h"
+#include "FEB_CAN_Library_SN4/gen/feb_can_db.h"
 
 // Callback function
 void on_bms_state(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
@@ -318,7 +318,7 @@ This library is designed to work with the generated pack/unpack functions from `
 
 ```c
 #include "feb_can_lib.h"
-#include "FEB_CAN_Library_SN4/gen/feb_can.h"
+#include "FEB_CAN_Library_SN4/gen/feb_can_db.h"
 
 // TX: Pack struct and send
 struct feb_can_lvpdb_flags_bus_voltage_lv_current_t tx_msg = {

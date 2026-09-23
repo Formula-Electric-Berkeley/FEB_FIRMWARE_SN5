@@ -29,7 +29,7 @@ RFM95 LoRa  (915 MHz, SF7 / BW 250 kHz / CR 4/5, sync 0x12)
 handle_radio_payload()   — dispatch on magic byte
     │  0xFB → FEB_Radio_Parse()
     ▼  per decoded CAN frame:
-    ├─► FEB_CAN_State_Update(can_id, data, dlc, tick)   — generated DBC state model
+    ├─► FEB_CAN_DB_Update(can_id, data, dlc, tick)   — generated DBC state model
     └─► FEB_CAN_Stream_EmitFrame(bus, can_id, dlc, data)
              │
              ▼  "csv,<tx_id>,DCU_Receiver,<us>,can,<bus>,0x<ID>,<dlc>,<d0..d7>"
@@ -40,7 +40,7 @@ Every 500 ms while streaming it also emits `signal,<rssi>,<snr>`, or `signal,nan
 
 ## Decoding
 
-`FEB_CAN_State_Update()` comes from [`common/FEB_CAN_Library_SN4/gen/feb_can_latest.c`](../common/FEB_CAN_Library_SN4/), generated from the DBC. It is a `switch` over every registered frame ID, so **new CAN IDs are supported automatically once the CAN submodule is regenerated** — this board needs no hand-written table.
+`FEB_CAN_DB_Update()` comes from [`common/FEB_CAN_Library_SN4/gen/feb_can_db.c`](../common/FEB_CAN_Library_SN4/), generated from the DBC. It is a `switch` over every registered frame ID, so **new CAN IDs are supported automatically once the CAN submodule is regenerated** — this board needs no hand-written table.
 
 An unknown ID returns `-1` and logs a warning, but `FEB_CAN_Stream_EmitFrame()` still emits the row, so the host sees the frame regardless. Noisy, not broken.
 
