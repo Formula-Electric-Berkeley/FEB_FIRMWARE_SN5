@@ -36,6 +36,9 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 add_compile_definitions(
     USE_HAL_DRIVER
     STM32F446xx
+    FEB_UART_USE_FREERTOS=1
+    FEB_CAN_USE_FREERTOS=1
+    FEB_LOG_USE_FREERTOS=1
     $<$<CONFIG:Debug>:DEBUG>
 )
 
@@ -46,30 +49,34 @@ add_compile_definitions(
 # Core application sources (CubeMX-generated + user code)
 file(GLOB_RECURSE CORE_SOURCES "Core/*.c" "Core/*.cpp")
 
-# Startup assembly
 file(GLOB STARTUP_ASM "startup_*.s")
 
-# HAL/LL driver sources (safe: HAL_MODULE_ENABLED guards; exclude templates)
 file(GLOB HAL_SOURCES "Drivers/STM32F4xx_HAL_Driver/Src/*.c")
 list(FILTER HAL_SOURCES EXCLUDE REGEX "_template\\.c$")
 
-# Combine base sources
 set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES})
 
 # CAN library generated source (from common submodule)
 list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can_db.c")
 
-# LwGPS library (lightweight GPS NMEA parser)
 set(LWGPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/lwgps/src")
 list(APPEND ALL_SOURCES "${LWGPS_DIR}/lwgps/lwgps.c")
 
-# Fusion AHRS library (xioTechnologies)
 set(FUSION_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../third-party/Fusion")
 list(APPEND ALL_SOURCES
     "${FUSION_DIR}/FusionAhrs.c"
     "${FUSION_DIR}/FusionBias.c"
     "${FUSION_DIR}/FusionCompass.c"
 )
+
+# ── FreeRTOS (CMSIS-RTOS V2) ─────────────────────────────────────────
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
+    file(GLOB FREERTOS_CORE  "Middlewares/Third_Party/FreeRTOS/Source/*.c")
+    file(GLOB FREERTOS_CMSIS "Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/*.c")
+    file(GLOB FREERTOS_PORT  "Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/*.c")
+    file(GLOB FREERTOS_HEAP  "Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c")
+    list(APPEND ALL_SOURCES ${FREERTOS_CORE} ${FREERTOS_CMSIS} ${FREERTOS_PORT} ${FREERTOS_HEAP})
+endif()
 
 # ══════════════════════════════════════════════════════════════════════
 #  INCLUDE DIRECTORIES
@@ -83,22 +90,25 @@ set(BASE_INCLUDES
     Drivers/CMSIS/Include
 )
 
-# Auto-discover Core/User/Inc if it exists
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
-    list(APPEND BASE_INCLUDES Core/User/Inc)
+    list(APPEND BASE_INCLUDES Core/User/Inc Core/User/Inc/Config)
 endif()
 
-# Common CAN library (submodule)
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
+    list(APPEND BASE_INCLUDES
+        Middlewares/Third_Party/FreeRTOS/Source/include
+        Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
+        Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F
+    )
+endif()
+
 set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4")
 list(APPEND BASE_INCLUDES
     "${CAN_LIB_DIR}/.."          # resolves #include "FEB_CAN_Library_SN4/gen/feb_can_db.h"
     "${CAN_LIB_DIR}/gen"         # resolves #include "feb_can.h" directly
 )
 
-# LwGPS library includes
 list(APPEND BASE_INCLUDES "${LWGPS_DIR}/include")
-
-# Fusion library includes
 list(APPEND BASE_INCLUDES "${FUSION_DIR}")
 
 # Linker script (shared between variants)
@@ -128,7 +138,15 @@ function(feb_define_sensor_node_variant VARIANT)
 
     add_executable(${TARGET_NAME} ${ALL_SOURCES})
     target_include_directories(${TARGET_NAME} PRIVATE ${BASE_INCLUDES})
-    target_link_libraries(${TARGET_NAME} PRIVATE m feb_io feb_version feb_can feb_tps)
+        target_link_libraries(${TARGET_NAME} PRIVATE
+        m
+        feb_io
+        feb_version
+        feb_can
+        feb_tps
+        feb_console_2
+        feb_commands_2
+    )
 
     # The single switch that selects FRONT vs REAR. Both sentinel values
     # are defined in Core/User/Inc/FEB_SN_Config.h.

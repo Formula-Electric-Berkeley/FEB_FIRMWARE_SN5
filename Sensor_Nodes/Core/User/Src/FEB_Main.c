@@ -1,7 +1,7 @@
 #include "FEB_IMU.h"
 #include "FEB_Magnetometer.h"
 #include "FEB_GPS.h"
-#include "FEB_SN_Commands.h"
+// #include "FEB_SN_Commands.h"
 #include "FEB_WSS.h"
 #include "main.h"
 #include "tim.h"
@@ -82,9 +82,10 @@ void FEB_Init(void)
   FEB_Log_Init(&log_cfg);
 
   FEB_Console_Init(true);
-  FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);
+  // FEB_UART_SetRxLineCallback(FEB_UART_INSTANCE_1, FEB_Console_ProcessLine);  // removed
+  // RX input now flows through the new console with StartUartRxTask
 
-  SN_RegisterCommands();
+  // SN_RegisterCommands();
 
   FEB_Console_Printf("Sensor Node (%s) Starting\r\n", FEB_SN_VARIANT_NAME);
 
@@ -312,9 +313,9 @@ void FEB_Main_Loop(void)
     (void)dt;
 #endif
 
-    FEB_CAN_Fusion_Tick();
-    FEB_CAN_IMU_Tick();
-    FEB_CAN_Magnetometer_Tick();
+    // FEB_CAN_Fusion_Tick();
+    // FEB_CAN_IMU_Tick();
+    // FEB_CAN_Magnetometer_Tick();
 
     t_imu_ms = now_ms;
   }
@@ -325,7 +326,7 @@ void FEB_Main_Loop(void)
 #if FEB_SN_HAS_WSS
     WSS_Main();
 #endif
-    FEB_CAN_WSS_Tick();
+    // FEB_CAN_WSS_Tick();
     t_wss_ms = now_ms;
   }
 
@@ -337,14 +338,14 @@ void FEB_Main_Loop(void)
 #if FEB_SN_HAS_LINEAR_POTENTIOMETER
     read_LinearPotentiometer();
 #endif
-    FEB_CAN_LinearPotentiometer_Tick();
+    // FEB_CAN_LinearPotentiometer_Tick();
     t_lp_ms = now_ms;
   }
 
   /* 5 Hz: GPS frames (six per tick: pos, altitude, motion, time, date, status). */
   if ((uint32_t)(now_ms - t_gps_ms) >= TICK_PERIOD_GPS_MS)
   {
-    FEB_CAN_GPS_Tick();
+    // FEB_CAN_GPS_Tick();
     t_gps_ms = now_ms;
   }
 
@@ -357,7 +358,7 @@ void FEB_Main_Loop(void)
 #if FEB_SN_HAS_MAG
     read_Mag_Temperature();
 #endif
-    FEB_CAN_Temps_Tick();
+    // FEB_CAN_Temps_Tick();
     t_temp_ms = now_ms;
   }
 
