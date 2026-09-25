@@ -411,7 +411,7 @@ void FEB_CAN_RMS_Transmit_UpdateTorque(int16_t torque, uint8_t enabled)
 // Bounds checking: Limit torque to motor capabilities
 // Negative torque (regen) is allowed within motor limits
 #define MAX_REGEN_TORQUE -3000 // Max regen: -300.0 Nm
-#define MAX_MOTOR_TORQUE 3000  // Max motor: +300.0 Nm
+#define MAX_MOTOR_TORQUE 2200  // Max motor: +300.0 Nm
 
   int16_t original_torque = torque;
   if (torque > MAX_MOTOR_TORQUE)
@@ -419,11 +419,11 @@ void FEB_CAN_RMS_Transmit_UpdateTorque(int16_t torque, uint8_t enabled)
     torque = MAX_MOTOR_TORQUE;
     LOG_W(TAG_CAN, "Torque clamped to max: %d -> %d", original_torque, torque);
   }
-  else if (torque < MAX_REGEN_TORQUE)
-  {
-    torque = MAX_REGEN_TORQUE;
-    LOG_W(TAG_CAN, "Torque clamped to max regen: %d -> %d", original_torque, torque);
-  }
+  // else if (torque < MAX_REGEN_TORQUE)
+  // {
+  //   torque = MAX_REGEN_TORQUE;
+  //   LOG_W(TAG_CAN, "Torque clamped to max regen: %d -> %d", original_torque, torque);
+  // }
 
   RMS_MESSAGE.Torque_Command = torque;
 

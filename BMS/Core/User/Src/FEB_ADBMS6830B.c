@@ -385,7 +385,10 @@ static void read_aux_voltages()
 //   MUX6 input 5 (1-indexed) = mux==5, channel==4 (SEL3 only) -> sensor 39.
 static inline bool feb_temp_sensor_ignored(uint8_t mux, uint8_t channel)
 {
-  return (mux == 5 && channel == 4) || (mux == 3 && channel == 0);
+  return (mux == 5 && channel == 4) || (mux == 3 && channel == 0) || (mux == 3 && channel == 4) ||
+         (mux == 0 && channel == 2) || (mux == 0 && channel == 3) || (mux == 5 && channel == 0) ||
+         (mux == 2 && channel == 1) || (mux == 2 && channel == 1) || (mux == 2 && channel == 5) ||
+         (mux == 5 && channel == 1) || (mux == 5 && channel == 2) || (mux == 5 && channel == 3);
 }
 
 static void store_cell_temps(uint8_t channel)

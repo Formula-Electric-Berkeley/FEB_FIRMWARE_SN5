@@ -5,28 +5,34 @@
 #include "src/draw/lv_draw_rect.h"
 #include "src/font/lv_font.h"
 #include "src/misc/lv_area.h"
+#include <cstdint>
 #include <math.h>
 #include "DASH_UI_WSS.h"
 #include "DASH_IO.h"
 #include <stdio.h>
 #include "feb_can_subscriber.hpp"
+#include "stm32f4xx_hal.h"
 
 namespace fc = feb::can;
 namespace fm = feb::can::msg;
 
 static lv_obj_t *ui_Wheel_Speed_Text;
 
-static uint16_t rear_speed_mph = 0;
+// static uint16_t rear_speed_mph = 0;
 
 static char buf[16];
+static uint32_t last_update = 0;
 
 void FEB_UI_Update_WSS()
 {
+  if (HAL_GetTick() - last_update <= 500)
+    return;
   const auto &wss = fc::rx<fm::WssRearData>.v();
-  rear_speed_mph = static_cast<uint16_t>((wss.wss_left_rear + wss.wss_right_rear) / 2);
+  // rear_speed_mph = static_cast<uint16_t>((wss.wss_left_rear));
 
-  snprintf(buf, sizeof(buf), "%u", rear_speed_mph);
+  snprintf(buf, sizeof(buf), "%u", wss.wss_left_rear / 100);
   lv_label_set_text(ui_Wheel_Speed_Text, buf);
+  last_update = HAL_GetTick();
 }
 
 void FEB_UI_Init_WSS(lv_obj_t *ui_Screen)

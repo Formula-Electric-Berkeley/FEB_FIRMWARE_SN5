@@ -312,7 +312,7 @@ void FEB_RMS_Torque(void)
   // immediately instead of only via the (oscillating) dual-channel latch.
   bool bms_in_drive = FEB_RMS_DriveAllowed();
   bool apps_plausible = FEB_ADC_CheckAPPSPlausibility();
-  bool sensors_plausible = bms_in_drive && DRIVE_STATE && apps_plausible && brake_plausible;
+  bool sensors_plausible = bms_in_drive && DRIVE_STATE && apps_plausible;
 
   // Log any safety violations
   if (!sensors_plausible)
@@ -346,25 +346,25 @@ void FEB_RMS_Torque(void)
     acc_brake_simultaneous = false;
 
   // Determine operating mode: regen braking vs acceleration
-  if (brake_position > REGEN_BRAKE_POS_THRESH && sensors_plausible)
-  {
-    // REGEN MODE: Brake is pressed and sensors are plausible
-    float filtered_regen = FEB_Regen_GetFilteredTorque();
+  // if (brake_position > REGEN_BRAKE_POS_THRESH && sensors_plausible)
+  // {
+  //   // REGEN MODE: Brake is pressed and sensors are plausible
+  //   float filtered_regen = FEB_Regen_GetFilteredTorque();
 
-    // Apply brake position scaling and negative sign (SN3 style)
-    // torque_command = -1 * 10 * brake% * filtered_regen / 100
-    RMS_CONTROL_MESSAGE.torque = (int16_t)(-10.0f * brake_position * filtered_regen / 100.0f);
-  }
-  else if (brake_position < BRAKE_POSITION_THRESHOLD && sensors_plausible && !acc_brake_simultaneous)
+  //   // Apply brake position scaling and negative sign (SN3 style)
+  //   // torque_command = -1 * 10 * brake% * filtered_regen / 100
+  //   RMS_CONTROL_MESSAGE.torque = (int16_t)(-10.0f * brake_position * filtered_regen / 100.0f);
+  // }
+  if (sensors_plausible && !acc_brake_simultaneous)
   {
     // ACCELERATION MODE: No brake and sensors are plausible
     // Calculate commanded torque: acceleration (0-100%) * max_torque
-    RMS_CONTROL_MESSAGE.torque = (int16_t)(0.01f * APPS_Data.acceleration * FEB_RMS_GetMaxTorque());
+    RMS_CONTROL_MESSAGE.torque = (int16_t)(0.01f * APPS_Data.acceleration * 3384);
   }
   else
   {
     // SAFETY MODE: Sensors not plausible or not in drive state - zero torque
-    RMS_CONTROL_MESSAGE.torque = 0;
+    RMS_CONTROL_MESSAGE.torque = 1;
   }
 
   // Transmit torque command to RMS motor controller

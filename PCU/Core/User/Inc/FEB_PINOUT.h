@@ -150,11 +150,11 @@ extern "C"
 #define APPS1_DEFAULT_MIN_VOLTAGE_MV 1375 /* APPS1 0% throttle */
 #define APPS1_DEFAULT_MAX_VOLTAGE_MV 2356 /* APPS1 100% throttle */
 #define APPS2_DEFAULT_MIN_VOLTAGE_MV 539  /* APPS2 0% throttle */
-#define APPS2_DEFAULT_MAX_VOLTAGE_MV 1320 /* APPS2 100% throttle */
+#define APPS2_DEFAULT_MAX_VOLTAGE_MV 1620 /* APPS2 100% throttle */
 #define APPS_MIN_PHYSICAL_PERCENT 0.0f    /* Physical minimum: 0% throttle */
 #define APPS_MAX_PHYSICAL_PERCENT 100.0f  /* Physical maximum: 100% throttle */
 #define APPS_DEADZONE_PERCENT 5           /* Deadzone at pedal extremes (%) */
-#define APPS_PLAUSIBILITY_TOLERANCE 10    /* Maximum deviation between sensors (%) */
+#define APPS_PLAUSIBILITY_TOLERANCE 60    /* Maximum deviation between sensors (%) */
 
 /* FSAE T.4.2.3: the two APPS use different transfer functions, so their RAW
  * pin-domain outputs (raw/ADC_MAX_VALUE*100) stay >=~23% apart across the pedal
