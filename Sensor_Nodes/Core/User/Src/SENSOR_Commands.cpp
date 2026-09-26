@@ -14,6 +14,7 @@
 #include "FEB_GPS.h"
 #include "FEB_WSS.h"
 #include "FEB_LinearPotentiometer.h"
+#include "FEB_CAN_IRTSSensorConfig.h"
 #include "feb_commands_2.hpp"
 #include "feb_console_2.hpp"
 #include "lis3mdl_reg.h"
@@ -327,6 +328,26 @@ void cmd_temps(Interaction &io, std::span<char *const>)
   t.row("MAG", "%.2f C", mag_temp_c);
 }
 
+void cmd_irts_send(Interaction &io, std::span<char *const>)
+{
+  FEB_CAN_IRTSSensorConfig_Start();
+  io.println("IRTS config burst started (1 Hz for 15 s)");
+}
+
+void cmd_irts_stop(Interaction &io, std::span<char *const>)
+{
+  FEB_CAN_IRTSSensorConfig_Stop();
+  io.println("IRTS config burst stopped");
+}
+
+void cmd_irts_status(Interaction &io, std::span<char *const>)
+{
+  KVTable t(io, 12, 18, "IRTS Config Burst");
+  t.row("Active", "%s", FEB_CAN_IRTSSensorConfig_IsActive() ? "Yes" : "No");
+  t.row("Remaining", "%lu ms", (unsigned long)FEB_CAN_IRTSSensorConfig_RemainingMs());
+  t.row("Frames sent", "%lu", (unsigned long)FEB_CAN_IRTSSensorConfig_SentCount());
+}
+
 /* ============================================================================
  * Command tree
  * ============================================================================ */
@@ -362,13 +383,20 @@ constexpr std::array<Command, 10> kGpsSubcommands = {{
     {.name = "pmtk", .description = "Send raw PMTK command", .handler = cmd_gps_pmtk, .params = kGpsPmtkParams},
 }};
 
-constexpr std::array<Command, 6> kSensorCommands = {{
+constexpr std::array<Command, 3> kIrtsSubcommands = {{
+    {.name = "send", .description = "Start config burst (1 Hz for 15 s)", .handler = cmd_irts_send},
+    {.name = "stop", .description = "Abort config burst", .handler = cmd_irts_stop},
+    {.name = "status", .description = "Burst state and frame count", .handler = cmd_irts_status},
+}};
+
+constexpr std::array<Command, 7> kSensorCommands = {{
     group("imu", "IMU sensor commands", kImuSubcommands),
     group("mag", "Magnetometer commands", kMagSubcommands),
     group("gps", "GPS commands", kGpsSubcommands),
     {.name = "wss", .description = "Wheel speed sensors", .handler = cmd_wss},
     {.name = "linpot", .description = "Linear potentiometers", .handler = cmd_linpot},
     {.name = "temps", .description = "Sensor die temperatures", .handler = cmd_temps},
+    group("irts", "IRTS sensor config burst", kIrtsSubcommands),
 }};
 
 inline constexpr auto kAll = concat(kSystemCommands, kSensorCommands);

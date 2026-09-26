@@ -4,17 +4,6 @@
  * @brief          : Sensor Node FRONT/REAR variant selector + CAN ID alias table.
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
- *
- * One firmware tree, two binaries: FRONT and REAR. Both variants run on
- * identical hardware; they differ only in which CAN frame IDs they publish.
- *
- * The build system supplies FEB_SENSOR_NODE_VARIANT (=FEB_SN_VARIANT_FRONT or
- * =FEB_SN_VARIANT_REAR). Reporters #include this header and use the FEB_SN_*
- * aliases below; they never reference the underlying feb_can_*_front/_rear
- * symbols directly. Every reporter, including FEB_CAN_WSS.c, is variant-agnostic:
- * the FRONT and REAR WSS layouts are now identical (two uint16 @ 0.01 mph + dir
- * flags), so it too uses the FEB_SN_* aliases with no #if branch.
- *
  ******************************************************************************
  */
 
@@ -127,7 +116,7 @@ extern "C"
 
 /* ---------------- WSS (0x24 FRONT / 0x25 REAR) ----------------
  * FRONT/REAR layouts are identical (two uint16 @ 0.01 mph + dir flags), so the
- * member/fn names are aliased and FEB_CAN_WSS.c is fully variant-agnostic. */
+ * member/fn names are aliased. */
 #define FEB_SN_WSS_FRAME_ID FEB_CAN_WSS_FRONT_DATA_FRAME_ID
 #define FEB_SN_WSS_LENGTH FEB_CAN_WSS_FRONT_DATA_LENGTH
 #define feb_sn_wss_t feb_can_wss_front_data_t
@@ -251,8 +240,7 @@ extern "C"
 
 /* ---------------- Linear potentiometer (0x1E FRONT / 0x1F REAR) ----------------
  * Layout is identical FRONT/REAR (two uint16); only the signal-member suffix
- * differs, so the member names are aliased too (feb_sn_linpot_left/right) to keep
- * FEB_CAN_LinearPotentiometer.c fully variant-agnostic. */
+ * differs, so the member names are aliased too (feb_sn_linpot_left/right). */
 #define FEB_SN_LINPOT_FRAME_ID FEB_CAN_LINEAR_POTENTIOMETER_FRONT_FRAME_ID
 #define FEB_SN_LINPOT_LENGTH FEB_CAN_LINEAR_POTENTIOMETER_FRONT_LENGTH
 #define feb_sn_linpot_t feb_can_linear_potentiometer_front_t
@@ -290,8 +278,7 @@ extern "C"
 #define feb_sn_mag_z_encode feb_can_magnetometer_data_rear_magnetometer_z_encode
 
 /* ---------------- WSS (REAR = 0x25) ----------------
- * Layout matches FRONT (two uint16 @ 0.01 mph + dir flags); aliased members keep
- * FEB_CAN_WSS.c variant-agnostic. */
+ * Layout matches FRONT (two uint16 @ 0.01 mph + dir flags); members are aliased. */
 #define FEB_SN_WSS_FRAME_ID FEB_CAN_WSS_REAR_DATA_FRAME_ID
 #define FEB_SN_WSS_LENGTH FEB_CAN_WSS_REAR_DATA_LENGTH
 #define feb_sn_wss_t feb_can_wss_rear_data_t

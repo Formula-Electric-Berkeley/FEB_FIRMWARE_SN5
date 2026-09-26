@@ -7,8 +7,8 @@
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  *
- * Modeled on FEB_SN_PingPong.c: state lives here, the console command kicks it
- * off, and FEB_CAN_IRTSSensorConfig_Tick() (called from the main loop) does the
+ * State lives here, the console command (UART RX task) kicks it off, and
+ * FEB_CAN_IRTSSensorConfig_Tick() (sensor task) does the
  * timed transmitting. The very first frame goes out on Start(); subsequent
  * frames go out once per second until the 15 s window closes.
  ******************************************************************************
@@ -69,7 +69,7 @@ static const FEB_IRTS_Frame_t FEB_IRTS_CONFIG_FRAMES[] = {
 #define FEB_IRTS_BURST_DURATION_MS 15000u /* total run time */
 #define FEB_IRTS_SEND_PERIOD_MS 1000u     /* 1 Hz */
 
-static bool active = false;
+static volatile bool active = false;
 static uint32_t start_ms = 0;     /* tick when the burst began */
 static uint32_t next_send_ms = 0; /* tick of the next scheduled send */
 static uint32_t sent_count = 0;   /* frames sent in the current/last burst */
@@ -109,13 +109,13 @@ void FEB_CAN_IRTSSensorConfig_Init(void)
 void FEB_CAN_IRTSSensorConfig_Start(void)
 {
   const uint32_t now = HAL_GetTick();
-  active = true;
   start_ms = now;
   sent_count = 0;
 
-  /* Fire the first cycle immediately, then schedule the rest at 1 Hz. */
-  irts_send_frames();
   next_send_ms = now + FEB_IRTS_SEND_PERIOD_MS;
+  active = true;
+
+  irts_send_frames();
 }
 
 void FEB_CAN_IRTSSensorConfig_Stop(void)

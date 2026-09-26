@@ -21,35 +21,17 @@
 #include "FEB_Fusion.h"              /* FEB_Fusion_GetQuaternion/Euler/Linear/... */
 #include "feb_can_publisher.hpp"     /* fc::Publisher<M> */
 #include "FEB_LinearPotentiometer.h" /* lp_position_mm[], FEB_LP_COUNT */
+#include "SN_Config_Messages.hpp"
 
 namespace fc = feb::can;
 namespace fm = feb::can::msg;
 
-/* ============================================================================
- * Per-variant trait-struct aliases.
- *
- * The trait struct differs FRONT vs REAR for split-frame sensors (IMU, Mag,
- * WSS, Linpot). GPS and Fusion currently have only FRONT trait structs on this
- * branch, so their publishers are guarded with #if FEB_SN_IS_FRONT().
- * ============================================================================ */
-
-#if FEB_SN_IS_FRONT()
-using ImuAccelMsg = fm::ImuAccelerationData;
-using ImuGyroMsg = fm::ImuGyroData;
-using MagMsg = fm::MagnetometerData;
-using WssMsg = fm::WssFrontData;
-using LinpotMsg = fm::LinearPotentiometerFront;
-#else
-using ImuAccelMsg = fm::ImuAccelerationDataRear;
-using ImuGyroMsg = fm::ImuGyroDataRear;
-using MagMsg = fm::MagnetometerDataRear;
-using WssMsg = fm::WssRearData;
-using LinpotMsg = fm::LinearPotentiometerRear;
-#endif
-
-/* Sensor temps message has the same trait name on both variants (only the
- * frame ID and encode function differ, which FEB_SN_SENSOR_TEMPS_* handles). */
-using SensorTempsMsg = fm::SensorTempsData;
+using ImuAccelMsg = feb::sn::msg::ImuAccel;
+using ImuGyroMsg = feb::sn::msg::ImuGyro;
+using MagMsg = feb::sn::msg::Mag;
+using WssMsg = feb::sn::msg::Wss;
+using LinpotMsg = feb::sn::msg::Linpot;
+using SensorTempsMsg = feb::sn::msg::SensorTemps;
 
 namespace
 {
@@ -126,8 +108,6 @@ fc::Publisher<WssMsg> wss_tx{fill_wss};
  * ============================================================================ */
 #if FEB_SN_HAS_LINEAR_POTENTIOMETER
 
-/* Same conversion the old C reporter used: mm → 0.01 mm/LSB, clamped to uint16.
- * [0] = left, [1] = right, per FEB_CAN_LinearPotentiometer.c comment. */
 static uint16_t mm_to_can_units(float mm)
 {
   float scaled = mm * 100.0f;

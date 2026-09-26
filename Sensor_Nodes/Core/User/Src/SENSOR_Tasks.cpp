@@ -9,7 +9,7 @@
 #include "SENSOR_CAN.h"
 #include "SENSOR_Commands.h"
 #include "SENSOR_Tasks.h"
-#include "FEB_Main.h"
+#include "SN_Task_Sensors.hpp"
 #include "cmsis_os2.h"
 #include "feb_can_tasks.hpp"
 #include "feb_log.h"
@@ -26,10 +26,12 @@ extern "C"
     (void)argument;
     LOG_I(TAG_SENSOR, "task up");
 
+    feb::sn::SensorsInit();
+
     uint32_t next_tick = osKernelGetTickCount();
     for (;;)
     {
-      FEB_Main_Loop();
+      feb::sn::SensorsTick();
       next_tick += 1;
       osDelayUntil(next_tick);
     }

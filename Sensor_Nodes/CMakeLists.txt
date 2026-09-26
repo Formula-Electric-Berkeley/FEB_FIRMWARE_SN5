@@ -91,7 +91,7 @@ set(BASE_INCLUDES
 )
 
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
-    list(APPEND BASE_INCLUDES Core/User/Inc Core/User/Inc/Config)
+    list(APPEND BASE_INCLUDES Core/User/Inc Core/User/Inc/Config Core/User/Inc/App/Tasks)
 endif()
 
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")

@@ -22,12 +22,12 @@
 #include "task.h"
 #include "main.h"
 #include "cmsis_os.h"
-#include "feb_can_lib.h"   /* FEB_CAN_Message_t */
-#include "feb_uart.h"      /* FEB_UART_RxQueueMsg_t */
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "FEB_Main.h"
+#include "feb_can_lib.h"
+#include "feb_uart.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -222,6 +222,7 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
+  SN_Init();
   /* add events, ... */
   /* USER CODE END RTOS_EVENTS */
 
