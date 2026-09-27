@@ -34,7 +34,7 @@ extern "C"
   extern FusionMatrix softIron;
   extern FusionVector hardIron;
 
-  void FEB_Fusion_Init(void);
+  void FEB_Fusion_Init(uint32_t sample_period_ms);
 
   // One-time startup gyro bias capture: assumes the board is static for ~1 s.
   // Blocks the caller. Writes gyroOffset. Call after IMU init, before main loop.

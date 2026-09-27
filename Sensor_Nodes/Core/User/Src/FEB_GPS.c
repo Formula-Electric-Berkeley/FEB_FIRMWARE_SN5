@@ -10,6 +10,7 @@
 #include "feb_uart.h"
 #include "feb_log.h"
 #include "main.h"
+#include "cmsis_os2.h"
 #include "lwgps/lwgps.h"
 #include <string.h>
 #include <stdio.h>
@@ -28,6 +29,7 @@ extern DMA_HandleTypeDef hdma_uart4_tx;
 /* Static buffers */
 static uint8_t gps_tx_buffer[GPS_TX_BUFFER_SIZE];
 static uint8_t gps_rx_buffer[GPS_RX_BUFFER_SIZE];
+static osMutexId_t gps_tx_mutex;
 
 /* LwGPS handle */
 static lwgps_t gps_handle;
@@ -59,6 +61,11 @@ int FEB_GPS_Init(void)
   /* Clear GPS data */
   memset(&gps_data, 0, sizeof(gps_data));
 
+  if (gps_tx_mutex == NULL)
+  {
+    gps_tx_mutex = osMutexNew(NULL);
+  }
+
   /* Configure FEB_UART Instance 2 for GPS */
   FEB_UART_Config_t uart_cfg = {
       .huart = &huart4,
@@ -69,6 +76,7 @@ int FEB_GPS_Init(void)
       .rx_buffer = gps_rx_buffer,
       .rx_buffer_size = sizeof(gps_rx_buffer),
       .get_tick_ms = HAL_GetTick,
+      .tx_mutex = gps_tx_mutex,
   };
 
   int result = FEB_UART_Init(FEB_UART_INSTANCE_2, &uart_cfg);

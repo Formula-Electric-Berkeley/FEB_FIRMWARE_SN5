@@ -27,7 +27,7 @@ void FEB_UI_Update_WSS()
 {
   if (HAL_GetTick() - last_update <= 500)
     return;
-  const auto &wss = fc::rx<fm::WssRearData>.v();
+  const auto &wss = fc::rx<fm::WssRear>.v();
   // rear_speed_mph = static_cast<uint16_t>((wss.wss_left_rear));
 
   snprintf(buf, sizeof(buf), "%u", wss.wss_left_rear / 100);

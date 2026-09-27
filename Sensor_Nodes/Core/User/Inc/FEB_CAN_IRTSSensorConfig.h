@@ -7,8 +7,8 @@
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  *
- * Console: SN|IRTS|send  (or IRTS|send) starts the burst; SN|IRTS|stop aborts
- * it early; SN|IRTS|status reports remaining time. The CAN ID and the 8 payload
+ * Console: irts send starts the burst; irts stop aborts it early; irts status
+ * reports remaining time. The CAN ID and the 8 payload
  * bytes are edited in FEB_CAN_IRTSSensorConfig.c (see the EDIT HERE block).
  ******************************************************************************
  */
@@ -25,8 +25,8 @@ extern "C"
 #include <stdint.h>
 
   /**
-   * @brief Initialize the IRTS sensor-config module. Call once at startup, after
-   *        FEB_CAN_Init(). The burst starts idle.
+   * @brief Initialize the IRTS sensor-config module. Call once at startup.
+   *        The burst starts idle.
    */
   void FEB_CAN_IRTSSensorConfig_Init(void);
 

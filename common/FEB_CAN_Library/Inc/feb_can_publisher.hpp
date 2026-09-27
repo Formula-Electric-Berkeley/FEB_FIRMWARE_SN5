@@ -20,7 +20,7 @@
 
 namespace feb::can
 {
-template <class M>
+template <class M, FEB_CAN_Instance_t Bus = kVehicleBus>
 class Publisher
 {
 public:
@@ -104,7 +104,7 @@ private:
       return false;
     }
 
-    if (FEB_CAN_TX_Send(kVehicleBus, M::kFrameId,
+    if (FEB_CAN_TX_Send(Bus, M::kFrameId,
                         M::kExtended ? FEB_CAN_ID_EXT : FEB_CAN_ID_STD, buf,
                         M::kLength) != FEB_CAN_OK)
     {

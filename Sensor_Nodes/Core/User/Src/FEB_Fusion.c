@@ -25,8 +25,8 @@ FusionVector hardIron = {.array = {0.0f, 0.0f, 0.0f}};
 static FusionAhrs ahrs;
 static FusionBias bias;
 static bool initialized = false;
+static float nominal_dt = 0.1f;
 
-#define SAMPLE_RATE_HZ (1000)    // matches FEB_Main_Loop IMU tick (1 ms)
 #define GYRO_RANGE_DPS (2000.0f) // LSM6DSOX FS=2000dps
 
 /* ---------------------------------------------------------------------
@@ -38,7 +38,7 @@ static bool initialized = false;
  * samples. Initialized to identity at boot; converges to a sensible
  * calibration after ~30-60 s of varied yaw motion.
  * --------------------------------------------------------------------- */
-#define MAG_CAL_UPDATE_PERIOD 100u // refine every 100 fusion ticks (100 ms @ 1 kHz)
+#define MAG_CAL_UPDATE_PERIOD 1u   // refine every fusion tick
 #define MAG_CAL_MIN_SPAN_mG 100.0f // skip update until per-axis span exceeds this
 static float mag_min[3] = {1.0e9f, 1.0e9f, 1.0e9f};
 static float mag_max[3] = {-1.0e9f, -1.0e9f, -1.0e9f};
@@ -72,8 +72,11 @@ static void update_mag_cal_online(const FusionVector raw_mg)
   softIron.array[8] = span_avg / span_z;
 }
 
-void FEB_Fusion_Init(void)
+void FEB_Fusion_Init(uint32_t sample_period_ms)
 {
+  nominal_dt = (float)sample_period_ms / 1000.0f;
+  const float sample_rate_hz = 1.0f / nominal_dt;
+
   FusionAhrsInitialise(&ahrs);
   const FusionAhrsSettings settings = {
       .convention = FusionConventionNwu, // X north, Y west, Z up
@@ -81,13 +84,13 @@ void FEB_Fusion_Init(void)
       .gyroscopeRange = GYRO_RANGE_DPS,
       .accelerationRejection = 10.0f,
       .magneticRejection = 10.0f,
-      .recoveryTriggerPeriod = 5 * SAMPLE_RATE_HZ, // 5 seconds
+      .recoveryTriggerPeriod = (unsigned int)(5.0f * sample_rate_hz), // 5 seconds
   };
   FusionAhrsSetSettings(&ahrs, &settings);
 
   FusionBiasInitialise(&bias);
   FusionBiasSettings biasSettings = fusionBiasDefaultSettings;
-  biasSettings.sampleRate = SAMPLE_RATE_HZ;
+  biasSettings.sampleRate = sample_rate_hz;
   FusionBiasSetSettings(&bias, &biasSettings);
 
   initialized = true;
@@ -120,8 +123,8 @@ void FEB_Fusion_Update(float dt)
 {
   if (!initialized)
     return;
-  if (dt <= 1e-5f || dt > 0.005f)
-    dt = 0.001f;
+  if (dt <= 1e-5f || dt > 5.0f * nominal_dt)
+    dt = nominal_dt;
 
   // FusionAhrsUpdate expects gyro in dps and accel in g; drivers publish mdps and mg.
   FusionVector gyro_raw = {.array = {

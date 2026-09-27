@@ -6,9 +6,8 @@ extern "C"
 {
 #endif
 
-  void FEB_Init(void);
-  void FEB_Update(void);
-  void FEB_Main_Loop(void);
+  /* Console/log bring-up. Call from MX_FREERTOS_Init after the .ioc mutexes and queues exist. */
+  void SN_Init(void);
 
 #ifdef __cplusplus
 }

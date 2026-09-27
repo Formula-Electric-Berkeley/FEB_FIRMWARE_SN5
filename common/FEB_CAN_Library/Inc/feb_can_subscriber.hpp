@@ -20,7 +20,7 @@
 
 namespace feb::can
 {
-template <class M>
+template <class M, FEB_CAN_Instance_t Bus = kVehicleBus>
 class Subscriber
 {
 public:
@@ -85,7 +85,7 @@ private:
                   "node_ must stay the first member: the callback casts between them");
     Subscriber *self = reinterpret_cast<Subscriber *>(n);
     const FEB_CAN_RX_Params_t params = {
-        .instance = kVehicleBus,
+        .instance = Bus,
         .can_id = M::kFrameId,
         .id_type = M::kExtended ? FEB_CAN_ID_EXT : FEB_CAN_ID_STD,
         .filter_type = FEB_CAN_FILTER_EXACT,
@@ -133,8 +133,8 @@ private:
   bool present_ = false;
 };
 
-template <class M>
-inline Subscriber<M> rx;
+template <class M, FEB_CAN_Instance_t Bus = kVehicleBus>
+inline Subscriber<M, Bus> rx;
 
 }  // namespace feb::can
 
