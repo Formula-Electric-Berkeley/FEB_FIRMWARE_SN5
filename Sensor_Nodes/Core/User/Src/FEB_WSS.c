@@ -16,11 +16,7 @@
 #define WSS_STALE_US 200000u // 200 ms without an edge -> wheel considered stopped
 #define WSS_MPH_X100_MAX 65535u
 
-// Ground-speed conversion constants.  Rolling wheel: 85 mm diameter.
-//   circumference = pi * 85 mm = 267035.4 um  (round to 267035, error ~1.4e-6)
-//   1 m/s = 2.2369363 mph  ->  223694 = round(2.2369363 * 1e5); the /1000 below
-//   rescales (um/us = m/s) into 0.01 mph units.
-#define WSS_WHEEL_CIRC_UM 267035u
+#define WSS_WHEEL_CIRC_UM 1276743u
 #define WSS_MPH_PER_MPS_X1E5 223694u
 
 // Quadrature decode table indexed by ((last_cos << 3) | (last_sin << 2) | (cos_now << 1) | sin_now).
