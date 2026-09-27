@@ -130,16 +130,7 @@ extern "C"
    */
   int FEB_GPS_SetUpdateRate(uint8_t hz);
 
-  /**
-   * @brief Configure which NMEA sentences to output
-   *
-   * @param gga Enable GGA (position, altitude, satellites)
-   * @param gsa Enable GSA (DOP and active satellites)
-   * @param gsv Enable GSV (satellites in view)
-   * @param rmc Enable RMC (position, velocity, time)
-   * @return 0 on success, negative error code on failure
-   */
-  int FEB_GPS_ConfigureOutput(bool gga, bool gsa, bool gsv, bool rmc);
+  int FEB_GPS_ConfigureOutput(uint8_t rmc_div, uint8_t gga_div, uint8_t gsa_div, uint8_t gsv_div);
 
   /**
    * @brief Enable or disable the GPS module

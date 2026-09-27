@@ -175,20 +175,11 @@ static void gps_rx_line_callback(const char *line, size_t len)
 
   LOG_T(TAG_GPS, "Parsed %d statement(s)", result);
 
-  /* Track previous timestamp to detect actual data updates */
-  static uint8_t prev_hours = 0xFF, prev_minutes = 0xFF, prev_seconds = 0xFF;
-  bool time_changed =
-      (gps_handle.hours != prev_hours) || (gps_handle.minutes != prev_minutes) || (gps_handle.seconds != prev_seconds);
-
-  /* Only update data if timestamp has changed (indicates new GPS fix) */
-  if (!time_changed && prev_hours != 0xFF)
+  const bool is_rmc = (len >= 6) && (strncmp(&line[3], "RMC", 3) == 0);
+  if (!is_rmc)
   {
-    LOG_T(TAG_GPS, "Skipping update - no new timestamp");
     return;
   }
-  prev_hours = gps_handle.hours;
-  prev_minutes = gps_handle.minutes;
-  prev_seconds = gps_handle.seconds;
 
   /* Update our data structure from LwGPS */
   gps_data.latitude = gps_handle.latitude;
@@ -215,7 +206,7 @@ static void gps_rx_line_callback(const char *line, size_t len)
   gps_data.pdop = gps_handle.dop_p;
 
   gps_data.valid = gps_handle.is_valid;
-  gps_data.has_fix = (gps_handle.fix >= 1) && (gps_handle.fix_mode >= 2);
+  gps_data.has_fix = gps_handle.is_valid && (gps_handle.fix >= 1);
   gps_data.last_update_ms = HAL_GetTick();
 
   gps_data_updated = true;
@@ -342,22 +333,17 @@ int FEB_GPS_SetUpdateRate(uint8_t hz)
 }
 
 /**
- * @brief Configure which NMEA sentences to output
+ * @brief Configure NMEA sentence output divisors
  *
  * PMTK314 field order:
  * GLL, RMC, VTG, GGA, GSA, GSV, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
  */
-int FEB_GPS_ConfigureOutput(bool gga, bool gsa, bool gsv, bool rmc)
+int FEB_GPS_ConfigureOutput(uint8_t rmc_div, uint8_t gga_div, uint8_t gsa_div, uint8_t gsv_div)
 {
-  LOG_T(TAG_GPS, "Configuring output: GGA=%d, GSA=%d, GSV=%d, RMC=%d", gga, gsa, gsv, rmc);
+  LOG_T(TAG_GPS, "Configuring output: RMC=%u, GGA=%u, GSA=%u, GSV=%u", rmc_div, gga_div, gsa_div, gsv_div);
 
   char cmd[64];
-
-  /* Build PMTK314 command with desired sentence frequencies */
-  snprintf(cmd, sizeof(cmd), "PMTK314,0,%d,0,%d,%d,%d,0,0,0,0,0,0,0,0,0,0,0,0,0", rmc ? 1 : 0, /* RMC */
-           gga ? 1 : 0,                                                                        /* GGA */
-           gsa ? 1 : 0,                                                                        /* GSA */
-           gsv ? 1 : 0);                                                                       /* GSV */
+  snprintf(cmd, sizeof(cmd), "PMTK314,0,%u,0,%u,%u,%u,0,0,0,0,0,0,0,0,0,0,0,0,0", rmc_div, gga_div, gsa_div, gsv_div);
 
   return FEB_GPS_SendPMTKCommand(cmd);
 }

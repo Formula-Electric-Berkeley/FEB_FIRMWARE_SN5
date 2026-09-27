@@ -99,7 +99,11 @@ void SensorsInit()
   }
   else
   {
-    const int cfg_result = FEB_GPS_ConfigureOutput(true, true, false, true); /* GGA, GSA, RMC */
+    int cfg_result = FEB_GPS_ConfigureOutput(1, 10, 0, 0);
+    if (cfg_result >= 0)
+    {
+      cfg_result = FEB_GPS_SetUpdateRate(10);
+    }
     if (cfg_result < 0)
     {
       LOG_W(TAG_SENSOR, "GPS config output failed: %d", cfg_result);
