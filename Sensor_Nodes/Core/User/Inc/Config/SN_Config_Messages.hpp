@@ -1,5 +1,4 @@
-#ifndef SN_CONFIG_MESSAGES_HPP
-#define SN_CONFIG_MESSAGES_HPP
+#pragma once
 
 #include "FEB_SN_Config.h"
 #include "feb_can_traits.hpp"
@@ -9,20 +8,38 @@ namespace feb::sn::msg
 namespace fm = feb::can::msg;
 
 #if FEB_SN_IS_FRONT()
-using ImuAccel = fm::ImuAccelerationData;
-using ImuGyro = fm::ImuGyroData;
-using Mag = fm::MagnetometerData;
-using Wss = fm::WssFrontData;
-using Linpot = fm::LinearPotentiometerFront;
+using ImuAccel = fm::ImuAccelFront;
+using ImuGyro = fm::ImuGyroFront;
+using Mag = fm::MagFront;
+using Wss = fm::WssFront;
+using Linpot = fm::LinpotFront;
+using GpsPos = fm::GpsPosFront;
+using GpsAltitude = fm::GpsAltitudeFront;
+using GpsMotion = fm::GpsMotionFront;
+using GpsTime = fm::GpsTimeFront;
+using GpsDate = fm::GpsDateFront;
+using GpsStatus = fm::GpsStatusFront;
+using FusionQuat = fm::FusionQuatFront;
+using FusionEuler = fm::FusionEulerFront;
+using FusionLinAccel = fm::FusionLinAccelFront;
+using FusionEarthAccel = fm::FusionEarthAccelFront;
+using FusionStatus = fm::FusionStatusFront;
 #else
-using ImuAccel = fm::ImuAccelerationDataRear;
-using ImuGyro = fm::ImuGyroDataRear;
-using Mag = fm::MagnetometerDataRear;
-using Wss = fm::WssRearData;
-using Linpot = fm::LinearPotentiometerRear;
+using ImuAccel = fm::ImuAccelRear;
+using ImuGyro = fm::ImuGyroRear;
+using Mag = fm::MagRear;
+using Wss = fm::WssRear;
+using Linpot = fm::LinpotRear;
+using GpsPos = fm::GpsPosRear;
+using GpsAltitude = fm::GpsAltitudeRear;
+using GpsMotion = fm::GpsMotionRear;
+using GpsTime = fm::GpsTimeRear;
+using GpsDate = fm::GpsDateRear;
+using GpsStatus = fm::GpsStatusRear;
+using FusionQuat = fm::FusionQuatRear;
+using FusionEuler = fm::FusionEulerRear;
+using FusionLinAccel = fm::FusionLinAccelRear;
+using FusionEarthAccel = fm::FusionEarthAccelRear;
+using FusionStatus = fm::FusionStatusRear;
 #endif
-
-using SensorTemps = fm::SensorTempsData;
 } // namespace feb::sn::msg
-
-#endif /* SN_CONFIG_MESSAGES_HPP */

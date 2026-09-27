@@ -23,11 +23,13 @@
 
 #define TAG_SENSOR "[SENSOR]"
 
+#if FEB_SN_HAS_GPS
 namespace
 {
 bool gps_ready = false;
 
 } // namespace
+#endif
 
 namespace feb::sn
 {
@@ -115,7 +117,6 @@ void SensorsTick()
   static uint32_t t_imu_ms = 0;
   static uint32_t t_wss_ms = 0;
   static uint32_t t_lp_ms = 0;
-  static uint32_t t_temp_ms = 0;
   static uint32_t prev_fusion_us = 0;
   static bool fusion_dt_primed = false;
 
@@ -142,9 +143,11 @@ void SensorsTick()
 #if FEB_SN_HAS_IMU
     read_Acceleration();
     read_Angular_Rate();
+    read_IMU_Temperature();
 #endif
 #if FEB_SN_HAS_MAG
     read_Magnetic_Field_Data();
+    read_Mag_Temperature();
 #endif
 #if FEB_SN_HAS_FUSION
     FEB_Fusion_Update(dt);
@@ -169,17 +172,6 @@ void SensorsTick()
     read_LinearPotentiometer();
 #endif
     t_lp_ms = now_ms;
-  }
-
-  if ((uint32_t)(now_ms - t_temp_ms) >= msg::SensorTemps::kCycleMs)
-  {
-#if FEB_SN_HAS_IMU
-    read_IMU_Temperature();
-#endif
-#if FEB_SN_HAS_MAG
-    read_Mag_Temperature();
-#endif
-    t_temp_ms = now_ms;
   }
 
   FEB_CAN_IRTSSensorConfig_Tick();

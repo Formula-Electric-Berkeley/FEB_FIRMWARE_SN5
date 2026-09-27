@@ -4,19 +4,12 @@
  * @brief          : Everything the Sensor Node transmits (C++ publishers)
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
- *
- * One fc::Publisher<> per outgoing frame. The trait struct's kCycleMs drives
- * the transmit rate; kSender is checked at compile time against kThisNode so
- * a FRONT binary cannot accidentally publish a REAR-only frame.
- *
- * fill_* functions MUST be side-effect-free with respect to their message
- * struct: no I2C, no delays. Sensor reads happen in StartSensorTask.
  */
 
-#include "FEB_SN_Config.h"           /* FEB_SN_IS_FRONT, FEB_SN_HAS_*, feb_sn_* macros */
-#include "FEB_IMU.h"                 /* acceleration_mg[], angular_rate_mdps[], imu_temp_c */
-#include "FEB_Magnetometer.h"        /* magnetic_mG[], mag_temp_c */
-#include "FEB_WSS.h"                 /* left_rpm_x10, right_rpm_x10, left_dir, right_dir */
+#include "FEB_SN_Config.h"           /* FEB_SN_HAS_* */
+#include "FEB_IMU.h"                 /* data_raw_acceleration[], data_raw_angular_rate[], imu_temp_c */
+#include "FEB_Magnetometer.h"        /* data_raw_magnetometer[], mag_temp_c */
+#include "FEB_WSS.h"                 /* left_mph_x100, right_mph_x100, left_dir, right_dir */
 #include "FEB_GPS.h"                 /* FEB_GPS_Data_t, FEB_GPS_GetLatestData() */
 #include "FEB_Fusion.h"              /* FEB_Fusion_GetQuaternion/Euler/Linear/... */
 #include "feb_can_publisher.hpp"     /* fc::Publisher<M> */
@@ -24,14 +17,7 @@
 #include "SN_Config_Messages.hpp"
 
 namespace fc = feb::can;
-namespace fm = feb::can::msg;
-
-using ImuAccelMsg = feb::sn::msg::ImuAccel;
-using ImuGyroMsg = feb::sn::msg::ImuGyro;
-using MagMsg = feb::sn::msg::Mag;
-using WssMsg = feb::sn::msg::Wss;
-using LinpotMsg = feb::sn::msg::Linpot;
-using SensorTempsMsg = feb::sn::msg::SensorTemps;
+namespace sm = feb::sn::msg;
 
 namespace
 {
@@ -41,23 +27,24 @@ namespace
  * ============================================================================ */
 #if FEB_SN_HAS_IMU
 
-bool fill_imu_accel(feb_sn_imu_accel_t &m)
+bool fill_imu_accel(sm::ImuAccel::Data &m)
 {
-  m.acceleration_x = feb_sn_imu_accel_x_encode((double)acceleration_mg[0]);
-  m.acceleration_y = feb_sn_imu_accel_y_encode((double)acceleration_mg[1]);
-  m.acceleration_z = feb_sn_imu_accel_z_encode((double)acceleration_mg[2]);
+  m.acceleration_x = data_raw_acceleration[0];
+  m.acceleration_y = data_raw_acceleration[1];
+  m.acceleration_z = data_raw_acceleration[2];
+  m.imu_temp = (int16_t)(imu_temp_c * 100.0f);
   return true;
 }
-fc::Publisher<ImuAccelMsg> imu_accel_tx{fill_imu_accel};
+fc::Publisher<sm::ImuAccel> imu_accel_tx{fill_imu_accel};
 
-bool fill_imu_gyro(feb_sn_imu_gyro_t &m)
+bool fill_imu_gyro(sm::ImuGyro::Data &m)
 {
-  m.gyro_x = feb_sn_imu_gyro_x_encode((double)angular_rate_mdps[0]);
-  m.gyro_y = feb_sn_imu_gyro_y_encode((double)angular_rate_mdps[1]);
-  m.gyro_z = feb_sn_imu_gyro_z_encode((double)angular_rate_mdps[2]);
+  m.gyro_x = data_raw_angular_rate[0];
+  m.gyro_y = data_raw_angular_rate[1];
+  m.gyro_z = data_raw_angular_rate[2];
   return true;
 }
-fc::Publisher<ImuGyroMsg> imu_gyro_tx{fill_imu_gyro};
+fc::Publisher<sm::ImuGyro> imu_gyro_tx{fill_imu_gyro};
 
 #endif /* FEB_SN_HAS_IMU */
 
@@ -66,14 +53,16 @@ fc::Publisher<ImuGyroMsg> imu_gyro_tx{fill_imu_gyro};
  * ============================================================================ */
 #if FEB_SN_HAS_MAG
 
-bool fill_mag(feb_sn_mag_t &m)
+/* Raw LSBs match the DBC scale: 0.5844 mG (±16 G). */
+bool fill_mag(sm::Mag::Data &m)
 {
-  m.magnetometer_x = feb_sn_mag_x_encode((double)magnetic_mG[0]);
-  m.magnetometer_y = feb_sn_mag_y_encode((double)magnetic_mG[1]);
-  m.magnetometer_z = feb_sn_mag_z_encode((double)magnetic_mG[2]);
+  m.magnetometer_x = data_raw_magnetometer[0];
+  m.magnetometer_y = data_raw_magnetometer[1];
+  m.magnetometer_z = data_raw_magnetometer[2];
+  m.mag_temp = (int16_t)(mag_temp_c * 100.0f);
   return true;
 }
-fc::Publisher<MagMsg> mag_tx{fill_mag};
+fc::Publisher<sm::Mag> mag_tx{fill_mag};
 
 #endif /* FEB_SN_HAS_MAG */
 
@@ -82,24 +71,21 @@ fc::Publisher<MagMsg> mag_tx{fill_mag};
  * ============================================================================ */
 #if FEB_SN_HAS_WSS
 
-bool fill_wss(feb_sn_wss_t &m)
+bool fill_wss(sm::Wss::Data &m)
 {
-  /* Globals are mph × 100 (see FEB_WSS.h comment). The DBC comment in
-   * FEB_SN_Config.h says the frame carries mph at 0.01 resolution; encode
-   * expects physical mph. Divide by 100. */
-  m.feb_sn_wss_left = feb_sn_wss_left_encode((double)left_mph_x100 / 100.0);
-  m.feb_sn_wss_right = feb_sn_wss_right_encode((double)right_mph_x100 / 100.0);
+  m.wss_left = left_mph_x100;
+  m.wss_right = right_mph_x100;
 
   uint8_t flags = 0;
   if (left_dir < 0)
     flags |= (1u << 0);
   if (right_dir < 0)
     flags |= (1u << 1);
-  m.feb_sn_wss_dir_flags = feb_sn_wss_dir_flags_encode((double)flags);
+  m.wss_dir_flags = flags;
   return true;
 }
 
-fc::Publisher<WssMsg> wss_tx{fill_wss};
+fc::Publisher<sm::Wss> wss_tx{fill_wss};
 
 #endif /* FEB_SN_HAS_WSS */
 
@@ -118,162 +104,142 @@ static uint16_t mm_to_can_units(float mm)
   return (uint16_t)scaled;
 }
 
-bool fill_linpot(feb_sn_linpot_t &m)
+bool fill_linpot(sm::Linpot::Data &m)
 {
-  m.feb_sn_linpot_left = mm_to_can_units(lp_position_mm[0]);
-  m.feb_sn_linpot_right = mm_to_can_units(lp_position_mm[1]);
+  m.linpot_left = mm_to_can_units(lp_position_mm[0]);
+  m.linpot_right = mm_to_can_units(lp_position_mm[1]);
   return true;
 }
-fc::Publisher<LinpotMsg> linpot_tx{fill_linpot};
+fc::Publisher<sm::Linpot> linpot_tx{fill_linpot};
 
 #endif /* FEB_SN_HAS_LINEAR_POTENTIOMETER */
 
 /* ============================================================================
- * Sensor die temperatures (IMU + magnetometer)
+ * GPS
  * ============================================================================ */
-#if FEB_SN_HAS_SENSOR_TEMPS && FEB_SN_IS_FRONT()
+#if FEB_SN_HAS_GPS
 
-bool fill_sensor_temps(feb_sn_sensor_temps_t &m)
+bool fill_gps_pos(sm::GpsPos::Data &m)
 {
-  m.imu_temp = feb_sn_sensor_temps_imu_encode((double)imu_temp_c);
-  m.mag_temp = feb_sn_sensor_temps_mag_encode((double)mag_temp_c);
+  FEB_GPS_Data_t g;
+  FEB_GPS_GetLatestData(&g);
+  m.latitude = (int32_t)(g.latitude * 1e7);
+  m.longitude = (int32_t)(g.longitude * 1e7);
   return true;
 }
-fc::Publisher<SensorTempsMsg> sensor_temps_tx{fill_sensor_temps};
+fc::Publisher<sm::GpsPos> gps_pos_tx{fill_gps_pos};
 
-#endif /* FEB_SN_HAS_SENSOR_TEMPS && FEB_SN_IS_FRONT */
+bool fill_gps_altitude(sm::GpsAltitude::Data &m)
+{
+  FEB_GPS_Data_t g;
+  FEB_GPS_GetLatestData(&g);
+  m.altitude = (int32_t)(g.altitude * 100.0f);
+  m.hdop = (uint16_t)(g.hdop * 100.0f);
+  m.vdop = (uint16_t)(g.vdop * 100.0f);
+  return true;
+}
+fc::Publisher<sm::GpsAltitude> gps_alt_tx{fill_gps_altitude};
+
+bool fill_gps_motion(sm::GpsMotion::Data &m)
+{
+  FEB_GPS_Data_t g;
+  FEB_GPS_GetLatestData(&g);
+  m.speed = (uint16_t)(g.speed_kmh * 100.0f);
+  m.course = (uint16_t)(g.course * 100.0f);
+  return true;
+}
+fc::Publisher<sm::GpsMotion> gps_motion_tx{fill_gps_motion};
+
+bool fill_gps_time(sm::GpsTime::Data &m)
+{
+  FEB_GPS_Data_t g;
+  FEB_GPS_GetLatestData(&g);
+  m.hours = (int8_t)g.hours;
+  m.minutes = (int8_t)g.minutes;
+  m.seconds = (int8_t)g.seconds;
+  return true;
+}
+fc::Publisher<sm::GpsTime> gps_time_tx{fill_gps_time};
+
+bool fill_gps_date(sm::GpsDate::Data &m)
+{
+  FEB_GPS_Data_t g;
+  FEB_GPS_GetLatestData(&g);
+  m.day = (int8_t)g.day;
+  m.month = (int8_t)g.month;
+  m.year = (int8_t)g.year;
+  return true;
+}
+fc::Publisher<sm::GpsDate> gps_date_tx{fill_gps_date};
+
+bool fill_gps_status(sm::GpsStatus::Data &m)
+{
+  FEB_GPS_Data_t g;
+  FEB_GPS_GetLatestData(&g);
+  m.fix_type = g.fix;
+  m.fix_mode = g.fix_mode;
+  m.sats_in_use = g.sats_in_use;
+  m.sats_in_view = g.sats_in_view;
+  m.valid = g.valid;
+  m.has_fix = g.has_fix;
+  m.pdop = (uint16_t)(g.pdop * 100.0f);
+  return true;
+}
+fc::Publisher<sm::GpsStatus> gps_status_tx{fill_gps_status};
+
+#endif /* FEB_SN_HAS_GPS */
 
 /* ============================================================================
- * GPS — FRONT-only trait structs on this branch.
- *
- * If you need REAR to publish GPS, the DBC codegen script
- * (sensor_nodes_messages.py) needs to emit GpsPosDataRear / GpsAltitudeDataRear
- * / etc. trait structs, matching the feb_can_gps_*_rear_t C structs that
- * already exist. Until then, only FRONT emits these.
+ * Fusion AHRS
  * ============================================================================ */
-#if FEB_SN_HAS_GPS && FEB_SN_IS_FRONT()
+#if FEB_SN_HAS_FUSION
 
-bool fill_gps_pos(feb_sn_gps_pos_t &m)
-{
-  FEB_GPS_Data_t g;
-  FEB_GPS_GetLatestData(&g);
-  m.latitude = feb_sn_gps_pos_latitude_encode(g.latitude);
-  m.longitude = feb_sn_gps_pos_longitude_encode(g.longitude);
-  return true;
-}
-fc::Publisher<fm::GpsPosData> gps_pos_tx{fill_gps_pos};
-
-bool fill_gps_altitude(feb_sn_gps_altitude_t &m)
-{
-  FEB_GPS_Data_t g;
-  FEB_GPS_GetLatestData(&g);
-  m.altitude = feb_sn_gps_altitude_altitude_encode(g.altitude);
-  m.hdop = feb_sn_gps_altitude_hdop_encode(g.hdop);
-  m.vdop = feb_sn_gps_altitude_vdop_encode(g.vdop);
-  return true;
-}
-fc::Publisher<fm::GpsAltitudeData> gps_alt_tx{fill_gps_altitude};
-
-bool fill_gps_motion(feb_sn_gps_motion_t &m)
-{
-  FEB_GPS_Data_t g;
-  FEB_GPS_GetLatestData(&g);
-  m.speed = feb_sn_gps_motion_speed_encode(g.speed_kmh);
-  m.course = feb_sn_gps_motion_course_encode(g.course);
-  return true;
-}
-fc::Publisher<fm::GpsMotionData> gps_motion_tx{fill_gps_motion};
-
-bool fill_gps_time(feb_sn_gps_time_t &m)
-{
-  FEB_GPS_Data_t g;
-  FEB_GPS_GetLatestData(&g);
-  m.hours = feb_sn_gps_time_hours_encode((double)g.hours);
-  m.minutes = feb_sn_gps_time_minutes_encode((double)g.minutes);
-  m.seconds = feb_sn_gps_time_seconds_encode((double)g.seconds);
-  return true;
-}
-fc::Publisher<fm::GpsTimeData> gps_time_tx{fill_gps_time};
-
-bool fill_gps_date(feb_sn_gps_date_t &m)
-{
-  FEB_GPS_Data_t g;
-  FEB_GPS_GetLatestData(&g);
-  m.day = feb_sn_gps_date_day_encode((double)g.day);
-  m.month = feb_sn_gps_date_month_encode((double)g.month);
-  m.year = feb_sn_gps_date_year_encode((double)g.year);
-  return true;
-}
-fc::Publisher<fm::GpsDateData> gps_date_tx{fill_gps_date};
-
-bool fill_gps_status(feb_sn_gps_status_t &m)
-{
-  FEB_GPS_Data_t g;
-  FEB_GPS_GetLatestData(&g);
-  m.fix_type = feb_sn_gps_status_fix_type_encode((double)g.fix);
-  m.fix_mode = feb_sn_gps_status_fix_mode_encode((double)g.fix_mode);
-  m.sats_in_use = feb_sn_gps_status_sats_in_use_encode((double)g.sats_in_use);
-  m.sats_in_view = feb_sn_gps_status_sats_in_view_encode((double)g.sats_in_view);
-  m.valid = feb_sn_gps_status_valid_encode((double)g.valid);
-  m.has_fix = feb_sn_gps_status_has_fix_encode((double)g.has_fix);
-  m.pdop = feb_sn_gps_status_pdop_encode(g.pdop);
-  return true;
-}
-fc::Publisher<fm::GpsStatusData> gps_status_tx{fill_gps_status};
-
-#endif /* FEB_SN_HAS_GPS && FEB_SN_IS_FRONT */
-
-/* ============================================================================
- * Fusion AHRS — FRONT-only trait structs on this branch (same reason as GPS).
- * ============================================================================ */
-#if FEB_SN_HAS_FUSION && FEB_SN_IS_FRONT()
-
-bool fill_fusion_quat(feb_sn_fusion_quat_t &m)
+bool fill_fusion_quat(sm::FusionQuat::Data &m)
 {
   float q[4];
   FEB_Fusion_GetQuaternion(q);
-  m.q_w = feb_sn_fusion_quat_w_encode((double)q[0]);
-  m.q_x = feb_sn_fusion_quat_x_encode((double)q[1]);
-  m.q_y = feb_sn_fusion_quat_y_encode((double)q[2]);
-  m.q_z = feb_sn_fusion_quat_z_encode((double)q[3]);
+  m.q_w = (int16_t)(q[0] * 32767.0f);
+  m.q_x = (int16_t)(q[1] * 32767.0f);
+  m.q_y = (int16_t)(q[2] * 32767.0f);
+  m.q_z = (int16_t)(q[3] * 32767.0f);
   return true;
 }
-fc::Publisher<fm::FusionQuaternionData> fusion_quat_tx{fill_fusion_quat};
+fc::Publisher<sm::FusionQuat> fusion_quat_tx{fill_fusion_quat};
 
-bool fill_fusion_euler(feb_sn_fusion_euler_t &m)
+bool fill_fusion_euler(sm::FusionEuler::Data &m)
 {
   float e[3];
   FEB_Fusion_GetEuler(e);
-  m.roll = feb_sn_fusion_euler_roll_encode((double)e[0]);
-  m.pitch = feb_sn_fusion_euler_pitch_encode((double)e[1]);
-  m.yaw = feb_sn_fusion_euler_yaw_encode((double)e[2]);
+  m.roll = (int16_t)(e[0] * 100.0f);
+  m.pitch = (int16_t)(e[1] * 100.0f);
+  m.yaw = (int16_t)(e[2] * 100.0f);
   return true;
 }
-fc::Publisher<fm::FusionEulerData> fusion_euler_tx{fill_fusion_euler};
+fc::Publisher<sm::FusionEuler> fusion_euler_tx{fill_fusion_euler};
 
-bool fill_fusion_lin_accel(feb_sn_fusion_lin_accel_t &m)
+bool fill_fusion_lin_accel(sm::FusionLinAccel::Data &m)
 {
   float a[3];
   FEB_Fusion_GetLinearAcceleration_mg(a);
-  m.lin_accel_x = feb_sn_fusion_lin_accel_x_encode((double)a[0]);
-  m.lin_accel_y = feb_sn_fusion_lin_accel_y_encode((double)a[1]);
-  m.lin_accel_z = feb_sn_fusion_lin_accel_z_encode((double)a[2]);
+  m.lin_accel_x = (int16_t)a[0];
+  m.lin_accel_y = (int16_t)a[1];
+  m.lin_accel_z = (int16_t)a[2];
   return true;
 }
-fc::Publisher<fm::FusionLinearAccelData> fusion_lin_tx{fill_fusion_lin_accel};
+fc::Publisher<sm::FusionLinAccel> fusion_lin_tx{fill_fusion_lin_accel};
 
-bool fill_fusion_earth_accel(feb_sn_fusion_earth_accel_t &m)
+bool fill_fusion_earth_accel(sm::FusionEarthAccel::Data &m)
 {
   float a[3];
   FEB_Fusion_GetEarthAcceleration_mg(a);
-  m.earth_accel_x = feb_sn_fusion_earth_accel_x_encode((double)a[0]);
-  m.earth_accel_y = feb_sn_fusion_earth_accel_y_encode((double)a[1]);
-  m.earth_accel_z = feb_sn_fusion_earth_accel_z_encode((double)a[2]);
+  m.earth_accel_x = (int16_t)a[0];
+  m.earth_accel_y = (int16_t)a[1];
+  m.earth_accel_z = (int16_t)a[2];
   return true;
 }
-fc::Publisher<fm::FusionEarthAccelData> fusion_earth_tx{fill_fusion_earth_accel};
+fc::Publisher<sm::FusionEarthAccel> fusion_earth_tx{fill_fusion_earth_accel};
 
-bool fill_fusion_status(feb_sn_fusion_status_t &m)
+bool fill_fusion_status(sm::FusionStatus::Data &m)
 {
   FusionAhrsFlags flags;
   FusionAhrsInternalStates states;
@@ -294,13 +260,13 @@ bool fill_fusion_status(feb_sn_fusion_status_t &m)
   if (states.magnetometerIgnored)
     fb |= (1u << 5);
 
-  m.flags = feb_sn_fusion_status_flags_encode((double)fb);
-  m.accel_error = feb_sn_fusion_status_accel_err_encode(states.accelerationError);
-  m.mag_error = feb_sn_fusion_status_mag_err_encode(states.magneticError);
+  m.flags = fb;
+  m.accel_error = (uint8_t)(states.accelerationError * 10.0f);
+  m.mag_error = (uint8_t)(states.magneticError * 10.0f);
   return true;
 }
-fc::Publisher<fm::FusionStatusData> fusion_status_tx{fill_fusion_status};
+fc::Publisher<sm::FusionStatus> fusion_status_tx{fill_fusion_status};
 
-#endif /* FEB_SN_HAS_FUSION && FEB_SN_IS_FRONT */
+#endif /* FEB_SN_HAS_FUSION */
 
 } // namespace

@@ -22,8 +22,8 @@ static char buf[16];
 
 void FEB_UI_Update_WSS()
 {
-  const auto &wss = fc::rx<fm::WssRearData>.v();
-  rear_speed_mph = static_cast<uint16_t>((wss.wss_left_rear + wss.wss_right_rear) / 2);
+  const auto &wss = fc::rx<fm::WssRear>.v();
+  rear_speed_mph = static_cast<uint16_t>((wss.wss_left + wss.wss_right) / 2);
 
   snprintf(buf, sizeof(buf), "%u", rear_speed_mph);
   lv_label_set_text(ui_Wheel_Speed_Text, buf);

@@ -27,9 +27,9 @@ static int8_t frame_to_dev(uint32_t can_id)
     return FEB_HB_LVPDB;
   case FEB_CAN_DCU_HEARTBEAT_FRAME_ID:
     return FEB_HB_DCU;
-  case FEB_CAN_FRONT_SENSOR_HEARTBEAT_MESSAGE_FRAME_ID:
+  case FEB_CAN_SN_FRONT_HEARTBEAT_FRAME_ID:
     return FEB_HB_FSN;
-  case FEB_CAN_REAR_SENSOR_HEARTBEAT_MESSAGE_FRAME_ID:
+  case FEB_CAN_SN_REAR_HEARTBEAT_FRAME_ID:
     return FEB_HB_RSN;
   default:
     return -1;
