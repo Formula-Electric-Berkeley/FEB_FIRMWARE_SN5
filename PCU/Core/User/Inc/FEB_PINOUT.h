@@ -217,7 +217,7 @@ extern "C"
 #define APPS1_SHORT_CIRCUIT_DETECT_MV 1000 /* APPS1 below this = short/under-range */
 #define APPS2_SHORT_CIRCUIT_DETECT_MV 250  /* APPS2 below this = short/under-range */
 #define APPS1_OPEN_CIRCUIT_DETECT_MV 2800  /* APPS1 above this = open/over-range */
-#define APPS2_OPEN_CIRCUIT_DETECT_MV 1300  /* APPS2 above this = open/over-range */
+#define APPS2_OPEN_CIRCUIT_DETECT_MV 1900  /* APPS2 above this = open/over-range */
 
 /* BSE (brake) open/short detection (T.4.3.4/.5): per-sensor, sensor-side mV
  * (post 5V->3.3V divider; recoverable ceiling ~5000 mV). Floors catch a short-
