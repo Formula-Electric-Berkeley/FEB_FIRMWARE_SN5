@@ -21,7 +21,16 @@
 #include "feb_log.h"
 #include "tim.h"
 
+#include <algorithm>
+
 #define TAG_SENSOR "[SENSOR]"
+
+namespace
+{
+constexpr uint32_t kImuSamplePeriodMs =
+    std::min(feb::sn::msg::ImuAccel::kCycleMs, feb::sn::msg::FusionLinAccel::kCycleMs);
+
+} // namespace
 
 #if FEB_SN_HAS_GPS
 namespace
@@ -59,7 +68,7 @@ void SensorsInit()
 #endif
 
 #if FEB_SN_HAS_FUSION
-  FEB_Fusion_Init(msg::ImuAccel::kCycleMs);
+  FEB_Fusion_Init(kImuSamplePeriodMs);
   FEB_Console_Printf("Fusion orientation filter initialized\r\n");
 #if FEB_SN_HAS_IMU
   FEB_Console_Printf("Auto-calibrating gyro (1 s, keep car still)...\r\n");
@@ -129,10 +138,10 @@ void SensorsTick()
   }
 #endif
 
-  if ((uint32_t)(now_ms - t_imu_ms) >= msg::ImuAccel::kCycleMs)
+  if ((uint32_t)(now_ms - t_imu_ms) >= kImuSamplePeriodMs)
   {
     const uint32_t now_us = __HAL_TIM_GET_COUNTER(&htim5);
-    float dt = (float)msg::ImuAccel::kCycleMs / 1000.0f;
+    float dt = (float)kImuSamplePeriodMs / 1000.0f;
     if (fusion_dt_primed)
     {
       dt = (float)((uint32_t)(now_us - prev_fusion_us)) / 1.0e6f;
