@@ -18,8 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os2.h"
-
+#include "cmsis_os.h"
 #include "adc.h"
 #include "can.h"
 #include "dma.h"
