@@ -11,17 +11,9 @@ extern "C"
 {
 #endif
 
+#include <stdbool.h>
 #include <stdint.h>
 
-  /**
-   * @brief BMS state machine states (aligned with SN4)
-   * @note Values match CAN bms_state signal (5-bit, 0-31 valid range)
-   * @note Values must match FEB_SM_ST_t in PCU/Core/User/Inc/FEB_CAN_BMS.h
-   * @note SN5 keeps an extra CHARGER_PRECHARGE (7) state that the spec diagram
-   *       does not show, so diagram state numbers >= 7 (Charging, Balance, the
-   *       fault states) are offset by +1 here. Do NOT renumber to "match" the
-   *       diagram: PCU mirrors these exact values and compares state == DRIVE (5).
-   */
   typedef enum
   {
     BMS_STATE_BOOT = 0,
@@ -34,12 +26,42 @@ extern "C"
     BMS_STATE_CHARGER_PRECHARGE, // 7
     BMS_STATE_CHARGING,          // 8
     BMS_STATE_BALANCE,           // 9
-    BMS_STATE_FAULT_BMS,         // 10
-    BMS_STATE_FAULT_BSPD,        // 11
-    BMS_STATE_FAULT_IMD,         // 12
-    BMS_STATE_FAULT_CHARGING,    // 13
+
+    BMS_STATE_FAULT_CELL_OVERVOLTAGE = 20,     // 20
+    BMS_STATE_FAULT_CELL_UNDERVOLTAGE,         // 21
+    BMS_STATE_FAULT_CELL_OVERTEMP,             // 22
+    BMS_STATE_FAULT_CELL_UNDERTEMP,            // 23
+    BMS_STATE_FAULT_TEMP_SENSOR_LOSS,          // 24 - too few valid temp reads
+    BMS_STATE_FAULT_ADBMS_INIT,                // 25 - cell monitor never produced a scan
+    BMS_STATE_FAULT_ADBMS_TIMEOUT,             // 26 - cell monitor data stale
+    BMS_STATE_FAULT_IVT_TIMEOUT,               // 27
+    BMS_STATE_FAULT_OVERCURRENT,               // 28
+    BMS_STATE_FAULT_IMD,                       // 29
+    BMS_STATE_FAULT_BSPD,                      // 30
+    BMS_STATE_FAULT_CONTACTOR_MISMATCH,        // 31 - AIR+/precharge sense != command
+    BMS_STATE_FAULT_BALANCE_HV_ACTIVE,         // 32
+    BMS_STATE_FAULT_PRECHARGE_TIMEOUT,         // 33
+    BMS_STATE_FAULT_PRECHARGE_TOO_FAST,        // 34
+    BMS_STATE_FAULT_CHARGER_PRECHARGE_TIMEOUT, // 35
+    BMS_STATE_FAULT_SHUTDOWN_OPEN,             // 36 - shutdown loop opened while HV live
+    BMS_STATE_FAULT_AIR_MINUS_OPEN,            // 37 - AIR- opened while HV live
+    BMS_STATE_FAULT_CHARGER_HW,                // 38 - charger reported hardware failure
+    BMS_STATE_FAULT_MANUAL,                    // 39 - latched from the console
     BMS_STATE_COUNT
   } BMS_State_t;
+
+#define BMS_STATE_NOMINAL_COUNT (BMS_STATE_BALANCE + 1)
+#define BMS_STATE_FAULT_FIRST BMS_STATE_FAULT_CELL_OVERVOLTAGE
+
+  static inline bool BMS_State_Is_Fault(BMS_State_t state)
+  {
+    return state >= BMS_STATE_FAULT_FIRST && state < BMS_STATE_COUNT;
+  }
+
+  static inline bool BMS_State_Is_Valid(BMS_State_t state)
+  {
+    return state < BMS_STATE_NOMINAL_COUNT || BMS_State_Is_Fault(state);
+  }
 
   /**
    * @brief Initialize the BMS CAN state publisher

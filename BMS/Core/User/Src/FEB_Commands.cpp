@@ -312,7 +312,7 @@ struct StateEntry
   BMS_State_t state;
 };
 
-constexpr std::array<StateEntry, 14> kStateTable = {{
+constexpr std::array<StateEntry, 11> kStateTable = {{
     {"boot", "Transition to BOOT", BMS_STATE_BOOT},
     {"lv_power", "Transition to LV_POWER", BMS_STATE_LV_POWER},
     {"bus_health", "Transition to BUS_HEALTH_CHECK", BMS_STATE_BUS_HEALTH_CHECK},
@@ -323,10 +323,7 @@ constexpr std::array<StateEntry, 14> kStateTable = {{
     {"charger_precharge", "Transition to CHARGER_PRECHARGE", BMS_STATE_CHARGER_PRECHARGE},
     {"charging", "Transition to CHARGING", BMS_STATE_CHARGING},
     {"balance", "Transition to BALANCE", BMS_STATE_BALANCE},
-    {"fault_bms", "Latch FAULT_BMS", BMS_STATE_FAULT_BMS},
-    {"fault_bspd", "Latch FAULT_BSPD", BMS_STATE_FAULT_BSPD},
-    {"fault_imd", "Latch FAULT_IMD", BMS_STATE_FAULT_IMD},
-    {"fault_charging", "Latch FAULT_CHARGING", BMS_STATE_FAULT_CHARGING},
+    {"fault", "Latch FAULT_MANUAL", BMS_STATE_FAULT_MANUAL},
 }};
 
 /** @return nullptr when @p name is not a state. */
@@ -351,7 +348,7 @@ bool is_manual_hv_step(BMS_State_t current, BMS_State_t target)
 
 bool is_state_transition_allowed(BMS_State_t current, BMS_State_t target)
 {
-  if (target >= BMS_STATE_FAULT_BMS && target <= BMS_STATE_FAULT_CHARGING)
+  if (BMS_State_Is_Fault(target))
   {
     return true;
   }

@@ -121,14 +121,46 @@ const char *to_BMS_state_string(BMS_State_t state)
     return "CHARGING"; // 8
   case (BMS_STATE_BALANCE):
     return "BALANCE"; // 9
-  case (BMS_STATE_FAULT_BMS):
-    return "BMS_FAULT"; // 10
-  case (BMS_STATE_FAULT_BSPD):
-    return "BSPD_FAULT"; // 11
+  case (BMS_STATE_FAULT_CELL_OVERVOLTAGE):
+    return "OV_FAULT"; // 20
+  case (BMS_STATE_FAULT_CELL_UNDERVOLTAGE):
+    return "UV_FAULT"; // 21
+  case (BMS_STATE_FAULT_CELL_OVERTEMP):
+    return "OT_FAULT"; // 22
+  case (BMS_STATE_FAULT_CELL_UNDERTEMP):
+    return "UT_FAULT"; // 23
+  case (BMS_STATE_FAULT_TEMP_SENSOR_LOSS):
+    return "TEMP_SENS_FAULT"; // 24
+  case (BMS_STATE_FAULT_ADBMS_INIT):
+    return "ADBMS_INIT_FAULT"; // 25
+  case (BMS_STATE_FAULT_ADBMS_TIMEOUT):
+    return "ADBMS_TO_FAULT"; // 26
+  case (BMS_STATE_FAULT_IVT_TIMEOUT):
+    return "IVT_TO_FAULT"; // 27
+  case (BMS_STATE_FAULT_OVERCURRENT):
+    return "OC_FAULT"; // 28
   case (BMS_STATE_FAULT_IMD):
-    return "IMD_FAULT"; // Insulation fault between
-  case (BMS_STATE_FAULT_CHARGING):
-    return "CHARGING_FAULT"; // 13
+    return "IMD_FAULT"; // 29
+  case (BMS_STATE_FAULT_BSPD):
+    return "BSPD_FAULT"; // 30
+  case (BMS_STATE_FAULT_CONTACTOR_MISMATCH):
+    return "CONTACTOR_FAULT"; // 31
+  case (BMS_STATE_FAULT_BALANCE_HV_ACTIVE):
+    return "BAL_HV_FAULT"; // 32
+  case (BMS_STATE_FAULT_PRECHARGE_TIMEOUT):
+    return "PRECHG_TO_FAULT"; // 33
+  case (BMS_STATE_FAULT_PRECHARGE_TOO_FAST):
+    return "PRECHG_FAST_FAULT"; // 34
+  case (BMS_STATE_FAULT_CHARGER_PRECHARGE_TIMEOUT):
+    return "CHG_PRECHG_FAULT"; // 35
+  case (BMS_STATE_FAULT_SHUTDOWN_OPEN):
+    return "SHUTDOWN_FAULT"; // 36
+  case (BMS_STATE_FAULT_AIR_MINUS_OPEN):
+    return "AIR-_FAULT"; // 37
+  case (BMS_STATE_FAULT_CHARGER_HW):
+    return "CHARGER_FAULT"; // 38
+  case (BMS_STATE_FAULT_MANUAL):
+    return "MANUAL_FAULT"; // 39
   case (BMS_STATE_COUNT):
     return "COUNT";
   default:
