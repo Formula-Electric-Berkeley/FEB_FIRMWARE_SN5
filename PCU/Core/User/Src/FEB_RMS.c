@@ -17,6 +17,9 @@
 #define REGEN_BRAKE_POS_THRESH 20.0f /* 20% brake position to activate regen */
 #endif
 
+#define APPS_FULL_TRAVEL_PERCENT 70.0f
+#define FUSE_CURRENT_LIMIT_A 75.0f
+
 /* Global RMS control data */
 RMS_CONTROL RMS_CONTROL_MESSAGE;
 APPS_DataTypeDef APPS_Data;
@@ -357,9 +360,24 @@ void FEB_RMS_Torque(void)
   // }
   if (sensors_plausible && !acc_brake_simultaneous)
   {
-    // ACCELERATION MODE: No brake and sensors are plausible
-    // Calculate commanded torque: acceleration (0-100%) * max_torque
-    RMS_CONTROL_MESSAGE.torque = (int16_t)(0.01f * APPS_Data.acceleration * 3384);
+    // Power on the pack side is calculated by (Voltage * Current = Power (W))
+    // On the consuming side it can be calculated by (Angular Velocity (rad/s) * Torque (Nm) = Power (W))
+    // Since we know the voltage of the pack and the current RPM of the motor
+    // We can know how much current a certain commanded torque will require
+    // The code here is to make sure that we never pull more than FUSE_CURRENT_LIMIT_A
+    // since that would mean our pack will begin disassembling itself
+    float motor_rpm = fabsf((float)RMS_MESSAGE.Motor_Speed);
+    float motor_speed_rad_per_s = motor_rpm / 60.0f * 6.28f;
+    float max_torque_nm = MAX_TORQUE / 10.0f;
+    if (motor_speed_rad_per_s > 1.0f)
+    {
+      float fuse_power_limit_w = FEB_CAN_IVT_GetVoltage() * FUSE_CURRENT_LIMIT_A;
+      max_torque_nm = fminf(max_torque_nm, fuse_power_limit_w / motor_speed_rad_per_s);
+    }
+
+    float pedal_percent = fminf(fmaxf(APPS_Data.acceleration, 0.0f), APPS_FULL_TRAVEL_PERCENT);
+    float torque_nm = pedal_percent / APPS_FULL_TRAVEL_PERCENT * max_torque_nm;
+    RMS_CONTROL_MESSAGE.torque = (int16_t)(torque_nm * 10.0f);
   }
   else
   {
