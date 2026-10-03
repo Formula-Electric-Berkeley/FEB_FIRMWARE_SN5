@@ -58,6 +58,7 @@ extern "C"
 
   void FEB_LinearPotentiometer_Init(void);
   void read_LinearPotentiometer(void);
+  float get_LP_Position(int i);
 
 #ifdef __cplusplus
 }
