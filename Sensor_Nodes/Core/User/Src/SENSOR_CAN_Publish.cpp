@@ -14,6 +14,7 @@
 #include "FEB_Fusion.h"              /* FEB_Fusion_GetQuaternion/Euler/Linear/... */
 #include "feb_can_publisher.hpp"     /* fc::Publisher<M> */
 #include "FEB_LinearPotentiometer.h" /* lp_position_mm[], FEB_LP_COUNT */
+#include "FEB_Thermistor.h"          /* th_temp_c[], th_status */
 #include "SN_Config_Messages.hpp"
 #include "FEB_StrainGauge.h"
 #include "App/SN_SteeringEncoder.h"
@@ -115,6 +116,33 @@ bool fill_linpot(sm::Linpot::Data &m)
 fc::Publisher<sm::Linpot> linpot_tx{fill_linpot};
 
 #endif /* FEB_SN_HAS_LINEAR_POTENTIOMETER */
+
+/* ============================================================================
+ * Thermistors
+ * ============================================================================ */
+#if FEB_SN_HAS_THERMISTOR
+
+static int16_t temp_c_to_can_units(float temp_c)
+{
+  float scaled = temp_c * 100.0f;
+  if (scaled < -32768.0f)
+    return INT16_MIN;
+  if (scaled > 32767.0f)
+    return INT16_MAX;
+  return (int16_t)scaled;
+}
+
+bool fill_thermistor(sm::Thermistor::Data &m)
+{
+  m.coolant_temp_1 = temp_c_to_can_units(th_temp_c[0]);
+  m.coolant_temp_2 = temp_c_to_can_units(th_temp_c[1]);
+  m.coolant_temp_3 = temp_c_to_can_units(th_temp_c[2]);
+  m.therm_status = th_status;
+  return true;
+}
+fc::Publisher<sm::Thermistor> thermistor_tx{fill_thermistor};
+
+#endif /* FEB_SN_HAS_THERMISTOR */
 
 /* ============================================================================
  * Strain Gauge

@@ -37,6 +37,7 @@ extern "C"
 #define FEB_SN_HAS_WSS 1
 #define FEB_SN_HAS_FUSION 0
 #define FEB_SN_HAS_LINEAR_POTENTIOMETER 1
+#define FEB_SN_HAS_THERMISTOR 1
 #else /* REAR */
 #define FEB_SN_HAS_IMU 1
 #define FEB_SN_HAS_MAG 1
@@ -44,6 +45,7 @@ extern "C"
 #define FEB_SN_HAS_WSS 1
 #define FEB_SN_HAS_FUSION 1
 #define FEB_SN_HAS_LINEAR_POTENTIOMETER 1
+#define FEB_SN_HAS_THERMISTOR 1
 #endif
 
 /* Consistency checks: composite features require their primitives. */

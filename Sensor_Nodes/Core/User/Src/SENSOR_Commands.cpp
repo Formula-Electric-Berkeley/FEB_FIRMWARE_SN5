@@ -14,6 +14,7 @@
 #include "FEB_GPS.h"
 #include "FEB_WSS.h"
 #include "FEB_LinearPotentiometer.h"
+#include "FEB_Thermistor.h"
 #include "FEB_CAN_IRTSSensorConfig.h"
 #include "feb_commands_2.hpp"
 #include "feb_console_2.hpp"
@@ -318,6 +319,21 @@ void cmd_linpot(Interaction &io, std::span<char *const>)
 }
 
 /* ============================================================================
+ * Thermistor commands
+ * ============================================================================ */
+
+void cmd_therm(Interaction &io, std::span<char *const>)
+{
+  KVTable t(io, 12, 18, "Thermistors");
+  t.row("Raw [0]", "%u", (unsigned)th_raw[0]);
+  t.row("Raw [1]", "%u", (unsigned)th_raw[1]);
+  t.row("Raw [2]", "%u", (unsigned)th_raw[2]);
+  t.row("Temp [0]", "%.2f C", th_temp_c[0]);
+  t.row("Temp [1]", "%.2f C", th_temp_c[1]);
+  t.row("Temp [2]", "%.2f C", th_temp_c[2]);
+}
+
+/* ============================================================================
  * Sensor die temperature commands (Milestone 3)
  * ============================================================================ */
 
@@ -389,12 +405,13 @@ constexpr std::array<Command, 3> kIrtsSubcommands = {{
     {.name = "status", .description = "Burst state and frame count", .handler = cmd_irts_status},
 }};
 
-constexpr std::array<Command, 7> kSensorCommands = {{
+constexpr std::array<Command, 8> kSensorCommands = {{
     group("imu", "IMU sensor commands", kImuSubcommands),
     group("mag", "Magnetometer commands", kMagSubcommands),
     group("gps", "GPS commands", kGpsSubcommands),
     {.name = "wss", .description = "Wheel speed sensors", .handler = cmd_wss},
     {.name = "linpot", .description = "Linear potentiometers", .handler = cmd_linpot},
+    {.name = "therm", .description = "Coolant thermistors", .handler = cmd_therm},
     {.name = "temps", .description = "Sensor die temperatures", .handler = cmd_temps},
     group("irts", "IRTS sensor config burst", kIrtsSubcommands),
 }};

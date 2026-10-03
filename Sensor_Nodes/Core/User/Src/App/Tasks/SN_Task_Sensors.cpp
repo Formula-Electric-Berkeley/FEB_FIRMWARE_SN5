@@ -16,6 +16,7 @@
 #include "FEB_LinearPotentiometer.h"
 #include "FEB_Magnetometer.h"
 #include "FEB_SN_Config.h"
+#include "FEB_Thermistor.h"
 #include "FEB_WSS.h"
 #include "feb_console.h"
 #include "feb_log.h"
@@ -101,6 +102,13 @@ void SensorsInit()
   FEB_Console_Printf("Linear potentiometers absent on this variant\r\n");
 #endif
 
+#if FEB_SN_HAS_THERMISTOR
+  FEB_Thermistor_Init();
+  FEB_Console_Printf("Thermistors initialized\r\n");
+#else
+  FEB_Console_Printf("Thermistors absent on this variant\r\n");
+#endif
+
 #if FEB_SN_HAS_GPS
   const int gps_result = FEB_GPS_Init();
   if (gps_result != 0)
@@ -140,6 +148,7 @@ void SensorsTick()
   static uint32_t t_imu_ms = 0;
   static uint32_t t_wss_ms = 0;
   static uint32_t t_lp_ms = 0;
+  static uint32_t t_th_ms = 0;
   static uint32_t prev_fusion_us = 0;
   static bool fusion_dt_primed = false;
 
@@ -200,6 +209,14 @@ void SensorsTick()
 #endif
 
     t_lp_ms = now_ms;
+  }
+
+  if ((uint32_t)(now_ms - t_th_ms) >= msg::Thermistor::kCycleMs)
+  {
+#if FEB_SN_HAS_THERMISTOR
+    read_Thermistor();
+#endif
+    t_th_ms = now_ms;
   }
 
   FEB_CAN_IRTSSensorConfig_Tick();
