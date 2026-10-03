@@ -20,6 +20,7 @@
 #include "feb_console.h"
 #include "feb_log.h"
 #include "tim.h"
+#include "../SN_SteeringEncoder.h"
 
 #include <algorithm>
 
@@ -87,6 +88,15 @@ void SensorsInit()
 #if FEB_SN_HAS_LINEAR_POTENTIOMETER
   FEB_LinearPotentiometer_Init();
   FEB_Console_Printf("Linear potentiometers initialized\r\n");
+#else
+  FEB_Console_Printf("Linear potentiometers absent on this variant\r\n");
+#endif
+
+#if FEB_SN_IS_FRONT()
+  if (!FEB_Steering_Init())
+    LOG_E(TAG_SENSOR, "Steering encoder init failed");
+  else
+    FEB_Console_Printf("Steering encoder initialized\r\n");
 #else
   FEB_Console_Printf("Linear potentiometers absent on this variant\r\n");
 #endif
@@ -184,6 +194,11 @@ void SensorsTick()
 #if FEB_SN_HAS_LINEAR_POTENTIOMETER
     read_LinearPotentiometer();
 #endif
+
+#if FEB_SN_IS_FRONT()
+    read_SteeringPosition();
+#endif
+
     t_lp_ms = now_ms;
   }
 

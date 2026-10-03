@@ -15,6 +15,8 @@
 #include "feb_can_publisher.hpp"     /* fc::Publisher<M> */
 #include "FEB_LinearPotentiometer.h" /* lp_position_mm[], FEB_LP_COUNT */
 #include "SN_Config_Messages.hpp"
+#include "FEB_StrainGauge.h"
+#include "App/SN_SteeringEncoder.h"
 
 namespace fc = feb::can;
 namespace sm = feb::sn::msg;
@@ -106,13 +108,61 @@ static uint16_t mm_to_can_units(float mm)
 
 bool fill_linpot(sm::Linpot::Data &m)
 {
-  m.linpot_left = mm_to_can_units(lp_position_mm[0]);
-  m.linpot_right = mm_to_can_units(lp_position_mm[1]);
+  m.linpot_left = mm_to_can_units(get_LP_Position(0));
+  m.linpot_right = mm_to_can_units(get_LP_Position(1));
   return true;
 }
 fc::Publisher<sm::Linpot> linpot_tx{fill_linpot};
 
 #endif /* FEB_SN_HAS_LINEAR_POTENTIOMETER */
+
+/* ============================================================================
+ * Strain Gauge
+ * ============================================================================ */
+
+#if FEB_SN_IS_FRONT()
+// front has 3 strain gauges and rear has 4
+bool fill_strain_gauge(sm::StrainGauge::Data &m)
+{
+  m.strain_gauge_1 = get_strain_gauge(0);
+  m.strain_gauge_2 = get_strain_gauge(1);
+  m.strain_gauge_3 = get_strain_gauge(2);
+}
+#else
+bool fill_strain_gauge(sm::StrainGauge::Data &m)
+{
+  m.strain_gauge_1 = get_strain_gauge(0);
+  m.strain_gauge_2 = get_strain_gauge(1);
+  m.strain_gauge_3 = get_strain_gauge(2);
+  m.strain_gauge_4 = get_strain_gauge(3);
+}
+
+fc::Publisher<sm::StrainGauge> strain_gauge_tx{fill_strain_gauge};
+
+#endif
+
+/* ============================================================================
+ * Steering Encoder
+ * ============================================================================ */
+#if FEB_SN_IS_FRONT()
+
+bool fill_steering_status(feb_can_steer_front_t &m)
+{
+  if (!steer_initialized)
+    return false;
+
+  m.angle = steer_angle;
+  m.raw_angle = steer_raw_angle;
+  m.agc = steer_agc;
+  m.status = steer_status;
+  m.magnitude = steer_magnitude;
+
+  return true;
+}
+
+fc::Publisher<feb::can::msg::SteerFront> steer_front_tx{fill_steering_status};
+
+#endif
 
 /* ============================================================================
  * GPS

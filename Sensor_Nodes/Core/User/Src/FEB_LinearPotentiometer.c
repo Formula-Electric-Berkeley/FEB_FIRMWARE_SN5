@@ -114,3 +114,8 @@ void read_LinearPotentiometer(void)
     lp_position_mm[i] = raw_to_position_mm(lp_raw[i], &lp_cal[i]);
   }
 }
+
+float get_LP_Position(int i)
+{
+  return lp_position_mm[i];
+}

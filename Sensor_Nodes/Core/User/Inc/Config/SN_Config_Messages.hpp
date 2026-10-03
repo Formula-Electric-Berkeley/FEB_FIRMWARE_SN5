@@ -24,6 +24,7 @@ using FusionEuler = fm::FusionEulerFront;
 using FusionLinAccel = fm::FusionLinAccelFront;
 using FusionEarthAccel = fm::FusionEarthAccelFront;
 using FusionStatus = fm::FusionStatusFront;
+using StrainGauge = fm::StrainGaugeFront;
 #else
 using ImuAccel = fm::ImuAccelRear;
 using ImuGyro = fm::ImuGyroRear;
@@ -41,5 +42,6 @@ using FusionEuler = fm::FusionEulerRear;
 using FusionLinAccel = fm::FusionLinAccelRear;
 using FusionEarthAccel = fm::FusionEarthAccelRear;
 using FusionStatus = fm::FusionStatusRear;
+using StrainGauge = fm::StrainGaugeRear;
 #endif
 } // namespace feb::sn::msg

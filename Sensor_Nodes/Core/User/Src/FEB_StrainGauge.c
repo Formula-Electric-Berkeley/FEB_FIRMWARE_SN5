@@ -15,11 +15,17 @@
 uint16_t sg_raw[FEB_SG_COUNT] = {0};
 float sg_force_N[FEB_SG_COUNT] = {0.0f};
 
-static const FEB_SG_Cal_t cal[FEB_SG_COUNT] = {
-    {
-        .adc_channel = ADC_CHANNEL_1,
-        .resistance_offset = 0 // TODO calibrate
-    },
+static const FEB_SG_CAL_t sg_cal[FEB_SG_COUNT] = {
+    {/*
+       Per strain gauge documentation:
+       SGX_Ref = 1.625 - 10 * (SGX_OUT - 1.625)
+       ADC Read: uint32_t mv = (raw_value * 3300) / 4095;
+     */
+     .adc_channel = ADC_CHANNEL_7,
+     .resistance_offset = 0,
+     .start_voltage_mv = 0,
+     .excitation_voltage_mv = 0,
+     .sensitivity_rating = 0},
 };
 
 static uint16_t read_channel(uint32_t adc_channel)
@@ -47,13 +53,13 @@ static uint16_t read_channel(uint32_t adc_channel)
   return value;
 }
 
-static float mV_to_newtons(uint16_t raw, const FEB_SG_Cal_t *c) {}
+/*https://app.notion.com/p/SN5-Sensor-Nodes-27a538db02df80a8b309d9dc003f8fd4?source=copy_link#319538db02df80308f4dd6ed84c4d664
 
-void FEB_StrainGauge_Init(void)
+force = (measured voltage / (excitation voltage * sensitivity rating)) * full scale capacity
+*/
+static float mV_to_newtons(uint16_t raw, const FEB_SG_CAL_t *c)
 {
-  /* ADC1 is initialised by MX_ADC1_Init() in CubeMX-generated code. Both
-   * LP_Wiper1 (PC3) and LP_Wiper2 (PB1) GPIOs are already configured as analog
-   * inputs by HAL_ADC_MspInit(). No further setup is required. */
+  return raw;
 }
 
 void read_StrainGauge(void)
@@ -63,4 +69,9 @@ void read_StrainGauge(void)
     sg_raw[i] = read_channel(sg_cal[i].adc_channel);
     sg_force_N[i] = mV_to_newtons(sg_raw[i], &sg_cal[i]);
   }
+}
+
+float get_strain_gauge(int i)
+{
+  return sg_force_N[i];
 }
