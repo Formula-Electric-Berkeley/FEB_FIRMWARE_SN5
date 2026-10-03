@@ -20,8 +20,6 @@ static lv_obj_t *ui_BMS_Accumulator_Total_Voltage;
 static lv_obj_t *ui_BMS_HV_State_String;
 static lv_obj_t *ui_LVPDB_low_voltage;
 
-int16_t cell_max_temperature = 67;
-uint16_t accumulator_total_voltage = 67;
 uint16_t low_voltage = 67;
 
 static char buf[16];
@@ -41,17 +39,23 @@ void FEB_UI_Update_BMS_State()
   lv_label_set_text(ui_BMS_State_String, to_BMS_state_string(state));
   lv_label_set_text(ui_BMS_HV_State_String, (hv_on(state) ? "HV_ON" : "HV_OFF"));
 
-  cell_max_temperature = fc::rx<fm::BmsAccumulatorTemperature>.v().max_cell_temperature;
-  accumulator_total_voltage = fc::rx<fm::BmsAccumulatorVoltage>.v().total_pack_voltage;
+  int16_t cell_max_temperature = fc::rx<fm::BmsAccumulatorTemperature>.v().max_cell_temperature;
+  uint32_t accumulator_total_voltage = fc::rx<fm::BmsState>.v().total_pack_voltage;
   low_voltage = fc::rx<fm::LvpdbLv24vBusAnd12vBusVoltages>.v().lv_24v_voltage;
 
-  snprintf(buf, sizeof(buf), "%d.%d °C", cell_max_temperature / 10, cell_max_temperature % 10);
+  if (cell_max_temperature == -4096)
+    snprintf(buf, sizeof(buf), "--.- °C");
+  else
+    snprintf(buf, sizeof(buf), "%.1f °C", cell_max_temperature * 0.05f);
   lv_label_set_text(ui_BMS_Cell_Max_Temperature, buf);
 
   snprintf(buf, sizeof(buf), "%d.%d V", low_voltage / 1000, low_voltage / 100 % 10);
   lv_label_set_text(ui_LVPDB_low_voltage, buf);
 
-  snprintf(buf, sizeof(buf), "%d.%d V", accumulator_total_voltage / 10, accumulator_total_voltage % 10);
+  if (accumulator_total_voltage == 0x3FFFFF)
+    snprintf(buf, sizeof(buf), "---.- V");
+  else
+    snprintf(buf, sizeof(buf), "%.1f V", accumulator_total_voltage * 0.00015f);
   lv_label_set_text(ui_BMS_Accumulator_Total_Voltage, buf);
 }
 

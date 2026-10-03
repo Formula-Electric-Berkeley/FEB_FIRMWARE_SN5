@@ -216,6 +216,12 @@ static void store_cell_voltages()
 
   float min_cell_V = FLT_MAX;
   float max_cell_V = -FLT_MAX;
+  float valid_sum_V = 0.0f;
+  uint16_t valid_count = 0;
+  FEB_ACC.pack_min_voltage_bank = FEB_ADBMS_NO_LOCATION;
+  FEB_ACC.pack_min_voltage_cell = FEB_ADBMS_NO_LOCATION;
+  FEB_ACC.pack_max_voltage_bank = FEB_ADBMS_NO_LOCATION;
+  FEB_ACC.pack_max_voltage_cell = FEB_ADBMS_NO_LOCATION;
 
   for (uint8_t bank = 0; bank < FEB_NBANKS; bank++)
   {
@@ -246,10 +252,21 @@ static void store_cell_voltages()
 
         if (CVoltage >= 0.0f)
         {
+          uint8_t pack_cell = cell + ic * FEB_NUM_CELLS_PER_IC;
           if (CVoltage < min_cell_V)
+          {
             min_cell_V = CVoltage;
+            FEB_ACC.pack_min_voltage_bank = bank;
+            FEB_ACC.pack_min_voltage_cell = pack_cell;
+          }
           if (CVoltage > max_cell_V)
+          {
             max_cell_V = CVoltage;
+            FEB_ACC.pack_max_voltage_bank = bank;
+            FEB_ACC.pack_max_voltage_cell = pack_cell;
+          }
+          valid_sum_V += CVoltage;
+          valid_count++;
         }
       }
     }
@@ -257,6 +274,7 @@ static void store_cell_voltages()
   }
   FEB_ACC.pack_min_voltage_V = min_cell_V;
   FEB_ACC.pack_max_voltage_V = max_cell_V;
+  FEB_ACC.pack_avg_voltage_V = valid_count > 0 ? valid_sum_V / (float)valid_count : NAN;
   DEBUG_VOLTAGE_PRINT("Voltage storage complete: Total=%.3fV Min=%.3fV Max=%.3fV", FEB_ACC.total_voltage_V, min_cell_V,
                       max_cell_V);
 }
@@ -454,6 +472,8 @@ static void compute_pack_temp_stats(void)
   float max_C = -FLT_MAX;
   float sum_C = 0.0f;
   uint16_t count = 0;
+  uint8_t min_bank = FEB_ADBMS_NO_LOCATION, min_sensor = FEB_ADBMS_NO_LOCATION;
+  uint8_t max_bank = FEB_ADBMS_NO_LOCATION, max_sensor = FEB_ADBMS_NO_LOCATION;
 
   for (uint8_t bank = 0; bank < FEB_NBANKS; bank++)
   {
@@ -466,13 +486,26 @@ static void compute_pack_temp_stats(void)
       if (!isfinite(T))
         continue;
       if (T < min_C)
+      {
         min_C = T;
+        min_bank = bank;
+        min_sensor = s;
+      }
       if (T > max_C)
+      {
         max_C = T;
+        max_bank = bank;
+        max_sensor = s;
+      }
       sum_C += T;
       count++;
     }
   }
+
+  FEB_ACC.pack_min_temp_bank = min_bank;
+  FEB_ACC.pack_min_temp_sensor = min_sensor;
+  FEB_ACC.pack_max_temp_bank = max_bank;
+  FEB_ACC.pack_max_temp_sensor = max_sensor;
 
   if (count > 0)
   {
@@ -712,6 +745,15 @@ bool FEB_ADBMS_Init(void)
   FEB_ACC.pack_max_temp = NAN;
   FEB_ACC.pack_min_temp = NAN;
   FEB_ACC.average_pack_temp = NAN;
+  FEB_ACC.pack_avg_voltage_V = NAN;
+  FEB_ACC.pack_min_voltage_bank = FEB_ADBMS_NO_LOCATION;
+  FEB_ACC.pack_min_voltage_cell = FEB_ADBMS_NO_LOCATION;
+  FEB_ACC.pack_max_voltage_bank = FEB_ADBMS_NO_LOCATION;
+  FEB_ACC.pack_max_voltage_cell = FEB_ADBMS_NO_LOCATION;
+  FEB_ACC.pack_min_temp_bank = FEB_ADBMS_NO_LOCATION;
+  FEB_ACC.pack_min_temp_sensor = FEB_ADBMS_NO_LOCATION;
+  FEB_ACC.pack_max_temp_bank = FEB_ADBMS_NO_LOCATION;
+  FEB_ACC.pack_max_temp_sensor = FEB_ADBMS_NO_LOCATION;
 
   // Initialize ADBMS configuration FIRST (matching SN4 sequence)
   printf("[ADBMS] Initializing ADBMS Configuration\r\n");
@@ -824,6 +866,25 @@ float FEB_ADBMS_GET_ACC_Total_Voltage()
 #endif
 }
 
+void FEB_ADBMS_GET_ACC_Voltage_Summary(FEB_ADBMS_Voltage_Summary_t *out)
+{
+  osMutexAcquire(ADBMSMutexHandle, osWaitForever);
+  *out = (FEB_ADBMS_Voltage_Summary_t){
+      .total_V = FEB_ACC.total_voltage_V,
+      .avg_V = FEB_ACC.pack_avg_voltage_V,
+      .min_V = FEB_ACC.pack_min_voltage_V,
+      .max_V = FEB_ACC.pack_max_voltage_V,
+      .min_bank = FEB_ACC.pack_min_voltage_bank,
+      .min_cell = FEB_ACC.pack_min_voltage_cell,
+      .max_bank = FEB_ACC.pack_max_voltage_bank,
+      .max_cell = FEB_ACC.pack_max_voltage_cell,
+  };
+  osMutexRelease(ADBMSMutexHandle);
+#if FEB_BMS_DISABLE_ADBMS_CHECKS
+  out->total_V = FEB_BMS_BENCH_PACK_VOLTAGE_V;
+#endif
+}
+
 float FEB_ADBMS_GET_ACC_MIN_Voltage()
 {
   osMutexAcquire(ADBMSMutexHandle, osWaitForever);
@@ -923,6 +984,21 @@ float FEB_ADBMS_GET_ACC_MAX_Temp()
   float temp = FEB_ACC.pack_max_temp;
   osMutexRelease(ADBMSMutexHandle);
   return temp;
+}
+
+void FEB_ADBMS_GET_ACC_Temp_Summary(FEB_ADBMS_Temp_Summary_t *out)
+{
+  osMutexAcquire(ADBMSMutexHandle, osWaitForever);
+  *out = (FEB_ADBMS_Temp_Summary_t){
+      .avg_C = FEB_ACC.average_pack_temp,
+      .min_C = FEB_ACC.pack_min_temp,
+      .max_C = FEB_ACC.pack_max_temp,
+      .min_bank = FEB_ACC.pack_min_temp_bank,
+      .min_sensor = FEB_ACC.pack_min_temp_sensor,
+      .max_bank = FEB_ACC.pack_max_temp_bank,
+      .max_sensor = FEB_ACC.pack_max_temp_sensor,
+  };
+  osMutexRelease(ADBMSMutexHandle);
 }
 
 float FEB_ADBMS_GET_Cell_Temperature(uint8_t bank, uint16_t cell)

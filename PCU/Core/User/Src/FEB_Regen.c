@@ -107,9 +107,11 @@ float FEB_Regen_FilterSOC(float unfiltered_regen_torque)
  */
 float FEB_Regen_FilterTemp(float unfiltered_regen_torque)
 {
-  // Get cell temperature from BMS (convert from BMS format if needed)
-  uint16_t bms_temp = FEB_CAN_BMS_getTemp();
-  float hottest_cell_temp_C = (float)bms_temp / 10.0f; // Assuming deciselsius format
+  float hottest_cell_temp_C = FEB_CAN_BMS_getMaxTemperature();
+  if (!isfinite(hottest_cell_temp_C))
+  {
+    return 0.0f;
+  }
 
   // Calculate exponential filter coefficient
   float exponent = TEMP_FILTER_SHARPNESS * (hottest_cell_temp_C - MAX_CELL_TEMP);

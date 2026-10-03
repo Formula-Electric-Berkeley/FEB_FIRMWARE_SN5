@@ -91,12 +91,38 @@ extern "C"
   void FEB_ADBMS_Voltage_Process(void);
   void FEB_ADBMS_Temperature_Process(void);
 
+#define FEB_ADBMS_NO_LOCATION 0xFF
+
+  typedef struct
+  {
+    float total_V;
+    float avg_V;
+    float min_V;
+    float max_V;
+    uint8_t min_bank;
+    uint8_t min_cell;
+    uint8_t max_bank;
+    uint8_t max_cell;
+  } FEB_ADBMS_Voltage_Summary_t;
+
+  typedef struct
+  {
+    float avg_C;
+    float min_C;
+    float max_C;
+    uint8_t min_bank;
+    uint8_t min_sensor;
+    uint8_t max_bank;
+    uint8_t max_sensor;
+  } FEB_ADBMS_Temp_Summary_t;
+
   // ********************************** Voltage ************************************
 
   float FEB_ADBMS_GET_ACC_MIN_Voltage(void);
   float FEB_ADBMS_GET_ACC_MAX_Voltage(void);
   bool FEB_ADBMS_Precharge_Complete(void);
   float FEB_ADBMS_GET_ACC_Total_Voltage(void);
+  void FEB_ADBMS_GET_ACC_Voltage_Summary(FEB_ADBMS_Voltage_Summary_t *out);
   float FEB_ADBMS_GET_Cell_Voltage(uint8_t bank, uint16_t cell);
   float FEB_ADBMS_GET_Cell_Voltage_S(uint8_t bank, uint16_t cell);
   uint8_t FEB_ADBMS_GET_Cell_Violations(uint8_t bank, uint16_t cell);
@@ -107,6 +133,7 @@ extern "C"
   float FEB_ADBMS_GET_ACC_AVG_Temp(void);
   float FEB_ADBMS_GET_ACC_MIN_Temp(void);
   float FEB_ADBMS_GET_ACC_MAX_Temp(void);
+  void FEB_ADBMS_GET_ACC_Temp_Summary(FEB_ADBMS_Temp_Summary_t *out);
   float FEB_ADBMS_GET_Cell_Temperature(uint8_t bank, uint16_t cell);
   uint16_t FEB_ADBMS_GET_Therm_Raw_Code(uint8_t bank, uint16_t sensor);
   float FEB_ADBMS_GET_Therm_Raw_mV(uint8_t bank, uint16_t sensor);

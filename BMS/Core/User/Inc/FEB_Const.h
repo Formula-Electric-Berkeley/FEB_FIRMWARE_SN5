@@ -303,11 +303,20 @@ extern "C"
     float max_voltage_V;
     float pack_min_voltage_V; // Minimum cell voltage across entire pack
     float pack_max_voltage_V; // Maximum cell voltage across entire pack
+    float pack_avg_voltage_V;
+    uint8_t pack_min_voltage_bank;
+    uint8_t pack_min_voltage_cell;
+    uint8_t pack_max_voltage_bank;
+    uint8_t pack_max_voltage_cell;
     float avg_temp_C;
     float pack_min_temp;       // Minimum temperature across entire pack
     float pack_max_temp;       // Maximum temperature across entire pack
     float pack_max_valid_temp; // Maximum over PLAUSIBLE readings only
     float average_pack_temp;   // Average temperature across entire pack
+    uint8_t pack_min_temp_bank;
+    uint8_t pack_min_temp_sensor;
+    uint8_t pack_max_temp_bank;
+    uint8_t pack_max_temp_sensor;
     uint8_t error_type;
   } accumulator_t;
 

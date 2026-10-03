@@ -1,11 +1,15 @@
 #include "FEB_CAN_BMS.h"
 #include "feb_can_db.h"
 #include "feb_log.h"
+#include <math.h>
 #include <stdbool.h>
 #include "FEB_CAN_Diagnostics.h"
 
 /* Timeout for BMS CAN communication (ms) */
 #define BMS_STATE_TIMEOUT_MS 500
+
+#define BMS_PACK_VOLTAGE_INVALID 0x3FFFFFu
+#define BMS_TEMP_INVALID (-4096)
 
 /* Global BMS message data */
 BMS_MESSAGE_TYPE BMS_MESSAGE;
@@ -20,21 +24,6 @@ static FEB_SM_ST_t bms_sim_state = FEB_SM_ST_BOOT;
 /* Forward declaration of callback with new signature */
 static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                  const uint8_t *data, uint8_t length, void *user_data);
-
-uint16_t FEB_CAN_BMS_getTemp(void)
-{
-  return BMS_MESSAGE.temperature;
-}
-
-uint16_t FEB_CAN_BMS_getVoltage(void)
-{
-  return BMS_MESSAGE.voltage;
-}
-
-uint8_t FEB_CAN_BMS_getDeviceSelect(void)
-{
-  return BMS_MESSAGE.ping_ack;
-}
 
 FEB_SM_ST_t FEB_CAN_BMS_getState(void)
 {
@@ -73,19 +62,9 @@ void FEB_CAN_BMS_Init(void)
   params.can_id = FEB_CAN_BMS_STATE_FRAME_ID;
   FEB_CAN_RX_Register(&params);
 
-  params.can_id = FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID;
-  FEB_CAN_RX_Register(&params);
-
-  LOG_I(TAG_BMS, "Registered BMS CAN callbacks (Temp: 0x%03X, State: 0x%03X, Voltage: 0x%03X)",
-        FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID, FEB_CAN_BMS_STATE_FRAME_ID,
-        FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID);
-
-  BMS_MESSAGE.temperature = 0;
-  BMS_MESSAGE.voltage = 0;
   BMS_MESSAGE.state = FEB_SM_ST_BOOT;
-  BMS_MESSAGE.ping_ack = FEB_HB_NULL;
-  BMS_MESSAGE.max_temperature = 0.0f;
-  BMS_MESSAGE.accumulator_voltage = 0.0f;
+  BMS_MESSAGE.max_temperature = NAN;
+  BMS_MESSAGE.accumulator_voltage = NAN;
   BMS_MESSAGE.last_rx_timestamp = 0;
 
   LOG_I(TAG_BMS, "BMS CAN initialization complete");
@@ -104,11 +83,12 @@ static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
 
   if (can_id == FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID)
   {
-    /* deci-degrees C, max cell temperature (signed) */
     struct feb_can_bms_accumulator_temperature_t t;
     feb_can_bms_accumulator_temperature_unpack(&t, data, length);
-    BMS_MESSAGE.temperature = (uint16_t)t.max_cell_temperature;
-    BMS_MESSAGE.max_temperature = (float)t.max_cell_temperature / 10.0f;
+    BMS_MESSAGE.max_temperature =
+        t.max_cell_temperature == BMS_TEMP_INVALID
+            ? NAN
+            : (float)feb_can_bms_accumulator_temperature_max_cell_temperature_decode(t.max_cell_temperature);
   }
   else if (can_id == FEB_CAN_BMS_STATE_FRAME_ID)
   {
@@ -116,22 +96,16 @@ static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
     if (feb_can_bms_state_unpack(&m, data, length) == 0)
     {
       BMS_MESSAGE.state = (FEB_SM_ST_t)m.bms_state;
-      BMS_MESSAGE.ping_ack = (FEB_HB_t)m.ping_lv_nodes;
+      BMS_MESSAGE.accumulator_voltage = m.total_pack_voltage == BMS_PACK_VOLTAGE_INVALID
+                                            ? NAN
+                                            : (float)feb_can_bms_state_total_pack_voltage_decode(m.total_pack_voltage);
 
       /* Defer heartbeat TX to main loop - do NOT transmit from ISR */
-      if (BMS_MESSAGE.state == FEB_SM_ST_BUS_HEALTH_CHECK || BMS_MESSAGE.ping_ack == FEB_HB_PCU)
+      if (BMS_MESSAGE.state == FEB_SM_ST_BUS_HEALTH_CHECK)
       {
         heartbeat_pending = true;
       }
     }
-  }
-  else if (can_id == FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID)
-  {
-    /* decivolts, cell-sum pack voltage — used for the `bms` console display */
-    struct feb_can_bms_accumulator_voltage_t v;
-    feb_can_bms_accumulator_voltage_unpack(&v, data, length);
-    BMS_MESSAGE.voltage = v.total_pack_voltage;
-    BMS_MESSAGE.accumulator_voltage = (float)v.total_pack_voltage / 10.0f;
   }
 }
 
@@ -168,7 +142,7 @@ void FEB_CAN_BMS_ProcessHeartbeat(void)
   if (heartbeat_pending)
   {
     heartbeat_pending = false;
-    LOG_D(TAG_BMS, "Processing deferred heartbeat (state=%d, ping_ack=%d)", BMS_MESSAGE.state, BMS_MESSAGE.ping_ack);
+    LOG_D(TAG_BMS, "Processing deferred heartbeat (state=%d)", BMS_MESSAGE.state);
     FEB_CAN_HEARTBEAT_Transmit();
   }
 }

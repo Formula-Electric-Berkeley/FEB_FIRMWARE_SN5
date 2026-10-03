@@ -135,7 +135,7 @@ void cmd_dash_bms(Interaction &io, std::span<char *const>)
 
   t.row("State", "%d raw", (int)fc::rx<fm::BmsState>.v().bms_state);
   t.row("Max cell temp", "%d raw", (int)fc::rx<fm::BmsAccumulatorTemperature>.v().max_cell_temperature);
-  t.row("Pack voltage", "%u raw", (unsigned)fc::rx<fm::BmsAccumulatorVoltage>.v().total_pack_voltage);
+  t.row("Pack voltage", "%lu raw", (unsigned long)fc::rx<fm::BmsState>.v().total_pack_voltage);
 }
 
 void cmd_dash_pcu(Interaction &io, std::span<char *const>)

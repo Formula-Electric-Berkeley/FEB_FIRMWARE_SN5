@@ -6,26 +6,47 @@
 #include "FEB_CAN_State.h"
 #include "FEB_ADBMS6830B.h"
 #include "FEB_CAN_DASH.h"
+#include "FEB_Const.h"
 #include "FEB_SM.h"
 #include "feb_can_lib.h"
 #include "feb_can_db.h"
 #include "stm32f4xx_hal.h"
+#include <math.h>
 #include <stdbool.h>
-#include <string.h>
 
 /* Note: Critical sections removed - current_state is volatile and 1 byte (atomic on ARM) */
 
 /* R2D timeout for state transitions */
 #define R2D_TIMEOUT_MS 500
 
+#define CELL_DATA_PERIOD_MS 10
+#define CELL_MODULE_BITS 4
+#define CELL_CELL_BITS 4
+#define CELL_VOLTAGE_BITS 16
+#define CELL_TEMP_BITS 13
+#define CELL_TEMPS 3
+#define CELL_VOLTAGE_SHIFT (CELL_MODULE_BITS + CELL_CELL_BITS)
+#define CELL_TEMP_SHIFT (CELL_VOLTAGE_SHIFT + CELL_VOLTAGE_BITS)
+#define CELL_VOLTAGE_V_PER_LSB 0.00015f
+#define CELL_TEMP_C_PER_LSB 0.05f
+#define CELL_VOLTAGE_INVALID 0xFFFFu
+#define CELL_TEMP_MASK ((1u << CELL_TEMP_BITS) - 1u)
+#define CELL_TEMP_RAW_MIN (-(1 << (CELL_TEMP_BITS - 1)))
+#define CELL_TEMP_RAW_MAX ((1 << (CELL_TEMP_BITS - 1)) - 1)
+#define CELL_TEMP_INVALID CELL_TEMP_RAW_MIN
+#define CELL_NO_SENSOR 0xFF
+#define PACK_VOLTAGE_INVALID 0x3FFFFFu
+
+static const uint8_t cell_temp_slots[][CELL_TEMPS] = {
+    {0, 28, 35}, {22, 29, 36}, {23, 30, 37}, {24, 31, 38}, {25, 32, 40}, {26, 33, 41}, {27, 34, CELL_NO_SENSOR},
+    {7, 14, 21}, {6, 13, 20},  {5, 12, 19},  {4, 11, 18},  {3, 10, 17},  {2, 9, 16},   {1, 8, 15},
+};
+
 /* CAN ready flag - prevents transmission before CAN is initialized */
 static volatile bool can_ready = false;
 
 /* Current BMS state - volatile for ISR/task access */
 static volatile BMS_State_t current_state = BMS_STATE_BOOT;
-
-/* BMS state message data */
-static struct feb_can_bms_state_t bms_state_msg;
 
 /* State name lookup table, indexed by BMS_State_t (reserved values are NULL) */
 static const char *const state_names[BMS_STATE_COUNT] = {
@@ -62,9 +83,157 @@ static const char *const state_names[BMS_STATE_COUNT] = {
 };
 _Static_assert(BMS_STATE_COUNT <= 256, "bms_state is an 8-bit CAN signal");
 
+static uint16_t quantize_cell_voltage(float volts)
+{
+  if (!(volts >= 0.0f))
+  {
+    return CELL_VOLTAGE_INVALID;
+  }
+  long raw = lroundf(volts / CELL_VOLTAGE_V_PER_LSB);
+  return raw >= (long)CELL_VOLTAGE_INVALID ? CELL_VOLTAGE_INVALID - 1 : (uint16_t)raw;
+}
+
+static uint32_t quantize_pack_voltage(float volts)
+{
+  if (!(volts >= 0.0f))
+  {
+    return PACK_VOLTAGE_INVALID;
+  }
+  long raw = lroundf(volts / CELL_VOLTAGE_V_PER_LSB);
+  return raw >= (long)PACK_VOLTAGE_INVALID ? PACK_VOLTAGE_INVALID - 1 : (uint32_t)raw;
+}
+
+static int16_t quantize_temp(float celsius)
+{
+  if (isnan(celsius))
+  {
+    return CELL_TEMP_INVALID;
+  }
+  long raw = lroundf(celsius / CELL_TEMP_C_PER_LSB);
+  if (raw <= CELL_TEMP_RAW_MIN)
+    raw = CELL_TEMP_RAW_MIN + 1;
+  if (raw > CELL_TEMP_RAW_MAX)
+    raw = CELL_TEMP_RAW_MAX;
+  return (int16_t)raw;
+}
+
+static uint16_t quantize_cell_temp(uint8_t bank, uint8_t slot)
+{
+  if (slot == CELL_NO_SENSOR)
+  {
+    return 0;
+  }
+  return (uint16_t)quantize_temp(FEB_ADBMS_GET_Cell_Temperature(bank, slot)) & CELL_TEMP_MASK;
+}
+
+static uint8_t to_module(uint8_t bank)
+{
+  return bank == FEB_ADBMS_NO_LOCATION ? 0 : bank + 1;
+}
+
+static uint8_t to_cell(uint8_t cell)
+{
+  return cell == FEB_ADBMS_NO_LOCATION ? 0 : cell + 1;
+}
+
+static uint8_t temp_slot_to_cell(uint8_t slot)
+{
+  for (uint8_t cell = 0; cell < FEB_NUM_CELLS_PER_BANK; cell++)
+  {
+    for (uint8_t t = 0; t < CELL_TEMPS; t++)
+    {
+      if (cell_temp_slots[cell][t] == slot)
+      {
+        return cell + 1;
+      }
+    }
+  }
+  return 0;
+}
+
+static void send_bms_state(void)
+{
+  FEB_ADBMS_Voltage_Summary_t v;
+  FEB_ADBMS_GET_ACC_Voltage_Summary(&v);
+
+  struct feb_can_bms_state_t msg = {
+      .bms_state = (uint8_t)FEB_SM_Get_Current_State(),
+      .total_pack_voltage = quantize_pack_voltage(v.total_V),
+  };
+  uint8_t tx_data[FEB_CAN_BMS_STATE_LENGTH];
+  feb_can_bms_state_pack(tx_data, &msg, sizeof(tx_data));
+  FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_STATE_FRAME_ID, FEB_CAN_ID_STD, tx_data, sizeof(tx_data));
+}
+
+static void send_accumulator_voltage(void)
+{
+  FEB_ADBMS_Voltage_Summary_t v;
+  FEB_ADBMS_GET_ACC_Voltage_Summary(&v);
+  bool valid = v.min_bank != FEB_ADBMS_NO_LOCATION;
+
+  struct feb_can_bms_accumulator_voltage_t msg = {
+      .average_cell_voltage = quantize_cell_voltage(valid ? v.avg_V : NAN),
+      .min_cell_voltage = quantize_cell_voltage(valid ? v.min_V : NAN),
+      .max_cell_voltage = quantize_cell_voltage(valid ? v.max_V : NAN),
+      .min_voltage_module = to_module(v.min_bank),
+      .min_voltage_cell = to_cell(v.min_cell),
+      .max_voltage_module = to_module(v.max_bank),
+      .max_voltage_cell = to_cell(v.max_cell),
+  };
+  uint8_t tx_data[FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_LENGTH];
+  feb_can_bms_accumulator_voltage_pack(tx_data, &msg, sizeof(tx_data));
+  FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                  sizeof(tx_data));
+}
+
+static void send_accumulator_temperature(void)
+{
+  FEB_ADBMS_Temp_Summary_t t;
+  FEB_ADBMS_GET_ACC_Temp_Summary(&t);
+
+  struct feb_can_bms_accumulator_temperature_t msg = {
+      .average_pack_temperature = quantize_temp(t.avg_C),
+      .min_cell_temperature = quantize_temp(t.min_C),
+      .max_cell_temperature = quantize_temp(t.max_C),
+      .min_temperature_module = to_module(t.min_bank),
+      .min_temperature_cell = t.min_sensor == FEB_ADBMS_NO_LOCATION ? 0 : temp_slot_to_cell(t.min_sensor),
+      .max_temperature_module = to_module(t.max_bank),
+      .max_temperature_cell = t.max_sensor == FEB_ADBMS_NO_LOCATION ? 0 : temp_slot_to_cell(t.max_sensor),
+  };
+  uint8_t tx_data[FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_LENGTH];
+  feb_can_bms_accumulator_temperature_pack(tx_data, &msg, sizeof(tx_data));
+  FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
+                  sizeof(tx_data));
+}
+
+static void send_next_cell_data(void)
+{
+  static uint8_t bank = 0;
+  static uint8_t cell = 0;
+
+  uint64_t bits = (uint64_t)(bank + 1) | ((uint64_t)(cell + 1) << CELL_MODULE_BITS) |
+                  ((uint64_t)quantize_cell_voltage(FEB_ADBMS_GET_Cell_Voltage(bank, cell)) << CELL_VOLTAGE_SHIFT);
+  for (uint8_t t = 0; t < CELL_TEMPS; t++)
+  {
+    bits |= (uint64_t)quantize_cell_temp(bank, cell_temp_slots[cell][t]) << (CELL_TEMP_SHIFT + t * CELL_TEMP_BITS);
+  }
+
+  uint8_t tx_data[FEB_CAN_BMS_CELL_DATA_LENGTH];
+  for (uint8_t i = 0; i < sizeof(tx_data); i++)
+  {
+    tx_data[i] = (uint8_t)(bits >> (8 * i));
+  }
+  FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_CELL_DATA_FRAME_ID, FEB_CAN_ID_STD, tx_data, sizeof(tx_data));
+
+  if (++cell >= FEB_NUM_CELLS_PER_BANK)
+  {
+    cell = 0;
+    bank = (bank + 1) % FEB_NBANKS;
+  }
+}
+
 void FEB_CAN_State_Init(void)
 {
-  memset(&bms_state_msg, 0, sizeof(bms_state_msg));
   current_state = BMS_STATE_BOOT;
 }
 
@@ -105,87 +274,32 @@ void FEB_CAN_State_Tick(void)
     return;
   }
 
-  /* Divider for 100ms period (called every 1ms) */
   static uint16_t state_divider = 0;
-  state_divider++;
-
-  if (state_divider >= 100)
+  if (++state_divider >= 100)
   {
     state_divider = 0;
-
-    /* Use authoritative state from FEB_SM so PCU always gets most recent state */
-    bms_state_msg.bms_state = (uint8_t)FEB_SM_Get_Current_State();
-
-    /* Pack and send */
-    uint8_t tx_data[FEB_CAN_BMS_STATE_LENGTH];
-    feb_can_bms_state_pack(tx_data, &bms_state_msg, sizeof(tx_data));
-
-    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_STATE_FRAME_ID, FEB_CAN_ID_STD, tx_data, FEB_CAN_BMS_STATE_LENGTH);
+    send_bms_state();
   }
 
-  /* Divider for 100ms period (called every 1ms) */
   static uint16_t voltage_divider = 33;
-  voltage_divider++;
-
-  if (voltage_divider >= 100)
+  if (++voltage_divider >= 100)
   {
     voltage_divider = 0;
-
-    float min_c = 999.0f, max_c = 0.0f;
-    float min_s = 999.0f, max_s = 0.0f;
-    for (int bank = 0; bank < 10; bank++)
-    {
-      for (int cell = 0; cell < 14; cell++)
-      {
-        float v_c = FEB_ADBMS_GET_Cell_Voltage(bank, cell);
-        float v_s = FEB_ADBMS_GET_Cell_Voltage_S(bank, cell);
-        if (v_c > 0)
-        {
-          if (v_c < min_c)
-            min_c = v_c;
-          if (v_c > max_c)
-            max_c = v_c;
-        }
-        if (v_s > 0)
-        {
-          if (v_s < min_s)
-            min_s = v_s;
-          if (v_s > max_s)
-            max_s = v_s;
-        }
-      }
-    }
-
-    /* Pack and send */
-    uint8_t tx_data[FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_LENGTH];
-    struct feb_can_bms_accumulator_voltage_t msg = {.total_pack_voltage = (int)(FEB_ADBMS_GET_ACC_Total_Voltage() * 10),
-                                                    .min_cell_voltage = (int)(min_c * 10),
-                                                    .max_cell_voltage = (int)(max_c * 10),
-                                                    .send_time = HAL_GetTick()};
-    feb_can_bms_accumulator_voltage_pack(tx_data, &msg, sizeof(tx_data));
-
-    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
-                    FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_LENGTH);
+    send_accumulator_voltage();
   }
 
-  /* Divider for 100ms period (called every 1ms) */
   static uint16_t temp_divider = 66;
-  temp_divider++;
-
-  if (temp_divider >= 100)
+  if (++temp_divider >= 100)
   {
     temp_divider = 0;
-    /* Pack and send */
-    uint8_t tx_data[FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_LENGTH];
-    struct feb_can_bms_accumulator_temperature_t msg = {
-        .average_pack_temperature = (int)(FEB_ADBMS_GET_ACC_AVG_Temp() * 10),
-        .min_cell_temperature = (int)(FEB_ADBMS_GET_ACC_MIN_Temp() * 10),
-        .max_cell_temperature = (int)(FEB_ADBMS_GET_ACC_MAX_Temp() * 10),
-        .send_time = HAL_GetTick()};
-    feb_can_bms_accumulator_temperature_pack(tx_data, &msg, sizeof(tx_data));
+    send_accumulator_temperature();
+  }
 
-    FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_FRAME_ID, FEB_CAN_ID_STD, tx_data,
-                    FEB_CAN_BMS_ACCUMULATOR_TEMPERATURE_LENGTH);
+  static uint8_t cell_data_divider = 0;
+  if (++cell_data_divider >= CELL_DATA_PERIOD_MS)
+  {
+    cell_data_divider = 0;
+    send_next_cell_data();
   }
 }
 
