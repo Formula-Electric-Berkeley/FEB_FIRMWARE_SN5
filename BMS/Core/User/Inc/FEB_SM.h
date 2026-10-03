@@ -70,8 +70,7 @@ extern "C"
 
   /**
    * @brief Enter fault state with specified fault type
-   * @param fault_type One of BMS_STATE_FAULT_BMS, BMS_STATE_FAULT_BSPD,
-   *                   BMS_STATE_FAULT_IMD, or BMS_STATE_FAULT_CHARGING
+   * @param fault_type Any BMS_STATE_FAULT_* state
    */
   void FEB_SM_Fault(BMS_State_t fault_type);
 

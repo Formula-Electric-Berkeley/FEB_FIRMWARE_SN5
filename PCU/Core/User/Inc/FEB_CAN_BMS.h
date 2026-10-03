@@ -24,11 +24,8 @@ extern "C"
     FEB_SM_ST_CHARGER_PRECHARGE, // 7
     FEB_SM_ST_CHARGING,          // 8
     FEB_SM_ST_BALANCE,           // 9
-    FEB_SM_ST_FAULT_BMS,         // 10
-    FEB_SM_ST_FAULT_BSPD,        // 11
-    FEB_SM_ST_FAULT_IMD,         // 12
-    FEB_SM_ST_FAULT_CHARGING,    // 13
-    FEB_SM_ST_COUNT
+    FEB_SM_ST_FAULT_FIRST = 20,
+    FEB_SM_ST_COUNT = 40
   } FEB_SM_ST_t;
 
   // Heart Beat

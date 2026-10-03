@@ -134,9 +134,11 @@ extern "C"
 // ********************************** Fault Flags (SM handoff) *******************
 // Sticky flags set by the ADBMS task (under mutex) and read lock-free by the
 // state machine task. 32-bit aligned reads are atomic on Cortex-M4.
-#define ADBMS_FAULT_FLAG_VOLTAGE (1u << 0)
-#define ADBMS_FAULT_FLAG_TEMP (1u << 1)
-#define ADBMS_FAULT_FLAG_SENSOR (1u << 2) // temperature telemetry lost (too few valid sensor reads)
+#define ADBMS_FAULT_FLAG_OVERVOLTAGE (1u << 0)
+#define ADBMS_FAULT_FLAG_UNDERVOLTAGE (1u << 1)
+#define ADBMS_FAULT_FLAG_OVERTEMP (1u << 2)
+#define ADBMS_FAULT_FLAG_UNDERTEMP (1u << 3)
+#define ADBMS_FAULT_FLAG_SENSOR (1u << 4) // temperature telemetry lost (too few valid sensor reads)
 
   /** @brief Latched cell V/T fault flags (ADBMS_FAULT_FLAG_*). */
   uint32_t FEB_ADBMS_Get_Fault_Flags(void);

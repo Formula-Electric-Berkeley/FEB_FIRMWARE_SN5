@@ -110,20 +110,8 @@ static void cmd_status(int argc, char *argv[])
   case FEB_SM_ST_BALANCE:
     state_str = "BALANCE";
     break;
-  case FEB_SM_ST_FAULT_BMS:
-    state_str = "FAULT_BMS";
-    break;
-  case FEB_SM_ST_FAULT_BSPD:
-    state_str = "FAULT_BSPD";
-    break;
-  case FEB_SM_ST_FAULT_IMD:
-    state_str = "FAULT_IMD";
-    break;
-  case FEB_SM_ST_FAULT_CHARGING:
-    state_str = "FAULT_CHARGING";
-    break;
   default:
-    state_str = "UNKNOWN";
+    state_str = bms_state >= FEB_SM_ST_FAULT_FIRST ? "FAULT" : "UNKNOWN";
     break;
   }
   FEB_Console_Printf("BMS State: %s\r\n", state_str);
@@ -822,20 +810,8 @@ static void cmd_bms(int argc, char *argv[])
   case FEB_SM_ST_BALANCE:
     FEB_Console_Printf("BALANCE\r\n");
     break;
-  case FEB_SM_ST_FAULT_BMS:
-    FEB_Console_Printf("FAULT_BMS\r\n");
-    break;
-  case FEB_SM_ST_FAULT_BSPD:
-    FEB_Console_Printf("FAULT_BSPD\r\n");
-    break;
-  case FEB_SM_ST_FAULT_IMD:
-    FEB_Console_Printf("FAULT_IMD\r\n");
-    break;
-  case FEB_SM_ST_FAULT_CHARGING:
-    FEB_Console_Printf("FAULT_CHARGING\r\n");
-    break;
   default:
-    FEB_Console_Printf("UNKNOWN (%d)\r\n", bms_state);
+    FEB_Console_Printf("%s (%d)\r\n", bms_state >= FEB_SM_ST_FAULT_FIRST ? "FAULT" : "UNKNOWN", bms_state);
     break;
   }
 
@@ -872,16 +848,8 @@ static const char *bms_state_name(FEB_SM_ST_t s)
     return "CHARGING";
   case FEB_SM_ST_BALANCE:
     return "BALANCE";
-  case FEB_SM_ST_FAULT_BMS:
-    return "FAULT_BMS";
-  case FEB_SM_ST_FAULT_BSPD:
-    return "FAULT_BSPD";
-  case FEB_SM_ST_FAULT_IMD:
-    return "FAULT_IMD";
-  case FEB_SM_ST_FAULT_CHARGING:
-    return "FAULT_CHARGING";
   default:
-    return "UNKNOWN";
+    return s >= FEB_SM_ST_FAULT_FIRST ? "FAULT" : "UNKNOWN";
   }
 }
 

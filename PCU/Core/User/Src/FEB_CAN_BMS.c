@@ -112,13 +112,17 @@ static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
   }
   else if (can_id == FEB_CAN_BMS_STATE_FRAME_ID)
   {
-    BMS_MESSAGE.state = (FEB_SM_ST_t)(data[0] & 0x1F);
-    BMS_MESSAGE.ping_ack = (FEB_HB_t)((data[0] & 0xE0) >> 5);
-
-    /* Defer heartbeat TX to main loop - do NOT transmit from ISR */
-    if (BMS_MESSAGE.state == FEB_SM_ST_BUS_HEALTH_CHECK || BMS_MESSAGE.ping_ack == FEB_HB_PCU)
+    struct feb_can_bms_state_t m;
+    if (feb_can_bms_state_unpack(&m, data, length) == 0)
     {
-      heartbeat_pending = true;
+      BMS_MESSAGE.state = (FEB_SM_ST_t)m.bms_state;
+      BMS_MESSAGE.ping_ack = (FEB_HB_t)m.ping_lv_nodes;
+
+      /* Defer heartbeat TX to main loop - do NOT transmit from ISR */
+      if (BMS_MESSAGE.state == FEB_SM_ST_BUS_HEALTH_CHECK || BMS_MESSAGE.ping_ack == FEB_HB_PCU)
+      {
+        heartbeat_pending = true;
+      }
     }
   }
   else if (can_id == FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID)

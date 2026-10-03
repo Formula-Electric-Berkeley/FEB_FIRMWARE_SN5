@@ -286,12 +286,15 @@ static void validate_voltages()
       const bool secondary_bad = (voltageS > vMax || voltageS < vMin);
 #if FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS && !FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS
       const bool violation = secondary_bad;
+      const float judged_mV = voltageS;
       (void)primary_bad;
 #elif !FEB_BMS_DISABLE_PRIMARY_VOLT_CHECKS && FEB_BMS_DISABLE_SECONDARY_VOLT_CHECKS
       const bool violation = primary_bad;
+      const float judged_mV = voltageC;
       (void)secondary_bad;
 #else
       const bool violation = primary_bad && secondary_bad;
+      const float judged_mV = voltageC;
 #endif
 
       if (violation)
@@ -311,13 +314,13 @@ static void validate_voltages()
             printf("[ADBMS] WARNING: voltage violation IGNORED (FEB_BMS_DISABLE_*_VOLT_CHECKS) - "
                    "Bank %d Cell %d: C=%.3fV S=%.3fV (limits: %.3f-%.3fV)\r\n",
                    bank, cell, voltageC / 1000.0f, voltageS / 1000.0f, vMin / 1000.0f, vMax / 1000.0f);
+            (void)judged_mV;
 #else
             printf("[ADBMS] FAULT: Cell voltage out of range - Bank %d Cell %d: %.3fV (limits: %.3f-%.3fV)\r\n", bank,
-                   cell, voltageC / 1000.0f, vMin / 1000.0f, vMax / 1000.0f);
+                   cell, judged_mV / 1000.0f, vMin / 1000.0f, vMax / 1000.0f);
             FEB_ADBMS_Update_Error_Type(ERROR_TYPE_VOLTAGE_VIOLATION);
-            /* Latch for the SM task; evaluate_faults() in FEB_SM.c routes this
-             * to FAULT_BMS (drive group) or FAULT_CHARGING (charger group). */
-            adbms_fault_flags |= ADBMS_FAULT_FLAG_VOLTAGE;
+            /* Latch for the SM task; evaluate_faults() in FEB_SM.c maps it to a fault state. */
+            adbms_fault_flags |= (judged_mV > vMax) ? ADBMS_FAULT_FLAG_OVERVOLTAGE : ADBMS_FAULT_FLAG_UNDERVOLTAGE;
 #endif
           }
         }
@@ -604,8 +607,7 @@ static void validate_temps()
             printf("[ADBMS] FAULT: Cell temperature out of range - Bank %d Sensor %d: %.1fC (limits: %.1f-%.1fC)\r\n",
                    bank, sensor, temp / 10.0f, tMin / 10.0f, tMax / 10.0f);
             FEB_ADBMS_Update_Error_Type(ERROR_TYPE_TEMP_VIOLATION);
-            /* Latch for the SM task; evaluate_faults() routes per state group. */
-            adbms_fault_flags |= ADBMS_FAULT_FLAG_TEMP;
+            adbms_fault_flags |= (temp > tMax) ? ADBMS_FAULT_FLAG_OVERTEMP : ADBMS_FAULT_FLAG_UNDERTEMP;
 #endif
           }
         }
@@ -639,10 +641,7 @@ static void validate_temps()
 #if !FEB_BMS_DISABLE_TEMP_CHECKS
   /* FSAE fail-safe: the AMS must open the shutdown circuit within ~1 s if it
    * loses the temperature data it depends on (e.g. a temperature sense wire
-   * disconnects). Latch a sensor fault when too few populated sensors read valid
-   * for longer than FEB_TEMP_TELEMETRY_TIMEOUT_MS. Time-confirmed so a single
-   * flaky scan does not trip it; evaluate_faults() routes ADBMS_FAULT_FLAG_SENSOR
-   * to FAULT_BMS/FAULT_CHARGING like the over-temp fault. */
+   * disconnects). */
   if (telemetry_low)
   {
     uint32_t now = HAL_GetTick();
