@@ -60,7 +60,7 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t uartRxTaskHandle;
 const osThreadAttr_t uartRxTask_attributes = {
   .name = "uartRxTask",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for canRxTask */
