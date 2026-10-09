@@ -87,6 +87,9 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 target_link_libraries(${PROJECT_NAME} PRIVATE
     m
     feb_version
+    feb_tps
+    feb_can
+    feb_log
 )
 
 # Embed version + build provenance (reads VERSION + git, generates feb_build_info.c)
