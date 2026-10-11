@@ -9,6 +9,7 @@
 #include "FEB_Task_TPS.h"
 #include "i2c.h" /* Must be before feb_tps.h for HAL types */
 #include "feb_tps.h"
+#include "main.h"
 #include "cmsis_os.h"
 #include "feb_log.h"
 #include <stdbool.h>
@@ -20,11 +21,11 @@
 extern osMutexId_t tpsI2cMutexHandle;
 
 /* TPS2482 configuration */
-#define BMS_TPS_R_SHUNT 0.002f /* 2 mOhm shunt resistor (WSR52L000FEA) */
-#define BMS_TPS_I_MAX 5.0f     /* 5A fuse max */
+#define ARC_TPS_R_SHUNT 0.002f /* 2 mOhm shunt resistor (WSR52L000FEA) */
+#define ARC_TPS_I_MAX 5.0f     /* 5A fuse max */
 
 /* Device handle */
-static FEB_TPS_Handle_t bms_tps_handle = NULL;
+static FEB_TPS_Handle_t arc_tps_handle = NULL;
 
 /**
  * Forward TPS library log messages to the application logger with level mapping.
@@ -60,7 +61,7 @@ static void tps_log_callback(FEB_TPS_LogLevel_t level, const char *msg)
 /**
  * Start the TPS power-monitoring task.
  *
- * Initializes the TPS monitoring library, registers the BMS TPS2482
+ * Initializes the TPS monitoring library, registers the ARC TPS2482
  * device
  * (A0=GND, A1=GND), and continuously polls bus voltage, shunt voltage,
  * current, and power at approximately
@@ -94,15 +95,15 @@ void StartTPSTask(void *argument)
   FEB_TPS_DeviceConfig_t cfg = {
       .hi2c = &hi2c1,
       .i2c_addr = FEB_TPS_ADDR(FEB_TPS_PIN_GND, FEB_TPS_PIN_GND),
-      .r_shunt_ohms = BMS_TPS_R_SHUNT,
-      .i_max_amps = BMS_TPS_I_MAX,
+      .r_shunt_ohms = ARC_TPS_R_SHUNT,
+      .i_max_amps = ARC_TPS_I_MAX,
       .config_reg = FEB_TPS_CONFIG_DEFAULT,
-      .name = "BMS",
+      .name = "ARC",
   };
 
   LOG_I(TAG_TPS, "Initializing TPS2482 at address 0x%02X", cfg.i2c_addr);
 
-  FEB_TPS_Status_t status = FEB_TPS_DeviceRegister(&cfg, &bms_tps_handle);
+  FEB_TPS_Status_t status = FEB_TPS_DeviceRegister(&cfg, &arc_tps_handle);
 
   if (status != FEB_TPS_OK)
   {
@@ -111,7 +112,7 @@ void StartTPSTask(void *argument)
   else
   {
     uint16_t id = 0;
-    FEB_TPS_Status_t id_status = FEB_TPS_ReadID(bms_tps_handle, &id);
+    FEB_TPS_Status_t id_status = FEB_TPS_ReadID(arc_tps_handle, &id);
     if (id_status == FEB_TPS_OK)
     {
       LOG_I(TAG_TPS, "TPS2482 initialized, ID: 0x%04X", id);
@@ -127,9 +128,9 @@ void StartTPSTask(void *argument)
 
   for (;;)
   {
-    if (bms_tps_handle != NULL)
+    if (arc_tps_handle != NULL)
     {
-      status = FEB_TPS_Poll(bms_tps_handle, &meas);
+      status = FEB_TPS_Poll(arc_tps_handle, &meas);
 
       if (status == FEB_TPS_OK)
       {

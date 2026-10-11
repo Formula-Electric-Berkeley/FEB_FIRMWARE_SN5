@@ -56,8 +56,12 @@ osThreadId TPS_HANDLERHandle;
 osMessageQId Pressure_DataHandle;
 osMessageQId StateHandle;
 osMessageQId TPS_StatusHandle;
-osTimerId canHeartBeatTimerHandle;
-osTimerId feetBlinkTimerHandle;
+osMessageQId canTxQueueHandle;
+osMessageQId canRxQueueHandle;
+osMutexId tpsI2cMutexHandle;
+osMutexId canTxMutexHandle;
+osMutexId canRxMutexHandle;
+osSemaphoreId canTxMailboxSemHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -73,9 +77,7 @@ void START_K3_CONTROL(void const *argument);
 void START_FEET_CONTROL(void const *argument);
 void START_P_SENSE(void const *argument);
 void START_STATE_READ(void const *argument);
-void START_TPS_HANDLER(void const *argument);
-void canHeartBeatCallback(void const *argument);
-void feetBlinkCallback(void const *argument);
+void StartTPSTask(void const *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -123,22 +125,31 @@ int main(void)
 
   /* USER CODE END 2 */
 
+  /* Create the mutex(es) */
+  /* definition and creation of tpsI2cMutex */
+  osMutexDef(tpsI2cMutex);
+  tpsI2cMutexHandle = osMutexCreate(osMutex(tpsI2cMutex));
+
+  /* definition and creation of canTxMutex */
+  osMutexDef(canTxMutex);
+  canTxMutexHandle = osMutexCreate(osMutex(canTxMutex));
+
+  /* definition and creation of canRxMutex */
+  osMutexDef(canRxMutex);
+  canRxMutexHandle = osMutexCreate(osMutex(canRxMutex));
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
+  /* Create the semaphores(s) */
+  /* definition and creation of canTxMailboxSem */
+  osSemaphoreDef(canTxMailboxSem);
+  canTxMailboxSemHandle = osSemaphoreCreate(osSemaphore(canTxMailboxSem), 3);
+
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
-
-  /* Create the timer(s) */
-  /* definition and creation of canHeartBeatTimer */
-  osTimerDef(canHeartBeatTimer, canHeartBeatCallback);
-  canHeartBeatTimerHandle = osTimerCreate(osTimer(canHeartBeatTimer), osTimerPeriodic, NULL);
-
-  /* definition and creation of feetBlinkTimer */
-  osTimerDef(feetBlinkTimer, feetBlinkCallback);
-  feetBlinkTimerHandle = osTimerCreate(osTimer(feetBlinkTimer), osTimerPeriodic, NULL);
 
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
@@ -150,12 +161,20 @@ int main(void)
   Pressure_DataHandle = osMessageCreate(osMessageQ(Pressure_Data), NULL);
 
   /* definition and creation of State */
-  osMessageQDef(State, 1, uint64_t);
+  osMessageQDef(State, 1, uint32_t);
   StateHandle = osMessageCreate(osMessageQ(State), NULL);
 
   /* definition and creation of TPS_Status */
   osMessageQDef(TPS_Status, 1, uint16_t);
   TPS_StatusHandle = osMessageCreate(osMessageQ(TPS_Status), NULL);
+
+  /* definition and creation of canTxQueue */
+  osMessageQDef(canTxQueue, 16, 24);
+  canTxQueueHandle = osMessageCreate(osMessageQ(canTxQueue), NULL);
+
+  /* definition and creation of canRxQueue */
+  osMessageQDef(canRxQueue, 16, 24);
+  canRxQueueHandle = osMessageCreate(osMessageQ(canRxQueue), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -179,7 +198,7 @@ int main(void)
   STATE_READHandle = osThreadCreate(osThread(STATE_READ), NULL);
 
   /* definition and creation of TPS_HANDLER */
-  osThreadDef(TPS_HANDLER, START_TPS_HANDLER, osPriorityNormal, 0, 128);
+  osThreadDef(TPS_HANDLER, StartTPSTask, osPriorityNormal, 0, 128);
   TPS_HANDLERHandle = osThreadCreate(osThread(TPS_HANDLER), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
@@ -478,7 +497,7 @@ static void MX_GPIO_Init(void)
  * @retval None
  */
 /* USER CODE END Header_START_K3_CONTROL */
-void START_K3_CONTROL(void const *argument)
+__weak void START_K3_CONTROL(void const *argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
@@ -496,7 +515,7 @@ void START_K3_CONTROL(void const *argument)
  * @retval None
  */
 /* USER CODE END Header_START_FEET_CONTROL */
-void START_FEET_CONTROL(void const *argument)
+__weak void START_FEET_CONTROL(void const *argument)
 {
   /* USER CODE BEGIN START_FEET_CONTROL */
   /* Infinite loop */
@@ -514,7 +533,7 @@ void START_FEET_CONTROL(void const *argument)
  * @retval None
  */
 /* USER CODE END Header_START_P_SENSE */
-void START_P_SENSE(void const *argument)
+__weak void START_P_SENSE(void const *argument)
 {
   /* USER CODE BEGIN START_P_SENSE */
   /* Infinite loop */
@@ -532,7 +551,7 @@ void START_P_SENSE(void const *argument)
  * @retval None
  */
 /* USER CODE END Header_START_STATE_READ */
-void START_STATE_READ(void const *argument)
+__weak void START_STATE_READ(void const *argument)
 {
   /* USER CODE BEGIN START_STATE_READ */
   /* Infinite loop */
@@ -543,38 +562,22 @@ void START_STATE_READ(void const *argument)
   /* USER CODE END START_STATE_READ */
 }
 
-/* USER CODE BEGIN Header_START_TPS_HANDLER */
+/* USER CODE BEGIN Header_StartTPSTask */
 /**
  * @brief Function implementing the TPS_HANDLER thread.
  * @param argument: Not used
  * @retval None
  */
-/* USER CODE END Header_START_TPS_HANDLER */
-void START_TPS_HANDLER(void const *argument)
+/* USER CODE END Header_StartTPSTask */
+__weak void StartTPSTask(void const *argument)
 {
-  /* USER CODE BEGIN START_TPS_HANDLER */
+  /* USER CODE BEGIN StartTPSTask */
   /* Infinite loop */
   for (;;)
   {
     osDelay(1);
   }
-  /* USER CODE END START_TPS_HANDLER */
-}
-
-/* canHeartBeatCallback function */
-void canHeartBeatCallback(void const *argument)
-{
-  /* USER CODE BEGIN canHeartBeatCallback */
-
-  /* USER CODE END canHeartBeatCallback */
-}
-
-/* feetBlinkCallback function */
-void feetBlinkCallback(void const *argument)
-{
-  /* USER CODE BEGIN feetBlinkCallback */
-
-  /* USER CODE END feetBlinkCallback */
+  /* USER CODE END StartTPSTask */
 }
 
 /**

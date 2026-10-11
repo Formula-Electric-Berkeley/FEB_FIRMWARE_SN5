@@ -2,7 +2,7 @@
 <project>
   <fileVersion>3</fileVersion>
   <configuration>
-    <name>Documents</name>
+    <name>ARC</name>
     <toolchain>
       <name>ARM</name>
     </toolchain>
@@ -16,15 +16,15 @@
         <debug>1</debug>
         <option>
           <name>ExePath</name>
-          <state>Documents/Exe</state>
+          <state>ARC/Exe</state>
         </option>
         <option>
           <name>ObjPath</name>
-          <state>Documents/Obj</state>
+          <state>ARC/Obj</state>
         </option>
         <option>
           <name>ListPath</name>
-          <state>Documents/List</state>
+          <state>ARC/List</state>
         </option>
         <option>
           <name>GEndianMode</name>
@@ -669,7 +669,7 @@
         </option>
         <option>
           <name>OOCOutputFile</name>
-          <state>Documents.hex</state>
+          <state>ARC.hex</state>
         </option>
         <option>
           <name>OOCCommandLineProducer</name>
@@ -712,7 +712,7 @@
         <debug>1</debug>
         <option>
           <name>IlinkOutputFile</name>
-          <state>Documents.out</state>
+          <state>ARC.out</state>
         </option>
         <option>
           <name>IlinkLibIOConfig</name>

@@ -28,16 +28,70 @@ void FEB_Init(void)
     {
     }
   }
-
-  FEB_TPS_DeviceConfig_t cfg = {
-      .hi2c = &hi2c1, // I2C peripheral
-      .i2c_addr = FEB_TPS_ADDR(FEB_TPS_PIN_GND, FEB_TPS_PIN_GND),
-      .r_shunt_ohms = 0.012f,
-      .i_max_amps = 4.0f,
-      .pg_gpio_port = GPIOB,     // From main.h (CubeMX)
-      .pg_gpio_pin = TPS_PG_Pin, // From main.h (CubeMX)
-      .name = "My Device",
-  };
 }
 
 // TODO: Define Task starting functions here
+void START_K3_CONTROL(void const *argument)
+{
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  for (;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_START_FEET_CONTROL */
+/**
+ * @brief Function implementing the FEET_CONTROL thread.
+ * @param argument: Not used
+ * @retval None
+ */
+/* USER CODE END Header_START_FEET_CONTROL */
+void START_FEET_CONTROL(void const *argument)
+{
+  /* USER CODE BEGIN START_FEET_CONTROL */
+  /* Infinite loop */
+  for (;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END START_FEET_CONTROL */
+}
+
+/* USER CODE BEGIN Header_START_P_SENSE */
+/**
+ * @brief Function implementing the P_SENSE thread.
+ * @param argument: Not used
+ * @retval None
+ */
+/* USER CODE END Header_START_P_SENSE */
+void START_P_SENSE(void const *argument)
+{
+  /* USER CODE BEGIN START_P_SENSE */
+  /* Infinite loop */
+  for (;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END START_P_SENSE */
+}
+
+/* USER CODE BEGIN Header_START_STATE_READ */
+/**
+ * @brief Function implementing the STATE_READ thread.
+ * @param argument: Not used
+ * @retval None
+ */
+/* USER CODE END Header_START_STATE_READ */
+void START_STATE_READ(void const *argument)
+{
+  /* USER CODE BEGIN START_STATE_READ */
+  /* Infinite loop */
+  for (;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END START_STATE_READ */
+}
