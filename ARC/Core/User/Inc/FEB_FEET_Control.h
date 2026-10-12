@@ -6,8 +6,8 @@
  ******************************************************************************
  */
 
-#ifndef FEB_MAIN_H
-#define FEB_MAIN_H
+#ifndef FEB_FEET_H
+#define FEB_FEET_H
 
 #ifdef __cplusplus
 extern "C"
@@ -17,9 +17,7 @@ extern "C"
   /**
    * @brief Pre-kernel initialization - called from main() before osKernelStart()
    */
-    //Function defs here:
   
-
   typedef enum {
     OFF,       // Both lights off
     READY,     // Yellow continuous
