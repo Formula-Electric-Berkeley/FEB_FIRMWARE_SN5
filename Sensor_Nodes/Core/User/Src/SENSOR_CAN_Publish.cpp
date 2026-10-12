@@ -155,6 +155,7 @@ bool fill_strain_gauge(sm::StrainGauge::Data &m)
   m.strain_gauge_1 = get_strain_gauge(0);
   m.strain_gauge_2 = get_strain_gauge(1);
   m.strain_gauge_3 = get_strain_gauge(2);
+  m.strain_gauge_4 = 0;
   return true;
 }
 #else
@@ -166,7 +167,6 @@ bool fill_strain_gauge(sm::StrainGauge::Data &m)
   m.strain_gauge_4 = get_strain_gauge(3);
   return true;
 }
-
 fc::Publisher<sm::StrainGauge> strain_gauge_tx{fill_strain_gauge};
 
 #endif
@@ -189,7 +189,6 @@ bool fill_steering_status(feb_can_steer_front_t &m)
 
   return true;
 }
-
 fc::Publisher<feb::can::msg::SteerFront> steer_front_tx{fill_steering_status};
 
 #endif

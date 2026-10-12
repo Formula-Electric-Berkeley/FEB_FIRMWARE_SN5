@@ -229,6 +229,8 @@ extern "C"
   uint16_t FEB_CAN_RMS_getRunFaultLo(void);
   uint16_t FEB_CAN_RMS_getRunFaultHi(void);
 
+  uint16_t FEB_CAN_BMS_GetMinCellVoltage(void);
+
 #ifdef __cplusplus
 }
 #endif

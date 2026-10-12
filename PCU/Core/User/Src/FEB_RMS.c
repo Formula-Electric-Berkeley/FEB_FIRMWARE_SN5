@@ -4,6 +4,7 @@
 #include "FEB_CAN_RMS.h"
 #include "FEB_CAN_IVT.h"
 #include "FEB_RMS_Config.h"
+#include "feb_can_db.h"
 #include "feb_log.h"
 #include "FEB_Regen.h"
 #include "main.h"
@@ -377,7 +378,10 @@ void FEB_RMS_Torque(void)
 
     float pedal_percent = fminf(fmaxf(APPS_Data.acceleration, 0.0f), APPS_FULL_TRAVEL_PERCENT);
     float torque_nm = pedal_percent / APPS_FULL_TRAVEL_PERCENT * max_torque_nm;
-    RMS_CONTROL_MESSAGE.torque = (int16_t)(torque_nm * 10.0f);
+    float min_cell_voltage =
+        ((float)feb_can_bms_accumulator_voltage_min_cell_voltage_decode(FEB_CAN_BMS_GetMinCellVoltage()));
+    float torque_multiplier = min_cell_voltage < 3.5f ? 0.5f : 1.0f;
+    RMS_CONTROL_MESSAGE.torque = (int16_t)(torque_nm * 10.0f * torque_multiplier);
   }
   else
   {

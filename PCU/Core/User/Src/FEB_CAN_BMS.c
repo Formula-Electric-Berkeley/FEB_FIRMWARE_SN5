@@ -21,6 +21,8 @@ static volatile bool heartbeat_pending = false;
 static bool bms_sim_active = false;
 static FEB_SM_ST_t bms_sim_state = FEB_SM_ST_BOOT;
 
+static uint16_t min_cell_voltage = 0;
+
 /* Forward declaration of callback with new signature */
 static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
                                  const uint8_t *data, uint8_t length, void *user_data);
@@ -60,6 +62,9 @@ void FEB_CAN_BMS_Init(void)
   FEB_CAN_RX_Register(&params);
 
   params.can_id = FEB_CAN_BMS_STATE_FRAME_ID;
+  FEB_CAN_RX_Register(&params);
+
+  params.can_id = FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID;
   FEB_CAN_RX_Register(&params);
 
   BMS_MESSAGE.state = FEB_SM_ST_BOOT;
@@ -105,6 +110,14 @@ static void FEB_CAN_BMS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
       {
         heartbeat_pending = true;
       }
+    }
+  }
+  else if (can_id == FEB_CAN_BMS_ACCUMULATOR_VOLTAGE_FRAME_ID)
+  {
+    struct feb_can_bms_accumulator_voltage_t m;
+    if (feb_can_bms_accumulator_voltage_unpack(&m, data, length) == 0)
+    {
+      min_cell_voltage = m.min_cell_voltage;
     }
   }
 }
@@ -173,4 +186,9 @@ bool FEB_CAN_BMS_InDriveState(void)
     return false;
 
   return BMS_MESSAGE.state == FEB_SM_ST_DRIVE;
+}
+
+uint16_t FEB_CAN_BMS_GetMinCellVoltage(void)
+{
+  return min_cell_voltage;
 }

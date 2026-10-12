@@ -15,13 +15,28 @@
 uint16_t sg_raw[FEB_SG_COUNT] = {0};
 float sg_force_N[FEB_SG_COUNT] = {0.0f};
 
-static const FEB_SG_CAL_t sg_cal[FEB_SG_COUNT] = {
+static const FEB_SG_CAL_t sg_cal[4] = {
     {/*
        Per strain gauge documentation:
        SGX_Ref = 1.625 - 10 * (SGX_OUT - 1.625)
        ADC Read: uint32_t mv = (raw_value * 3300) / 4095;
      */
      .adc_channel = ADC_CHANNEL_7,
+     .resistance_offset = 0,
+     .start_voltage_mv = 0,
+     .excitation_voltage_mv = 0,
+     .sensitivity_rating = 0},
+    {.adc_channel = ADC_CHANNEL_14,
+     .resistance_offset = 0,
+     .start_voltage_mv = 0,
+     .excitation_voltage_mv = 0,
+     .sensitivity_rating = 0},
+    {.adc_channel = ADC_CHANNEL_15,
+     .resistance_offset = 0,
+     .start_voltage_mv = 0,
+     .excitation_voltage_mv = 0,
+     .sensitivity_rating = 0},
+    {.adc_channel = ADC_CHANNEL_8,
      .resistance_offset = 0,
      .start_voltage_mv = 0,
      .excitation_voltage_mv = 0,

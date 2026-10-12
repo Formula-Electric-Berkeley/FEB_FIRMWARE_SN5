@@ -19,7 +19,7 @@ extern "C"
 /*
   Control statement to determine number of strain gauges
 */
-#if FEB_SN_IS_FRONT
+#if FEB_SN_IS_FRONT()
 #define FEB_SG_COUNT 4
 #else
 #define FEB_SG_COUNT 3
@@ -37,7 +37,6 @@ extern "C"
   extern uint16_t sg_raw[FEB_SG_COUNT];
   extern float sg_reading_N[FEB_SG_COUNT];
 
-  void FEB_StrainGauge_Init(void);
   void read_StrainGauge(void);
   float get_strain_gauge(int i);
 
