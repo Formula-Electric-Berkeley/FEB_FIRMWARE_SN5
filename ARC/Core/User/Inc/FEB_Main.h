@@ -19,6 +19,7 @@ extern "C"
    */
   void FEB_Init(void);
   
+  #define TAG_MAIN "[MAIN]"
 
 #ifdef __cplusplus
 }

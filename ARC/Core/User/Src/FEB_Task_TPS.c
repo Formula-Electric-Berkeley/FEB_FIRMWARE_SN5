@@ -10,6 +10,7 @@
 #include "i2c.h" /* Must be before feb_tps.h for HAL types */
 #include "feb_tps.h"
 #include "main.h"
+#include "FEB_ARC_State.h"
 #include "cmsis_os.h"
 #include "feb_log.h"
 #include <stdbool.h>
@@ -126,6 +127,10 @@ void StartTPSTask(void *argument)
   /* Polling loop */
   FEB_TPS_Measurement_t meas;
 
+  /*
+  TODO: CAN MESSAGE SENDER HERE!
+  */
+
   for (;;)
   {
     if (arc_tps_handle != NULL)
@@ -141,6 +146,11 @@ void StartTPSTask(void *argument)
          * - meas.power_w (float, in Watts)
          */
         // LOG_D(TAG_TPS, "V=%.2fV I=%.3fA", meas.bus_voltage_v, meas.current_a);
+        set_state_at(TPS_STATUS, OK);
+      }
+      else
+      {
+        set_state_at(TPS_STATUS, NOT_OK);
       }
     }
 

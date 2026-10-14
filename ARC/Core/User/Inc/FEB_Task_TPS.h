@@ -21,6 +21,8 @@ extern "C"
    */
   void StartTPSTask(void *argument);
 
+  #define TAG_TPS "[TPS]"
+
 #ifdef __cplusplus
 }
 #endif

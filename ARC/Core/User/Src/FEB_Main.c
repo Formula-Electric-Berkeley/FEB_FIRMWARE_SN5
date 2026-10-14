@@ -23,7 +23,7 @@ void FEB_Init(void)
 
   if (FEB_CAN_Init(&cfg) != FEB_CAN_OK)
   {
-    // Handle init failure
+    LOG_E(TAG_MAIN, "%s", "CAN Initialization failed")
     while (1)
     {
     }
