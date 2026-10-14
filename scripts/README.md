@@ -10,6 +10,7 @@ Everyday tooling for the FEB_FIRMWARE_SN5 repo. All scripts are POSIX `bash` and
 | [`build.sh`](build.sh) | Build firmware (interactive / batch / release) | `./scripts/build.sh -b BMS` |
 | [`flash.sh`](flash.sh) | Flash an ELF/bin to a board via STM32_Programmer_CLI | `./scripts/flash.sh -b BMS` |
 | [`serial.sh`](serial.sh) | Open the board's USB-VCP serial console at 115200 (tio wrapper; one-shot `--exec`/`--read` modes for verification) | `./scripts/serial.sh -b BMS` |
+| [`bms-sim.sh`](bms-sim.sh) | Build and run the host-side BMS ECU simulator scenarios (see [BMS/sim](../BMS/sim/README.md)) | `./scripts/bms-sim.sh run nominal_drive_cycle` |
 | [`format.sh`](format.sh) | Run `clang-format` across `Core/User/` | `./scripts/format.sh --check` |
 | [`setup-hooks.sh`](setup-hooks.sh) | Install / remove pre-commit hooks | `./scripts/setup-hooks.sh` |
 | [`cubemx.sh`](cubemx.sh) | Drive STM32CubeMX headlessly from a `.ioc` | `./scripts/cubemx.sh -g -b BMS` |

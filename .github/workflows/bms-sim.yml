@@ -1,0 +1,27 @@
+name: BMS Simulator
+
+on:
+  push:
+    branches: [main]
+    paths: ['BMS/**', 'scripts/bms-sim.sh', '.github/workflows/bms-sim.yml']
+  pull_request:
+    branches: [main]
+    paths: ['BMS/**', 'scripts/bms-sim.sh', '.github/workflows/bms-sim.yml']
+  workflow_dispatch:
+
+jobs:
+  scenarios:
+    runs-on: ubuntu-latest
+    name: BMS state machine scenarios
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Build simulator
+        run: |
+          cmake -S BMS/sim -B build/bms_sim
+          cmake --build build/bms_sim --parallel
+
+      - name: Run scenarios
+        run: ctest --test-dir build/bms_sim --output-on-failure
