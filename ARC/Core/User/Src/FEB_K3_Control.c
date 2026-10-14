@@ -16,6 +16,6 @@ void START_K3_CONTROL(void const *argument)
 
   for (;;)
   {
-    osDelay(1);
+    osDelay(10); // 100Hz
   }
 }

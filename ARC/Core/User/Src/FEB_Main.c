@@ -2,6 +2,9 @@
 #include "main.h"
 #include "feb_can_lib.h"
 
+extern CAN_HandleTypeDef hcan1;
+extern CAN_HandleTypeDef hcan2;
+
 // TODO: Move this stuff to other files for conciseness
 // FEB_Init should initialize CAN usage, TPS usage, Pressure Sensor Reading, FEET setup, etc
 void FEB_Init(void)
