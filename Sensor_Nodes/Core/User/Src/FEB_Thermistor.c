@@ -24,9 +24,9 @@ float th_temp_c[FEB_TH_COUNT] = {0.0f};
 uint8_t th_status = 0;
 
 static const FEB_TH_Cal_t th_cal[FEB_TH_COUNT] = {
-    {.adc_channel = ADC_CHANNEL_12, .r_pullup_ohm = 5000.0f, .r0_ohm = 10000.0f, .beta_k = 3950.0f, .t0_c = 25.0f},
-    {.adc_channel = ADC_CHANNEL_11, .r_pullup_ohm = 5000.0f, .r0_ohm = 10000.0f, .beta_k = 3950.0f, .t0_c = 25.0f},
-    {.adc_channel = ADC_CHANNEL_10, .r_pullup_ohm = 5000.0f, .r0_ohm = 10000.0f, .beta_k = 3950.0f, .t0_c = 25.0f},
+    {.adc_channel = ADC_CHANNEL_12, .r_pullup_ohm = 5000.0f, .r0_ohm = 5000.0f, .beta_k = 3950.0f, .t0_c = 25.0f},
+    {.adc_channel = ADC_CHANNEL_11, .r_pullup_ohm = 5000.0f, .r0_ohm = 5000.0f, .beta_k = 3950.0f, .t0_c = 25.0f},
+    {.adc_channel = ADC_CHANNEL_10, .r_pullup_ohm = 5000.0f, .r0_ohm = 5000.0f, .beta_k = 3950.0f, .t0_c = 25.0f},
 };
 
 static uint16_t read_channel(uint32_t adc_channel)
