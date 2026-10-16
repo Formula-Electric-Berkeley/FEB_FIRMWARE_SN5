@@ -9,7 +9,11 @@ extern CAN_HandleTypeDef hcan2;
 // FEB_Init should initialize CAN usage, TPS usage, Pressure Sensor Reading, FEET setup, etc
 void FEB_Init(void)
 {
+  // ARC_CAN_Init();
+}
 
+void ARC_CAN_Init(void)
+{
   // Initialize can config
   FEB_CAN_Config_t cfg = {
       .hcan1 = &hcan1,

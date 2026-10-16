@@ -5,6 +5,7 @@
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  */
+#include "FEB_FEET_Control.h"
 #include <stdint.h>
 
 #ifndef FEB_ARC_STATE
@@ -31,7 +32,14 @@ extern "C"
     BRAKES_ENGAGED, //Y/N
     STANDSTILL, //Y,N
     SDC_OPEN_RSS, //Y, N
+    MISSION, // IDK yet, better check the CAN messages
+    DRIVERLESS_STATUS // Driverless status based on fsae documentation
   } State_item;
+
+  typedef enum {
+    MANUAL, //0
+    AUTO //1
+  } MISSION_STATE;
 
   typedef enum {
     NO, //0

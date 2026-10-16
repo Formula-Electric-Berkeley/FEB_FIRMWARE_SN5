@@ -1,8 +1,11 @@
 #include "FEB_ARC_State.h"
 #include "FEB_P_Sense.h"
+#include "FEB_FEET_Control.h"
+#include "FEB_Main.h"
 #include "main.h"
 #include "feb_log.h"
 #include "feb_can_lib.h"
+#include "feb_can_db.h"
 #include <stdint.h>
 
 extern osMessageQueueId_t StateHandle;
@@ -20,6 +23,7 @@ state[READY_TO_DRIVE] = NO;
 state[BRAKES_ENGAGED] = NO;
 state[STANDSTILL] = YES;
 state[SDC_OPEN_RSS] = YES;
+state[DRIVERLESS_STATUS] = OFF;
 
 uint16_t *get_state_arr()
 {
@@ -41,9 +45,33 @@ void START_STATE_READ(void const *argument)
 
   LOG_I(TAG_ARC_STATE, "%s", "State Task Started Successfully");
 
+  ARC_CAN_Init();
+
   // TODO: Define heartbeat here
 
   // TODO: Define can listeners here
+
+  // DSB_STATE (Get from P_sense or CAN) this one is prob CAN
+  // EBS_ACTIVATED (Get from P_sense or CAN) this one is prob p_sense
+  // STARTUP_CHECK (Get from P_sense?)
+
+  // READY_TO_DRIVE (Get from DASH probably)
+  FEB_CAN_RX_Params_t dash_params = {
+      .instance = FEB_CAN_INSTANCE_1,
+      .can_id = FEB_CAN_DASH_STATE_FRAME_ID,
+      .id_type = FEB_CAN_ID_STD,
+      .filter_type = FEB_CAN_FILTER_EXACT,
+      .mask = 0,
+      .fifo = FEB_CAN_FIFO_0,
+      .callback = FEB_CAN_DASH_Callback,
+      .user_data = NULL,
+  };
+  FEB_CAN_RX_Register(&dash_params);
+
+  // BRAKES_ENGAGED (CAN probably?)
+  // STANDSTILL (Wheelspeed Callback?)
+  // SDC_OPEN_RSS (No idea)
+  // MISSION (Prob from DASH, check the CAN messages)
 
   for (;;)
   {
@@ -68,10 +96,47 @@ void START_STATE_READ(void const *argument)
       set_state_at(DSMS_ON, OFF);
     }
 
+    // Update DRIVERLESS_STATUS below
+    if (get_state_at(EBS_ACTIVATED) == YES)
+    {
+    }
+    else
+    {
+    }
+
     osDelay(10); // Every 10 ms -> 100Hz
   }
 }
 
+void set_driverless_state(FEET_Status s)
+{
+  if (s != get_state_at(DRIVERLESS_STATUS))
+  {
+    LOG_I(TAG_ARC_STATE, "%s %d", "Driverless Status Updated To:", s);
+    set_state_at(DRIVERLESS_STATUS, s)
+  }
+}
+
 // Define CAN callbacks here
+
+// Callback for READY_TO_DRIVE
+static void FEB_CAN_DASH_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
+                                  const uint8_t *data, uint8_t length, void *user_data)
+{
+  (void)instance;
+  (void)can_id;
+  (void)id_type;
+  (void)user_data;
+
+  if (length < FEB_CAN_DASH_STATE_LENGTH)
+  {
+    return;
+  }
+
+  struct feb_can_dash_state_t msg;
+  feb_can_dash_state_unpack(&msg, data, length);
+
+  set_state_at(READY_TO_DRIVE, (uint16_t)msg.ready_to_drive);
+}
 
 // End CAN callbacks

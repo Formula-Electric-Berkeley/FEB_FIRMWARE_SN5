@@ -18,6 +18,7 @@ extern "C"
    * @brief Pre-kernel initialization - called from main() before osKernelStart()
    */
   void FEB_Init(void);
+  void ARC_CAN_Init(void);
   
   #define TAG_MAIN "[MAIN]"
 
