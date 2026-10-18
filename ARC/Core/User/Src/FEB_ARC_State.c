@@ -53,6 +53,18 @@ void START_STATE_READ(void const *argument)
 
   // DSB_STATE (Get from P_sense or CAN) this one is prob CAN
   // EBS_ACTIVATED (Get from P_sense or CAN) this one is prob p_sense
+  FEB_CAN_RX_Params_t ebs_params = {
+      .instance = FEB_CAN_INSTANCE_1,
+      .can_id = FEB_CAN_EBS_PRESSURE_STATUS_FRAME_ID,
+      .id_type = FEB_CAN_ID_STD,
+      .filter_type = FEB_CAN_FILTER_EXACT,
+      .mask = 0,
+      .fifo = FEB_CAN_FIFO_0,
+      .callback = FEB_CAN_EBS_Callback,
+      .user_data = NULL,
+  };
+  FEB_CAN_RX_Register(&ebs_params);
+
   // STARTUP_CHECK (Get from P_sense?)
 
   // READY_TO_DRIVE (Get from DASH probably)
@@ -137,6 +149,27 @@ static void FEB_CAN_DASH_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, 
   feb_can_dash_state_unpack(&msg, data, length);
 
   set_state_at(READY_TO_DRIVE, (uint16_t)msg.ready_to_drive);
+}
+
+// EBS state Callback
+static void FEB_CAN_EBS_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
+                                 const uint8_t *data, uint8_t length, void *user_data)
+{
+  (void)instance;
+  (void)can_id;
+  (void)id_type;
+  (void)user_data;
+
+  if (length < FEB_CAN_EBS_PRESSURE_STATUS_LENGTH)
+  {
+    return;
+  }
+  struct feb_can_ebs_pressure_status_t msg;
+  feb_can_ebs_pressure_status_unpack(&msg, data, length);
+
+  // Do whatever here with ebs status for state, still don't know
+
+  // End
 }
 
 // End CAN callbacks
