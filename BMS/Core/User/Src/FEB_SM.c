@@ -771,7 +771,7 @@ static void bootTransition(BMS_State_t next_state)
   case BMS_STATE_DEFAULT:
     /* Auto-transition to LV when relays are in correct state */
     if (FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_OPEN && FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_OPEN &&
-        FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE)
+        FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
     {
       bootTransition(BMS_STATE_LV_POWER);
     }
