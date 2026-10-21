@@ -51,6 +51,8 @@ Re-running the script is safe — the `# STM32CubeCLT tools (added by FEB setup 
 
 Validates toolchain, re-runs `cmake --preset Debug` if needed, and prints per-target Flash/RAM usage after the build. See the top-level [README.md](../README.md) for the CMake-direct equivalents.
 
+It also refuses to build when a submodule isn't checked out at the commit the branch pins. A stale `common/FEB_CAN_Library_SN4` builds against an old DBC, so boards disagree on frame layouts and BMS state numbers. Fix with `git submodule update --init --recursive`. While iterating on the CAN library before bumping its pin, `FEB_ALLOW_SUBMODULE_DRIFT=1` downgrades this to a warning; don't flash those builds to the car.
+
 ## `flash.sh` — Flash a Board
 
 ```bash

@@ -366,6 +366,39 @@ interactive_loop() {
     log_info "Exiting interactive mode."
 }
 
+# Check that every submodule is checked out at the commit this branch pins.
+# A stale common/FEB_CAN_Library_SN4 builds against an old DBC, so boards
+# disagree on frame layouts and state numbers (a DASH built that way showed a
+# BMS precharge fault as BOOT). Set FEB_ALLOW_SUBMODULE_DRIFT=1 to downgrade
+# this to a warning while iterating on a submodule before bumping its pin.
+check_submodules() {
+    local status
+    status=$(git -C "$REPO_ROOT" submodule status 2>/dev/null) || return 0
+
+    local bad=false line path
+    while IFS= read -r line; do
+        [ -z "$line" ] && continue
+        path=$(echo "$line" | awk '{print $2}')
+        case "${line:0:1}" in
+            -) log_error "Submodule $path is not initialized"; bad=true ;;
+            +) log_error "Submodule $path is checked out at a different commit than this branch pins"; bad=true ;;
+            U) log_error "Submodule $path has merge conflicts"; bad=true ;;
+        esac
+    done <<< "$status"
+
+    if [ "$bad" = false ]; then
+        log_info "Submodules match their pinned commits"
+        return 0
+    fi
+
+    echo -e "    ${CYAN}→${NC} Run: git submodule update --init --recursive"
+    if [ "${FEB_ALLOW_SUBMODULE_DRIFT:-0}" = "1" ]; then
+        log_warn "FEB_ALLOW_SUBMODULE_DRIFT=1: building anyway; do not flash this to the car"
+        return 0
+    fi
+    return 1
+}
+
 # Show build summary
 show_summary() {
     local build_type="$1"
@@ -447,6 +480,10 @@ Examples:
   ./scripts/build.sh -c -b LVPDB              # Clean rebuild of LVPDB
   ./scripts/build.sh -l                       # Loop mode (build multiple)
   ./scripts/build.sh --check                  # Verify toolchain is installed
+
+Environment:
+  FEB_ALLOW_SUBMODULE_DRIFT=1   Warn instead of failing when a submodule (e.g. the
+                                CAN library) isn't at the commit this branch pins
 
 After building, flash with:
   ./scripts/flash.sh -b LVPDB
@@ -533,6 +570,10 @@ main() {
 
     # Check prerequisites
     if ! check_prerequisites; then
+        exit 1
+    fi
+
+    if ! check_submodules; then
         exit 1
     fi
 
