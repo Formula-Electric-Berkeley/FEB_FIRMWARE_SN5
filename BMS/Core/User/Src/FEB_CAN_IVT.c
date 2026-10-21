@@ -31,6 +31,25 @@
 /* IVT data storage */
 static FEB_CAN_IVT_Data_t ivt_data = {0};
 
+static bool tick_is_fresh(uint32_t rx_tick, uint32_t timeout_ms)
+{
+  if (rx_tick == 0)
+  {
+    return false; /* Never received */
+  }
+  return (HAL_GetTick() - rx_tick) < timeout_ms;
+}
+
+/* Only the channel the pack is wired to (FEB_IVT_PACK_VOLTAGE_CHANNEL) counts
+ * toward FEB_CAN_IVT_IsVoltageFresh(). */
+static void voltage_channel_received(int channel, uint32_t rx_tick)
+{
+  if (channel == FEB_IVT_PACK_VOLTAGE_CHANNEL)
+  {
+    ivt_data.pack_voltage_rx_tick = rx_tick;
+  }
+}
+
 /* ============================================================================
  * CAN Callback
  * ============================================================================ */
@@ -77,6 +96,7 @@ static void FEB_CAN_IVT_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
     ivt_data.voltage_1_mV = (float)msg.voltage1;
     __DMB();
     ivt_data.last_rx_tick = HAL_GetTick();
+    voltage_channel_received(1, ivt_data.last_rx_tick);
     break;
   }
 
@@ -90,6 +110,7 @@ static void FEB_CAN_IVT_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
     ivt_data.voltage_2_mV = (float)msg.voltage2;
     __DMB();
     ivt_data.last_rx_tick = HAL_GetTick();
+    voltage_channel_received(2, ivt_data.last_rx_tick);
     break;
   }
 
@@ -103,6 +124,7 @@ static void FEB_CAN_IVT_Callback(FEB_CAN_Instance_t instance, uint32_t can_id, F
     ivt_data.voltage_3_mV = (float)msg.voltage3;
     __DMB();
     ivt_data.last_rx_tick = HAL_GetTick();
+    voltage_channel_received(3, ivt_data.last_rx_tick);
     break;
   }
 
@@ -138,6 +160,7 @@ void FEB_CAN_IVT_Init(void)
   ivt_data.voltage_3_mV = 0.0f;
   ivt_data.temperature_C = 0.0f;
   ivt_data.last_rx_tick = 0;
+  ivt_data.pack_voltage_rx_tick = 0;
 
   /* Single MASK registration covering 0x520-0x527 (IVT frames are
    * 0x521-0x525). One hardware filter bank instead of five — CAN1 only has
@@ -158,8 +181,8 @@ void FEB_CAN_IVT_Init(void)
 
 float FEB_CAN_IVT_GetVoltage(void)
 {
-  /* Check for stale data */
-  if (!FEB_CAN_IVT_IsDataFresh(IVT_DATA_TIMEOUT_MS))
+  /* Stale pack channel, even if other IVT frames are still arriving */
+  if (!FEB_CAN_IVT_IsVoltageFresh(IVT_DATA_TIMEOUT_MS))
   {
     return 0.0f;
   }
@@ -190,13 +213,12 @@ float FEB_CAN_IVT_GetTemperature(void)
 
 bool FEB_CAN_IVT_IsDataFresh(uint32_t timeout_ms)
 {
-  if (ivt_data.last_rx_tick == 0)
-  {
-    return false; /* Never received */
-  }
+  return tick_is_fresh(ivt_data.last_rx_tick, timeout_ms);
+}
 
-  uint32_t elapsed = HAL_GetTick() - ivt_data.last_rx_tick;
-  return (elapsed < timeout_ms);
+bool FEB_CAN_IVT_IsVoltageFresh(uint32_t timeout_ms)
+{
+  return tick_is_fresh(ivt_data.pack_voltage_rx_tick, timeout_ms);
 }
 
 const FEB_CAN_IVT_Data_t *FEB_CAN_IVT_GetData(void)

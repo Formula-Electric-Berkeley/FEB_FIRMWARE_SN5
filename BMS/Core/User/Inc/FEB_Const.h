@@ -168,6 +168,8 @@ extern "C"
 #define FEB_CHARGE_OVERCURRENT_A 60.0f        // TUNE: charge-side limit (charger rating)
 #define FEB_OVERCURRENT_CONFIRM_MS 50         // |I| must exceed limit this long before fault
 #define FEB_IVT_FAULT_TIMEOUT_MS 1000         // IVT CAN staleness -> sensor timeout fault
+#define FEB_IVT_MIN_VOLTAGE_V (-5.0f)         // TUNE: pack V below this is implausible; idle noise sits near 0
+#define FEB_IVT_IMPLAUSIBLE_CONFIRM_MS 250    // implausible IVT pack V must persist this long before fault
 #define FEB_ADBMS_DATA_TIMEOUT_MS 1000        // cell-monitor staleness -> sensor timeout fault
 #define FEB_ADBMS_BOOT_GRACE_MS 3000          // no first scan by now -> cell monitor never initialized -> fault
 #define FEB_IMD_FAULT_CONFIRM_MS 100          // debounce IMD-open before faulting

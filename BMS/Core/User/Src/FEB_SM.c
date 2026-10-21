@@ -28,6 +28,7 @@
 #include "stm32f4xx_hal.h"
 #include <math.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 /* Logging tag for state machine */
 #define TAG_SM "[SM]"
@@ -135,6 +136,7 @@ static void precharge_reset_tracking(void)
 
 /* Debounce timers for evaluate_faults() (0 = condition currently clear) */
 static uint32_t overcurrent_start_tick = 0;
+static uint32_t ivt_implausible_start_tick = 0;
 static uint32_t imd_open_start_tick = 0;
 #if !FEB_BMS_DISABLE_ADBMS_CHECKS
 static uint32_t contactor_mismatch_start_tick = 0;
@@ -414,6 +416,48 @@ static void check_reset_button(void)
 }
 
 /**
+ * @brief Why the IVT pack voltage can't be trusted, or NULL if it can.
+ *
+ * Precharge completion is judged on this reading. Small negatives are noise on
+ * an undriven DC link and pass; a reversed or broken sense channel reads far
+ * below FEB_IVT_MIN_VOLTAGE_V. "stale" means the pack channel itself stopped,
+ * which FEB_CAN_IVT_IsDataFresh() misses while current frames still arrive.
+ */
+static const char *ivt_voltage_problem(void)
+{
+  if (!FEB_CAN_IVT_IsVoltageFresh(FEB_IVT_FAULT_TIMEOUT_MS))
+  {
+    return "stale";
+  }
+  if (FEB_CAN_IVT_GetVoltage() < FEB_IVT_MIN_VOLTAGE_V)
+  {
+    return "negative";
+  }
+  return NULL;
+}
+
+/**
+ * @brief Gate for starting a (drive or charger) precharge on the IVT reading.
+ * @note  Holds instead of faulting; logs the reason at 1 Hz while held.
+ */
+static bool ivt_ready_for_precharge(void)
+{
+  static uint32_t hold_log_tick = 0;
+  const char *problem = ivt_voltage_problem();
+  if (problem == NULL)
+  {
+    return true;
+  }
+  if ((HAL_GetTick() - hold_log_tick) >= 1000)
+  {
+    hold_log_tick = HAL_GetTick();
+    LOG_W(TAG_SM, "Holding before precharge: IVT U%d %s (%.1fV, min %.1fV)", FEB_IVT_PACK_VOLTAGE_CHANNEL, problem,
+          (double)FEB_CAN_IVT_GetVoltage(), (double)FEB_IVT_MIN_VOLTAGE_V);
+  }
+  return false;
+}
+
+/**
  * @brief Centralized safety-condition evaluation (runs every SM tick).
  *
  * Each condition latches its own FAULT_* state so the cause is visible on CAN
@@ -480,10 +524,10 @@ static void evaluate_faults(void)
   }
 #endif
 
-  /* (c) IVT overcurrent + sensor timeout, only while current can actually flow
-   * (HV contactors closed). BATTERY_FREE and BALANCE are excluded: the pack is
-   * isolated there and the IVT may legitimately be silent, so checking it would
-   * spuriously fault. */
+  /* (c) IVT sensor timeout, implausible pack voltage, and overcurrent, only
+   * while current can actually flow (HV contactors closed). BATTERY_FREE and
+   * BALANCE are excluded: the pack is isolated there and the IVT may
+   * legitimately be silent, so checking it would spuriously fault. */
   bool hv_current_path =
       (s >= BMS_STATE_PRECHARGE && s <= BMS_STATE_DRIVE) || s == BMS_STATE_CHARGER_PRECHARGE || s == BMS_STATE_CHARGING;
   if (hv_current_path)
@@ -493,6 +537,28 @@ static void evaluate_faults(void)
       LOG_E(TAG_SM, "IVT current-sensor timeout");
       fault_begin(BMS_STATE_FAULT_IVT_TIMEOUT);
       return;
+    }
+
+    /* Pack-voltage channel stale or well below zero. Shares the IVT fault
+     * state (no separate bms_state value); the log names the cause. */
+    const char *ivt_problem = ivt_voltage_problem();
+    if (ivt_problem != NULL)
+    {
+      if (ivt_implausible_start_tick == 0)
+      {
+        ivt_implausible_start_tick = HAL_GetTick();
+      }
+      else if ((HAL_GetTick() - ivt_implausible_start_tick) >= FEB_IVT_IMPLAUSIBLE_CONFIRM_MS)
+      {
+        LOG_E(TAG_SM, "IVT pack voltage implausible: U%d %s (%.1fV, min %.1fV)", FEB_IVT_PACK_VOLTAGE_CHANNEL,
+              ivt_problem, (double)FEB_CAN_IVT_GetVoltage(), (double)FEB_IVT_MIN_VOLTAGE_V);
+        fault_begin(BMS_STATE_FAULT_IVT_TIMEOUT);
+        return;
+      }
+    }
+    else
+    {
+      ivt_implausible_start_tick = 0;
     }
 
     bool charging_path = (s == BMS_STATE_CHARGER_PRECHARGE || s == BMS_STATE_CHARGING);
@@ -518,6 +584,7 @@ static void evaluate_faults(void)
   else
   {
     overcurrent_start_tick = 0;
+    ivt_implausible_start_tick = 0;
   }
 
   /* (d) Continuous IMD monitoring (debounced; suppressed during BOOT).
@@ -893,9 +960,10 @@ static void HealthCheckTransition(BMS_State_t next_state)
     }
 
     /* Check conditions for precharge:
-     * - AIR- closed, AIR+ open, precharge open */
+     * - AIR- closed, AIR+ open, precharge open
+     * - IVT pack voltage usable (completion is judged on it) */
     if (FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE && FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_OPEN &&
-        FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_OPEN)
+        FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_OPEN && ivt_ready_for_precharge())
     {
       HealthCheckTransition(BMS_STATE_PRECHARGE);
     }
@@ -1218,15 +1286,19 @@ static void FreeTransition(BMS_State_t next_state)
       if ((HAL_GetTick() - charge_gate_log_tick) >= 1000)
       {
         charge_gate_log_tick = HAL_GetTick();
-        LOG_D(TAG_SM, "6->7 gate: charger=%u status=%d AIR-=%u pack=%.1fV maxcell=%.3fV tvalid=%.1fC traw=%.1fC",
+        const char *ivt_problem = ivt_voltage_problem();
+        LOG_D(TAG_SM, "6->7 gate: charger=%u status=%d AIR-=%u ivt=%s pack=%.1fV maxcell=%.3fV tvalid=%.1fC traw=%.1fC",
               FEB_CAN_Charger_Received(), (int)charging_status, FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE,
-              (double)FEB_ADBMS_Snapshot_Total_Voltage(), (double)FEB_ADBMS_Snapshot_Max_Cell_Voltage(),
-              (double)FEB_ADBMS_Snapshot_Max_Valid_Temp(), (double)FEB_ADBMS_Snapshot_Max_Temp());
+              ivt_problem ? ivt_problem : "ok", (double)FEB_ADBMS_Snapshot_Total_Voltage(),
+              (double)FEB_ADBMS_Snapshot_Max_Cell_Voltage(), (double)FEB_ADBMS_Snapshot_Max_Valid_Temp(),
+              (double)FEB_ADBMS_Snapshot_Max_Temp());
       }
     }
 
-    /* 6->7 (begin charge): charger present on CAN, AIR- closed, no charge fault. */
-    if (FEB_CAN_Charger_Received() && charging_status == 0 && FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE)
+    /* 6->7 (begin charge): charger present on CAN, AIR- closed, no charge fault,
+     * IVT pack voltage usable (charger precharge completion is judged on it). */
+    if (FEB_CAN_Charger_Received() && charging_status == 0 && FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE &&
+        ivt_ready_for_precharge())
     {
       LOG_I(TAG_SM, "Charger detected, entering charger precharge");
       FreeTransition(BMS_STATE_CHARGER_PRECHARGE);

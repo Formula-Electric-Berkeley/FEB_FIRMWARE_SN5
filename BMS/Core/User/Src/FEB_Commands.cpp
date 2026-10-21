@@ -586,6 +586,7 @@ void cmd_bms_ivt(Interaction &io, std::span<char *const>)
 {
   const FEB_CAN_IVT_Data_t *ivt = FEB_CAN_IVT_GetData();
   const std::uint32_t age = HAL_GetTick() - ivt->last_rx_tick;
+  const std::uint32_t pack_v_age = HAL_GetTick() - ivt->pack_voltage_rx_tick;
 
   KVTable t(io, 16, 22, "IVT Sensor");
 
@@ -596,6 +597,7 @@ void cmd_bms_ivt(Interaction &io, std::span<char *const>)
   t.row("Pack voltage", "%.2f V (U%d)", (double)FEB_CAN_IVT_GetVoltage(), FEB_IVT_PACK_VOLTAGE_CHANNEL);
   t.row("Temperature", "%.1f C", (double)ivt->temperature_C);
   t.row("Data age", "%lu ms (%s)", (unsigned long)age, FEB_CAN_IVT_IsDataFresh(1000) ? "FRESH" : "STALE");
+  t.row("Pack V age", "%lu ms (%s)", (unsigned long)pack_v_age, FEB_CAN_IVT_IsVoltageFresh(1000) ? "FRESH" : "STALE");
 }
 
 void cmd_bms_spi(Interaction &io, std::span<char *const>)

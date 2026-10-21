@@ -39,12 +39,13 @@ extern "C"
 
   typedef struct
   {
-    volatile float current_mA;      /* Pack current in milliamps */
-    volatile float voltage_1_mV;    /* Voltage 1 in millivolts (pack voltage) */
-    volatile float voltage_2_mV;    /* Voltage 2 in millivolts */
-    volatile float voltage_3_mV;    /* Voltage 3 in millivolts */
-    volatile float temperature_C;   /* Temperature in Celsius */
-    volatile uint32_t last_rx_tick; /* Timestamp of last received message */
+    volatile float current_mA;              /* Pack current in milliamps */
+    volatile float voltage_1_mV;            /* Voltage 1 in millivolts (pack voltage) */
+    volatile float voltage_2_mV;            /* Voltage 2 in millivolts */
+    volatile float voltage_3_mV;            /* Voltage 3 in millivolts */
+    volatile float temperature_C;           /* Temperature in Celsius */
+    volatile uint32_t last_rx_tick;         /* Timestamp of last received message */
+    volatile uint32_t pack_voltage_rx_tick; /* Last frame on FEB_IVT_PACK_VOLTAGE_CHANNEL */
   } FEB_CAN_IVT_Data_t;
 
   /* ============================================================================
@@ -58,9 +59,9 @@ extern "C"
   void FEB_CAN_IVT_Init(void);
 
   /**
-   * @brief Get pack voltage from IVT sensor (V1)
+   * @brief Get pack voltage from IVT sensor (channel FEB_IVT_PACK_VOLTAGE_CHANNEL)
    * @return Pack voltage in volts
-   * @note Returns 0.0 if data is stale (>1000ms old)
+   * @note Returns 0.0 if that channel's data is stale (>1000ms old)
    */
   float FEB_CAN_IVT_GetVoltage(void);
 
@@ -82,6 +83,15 @@ extern "C"
    * @return true if data is fresh, false if stale or never received
    */
   bool FEB_CAN_IVT_IsDataFresh(uint32_t timeout_ms);
+
+  /**
+   * @brief Check if the pack-voltage channel (FEB_IVT_PACK_VOLTAGE_CHANNEL) is fresh
+   * @param timeout_ms Maximum age of data in milliseconds
+   * @return true if fresh, false if stale or never received
+   * @note IsDataFresh() is satisfied by any IVT frame, so it stays true when
+   *       the IVT sends current but not the configured voltage channel.
+   */
+  bool FEB_CAN_IVT_IsVoltageFresh(uint32_t timeout_ms);
 
   /**
    * @brief Get raw IVT data structure
