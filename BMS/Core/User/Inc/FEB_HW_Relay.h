@@ -135,7 +135,7 @@ extern "C"
 
   /**
    * @brief Read BMS reset button state
-   * @return true if button is pressed (active low)
+   * @return true if button is pressed (active high: P5 to +3V3, R9 pulldown)
    */
   bool FEB_HW_Reset_Button_Pressed(void);
 

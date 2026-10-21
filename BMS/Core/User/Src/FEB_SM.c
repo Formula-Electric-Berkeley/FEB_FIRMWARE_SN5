@@ -118,6 +118,21 @@ static volatile uint32_t reset_button_debounce_tick = 0;
 static volatile uint8_t shutdown_open_count = 0;
 #define SHUTDOWN_DEBOUNCE_COUNT 3 /* Require 3 consecutive OPEN readings */
 
+/* Precharge progress line in the log while in PRECHARGE (IVT vs pack). */
+static uint32_t precharge_progress_log_tick = 0;
+#define PRECHARGE_PROGRESS_LOG_MS 1000
+
+/* Forget any previous precharge attempt. Called on every entry to and exit
+ * from PRECHARGE: an attempt aborted by a shutdown/AIR- dropout used to leave
+ * precharge_start_time set, so the next attempt inherited the old start and
+ * timed out early (or instantly) without logging "Precharge started". */
+static void precharge_reset_tracking(void)
+{
+  precharge_start_time = 0;
+  precharge_progress_log_tick = 0;
+  shutdown_open_count = 0;
+}
+
 /* Debounce timers for evaluate_faults() (0 = condition currently clear) */
 static uint32_t overcurrent_start_tick = 0;
 static uint32_t imd_open_start_tick = 0;
@@ -769,9 +784,12 @@ static void bootTransition(BMS_State_t next_state)
     break;
 
   case BMS_STATE_DEFAULT:
-    /* Auto-transition to LV when relays are in correct state */
-    if (FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_OPEN && FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_OPEN &&
-        FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_OPEN)
+    /* Auto-transition to LV once the BMS-commanded contactors are open. AIR- is
+     * deliberately not checked: its coil sits on MSD_DIS_IN, downstream of the
+     * whole shutdown loop, so it follows TSMS/loop state rather than the BMS.
+     * Requiring it CLOSED waited for TSMS; requiring it OPEN hung in BOOT
+     * whenever the loop was already closed at power-up. */
+    if (FEB_HW_AIR_Plus_Sense() == FEB_RELAY_STATE_OPEN && FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_OPEN)
     {
       bootTransition(BMS_STATE_LV_POWER);
     }
@@ -801,6 +819,7 @@ static void LVPowerTransition(BMS_State_t next_state)
     LOG_W(TAG_SM, "Bus health check skipped via console, entering PRECHARGE");
     FEB_HW_AIR_Plus_Set(false);
     FEB_HW_Precharge_Set(true);
+    precharge_reset_tracking();
     updateStateProtected(next_state);
     break;
 
@@ -848,6 +867,7 @@ static void HealthCheckTransition(BMS_State_t next_state)
     /* Should be open but included for redundancy */
     FEB_HW_AIR_Plus_Set(false);
     FEB_HW_Precharge_Set(true);
+    precharge_reset_tracking();
     updateStateProtected(next_state);
     break;
 
@@ -893,12 +913,14 @@ static void PrechargeTransition(BMS_State_t next_state)
   case BMS_STATE_LV_POWER:
     FEB_HW_AIR_Plus_Set(false);
     FEB_HW_Precharge_Set(false);
+    precharge_reset_tracking();
     updateStateProtected(next_state);
     break;
 
   case BMS_STATE_BUS_HEALTH_CHECK:
     FEB_HW_AIR_Plus_Set(false);
     FEB_HW_Precharge_Set(false);
+    precharge_reset_tracking();
     updateStateProtected(next_state);
     break;
 
@@ -937,16 +959,6 @@ static void PrechargeTransition(BMS_State_t next_state)
       LOG_I(TAG_SM, "Precharge started");
     }
 
-    /* Check precharge timeout */
-    if ((HAL_GetTick() - precharge_start_time) >= PRECHARGE_TIMEOUT_MS)
-    {
-      /* Precharge failed - enter fault state */
-      LOG_E(TAG_SM, "Precharge timeout (%dms), entering fault", PRECHARGE_TIMEOUT_MS);
-      fault_begin(BMS_STATE_FAULT_PRECHARGE_TIMEOUT);
-      precharge_start_time = 0;
-      break;
-    }
-
     /* Keep AIR+ open for redundancy */
     FEB_HW_AIR_Plus_Set(false);
 
@@ -958,9 +970,31 @@ static void PrechargeTransition(BMS_State_t next_state)
     {
       float ivt_voltage = FEB_CAN_IVT_GetVoltage();
       float pack_voltage = FEB_ADBMS_Snapshot_Total_Voltage();
+      float pct_of_pack = (pack_voltage > 0.0f) ? (100.0f * ivt_voltage / pack_voltage) : 0.0f;
+      uint32_t precharge_elapsed = HAL_GetTick() - precharge_start_time;
+
+      if (precharge_elapsed >= PRECHARGE_TIMEOUT_MS)
+      {
+        /* Precharge failed - enter fault state. The voltages tell a relay /
+         * IVT wiring problem (IVT flat) apart from a slow RC (IVT still rising). */
+        LOG_E(TAG_SM, "Precharge timeout (%dms): IVT=%.1fV Pack=%.1fV (%.0f%%, need %.0f%%), entering fault",
+              PRECHARGE_TIMEOUT_MS, (double)ivt_voltage, (double)pack_voltage, (double)pct_of_pack,
+              (double)(PRECHARGE_THRESHOLD_PCT * 100.0f));
+        fault_begin(BMS_STATE_FAULT_PRECHARGE_TIMEOUT);
+        precharge_reset_tracking();
+        break;
+      }
+
+      if ((HAL_GetTick() - precharge_progress_log_tick) >= PRECHARGE_PROGRESS_LOG_MS)
+      {
+        precharge_progress_log_tick = HAL_GetTick();
+        LOG_I(TAG_SM, "Precharging %lums: IVT=%.1fV Pack=%.1fV (%.0f%%, need %.0f%%)", (unsigned long)precharge_elapsed,
+              (double)ivt_voltage, (double)pack_voltage, (double)pct_of_pack,
+              (double)(PRECHARGE_THRESHOLD_PCT * 100.0f));
+      }
+
       if (pack_voltage > 0.0f && ivt_voltage >= PRECHARGE_THRESHOLD_PCT * pack_voltage)
       {
-        uint32_t precharge_elapsed = HAL_GetTick() - precharge_start_time;
         if (precharge_elapsed < PRECHARGE_MIN_TIME_MS)
         {
           /* Completed implausibly fast: bypassed precharge resistor / contactor
@@ -968,12 +1002,12 @@ static void PrechargeTransition(BMS_State_t next_state)
           LOG_E(TAG_SM, "Precharge too fast (%lums < %dms), entering fault: IVT=%.1fV Pack=%.1fV",
                 (unsigned long)precharge_elapsed, PRECHARGE_MIN_TIME_MS, (double)ivt_voltage, (double)pack_voltage);
           fault_begin(BMS_STATE_FAULT_PRECHARGE_TOO_FAST);
-          precharge_start_time = 0;
+          precharge_reset_tracking();
           break;
         }
-        LOG_I(TAG_SM, "Precharge complete: IVT=%.1fV Pack=%.1fV", (double)ivt_voltage, (double)pack_voltage);
-        precharge_start_time = 0;
-        shutdown_open_count = 0; /* Reset debounce counter */
+        LOG_I(TAG_SM, "Precharge complete after %lums: IVT=%.1fV Pack=%.1fV", (unsigned long)precharge_elapsed,
+              (double)ivt_voltage, (double)pack_voltage);
+        precharge_reset_tracking();
         PrechargeTransition(BMS_STATE_ENERGIZED);
       }
     }

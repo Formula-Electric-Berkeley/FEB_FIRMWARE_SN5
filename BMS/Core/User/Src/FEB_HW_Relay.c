@@ -115,8 +115,9 @@ bool FEB_HW_TSMS_Indicator_Get(void)
 
 bool FEB_HW_Reset_Button_Pressed(void)
 {
-  /* Assuming active-low button with pull-up */
-  return (HAL_GPIO_ReadPin(BMS_RESET_GPIO_Port, BMS_RESET_Pin) == GPIO_PIN_RESET);
+  /* Active-high: the BMS_RST button (P5) ties PB5 to +3V3, and R9 (1k) pulls
+   * it to GND when released. R9 overrides the MCU's internal pull. */
+  return (HAL_GPIO_ReadPin(BMS_RESET_GPIO_Port, BMS_RESET_Pin) == GPIO_PIN_SET);
 }
 
 /* ============================================================================
