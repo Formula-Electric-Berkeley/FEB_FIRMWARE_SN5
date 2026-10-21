@@ -11,21 +11,23 @@ extern "C"
 #include "feb_can_lib.h"
 #include "feb_can_db.h"
 
-  // BMS States - values must match BMS_State_t in BMS/Core/User/Inc/FEB_CAN_State.h
+#include "feb_bms_state.h"
+
+  // BMS States - PCU names for the shared, DBC-generated BMS_State_t values
   typedef enum
   {
-    FEB_SM_ST_BOOT = 0,
-    FEB_SM_ST_LV_POWER,          // 1 - LV in SN4
-    FEB_SM_ST_BUS_HEALTH_CHECK,  // 2 - HEALTH_CHECK in SN4
-    FEB_SM_ST_PRECHARGE,         // 3
-    FEB_SM_ST_ENERGIZED,         // 4
-    FEB_SM_ST_DRIVE,             // 5
-    FEB_SM_ST_BATTERY_FREE,      // 6 - FREE in SN4
-    FEB_SM_ST_CHARGER_PRECHARGE, // 7
-    FEB_SM_ST_CHARGING,          // 8
-    FEB_SM_ST_BALANCE,           // 9
-    FEB_SM_ST_FAULT_FIRST = 20,
-    FEB_SM_ST_COUNT = 40
+    FEB_SM_ST_BOOT = BMS_STATE_BOOT,
+    FEB_SM_ST_LV_POWER = BMS_STATE_LV_POWER,                 // LV in SN4
+    FEB_SM_ST_BUS_HEALTH_CHECK = BMS_STATE_BUS_HEALTH_CHECK, // HEALTH_CHECK in SN4
+    FEB_SM_ST_PRECHARGE = BMS_STATE_PRECHARGE,
+    FEB_SM_ST_ENERGIZED = BMS_STATE_ENERGIZED,
+    FEB_SM_ST_DRIVE = BMS_STATE_DRIVE,
+    FEB_SM_ST_BATTERY_FREE = BMS_STATE_BATTERY_FREE, // FREE in SN4
+    FEB_SM_ST_CHARGER_PRECHARGE = BMS_STATE_CHARGER_PRECHARGE,
+    FEB_SM_ST_CHARGING = BMS_STATE_CHARGING,
+    FEB_SM_ST_BALANCE = BMS_STATE_BALANCE,
+    FEB_SM_ST_FAULT_FIRST = BMS_STATE_FAULT_FIRST,
+    FEB_SM_ST_COUNT = BMS_STATE_COUNT
   } FEB_SM_ST_t;
 
   typedef struct BMS_MESSAGE_TYPE
