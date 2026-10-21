@@ -14,6 +14,7 @@ extern "C"
 {
 #endif
 
+#include "FEB_SN_Config.h"
 #include <stdint.h>
 
 /*
