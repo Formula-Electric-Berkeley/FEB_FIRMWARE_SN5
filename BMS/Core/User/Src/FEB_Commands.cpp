@@ -66,7 +66,7 @@ const char *isospi_mode_name()
 
 const char *state_name(BMS_State_t state)
 {
-  return FEB_CAN_State_GetStateName(state);
+  return BMS_State_Name(state);
 }
 
 // MARK: Pack data

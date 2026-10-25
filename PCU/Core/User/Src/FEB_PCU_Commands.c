@@ -77,44 +77,7 @@ static void cmd_status(int argc, char *argv[])
 
   // BMS State
   FEB_SM_ST_t bms_state = FEB_CAN_BMS_getState();
-  const char *state_str;
-  switch (bms_state)
-  {
-  case FEB_SM_ST_BOOT:
-    state_str = "BOOT";
-    break;
-  case FEB_SM_ST_LV_POWER:
-    state_str = "LV_POWER";
-    break;
-  case FEB_SM_ST_BUS_HEALTH_CHECK:
-    state_str = "HEALTH_CHECK";
-    break;
-  case FEB_SM_ST_PRECHARGE:
-    state_str = "PRECHARGE";
-    break;
-  case FEB_SM_ST_ENERGIZED:
-    state_str = "ENERGIZED";
-    break;
-  case FEB_SM_ST_DRIVE:
-    state_str = "DRIVE";
-    break;
-  case FEB_SM_ST_BATTERY_FREE:
-    state_str = "BATTERY_FREE";
-    break;
-  case FEB_SM_ST_CHARGER_PRECHARGE:
-    state_str = "CHARGER_PRECHARGE";
-    break;
-  case FEB_SM_ST_CHARGING:
-    state_str = "CHARGING";
-    break;
-  case FEB_SM_ST_BALANCE:
-    state_str = "BALANCE";
-    break;
-  default:
-    state_str = bms_state >= FEB_SM_ST_FAULT_FIRST ? "FAULT" : "UNKNOWN";
-    break;
-  }
-  FEB_Console_Printf("BMS State: %s\r\n", state_str);
+  FEB_Console_Printf("BMS State: %s\r\n", BMS_State_Name((BMS_State_t)bms_state));
 
   // TPS Status
   FEB_CAN_TPS_Data_t tps_data;
@@ -746,9 +709,9 @@ static void cmd_bms_state(int argc, char *argv[])
   {
     char *end;
     unsigned long n = strtoul(val, &end, 10);
-    if (*end != '\0' || n >= FEB_SM_ST_COUNT)
+    if (*end != '\0' || n > UINT8_MAX)
     {
-      FEB_Console_Printf("Error: invalid state '%s' (use 0-%d or 'drive' or 'off')\r\n", val, (int)FEB_SM_ST_COUNT - 1);
+      FEB_Console_Printf("Error: invalid state '%s' (use 0-255 or 'drive' or 'off')\r\n", val);
       return;
     }
     state = (FEB_SM_ST_t)n;
@@ -824,35 +787,6 @@ static void cmd_bms(int argc, char *argv[])
  * CSV Helpers
  * ============================================================================ */
 
-static const char *bms_state_name(FEB_SM_ST_t s)
-{
-  switch (s)
-  {
-  case FEB_SM_ST_BOOT:
-    return "BOOT";
-  case FEB_SM_ST_LV_POWER:
-    return "LV_POWER";
-  case FEB_SM_ST_BUS_HEALTH_CHECK:
-    return "HEALTH_CHECK";
-  case FEB_SM_ST_PRECHARGE:
-    return "PRECHARGE";
-  case FEB_SM_ST_ENERGIZED:
-    return "ENERGIZED";
-  case FEB_SM_ST_DRIVE:
-    return "DRIVE";
-  case FEB_SM_ST_BATTERY_FREE:
-    return "BATTERY_FREE";
-  case FEB_SM_ST_CHARGER_PRECHARGE:
-    return "CHARGER_PRECHARGE";
-  case FEB_SM_ST_CHARGING:
-    return "CHARGING";
-  case FEB_SM_ST_BALANCE:
-    return "BALANCE";
-  default:
-    return s >= FEB_SM_ST_FAULT_FIRST ? "FAULT" : "UNKNOWN";
-  }
-}
-
 /* CSV handlers register as top-level descriptors named per spec. */
 
 static void cmd_status_csv(int argc, char *argv[])
@@ -867,8 +801,8 @@ static void cmd_status_csv(int argc, char *argv[])
   FEB_CAN_TPS_GetData(&tps_data);
   FEB_SM_ST_t bms_state = FEB_CAN_BMS_getState();
   FEB_Console_CsvEmit("status", "%.1f,%d,%.1f,%d,%s,%u,%d", apps_data.acceleration, apps_data.plausible ? 1 : 0,
-                      brake_data.brake_position, brake_data.brake_pressed ? 1 : 0, bms_state_name(bms_state),
-                      tps_data.bus_voltage_mv, tps_data.current_ma);
+                      brake_data.brake_position, brake_data.brake_pressed ? 1 : 0,
+                      BMS_State_Name((BMS_State_t)bms_state), tps_data.bus_voltage_mv, tps_data.current_ma);
 }
 
 static void cmd_apps_csv(int argc, char *argv[])
@@ -1000,7 +934,7 @@ static void cmd_bms_csv(int argc, char *argv[])
   (void)argc;
   (void)argv;
   FEB_SM_ST_t bms_state = FEB_CAN_BMS_getState();
-  FEB_Console_CsvEmit("bms", "%s,%d,%.1f,%.1f", bms_state_name(bms_state), (int)bms_state,
+  FEB_Console_CsvEmit("bms", "%s,%d,%.1f,%.1f", BMS_State_Name((BMS_State_t)bms_state), (int)bms_state,
                       FEB_CAN_BMS_getAccumulatorVoltage(), FEB_CAN_BMS_getMaxTemperature());
 }
 

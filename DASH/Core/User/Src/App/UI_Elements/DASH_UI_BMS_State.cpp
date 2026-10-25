@@ -36,7 +36,7 @@ bool hv_on(BMS_State_t s)
 void FEB_UI_Update_BMS_State()
 {
   BMS_State_t state = static_cast<BMS_State_t>(fc::rx<fm::BmsState>.v().bms_state);
-  lv_label_set_text(ui_BMS_State_String, to_BMS_state_string(state));
+  lv_label_set_text(ui_BMS_State_String, BMS_State_Name(state));
   lv_label_set_text(ui_BMS_HV_State_String, (hv_on(state) ? "HV_ON" : "HV_OFF"));
 
   int16_t cell_max_temperature = fc::rx<fm::BmsAccumulatorTemperature>.v().max_cell_temperature;
@@ -99,75 +99,4 @@ void FEB_UI_Destroy_BMS_State(void)
   ui_BMS_Cell_Max_Temperature = NULL;
   ui_BMS_Accumulator_Total_Voltage = NULL;
   ui_LVPDB_low_voltage = NULL;
-}
-
-const char *to_BMS_state_string(BMS_State_t state)
-{
-  switch (state)
-  {
-  case (BMS_STATE_BOOT):
-    return "BOOT";
-  case (BMS_STATE_LV_POWER):
-    return "LV_POWER"; // 1 - LV in SN4
-  case (BMS_STATE_BUS_HEALTH_CHECK):
-    return "HEALTH_CHECK"; // 2 - HEALTH_CHECK in SN4
-  case (BMS_STATE_PRECHARGE):
-    return "PRECHARGE"; // 3
-  case (BMS_STATE_ENERGIZED):
-    return "ENERGIZED"; // 4
-  case (BMS_STATE_DRIVE):
-    return "DRIVE"; // 5
-  case (BMS_STATE_BATTERY_FREE):
-    return "BATT_FREE"; // 6 - FREE in SN4
-  case (BMS_STATE_CHARGER_PRECHARGE):
-    return "CHARGER_PRECHARGE"; // 7
-  case (BMS_STATE_CHARGING):
-    return "CHARGING"; // 8
-  case (BMS_STATE_BALANCE):
-    return "BALANCE"; // 9
-  case (BMS_STATE_FAULT_CELL_OVERVOLTAGE):
-    return "OV_FAULT"; // 20
-  case (BMS_STATE_FAULT_CELL_UNDERVOLTAGE):
-    return "UV_FAULT"; // 21
-  case (BMS_STATE_FAULT_CELL_OVERTEMP):
-    return "OT_FAULT"; // 22
-  case (BMS_STATE_FAULT_CELL_UNDERTEMP):
-    return "UT_FAULT"; // 23
-  case (BMS_STATE_FAULT_TEMP_SENSOR_LOSS):
-    return "TEMP_SENS_FAULT"; // 24
-  case (BMS_STATE_FAULT_ADBMS_INIT):
-    return "ADBMS_INIT_FAULT"; // 25
-  case (BMS_STATE_FAULT_ADBMS_TIMEOUT):
-    return "ADBMS_TO_FAULT"; // 26
-  case (BMS_STATE_FAULT_IVT_TIMEOUT):
-    return "IVT_TO_FAULT"; // 27
-  case (BMS_STATE_FAULT_OVERCURRENT):
-    return "OC_FAULT"; // 28
-  case (BMS_STATE_FAULT_IMD):
-    return "IMD_FAULT"; // 29
-  case (BMS_STATE_FAULT_BSPD):
-    return "BSPD_FAULT"; // 30
-  case (BMS_STATE_FAULT_CONTACTOR_MISMATCH):
-    return "CONTACTOR_FAULT"; // 31
-  case (BMS_STATE_FAULT_BALANCE_HV_ACTIVE):
-    return "BAL_HV_FAULT"; // 32
-  case (BMS_STATE_FAULT_PRECHARGE_TIMEOUT):
-    return "PRECHG_TO_FAULT"; // 33
-  case (BMS_STATE_FAULT_PRECHARGE_TOO_FAST):
-    return "PRECHG_FAST_FAULT"; // 34
-  case (BMS_STATE_FAULT_CHARGER_PRECHARGE_TIMEOUT):
-    return "CHG_PRECHG_FAULT"; // 35
-  case (BMS_STATE_FAULT_SHUTDOWN_OPEN):
-    return "SHUTDOWN_FAULT"; // 36
-  case (BMS_STATE_FAULT_AIR_MINUS_OPEN):
-    return "AIR-_FAULT"; // 37
-  case (BMS_STATE_FAULT_CHARGER_HW):
-    return "CHARGER_FAULT"; // 38
-  case (BMS_STATE_FAULT_MANUAL):
-    return "MANUAL_FAULT"; // 39
-  case (BMS_STATE_COUNT):
-    return "COUNT";
-  default:
-    return "UNKNOWN";
-  }
 }

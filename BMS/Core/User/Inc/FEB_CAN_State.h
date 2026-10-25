@@ -44,16 +44,8 @@ extern "C"
   /**
    * @brief Set BMS state
    * @param state New state value
-   * @return 0 on success, -1 if state is invalid
    */
-  int FEB_CAN_State_SetState(BMS_State_t state);
-
-  /**
-   * @brief Get state name as string
-   * @param state State to get name for
-   * @return String representation of state, or "UNKNOWN" if invalid
-   */
-  const char *FEB_CAN_State_GetStateName(BMS_State_t state);
+  void FEB_CAN_State_SetState(BMS_State_t state);
 
   /**
    * @brief Process automatic state transitions based on R2D signal

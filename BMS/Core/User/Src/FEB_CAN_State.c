@@ -48,41 +48,6 @@ static volatile bool can_ready = false;
 /* Current BMS state - volatile for ISR/task access */
 static volatile BMS_State_t current_state = BMS_STATE_BOOT;
 
-/* State name lookup table, indexed by BMS_State_t (reserved values are NULL) */
-static const char *const state_names[BMS_STATE_COUNT] = {
-    [BMS_STATE_BOOT] = "BOOT",
-    [BMS_STATE_LV_POWER] = "LV_POWER",
-    [BMS_STATE_BUS_HEALTH_CHECK] = "BUS_HEALTH_CHECK",
-    [BMS_STATE_PRECHARGE] = "PRECHARGE",
-    [BMS_STATE_ENERGIZED] = "ENERGIZED",
-    [BMS_STATE_DRIVE] = "DRIVE",
-    [BMS_STATE_BATTERY_FREE] = "BATTERY_FREE",
-    [BMS_STATE_CHARGER_PRECHARGE] = "CHARGER_PRECHARGE",
-    [BMS_STATE_CHARGING] = "CHARGING",
-    [BMS_STATE_BALANCE] = "BALANCE",
-    [BMS_STATE_FAULT_CELL_OVERVOLTAGE] = "FAULT_CELL_OVERVOLTAGE",
-    [BMS_STATE_FAULT_CELL_UNDERVOLTAGE] = "FAULT_CELL_UNDERVOLTAGE",
-    [BMS_STATE_FAULT_CELL_OVERTEMP] = "FAULT_CELL_OVERTEMP",
-    [BMS_STATE_FAULT_CELL_UNDERTEMP] = "FAULT_CELL_UNDERTEMP",
-    [BMS_STATE_FAULT_TEMP_SENSOR_LOSS] = "FAULT_TEMP_SENSOR_LOSS",
-    [BMS_STATE_FAULT_ADBMS_INIT] = "FAULT_ADBMS_INIT",
-    [BMS_STATE_FAULT_ADBMS_TIMEOUT] = "FAULT_ADBMS_TIMEOUT",
-    [BMS_STATE_FAULT_IVT_TIMEOUT] = "FAULT_IVT_TIMEOUT",
-    [BMS_STATE_FAULT_OVERCURRENT] = "FAULT_OVERCURRENT",
-    [BMS_STATE_FAULT_IMD] = "FAULT_IMD",
-    [BMS_STATE_FAULT_BSPD] = "FAULT_BSPD",
-    [BMS_STATE_FAULT_CONTACTOR_MISMATCH] = "FAULT_CONTACTOR_MISMATCH",
-    [BMS_STATE_FAULT_BALANCE_HV_ACTIVE] = "FAULT_BALANCE_HV_ACTIVE",
-    [BMS_STATE_FAULT_PRECHARGE_TIMEOUT] = "FAULT_PRECHARGE_TIMEOUT",
-    [BMS_STATE_FAULT_PRECHARGE_TOO_FAST] = "FAULT_PRECHARGE_TOO_FAST",
-    [BMS_STATE_FAULT_CHARGER_PRECHARGE_TIMEOUT] = "FAULT_CHARGER_PRECHARGE_TIMEOUT",
-    [BMS_STATE_FAULT_SHUTDOWN_OPEN] = "FAULT_SHUTDOWN_OPEN",
-    [BMS_STATE_FAULT_AIR_MINUS_OPEN] = "FAULT_AIR_MINUS_OPEN",
-    [BMS_STATE_FAULT_CHARGER_HW] = "FAULT_CHARGER_HW",
-    [BMS_STATE_FAULT_MANUAL] = "FAULT_MANUAL",
-};
-_Static_assert(BMS_STATE_COUNT <= 256, "bms_state is an 8-bit CAN signal");
-
 static uint16_t quantize_cell_voltage(float volts)
 {
   if (!(volts >= 0.0f))
@@ -247,23 +212,9 @@ BMS_State_t FEB_CAN_State_GetState(void)
   return current_state;
 }
 
-int FEB_CAN_State_SetState(BMS_State_t state)
+void FEB_CAN_State_SetState(BMS_State_t state)
 {
-  if (!BMS_State_Is_Valid(state))
-  {
-    return -1;
-  }
   current_state = state;
-  return 0;
-}
-
-const char *FEB_CAN_State_GetStateName(BMS_State_t state)
-{
-  if (!BMS_State_Is_Valid(state))
-  {
-    return "UNKNOWN";
-  }
-  return state_names[state];
 }
 
 void FEB_CAN_State_Tick(void)
