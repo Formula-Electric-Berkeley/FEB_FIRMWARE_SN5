@@ -150,7 +150,7 @@ static uint32_t balance_hv_start_tick = 0;
 static bool imd_armed = false;
 
 /* Special DEFAULT value for transition function calls during FEB_SM_Process */
-#define BMS_STATE_DEFAULT BMS_STATE_COUNT
+#define BMS_STATE_DEFAULT 0xFF
 
 /* ============================================================================
  * Forward Declarations - Helper Functions
@@ -175,21 +175,21 @@ static inline bool BSPD_brake_fault(void)
  * Forward Declarations - Transition Functions
  * ============================================================================ */
 
-static void bootTransition(BMS_State_t next_state);
-static void LVPowerTransition(BMS_State_t next_state);
-static void HealthCheckTransition(BMS_State_t next_state);
-static void PrechargeTransition(BMS_State_t next_state);
-static void EnergizedTransition(BMS_State_t next_state);
-static void DriveTransition(BMS_State_t next_state);
-static void FreeTransition(BMS_State_t next_state);
-static void ChargingPrechargeTransition(BMS_State_t next_state);
-static void ChargingTransition(BMS_State_t next_state);
-static void BalanceTransition(BMS_State_t next_state);
-static void FaultTransition(BMS_State_t next_state);
+static void bootTransition(int next_state);
+static void LVPowerTransition(int next_state);
+static void HealthCheckTransition(int next_state);
+static void PrechargeTransition(int next_state);
+static void EnergizedTransition(int next_state);
+static void DriveTransition(int next_state);
+static void FreeTransition(int next_state);
+static void ChargingPrechargeTransition(int next_state);
+static void ChargingTransition(int next_state);
+static void BalanceTransition(int next_state);
+static void FaultTransition(int next_state);
 
 /* Transition function vector indexed by state (nominal states only; every
  * FAULT_* state dispatches to FaultTransition) */
-static void (*transitionVector[BMS_STATE_NOMINAL_COUNT])(BMS_State_t) = {
+static void (*transitionVector[BMS_STATE_NOMINAL_COUNT])(int) = {
     bootTransition,              /* BMS_STATE_BOOT */
     LVPowerTransition,           /* BMS_STATE_LV_POWER */
     HealthCheckTransition,       /* BMS_STATE_BUS_HEALTH_CHECK */
@@ -235,7 +235,7 @@ static BMS_State_t updateStateProtected(BMS_State_t next_state)
   apply_validation_profile(next_state);
 
   /* Log state transition */
-  LOG_I(TAG_SM, "%s -> %s", FEB_CAN_State_GetStateName(prev_state), FEB_CAN_State_GetStateName(next_state));
+  LOG_I(TAG_SM, "%s -> %s", BMS_State_Name(prev_state), BMS_State_Name(next_state));
 
   /* Update CAN-published state */
   FEB_CAN_State_SetState(next_state);
@@ -261,7 +261,7 @@ static void fault_begin(BMS_State_t fault_type)
   shutdown_off_count = 0;
   shutdown_recover_count = 0;
 
-  LOG_E(TAG_SM, "FAULT ENTRY: %s", FEB_CAN_State_GetStateName(fault_type));
+  LOG_E(TAG_SM, "FAULT ENTRY: %s", BMS_State_Name(fault_type));
 
   SM_Current_State = fault_type;
   FEB_CAN_State_SetState(fault_type);
@@ -552,7 +552,8 @@ static void evaluate_faults(void)
       {
         LOG_E(TAG_SM, "IVT pack voltage implausible: U%d %s (%.1fV, min %.1fV)", FEB_IVT_PACK_VOLTAGE_CHANNEL,
               ivt_problem, (double)FEB_CAN_IVT_GetVoltage(), (double)FEB_IVT_MIN_VOLTAGE_V);
-        fault_begin(BMS_STATE_FAULT_IVT_TIMEOUT);
+        fault_begin(FEB_CAN_IVT_IsVoltageFresh(FEB_IVT_FAULT_TIMEOUT_MS) ? BMS_STATE_FAULT_IVT_VOLTAGE_NEGATIVE
+                                                                         : BMS_STATE_FAULT_IVT_TIMEOUT);
         return;
       }
     }
@@ -736,7 +737,7 @@ BMS_State_t FEB_SM_Get_Current_State(void)
   return SM_Current_State;
 }
 
-static void dispatchTransition(BMS_State_t next_state)
+static void dispatchTransition(int next_state)
 {
   if (isFaultState(SM_Current_State))
   {
@@ -842,7 +843,7 @@ bool FEB_SM_IMD_Armed(void)
  * Transition Functions
  * ============================================================================ */
 
-static void bootTransition(BMS_State_t next_state)
+static void bootTransition(int next_state)
 {
   switch (next_state)
   {
@@ -867,7 +868,7 @@ static void bootTransition(BMS_State_t next_state)
   }
 }
 
-static void LVPowerTransition(BMS_State_t next_state)
+static void LVPowerTransition(int next_state)
 {
   switch (next_state)
   {
@@ -917,7 +918,7 @@ static void LVPowerTransition(BMS_State_t next_state)
   }
 }
 
-static void HealthCheckTransition(BMS_State_t next_state)
+static void HealthCheckTransition(int next_state)
 {
   switch (next_state)
   {
@@ -974,7 +975,7 @@ static void HealthCheckTransition(BMS_State_t next_state)
   }
 }
 
-static void PrechargeTransition(BMS_State_t next_state)
+static void PrechargeTransition(int next_state)
 {
   switch (next_state)
   {
@@ -1086,7 +1087,7 @@ static void PrechargeTransition(BMS_State_t next_state)
   }
 }
 
-static void EnergizedTransition(BMS_State_t next_state)
+static void EnergizedTransition(int next_state)
 {
   switch (next_state)
   {
@@ -1163,7 +1164,7 @@ static bool shutdown_trip_confirmed(void)
   return open_count >= SHUTDOWN_TRIP_MAJORITY;
 }
 
-static void DriveTransition(BMS_State_t next_state)
+static void DriveTransition(int next_state)
 {
   switch (next_state)
   {
@@ -1233,7 +1234,7 @@ static void DriveTransition(BMS_State_t next_state)
   }
 }
 
-static void FreeTransition(BMS_State_t next_state)
+static void FreeTransition(int next_state)
 {
   switch (next_state)
   {
@@ -1311,7 +1312,7 @@ static void FreeTransition(BMS_State_t next_state)
   }
 }
 
-static void ChargingPrechargeTransition(BMS_State_t next_state)
+static void ChargingPrechargeTransition(int next_state)
 {
   switch (next_state)
   {
@@ -1394,7 +1395,7 @@ static void ChargingPrechargeTransition(BMS_State_t next_state)
   }
 }
 
-static void ChargingTransition(BMS_State_t next_state)
+static void ChargingTransition(int next_state)
 {
   switch (next_state)
   {
@@ -1442,7 +1443,7 @@ static void ChargingTransition(BMS_State_t next_state)
   }
 }
 
-static void BalanceTransition(BMS_State_t next_state)
+static void BalanceTransition(int next_state)
 {
   switch (next_state)
   {
@@ -1487,7 +1488,7 @@ static void BalanceTransition(BMS_State_t next_state)
  * Fault Transition Functions
  * ============================================================================ */
 
-static void FaultTransition(BMS_State_t next_state)
+static void FaultTransition(int next_state)
 {
   switch (next_state)
   {
