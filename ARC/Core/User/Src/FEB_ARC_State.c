@@ -125,7 +125,8 @@ void set_driverless_state(FEET_Status s)
   if (s != get_state_at(DRIVERLESS_STATUS))
   {
     LOG_I(TAG_ARC_STATE, "%s %d", "Driverless Status Updated To:", s);
-    set_state_at(DRIVERLESS_STATUS, s)
+    set_state_at(DRIVERLESS_STATUS, s);
+    update_feet_state();
   }
 }
 

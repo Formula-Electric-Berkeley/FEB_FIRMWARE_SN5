@@ -26,6 +26,15 @@ extern "C"
     EMERGENCY, // Blue flashing
 } FEET_Status;
   
+void update_feet_state();  
+
+//Helpers
+  void toggle_blue();
+  void toggle_yellow();
+  void set_blue();
+  void set_yellow();
+  void lights_off();
+
   #define TAG_FEET "[FEET]"
 
 #ifdef __cplusplus
