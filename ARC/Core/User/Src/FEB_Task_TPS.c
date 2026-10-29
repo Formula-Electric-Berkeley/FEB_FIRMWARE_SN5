@@ -7,19 +7,20 @@
  */
 
 #include "FEB_Task_TPS.h"
-#include "i2c.h" /* Must be before feb_tps.h for HAL types */
-#include "feb_tps.h"
 #include "main.h"
-#include "FEB_ARC_State.h"
 #include "cmsis_os.h"
+#include "feb_tps.h"
+#include "FEB_ARC_State.h"
 #include "feb_log.h"
 #include <stdbool.h>
 
 #define TAG_TPS "[TPS]"
 
+extern I2C_HandleTypeDef hi2c1;
+
 /* ========================== External FreeRTOS handles (from CubeMX) ========================== */
 /* NOTE: Created in CubeMX .ioc and defined in freertos.c */
-extern osMutexId_t tpsI2cMutexHandle;
+extern osMutexId tpsI2cMutexHandle;
 
 /* TPS2482 configuration */
 #define ARC_TPS_R_SHUNT 0.002f /* 2 mOhm shunt resistor (WSR52L000FEA) */
@@ -128,7 +129,7 @@ void StartTPSTask(void *argument)
   FEB_TPS_Measurement_t meas;
 
   /*
-  TODO: CAN MESSAGE SENDER HERE!
+  TODO: Define CAN MESSAGE SENDER HERE!
   */
 
   for (;;)

@@ -24,8 +24,8 @@ extern "C"
     CLOSED
   } K3_Status;
 
-  void K3_ON();
-  void K3_OFF();
+  void K3_ON(void);
+  void K3_OFF(void);
   
   #define TAG_K3 "[K3]"
 

@@ -48,20 +48,68 @@ CAN_HandleTypeDef hcan2;
 
 I2C_HandleTypeDef hi2c1;
 
-osThreadId K3_CONTROLHandle;
-osThreadId FEET_CONTROLHandle;
-osThreadId P_SENSEHandle;
-osThreadId STATE_READHandle;
-osThreadId TPS_HANDLERHandle;
-osMessageQId Pressure_DataHandle;
-osMessageQId StateHandle;
-osMessageQId TPS_StatusHandle;
-osMessageQId canTxQueueHandle;
-osMessageQId canRxQueueHandle;
-osMutexId tpsI2cMutexHandle;
-osMutexId canTxMutexHandle;
-osMutexId canRxMutexHandle;
-osSemaphoreId canTxMailboxSemHandle;
+/* Definitions for K3_CONTROL */
+osThreadId_t K3_CONTROLHandle;
+const osThreadAttr_t K3_CONTROL_attributes = {
+    .name = "K3_CONTROL",
+    .stack_size = 128 * 4,
+    .priority = (osPriority_t)osPriorityNormal,
+};
+/* Definitions for FEET_CONTROL */
+osThreadId_t FEET_CONTROLHandle;
+const osThreadAttr_t FEET_CONTROL_attributes = {
+    .name = "FEET_CONTROL",
+    .stack_size = 128 * 4,
+    .priority = (osPriority_t)osPriorityNormal,
+};
+/* Definitions for P_SENSE */
+osThreadId_t P_SENSEHandle;
+const osThreadAttr_t P_SENSE_attributes = {
+    .name = "P_SENSE",
+    .stack_size = 128 * 4,
+    .priority = (osPriority_t)osPriorityNormal,
+};
+/* Definitions for STATE_READ */
+osThreadId_t STATE_READHandle;
+const osThreadAttr_t STATE_READ_attributes = {
+    .name = "STATE_READ",
+    .stack_size = 256 * 4,
+    .priority = (osPriority_t)osPriorityNormal,
+};
+/* Definitions for TPS_HANDLER */
+osThreadId_t TPS_HANDLERHandle;
+const osThreadAttr_t TPS_HANDLER_attributes = {
+    .name = "TPS_HANDLER",
+    .stack_size = 128 * 4,
+    .priority = (osPriority_t)osPriorityNormal,
+};
+/* Definitions for Pressure_Data */
+osMessageQueueId_t Pressure_DataHandle;
+const osMessageQueueAttr_t Pressure_Data_attributes = {.name = "Pressure_Data"};
+/* Definitions for State */
+osMessageQueueId_t StateHandle;
+const osMessageQueueAttr_t State_attributes = {.name = "State"};
+/* Definitions for TPS_Status */
+osMessageQueueId_t TPS_StatusHandle;
+const osMessageQueueAttr_t TPS_Status_attributes = {.name = "TPS_Status"};
+/* Definitions for canTxQueue */
+osMessageQueueId_t canTxQueueHandle;
+const osMessageQueueAttr_t canTxQueue_attributes = {.name = "canTxQueue"};
+/* Definitions for canRxQueue */
+osMessageQueueId_t canRxQueueHandle;
+const osMessageQueueAttr_t canRxQueue_attributes = {.name = "canRxQueue"};
+/* Definitions for tpsI2cMutex */
+osMutexId_t tpsI2cMutexHandle;
+const osMutexAttr_t tpsI2cMutex_attributes = {.name = "tpsI2cMutex"};
+/* Definitions for canTxMutex */
+osMutexId_t canTxMutexHandle;
+const osMutexAttr_t canTxMutex_attributes = {.name = "canTxMutex"};
+/* Definitions for canRxMutex */
+osMutexId_t canRxMutexHandle;
+const osMutexAttr_t canRxMutex_attributes = {.name = "canRxMutex"};
+/* Definitions for canTxMailboxSem */
+osSemaphoreId_t canTxMailboxSemHandle;
+const osSemaphoreAttr_t canTxMailboxSem_attributes = {.name = "canTxMailboxSem"};
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -73,11 +121,11 @@ static void MX_ADC1_Init(void);
 static void MX_CAN1_Init(void);
 static void MX_CAN2_Init(void);
 static void MX_I2C1_Init(void);
-void START_K3_CONTROL(void const *argument);
-void START_FEET_CONTROL(void const *argument);
-void START_P_SENSE(void const *argument);
-void START_STATE_READ(void const *argument);
-void StartTPSTask(void const *argument);
+void START_K3_CONTROL(void *argument);
+void START_FEET_CONTROL(void *argument);
+void START_P_SENSE(void *argument);
+void START_STATE_READ(void *argument);
+void StartTPSTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -125,27 +173,25 @@ int main(void)
 
   /* USER CODE END 2 */
 
+  /* Init scheduler */
+  osKernelInitialize();
   /* Create the mutex(es) */
-  /* definition and creation of tpsI2cMutex */
-  osMutexDef(tpsI2cMutex);
-  tpsI2cMutexHandle = osMutexCreate(osMutex(tpsI2cMutex));
+  /* creation of tpsI2cMutex */
+  tpsI2cMutexHandle = osMutexNew(&tpsI2cMutex_attributes);
 
-  /* definition and creation of canTxMutex */
-  osMutexDef(canTxMutex);
-  canTxMutexHandle = osMutexCreate(osMutex(canTxMutex));
+  /* creation of canTxMutex */
+  canTxMutexHandle = osMutexNew(&canTxMutex_attributes);
 
-  /* definition and creation of canRxMutex */
-  osMutexDef(canRxMutex);
-  canRxMutexHandle = osMutexCreate(osMutex(canRxMutex));
+  /* creation of canRxMutex */
+  canRxMutexHandle = osMutexNew(&canRxMutex_attributes);
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
   /* Create the semaphores(s) */
-  /* definition and creation of canTxMailboxSem */
-  osSemaphoreDef(canTxMailboxSem);
-  canTxMailboxSemHandle = osSemaphoreCreate(osSemaphore(canTxMailboxSem), 3);
+  /* creation of canTxMailboxSem */
+  canTxMailboxSemHandle = osSemaphoreNew(3, 3, &canTxMailboxSem_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -156,54 +202,48 @@ int main(void)
   /* USER CODE END RTOS_TIMERS */
 
   /* Create the queue(s) */
-  /* definition and creation of Pressure_Data */
-  osMessageQDef(Pressure_Data, 1, uint16_t);
-  Pressure_DataHandle = osMessageCreate(osMessageQ(Pressure_Data), NULL);
+  /* creation of Pressure_Data */
+  Pressure_DataHandle = osMessageQueueNew(1, sizeof(uint16_t), &Pressure_Data_attributes);
 
-  /* definition and creation of State */
-  osMessageQDef(State, 1, uint32_t);
-  StateHandle = osMessageCreate(osMessageQ(State), NULL);
+  /* creation of State */
+  StateHandle = osMessageQueueNew(1, sizeof(uint32_t), &State_attributes);
 
-  /* definition and creation of TPS_Status */
-  osMessageQDef(TPS_Status, 1, uint16_t);
-  TPS_StatusHandle = osMessageCreate(osMessageQ(TPS_Status), NULL);
+  /* creation of TPS_Status */
+  TPS_StatusHandle = osMessageQueueNew(1, sizeof(uint16_t), &TPS_Status_attributes);
 
-  /* definition and creation of canTxQueue */
-  osMessageQDef(canTxQueue, 16, 24);
-  canTxQueueHandle = osMessageCreate(osMessageQ(canTxQueue), NULL);
+  /* creation of canTxQueue */
+  canTxQueueHandle = osMessageQueueNew(16, 24, &canTxQueue_attributes);
 
-  /* definition and creation of canRxQueue */
-  osMessageQDef(canRxQueue, 16, 24);
-  canRxQueueHandle = osMessageCreate(osMessageQ(canRxQueue), NULL);
+  /* creation of canRxQueue */
+  canRxQueueHandle = osMessageQueueNew(16, 24, &canRxQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of K3_CONTROL */
-  osThreadDef(K3_CONTROL, START_K3_CONTROL, osPriorityNormal, 0, 128);
-  K3_CONTROLHandle = osThreadCreate(osThread(K3_CONTROL), NULL);
+  /* creation of K3_CONTROL */
+  K3_CONTROLHandle = osThreadNew(START_K3_CONTROL, NULL, &K3_CONTROL_attributes);
 
-  /* definition and creation of FEET_CONTROL */
-  osThreadDef(FEET_CONTROL, START_FEET_CONTROL, osPriorityNormal, 0, 128);
-  FEET_CONTROLHandle = osThreadCreate(osThread(FEET_CONTROL), NULL);
+  /* creation of FEET_CONTROL */
+  FEET_CONTROLHandle = osThreadNew(START_FEET_CONTROL, NULL, &FEET_CONTROL_attributes);
 
-  /* definition and creation of P_SENSE */
-  osThreadDef(P_SENSE, START_P_SENSE, osPriorityNormal, 0, 128);
-  P_SENSEHandle = osThreadCreate(osThread(P_SENSE), NULL);
+  /* creation of P_SENSE */
+  P_SENSEHandle = osThreadNew(START_P_SENSE, NULL, &P_SENSE_attributes);
 
-  /* definition and creation of STATE_READ */
-  osThreadDef(STATE_READ, START_STATE_READ, osPriorityNormal, 0, 256);
-  STATE_READHandle = osThreadCreate(osThread(STATE_READ), NULL);
+  /* creation of STATE_READ */
+  STATE_READHandle = osThreadNew(START_STATE_READ, NULL, &STATE_READ_attributes);
 
-  /* definition and creation of TPS_HANDLER */
-  osThreadDef(TPS_HANDLER, StartTPSTask, osPriorityNormal, 0, 128);
-  TPS_HANDLERHandle = osThreadCreate(osThread(TPS_HANDLER), NULL);
+  /* creation of TPS_HANDLER */
+  TPS_HANDLERHandle = osThreadNew(StartTPSTask, NULL, &TPS_HANDLER_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
 
   /* Start scheduler */
   osKernelStart();
@@ -497,7 +537,7 @@ static void MX_GPIO_Init(void)
  * @retval None
  */
 /* USER CODE END Header_START_K3_CONTROL */
-__weak void START_K3_CONTROL(void const *argument)
+__weak void START_K3_CONTROL(void *argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
@@ -515,7 +555,7 @@ __weak void START_K3_CONTROL(void const *argument)
  * @retval None
  */
 /* USER CODE END Header_START_FEET_CONTROL */
-__weak void START_FEET_CONTROL(void const *argument)
+__weak void START_FEET_CONTROL(void *argument)
 {
   /* USER CODE BEGIN START_FEET_CONTROL */
   /* Infinite loop */
@@ -533,7 +573,7 @@ __weak void START_FEET_CONTROL(void const *argument)
  * @retval None
  */
 /* USER CODE END Header_START_P_SENSE */
-__weak void START_P_SENSE(void const *argument)
+__weak void START_P_SENSE(void *argument)
 {
   /* USER CODE BEGIN START_P_SENSE */
   /* Infinite loop */
@@ -551,7 +591,7 @@ __weak void START_P_SENSE(void const *argument)
  * @retval None
  */
 /* USER CODE END Header_START_STATE_READ */
-__weak void START_STATE_READ(void const *argument)
+__weak void START_STATE_READ(void *argument)
 {
   /* USER CODE BEGIN START_STATE_READ */
   /* Infinite loop */
@@ -569,7 +609,7 @@ __weak void START_STATE_READ(void const *argument)
  * @retval None
  */
 /* USER CODE END Header_StartTPSTask */
-__weak void StartTPSTask(void const *argument)
+__weak void StartTPSTask(void *argument)
 {
   /* USER CODE BEGIN StartTPSTask */
   /* Infinite loop */

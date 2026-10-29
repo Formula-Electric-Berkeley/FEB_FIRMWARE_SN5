@@ -19,12 +19,14 @@ extern "C"
    */
    
   typedef enum {
-    OFF, // Initial state
-    NOT_READY,
-    READY
+    DSB_STATUS_OFF,
+    DSB_STATUS_NOT_READY,
+    DSB_STATUS_READY
   } DSB_Status;
 
-  
+  DSB_Status get_status(void);
+  void set_status(DSB_Status status);
+  void START_P_SENSE(void const *argument);
   
   #define TAG_P_SENSE "[P_SENSE]"
 

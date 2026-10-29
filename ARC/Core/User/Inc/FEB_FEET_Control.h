@@ -19,21 +19,21 @@ extern "C"
    */
   
   typedef enum {
-    OFF,       // Both lights off
-    READY,     // Yellow continuous
-    DRIVING,   // Yellow  flashing
-    FINISHED,  // Blue continuous
-    EMERGENCY, // Blue flashing
+    FEET_STATE_OFF,
+    FEET_STATE_READY,
+    FEET_STATE_DRIVING,
+    FEET_STATE_FINISHED,
+    FEET_STATE_EMERGENCY,
 } FEET_Status;
   
-void update_feet_state();  
+void update_feet_state(void);
 
 //Helpers
-  void toggle_blue();
-  void toggle_yellow();
-  void set_blue();
-  void set_yellow();
-  void lights_off();
+  void toggle_blue(void);
+  void toggle_yellow(void);
+  void set_blue(void);
+  void set_yellow(void);
+  void lights_off(void);
 
   #define TAG_FEET "[FEET]"
 

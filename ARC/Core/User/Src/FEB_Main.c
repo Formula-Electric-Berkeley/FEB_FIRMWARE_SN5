@@ -9,7 +9,7 @@ extern CAN_HandleTypeDef hcan2;
 // FEB_Init should initialize CAN usage, TPS usage, Pressure Sensor Reading, FEET setup, etc
 void FEB_Init(void)
 {
-  // ARC_CAN_Init();
+  // ARC_CAN_Init(); // THis is called from FEB_ARC_State already
 }
 
 void ARC_CAN_Init(void)
@@ -30,7 +30,7 @@ void ARC_CAN_Init(void)
 
   if (FEB_CAN_Init(&cfg) != FEB_CAN_OK)
   {
-    LOG_E(TAG_MAIN, "%s", "CAN Initialization failed")
+    LOG_E(TAG_MAIN, "%s", "CAN Initialization failed");
     while (1)
     {
     }

@@ -1,9 +1,8 @@
-#include "FEB_K3_CONTROL.h"
+#include "FEB_K3_Control.h"
 #include "main.h"
-#include "FEB_ARC_STATE.h"
+#include "FEB_ARC_State.h"
+#include "cmsis_os.h"
 #include "feb_log.h"
-
-extern osMessageQueueId_t StateHandle;
 
 // Access K3 control pin from main.h
 // Usage: HAL_GPIO_WritePin(Driverless_Systems_Relay_GPIO_Port, Driverless_Systems_Relay_Pin, GPIO_PIN_RESET);
@@ -20,10 +19,10 @@ void START_K3_CONTROL(void const *argument)
 
   for (;;)
   {
-    if (get_state_at(MISSION) == MANUAL)
+    if (get_state_at(MISSION) == ARC_MISSION_MANUAL)
     {
       // Manual Mission Checks
-      if (get_state_at(DSB_STATE) == OFF)
+      if (get_state_at(DSB_STATE) == ARC_OFF)
       {
         K3_ON();
       }
@@ -36,7 +35,9 @@ void START_K3_CONTROL(void const *argument)
     {
       // Auto Mission Checks (This check might be wrong, the spec just says
       // when "brakes are applied", but also "sufficient brake pressure is built up")
-      if (get_state_at(DSMS_ON) == ON && get_state_at(STARTUP_CHECK) == DONE)
+      if (get_state_at(MISSION) == ARC_MISSION_AUTO &&
+          get_state_at(DSMS_ON) == ARC_ON &&
+          get_state_at(STARTUP_CHECK) == ARC_DONE)
       {
         K3_ON();
       }
@@ -49,7 +50,7 @@ void START_K3_CONTROL(void const *argument)
   }
 }
 
-void K3_ON()
+void K3_ON(void)
 {
   if (status == OPEN)
   {
@@ -59,7 +60,7 @@ void K3_ON()
   }
 }
 
-void K3_OFF()
+void K3_OFF(void)
 {
   if (status == CLOSED)
   {
