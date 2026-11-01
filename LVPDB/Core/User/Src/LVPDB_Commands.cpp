@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @file           : LVPDB_Commands.cpp
- * @brief          : LVPDB Custom Console Command Implementations
+ * @brief          : LVPDB Custom Console Command Implementations | UART
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  */
