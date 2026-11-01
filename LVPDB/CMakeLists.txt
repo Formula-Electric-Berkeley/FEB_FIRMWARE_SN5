@@ -22,6 +22,9 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 add_compile_definitions(
     USE_HAL_DRIVER
     STM32F446xx
+    FEB_UART_USE_FREERTOS=1
+    FEB_CAN_USE_FREERTOS=1
+    FEB_LOG_USE_FREERTOS=1
     $<$<CONFIG:Debug>:DEBUG>
 )
 
@@ -45,6 +48,15 @@ set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES})
 # CAN library generated source (from common submodule)
 list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can_db.c")
 
+# ── Middleware: FreeRTOS ─────────────────────────────────────────────
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
+    file(GLOB FREERTOS_CORE  "Middlewares/Third_Party/FreeRTOS/Source/*.c")
+    file(GLOB FREERTOS_CMSIS "Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/*.c")
+    file(GLOB FREERTOS_PORT  "Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/*.c")
+    file(GLOB FREERTOS_HEAP  "Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c")
+    list(APPEND ALL_SOURCES ${FREERTOS_CORE} ${FREERTOS_CMSIS} ${FREERTOS_PORT} ${FREERTOS_HEAP})
+endif()
+
 # ══════════════════════════════════════════════════════════════════════
 #  INCLUDE DIRECTORIES
 # ══════════════════════════════════════════════════════════════════════
@@ -59,7 +71,11 @@ set(BASE_INCLUDES
 
 # Auto-discover Core/User/Inc if it exists
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
-    list(APPEND BASE_INCLUDES Core/User/Inc)
+    list(APPEND BASE_INCLUDES
+        Core/User/Inc          # standard: <BOARD>_Main / _Tasks / _CAN / _CAN_Publish / _Commands
+        Core/User/Inc/Config   # feb_board_config.hpp - the contract the CAN library includes
+        Core/User/Inc/App      # board-specific modules
+    )
 endif()
 
 # Common CAN library (submodule)
@@ -68,6 +84,15 @@ list(APPEND BASE_INCLUDES
     "${CAN_LIB_DIR}/.."          # resolves #include "FEB_CAN_Library_SN4/gen/feb_can_db.h"
     "${CAN_LIB_DIR}/gen"         # resolves #include "feb_can.h" directly
 )
+
+# ── Middleware: FreeRTOS includes ────────────────────────────────────
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
+    list(APPEND BASE_INCLUDES
+        Middlewares/Third_Party/FreeRTOS/Source/include
+        Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2
+        Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F
+    )
+endif()
 
 # ══════════════════════════════════════════════════════════════════════
 #  EXECUTABLE TARGET

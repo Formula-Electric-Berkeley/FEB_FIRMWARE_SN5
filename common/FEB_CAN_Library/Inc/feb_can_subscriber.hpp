@@ -65,6 +65,7 @@ public:
   bool registered() const { return node_.handle >= 0; }
   bool present() const { return present_; }
   std::uint32_t rx_count() const { return rx_count_; }
+  std::uint32_t error_count() const { return error_count_; }
   std::uint32_t last_rx_ms() const { return last_rx_ms_; }
 
   std::uint32_t age_ms() const
