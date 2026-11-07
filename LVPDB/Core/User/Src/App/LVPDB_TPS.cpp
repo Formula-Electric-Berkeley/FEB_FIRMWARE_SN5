@@ -56,17 +56,13 @@ const struct
     {LV_ADDR, LV_FUSE_MAX, nullptr, 0, LV_PG_GPIO_Port, LV_PG_Pin, "LV"},
     // SH - Shutdown Source
     {SH_ADDR, SH_FUSE_MAX, SH_EN_GPIO_Port, SH_EN_Pin, SH_PG_GPIO_Port, SH_PG_Pin, "SH"},
-    // LT - Laptop Branch
-    {LT_ADDR, LT_FUSE_MAX, LT_EN_GPIO_Port, LT_EN_Pin, LT_PG_GPIO_Port, LT_PG_Pin, "LT"},
-    // BM_L - Braking Servo, Lidar
-    {BM_L_ADDR, BM_L_FUSE_MAX, BM_L_EN_GPIO_Port, BM_L_EN_Pin, BM_L_PG_GPIO_Port, BM_L_PG_Pin, "BM_L"},
-    // SM - Steering Motor
-    {SM_ADDR, SM_FUSE_MAX, SM_EN_GPIO_Port, SM_EN_Pin, SM_PG_GPIO_Port, SM_PG_Pin, "SM"},
     // AF1_AF2 - Accumulator Fans
     {AF1_AF2_ADDR, AF1_AF2_FUSE_MAX, AF1_AF2_EN_GPIO_Port, AF1_AF2_EN_Pin, AF1_AF2_PG_GPIO_Port, AF1_AF2_PG_Pin,
      "AF1_AF2"},
-    // CP_RF - Coolant Pump + Radiator Fans
-    {CP_RF_ADDR, CP_RF_FUSE_MAX, CP_RF_EN_GPIO_Port, CP_RF_EN_Pin, CP_RF_PG_GPIO_Port, CP_RF_PG_Pin, "CP_RF"},
+    // CP - Coolant Pump
+    {CP_ADDR, CP_FUSE_MAX, CP_EN_GPIO_Port, CP_EN_Pin, CP_PG_GPIO_Port, CP_PG_Pin, "CP"},
+    // RF - Radiator Fans
+    {RF_ADDR, RF_FUSE_MAX, RF_EN_GPIO_Port, RF_EN_Pin, RF_PG_GPIO_Port, RF_PG_Pin, "RF"},
 };
 
 int16_t tps2482_current_raw[NUM_TPS2482];
@@ -269,11 +265,9 @@ void tps_variable_conversion(void)
   // Convert current with per-device current LSB values
   tps2482_current[0] = FLOAT_TO_INT16_T(tps2482_current_raw[0] * LV_CURRENT_LSB);
   tps2482_current[1] = FLOAT_TO_INT16_T(tps2482_current_raw[1] * SH_CURRENT_LSB);
-  tps2482_current[2] = FLOAT_TO_INT16_T(tps2482_current_raw[2] * LT_CURRENT_LSB);
-  tps2482_current[3] = FLOAT_TO_INT16_T(tps2482_current_raw[3] * BM_L_CURRENT_LSB);
-  tps2482_current[4] = FLOAT_TO_INT16_T(tps2482_current_raw[4] * SM_CURRENT_LSB);
-  tps2482_current[5] = FLOAT_TO_INT16_T(tps2482_current_raw[5] * AF1_AF2_CURRENT_LSB);
-  tps2482_current[6] = FLOAT_TO_INT16_T(tps2482_current_raw[6] * CP_RF_CURRENT_LSB);
+  tps2482_current[2] = FLOAT_TO_INT16_T(tps2482_current_raw[2] * AF1_AF2_CURRENT_LSB);
+  tps2482_current[3] = FLOAT_TO_INT16_T(tps2482_current_raw[3] * CP_CURRENT_LSB);
+  tps2482_current[4] = FLOAT_TO_INT16_T(tps2482_current_raw[4] * RF_CURRENT_LSB);
 
   tps_current_iir(tps2482_current, tps2482_current, tps2482_current_filter, NUM_TPS2482, tps2482_current_filter_init);
 }
