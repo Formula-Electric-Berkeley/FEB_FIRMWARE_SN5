@@ -222,6 +222,8 @@ void FEB_1ms_Callback(void)
   static uint16_t apps_divider = 50;
   static uint16_t pedal_mv_divider = 75; // first fire at tick 25, then every 100
 
+  static uint16_t adc_debug_divider = 0;
+
   // Latch ONE time-coherent ADC snapshot for this control cycle. MUST run first
   // so every consumer below (APPS plausibility, brake faults, RMS torque, CAN
   // diagnostics, CLI) reads the same sampling instant — APPS1/APPS2, brake1/
@@ -244,6 +246,13 @@ void FEB_1ms_Callback(void)
   if (!can_init_success)
   {
     return;
+  }
+
+  adc_debug_divider++;
+  if (adc_debug_divider >= 2)
+  {
+    adc_debug_divider = 0;
+    FEB_CAN_Diagnostics_TransmitADCDebug();
   }
 
   // BMS heartbeat is processed in FEB_Main_Loop, not here, to avoid combining

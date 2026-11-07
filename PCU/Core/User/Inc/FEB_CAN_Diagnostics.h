@@ -13,6 +13,7 @@ extern "C"
   void FEB_CAN_Diagnostics_TransmitBrakeData(void);
   void FEB_CAN_Diagnostics_TransmitAPPSData(void);
   void FEB_CAN_Diagnostics_TransmitPedalVoltages(void);
+  void FEB_CAN_Diagnostics_TransmitADCDebug(void);
 
 #ifdef __cplusplus
 }

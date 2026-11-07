@@ -189,8 +189,7 @@ extern "C"
 #define CURRENT_SENSOR_MAX_AMPS 50         /* Maximum measurable current */
 
 /* Voltage Divider Ratios */
-#define SHUTDOWN_VOLTAGE_DIVIDER_RATIO 11.0f /* (R1+R2)/R2 for shutdown circuit monitoring */
-#define BSPD_VOLTAGE_DIVIDER_RATIO 5.5f      /* Voltage divider for BSPD signals */
+#define BSPD_VOLTAGE_DIVIDER_RATIO 5.5f /* Voltage divider for BSPD signals */
 
 /* ========================================================================== */
 /*                            SAFETY THRESHOLDS                               */

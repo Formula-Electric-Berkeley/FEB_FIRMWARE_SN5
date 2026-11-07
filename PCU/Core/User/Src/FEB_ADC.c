@@ -167,7 +167,9 @@ static ADC_CalibrationTypeDef brake_pressure2_calibration = {
     .max_physical = BRAKE_PRESSURE_MAX_PHYSICAL_BAR, /* Physical: 200 bar */
     .inverted = false};
 
-#define VOLTAGE_DIVIDER_RATIO (5.0f / 3.3f)       /* shutdown, current sense, pre-timing trip */
+#define VOLTAGE_DIVIDER_RATIO (5.0f / 3.3f)
+#define VOLTAGE_DIVIDER_RATIO_HECS (50.0f / 33.0f)
+#define VOLTAGE_DIVIDER_RATIO_SHUTDOWN (23.0f / 2.0f)
 #define VOLTAGE_DIVIDER_RATIO_BRAKE (5.0f / 3.3f) /* brake: 5V->3.3V PCB divider */
 #define VOLTAGE_DIVIDER_RATIO_ACCEL1 1.168f       /* APPS1: k=0.856 measured (2.16V→1.849V at ADC) */
 #define VOLTAGE_DIVIDER_RATIO_ACCEL2 1.0f         /* APPS2: direct connection, no resistor divider */
@@ -651,12 +653,12 @@ float FEB_ADC_GetBrakePressure2Voltage(void)
 
 float FEB_ADC_GetCurrentSenseVoltage(void)
 {
-  return FEB_ADC_RawToVoltage(FEB_ADC_GetCurrentSenseRaw()) * VOLTAGE_DIVIDER_RATIO;
+  return FEB_ADC_RawToVoltage(FEB_ADC_GetCurrentSenseRaw()) * VOLTAGE_DIVIDER_RATIO_HECS;
 }
 
 float FEB_ADC_GetShutdownInVoltage(void)
 {
-  return FEB_ADC_RawToVoltage(FEB_ADC_GetShutdownInRaw()) * VOLTAGE_DIVIDER_RATIO;
+  return FEB_ADC_RawToVoltage(FEB_ADC_GetShutdownInRaw()) * VOLTAGE_DIVIDER_RATIO_SHUTDOWN;
 }
 
 float FEB_ADC_GetPreTimingTripVoltage(void)
@@ -1058,7 +1060,7 @@ float FEB_ADC_GetBrakePressureBar(uint8_t sensor_num)
 
 float FEB_ADC_GetShutdownVoltage(void)
 {
-  return FEB_ADC_GetShutdownInVoltage() * SHUTDOWN_VOLTAGE_DIVIDER_RATIO;
+  return FEB_ADC_GetShutdownInVoltage();
 }
 
 /* Calibration Functions -----------------------------------------------------*/

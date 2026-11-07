@@ -73,3 +73,14 @@ void FEB_CAN_Diagnostics_TransmitPedalVoltages(void)
     LOG_E(TAG_CAN, "Failed to transmit pedal voltages: %s", FEB_CAN_StatusToString(status));
   }
 }
+
+void FEB_CAN_Diagnostics_TransmitADCDebug(void)
+{
+  struct feb_can_pcu_adc_t msg = {0};
+  msg.shutdown = (uint16_t)(FEB_ADC_GetShutdownVoltage() * 1000.0f);
+  msg.hecs = (uint16_t)(FEB_ADC_GetCurrentSenseVoltage() * 1000.0f);
+
+  uint8_t data[FEB_CAN_PCU_ADC_LENGTH];
+  int packed = feb_can_pcu_adc_pack(data, &msg, sizeof(data));
+  FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_PCU_ADC_FRAME_ID, FEB_CAN_ID_STD, data, (uint8_t)packed);
+}
