@@ -76,9 +76,15 @@ void FEB_CAN_Diagnostics_TransmitPedalVoltages(void)
 
 void FEB_CAN_Diagnostics_TransmitADCDebug(void)
 {
+  float shutdown_min, shutdown_max, hecs_min, hecs_max;
+  FEB_ADC_GetShutdownInMinMaxVoltage(&shutdown_min, &shutdown_max);
+  FEB_ADC_GetCurrentSenseMinMaxVoltage(&hecs_min, &hecs_max);
+
   struct feb_can_pcu_adc_t msg = {0};
-  msg.shutdown = (uint16_t)(FEB_ADC_GetShutdownVoltage() * 1000.0f);
-  msg.hecs = (uint16_t)(FEB_ADC_GetCurrentSenseVoltage() * 1000.0f);
+  msg.shutdown_min = (uint16_t)(shutdown_min * 1000.0f);
+  msg.shutdown_max = (uint16_t)(shutdown_max * 1000.0f);
+  msg.hecs_min = (uint16_t)(hecs_min * 1000.0f);
+  msg.hecs_max = (uint16_t)(hecs_max * 1000.0f);
 
   uint8_t data[FEB_CAN_PCU_ADC_LENGTH];
   int packed = feb_can_pcu_adc_pack(data, &msg, sizeof(data));

@@ -162,9 +162,6 @@ extern "C"
     uint16_t brake1_raw;      /* ADC1 ch1  (PA1) */
     uint16_t brake2_raw;      /* ADC1 ch0  (PA0) */
     uint16_t brake_input_raw; /* ADC1 ch14 (PC4) */
-    uint16_t current_raw;     /* ADC2 ch4  (PA4) */
-    uint16_t shutdown_raw;    /* ADC2 ch6  (PA6) */
-    uint16_t pretiming_raw;   /* ADC2 ch7  (PA7) */
     uint16_t bspd_ind_raw;    /* ADC3 ch10 (PC0) */
     uint16_t bspd_rst_raw;    /* ADC3 ch11 (PC1) */
   } ADC_CoherentSnapshot_t;
@@ -238,11 +235,6 @@ extern "C"
   uint16_t FEB_ADC_GetAccelPedal1Raw(void);
   uint16_t FEB_ADC_GetAccelPedal2Raw(void);
 
-  /* Power System Raw Values */
-  uint16_t FEB_ADC_GetCurrentSenseRaw(void);
-  uint16_t FEB_ADC_GetShutdownInRaw(void);
-  uint16_t FEB_ADC_GetPreTimingTripRaw(void);
-
   /* BSPD Raw Values */
   uint16_t FEB_ADC_GetBSPDIndicatorRaw(void);
   uint16_t FEB_ADC_GetBSPDResetRaw(void);
@@ -261,9 +253,8 @@ extern "C"
   float FEB_ADC_GetAccelPedal2Voltage(void);
 
   /* Power System Voltages */
-  float FEB_ADC_GetCurrentSenseVoltage(void);
-  float FEB_ADC_GetShutdownInVoltage(void);
-  float FEB_ADC_GetPreTimingTripVoltage(void);
+  void FEB_ADC_GetCurrentSenseMinMaxVoltage(float *min_v, float *max_v);
+  void FEB_ADC_GetShutdownInMinMaxVoltage(float *min_v, float *max_v);
 
   /* BSPD Voltages */
   float FEB_ADC_GetBSPDIndicatorVoltage(void);
@@ -372,12 +363,6 @@ extern "C"
    * @retval float: Current in amps (positive or negative)
    */
   float FEB_ADC_GetCurrentAmps(void);
-
-  /**
-   * @brief  Get shutdown circuit voltage
-   * @retval float: Actual shutdown circuit voltage after divider compensation
-   */
-  float FEB_ADC_GetShutdownVoltage(void);
 
   /* ========================================================================== */
   /*                        CALIBRATION FUNCTIONS                              */

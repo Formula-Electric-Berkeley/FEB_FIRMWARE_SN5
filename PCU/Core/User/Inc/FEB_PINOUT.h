@@ -90,7 +90,9 @@ extern "C"
 #define ADC_MAX_SAMPLING_TIME ADC_SAMPLETIME_480CYCLES
 
 /* DMA Buffer Sizes */
-#define ADC_DMA_BUFFER_SIZE 16  /* Circular buffer depth (samples per channel) */
+#define ADC_DMA_BUFFER_SIZE 16 /* Circular buffer depth (samples per channel) */
+#define ADC2_DMA_BUFFER_SIZE 278
+#define ADC2_WINDOW_TICKS 10
 #define ADC_AVERAGING_SAMPLES 8 /* Number of samples for averaging */
 
 /* TIM2 hardware trigger rate for all three ADCs. Each TIM2 TRGO edge launches

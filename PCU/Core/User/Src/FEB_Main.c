@@ -249,7 +249,7 @@ void FEB_1ms_Callback(void)
   }
 
   adc_debug_divider++;
-  if (adc_debug_divider >= 2)
+  if (adc_debug_divider >= ADC2_WINDOW_TICKS)
   {
     adc_debug_divider = 0;
     FEB_CAN_Diagnostics_TransmitADCDebug();
