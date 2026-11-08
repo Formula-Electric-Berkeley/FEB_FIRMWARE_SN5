@@ -35,6 +35,13 @@ extern osMutexId_t uartTxMutexHandle;
 extern osMessageQueueId_t uartRxQueueHandle;
 #endif
 
+#define LV_INDEX 0;
+#define SH_INDEX 1;
+#define AF1_AF2_INDEX 2;
+#define CP_INDEX 3;
+#define RF_INDEX 4;
+
+
 namespace
 {
 volatile bool setup_complete = false;

@@ -20,11 +20,9 @@
  * Chip names (case-insensitive):
  *   LV (0)      - Low Voltage Source (NOT controllable)
  *   SH (1)      - Shutdown Source
- *   LT (2)      - Laptop Branch
- *   BM_L (3)    - Braking Servo, Lidar
- *   SM (4)      - Steering Motor
- *   AF1_AF2 (5) - Accumulator Fans
- *   CP_RF (6)   - Coolant Pump + Radiator Fans
+ *   AF1_AF2 (2) - Accumulator Fans
+ *   CP (3)   - Coolant Pump
+ *   RF (4) Radiator Fans
  *
  * Register names: config, shunt, bus, power, current, cal, mask, alert, id
  *
