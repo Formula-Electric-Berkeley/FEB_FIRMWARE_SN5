@@ -2,6 +2,10 @@
 #include <FEB_ADC.cpp>
 #include <cstdint>
 
+#define MAX_DEGREE 15;
+#define MAX_TORQUE 2200;
+#
+
 /*
   Implausiblility:  sensors disagree by >10% pedal travel
                     >100 ms → motor controller cuts motor power
