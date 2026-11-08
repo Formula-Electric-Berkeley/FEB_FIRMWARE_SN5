@@ -34,7 +34,7 @@ extern osMutexId_t FEB_I2C_mutexHandle;
  * Chip Name/Index Mapping
  * ============================================================================ */
 
-static const char *chip_names[NUM_TPS2482] = {"LV", "SH", "LT", "BM_L", "SM", "AF1_AF2", "CP_RF"};
+static const char *chip_names[NUM_TPS2482] = {"LV", "SH", "AF1_AF2", "CP", "RF"};
 
 /**
  * Resolve a TPS2482 chip index from a name or a numeric string.
@@ -160,7 +160,7 @@ static void print_lvpdb_help(void)
 {
   FEB_Console_Printf("LVPDB Commands:\r\n");
   FEB_Console_Printf("  LVPDB|status              - Show all TPS chip status\r\n");
-  FEB_Console_Printf("  LVPDB|enable|<chip>       - Enable chip (SH,LT,BM_L,SM,AF1_AF2,CP_RF or 1-6)\r\n");
+  FEB_Console_Printf("  LVPDB|enable|<chip>       - Enable chip (SH, AF1_AF2, CP, RF or 1-4)\r\n");
   FEB_Console_Printf("  LVPDB|disable|<chip>      - Disable chip\r\n");
   FEB_Console_Printf("  LVPDB|read|<chip>|<reg>   - Read register\r\n");
   FEB_Console_Printf("  LVPDB|write|<chip>|<reg>|<val> - Write register\r\n");
@@ -172,7 +172,7 @@ static void print_lvpdb_help(void)
   FEB_Console_Printf("  LVPDB|canstatus           - Show CAN ping/pong status\r\n");
   FEB_Console_Printf("  LVPDB|canrx               - Show CAN RX subscriber state (DashState, Brake)\r\n");
   FEB_Console_Printf("\r\n");
-  FEB_Console_Printf("Chips: LV(0), SH(1), LT(2), BM_L(3), SM(4), AF1_AF2(5), CP_RF(6)\r\n");
+  FEB_Console_Printf("Chips: LV(0), SH(1), AF1_AF2(2), CP(3), RF(4) \r\n");
   FEB_Console_Printf("  Note: LV cannot be enabled/disabled (always on)\r\n");
   FEB_Console_Printf("\r\n");
   FEB_Console_Printf("Registers: config, shunt, bus, power, current, cal, mask, alert, id\r\n");

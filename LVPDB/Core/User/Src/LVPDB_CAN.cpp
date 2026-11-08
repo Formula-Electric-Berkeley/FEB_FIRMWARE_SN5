@@ -11,7 +11,8 @@
 #include "LVPDB_TPS.h"
 #include "cmsis_os2.h"
 #include "feb_can_subscriber.hpp"
-#include "main.h"
+#include "main.hpp"
+#include "LVPDB_Main.cpp"
 
 namespace fc = feb::can;
 namespace fm = feb::can::msg;
@@ -64,11 +65,10 @@ void LVPDB_CAN_ApplyRxState(void)
   const bool dash_fresh = fc::rx<fm::DashState>.fresh();
   const auto dash_state = fc::rx<fm::DashState>.snapshot();
 
-  // Rail indices: LV, SH, LT, BM_L, SM, AF1_AF2, CP_RF
-  LVPDB_TPS_SetRail(5, dash_fresh && dash_state.switch1); // AF1_AF2
-  LVPDB_TPS_SetRail(6, dash_fresh && dash_state.switch2); // CP_RF
-
-  // LVPDB_TPS_SetRail(3, true); // BM_L
+  // Rail indices: LV, SH, AF1_AF2, CP, RF
+  LVPDB_TPS_SetRail(AF1_AF2_INDEX, dash_fresh && dash_state.switch1); // AF1_AF2
+  LVPDB_TPS_SetRail(CP_INDEX, dash_fresh && dash_state.switch2); // CP
+  LVPDB_TPS_SetRail(RF_INDEX, dash_fresh && dash_state.switch2); //RF
 
   /* brake_position is centi-percent (0-10000); compare whole percent (0-100). */
   bool brake_on = fc::rx<fm::Brake>.fresh() && (fc::rx<fm::Brake>.v().brake_position > 1000u);
