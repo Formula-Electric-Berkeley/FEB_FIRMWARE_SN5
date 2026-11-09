@@ -86,6 +86,13 @@ const osThreadAttr_t canPubTask_attributes = {
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* Definitions for pwmTask */
+osThreadId_t pwmTaskHandle;
+const osThreadAttr_t pwmTask_attributes = {
+  .name = "pwmTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 /* Definitions for canTxQueue */
 osMessageQueueId_t canTxQueueHandle;
 const osMessageQueueAttr_t canTxQueue_attributes = {
@@ -152,6 +159,7 @@ void StartTpsTask(void *argument);
 void StartCanRxTask(void *argument);
 void StartCanTxTask(void *argument);
 void StartCanPubTask(void *argument);
+void StartPwmTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -231,6 +239,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of canPubTask */
   canPubTaskHandle = osThreadNew(StartCanPubTask, NULL, &canPubTask_attributes);
+
+  /* creation of pwmTask */
+  pwmTaskHandle = osThreadNew(StartPwmTask, NULL, &pwmTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -331,6 +342,24 @@ __weak void StartCanPubTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END StartCanPubTask */
+}
+
+/* USER CODE BEGIN Header_StartPwmTask */
+/**
+* @brief Function implementing the pwmTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartPwmTask */
+__weak void StartPwmTask(void *argument)
+{
+  /* USER CODE BEGIN StartPwmTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartPwmTask */
 }
 
 /* Private application code --------------------------------------------------*/

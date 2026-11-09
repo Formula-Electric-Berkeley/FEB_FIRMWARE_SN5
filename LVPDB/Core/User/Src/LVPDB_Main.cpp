@@ -131,4 +131,6 @@ void LVPDB_Init(void)
   LOG_I(TAG_MAIN, "Type 'help' for available commands");
 
   setup_complete = true;
+
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 }
