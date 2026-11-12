@@ -2,130 +2,179 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug BMS (ST-Link)",
-      "cwd": "${workspaceFolder}",
-      "executable": "${workspaceFolder}/build/Debug/BMS/BMS.elf",
+      "name": "Debug BMS",
+      "type": "stlinkgdbtarget",
       "request": "launch",
-      "type": "cortex-debug",
-      "servertype": "stlink",
-      "device": "STM32F446RE",
-      "runToEntryPoint": "main",
-      "preLaunchTask": "Build BMS"
+      "cwd": "${workspaceFolder}",
+      "deviceName": "STM32F446RET6",
+      "deviceCore": "Cortex-M4",
+      "logFile": "${workspaceFolder}/build/gdbClient_log.txt",
+      "preBuild": "",
+      "preLaunchTask": "Build BMS",
+      "runEntry": "main",
+      "serverLogFile": "${workspaceFolder}/build/stlinkgdbserver_log.txt",
+      "imagesAndSymbols": [
+        {
+          "imageFileName": "${workspaceFolder}/build/Debug/BMS/BMS.elf"
+        }
+      ]
     },
     {
-      "name": "Debug DASH (ST-Link)",
-      "cwd": "${workspaceFolder}",
-      "executable": "${workspaceFolder}/build/Debug/DASH/DASH.elf",
+      "name": "Debug DASH",
+      "type": "stlinkgdbtarget",
       "request": "launch",
-      "type": "cortex-debug",
-      "servertype": "stlink",
-      "device": "STM32F469NI",
-      "runToEntryPoint": "main",
-      "preLaunchTask": "Build DASH"
+      "cwd": "${workspaceFolder}",
+      "deviceName": "STM32F469NIH6",
+      "deviceCore": "Cortex-M4",
+      "logFile": "${workspaceFolder}/build/gdbClient_log.txt",
+      "preBuild": "",
+      "preLaunchTask": "Build DASH",
+      "runEntry": "main",
+      "serverLogFile": "${workspaceFolder}/build/stlinkgdbserver_log.txt",
+      "imagesAndSymbols": [
+        {
+          "imageFileName": "${workspaceFolder}/build/Debug/DASH/DASH.elf"
+        }
+      ]
     },
     {
-      "name": "Debug DART (ST-Link)",
-      "cwd": "${workspaceFolder}",
-      "executable": "${workspaceFolder}/build/Debug/DART/DART.elf",
+      "name": "Debug DCU",
+      "type": "stlinkgdbtarget",
       "request": "launch",
-      "type": "cortex-debug",
-      "servertype": "stlink",
-      "device": "STM32F446RE",
-      "runToEntryPoint": "main",
-      "preLaunchTask": "Build DART"
+      "cwd": "${workspaceFolder}",
+      "deviceName": "STM32F446RET6",
+      "deviceCore": "Cortex-M4",
+      "logFile": "${workspaceFolder}/build/gdbClient_log.txt",
+      "preBuild": "",
+      "preLaunchTask": "Build DCU",
+      "runEntry": "main",
+      "serverLogFile": "${workspaceFolder}/build/stlinkgdbserver_log.txt",
+      "imagesAndSymbols": [
+        {
+          "imageFileName": "${workspaceFolder}/build/Debug/DCU/DCU.elf"
+        }
+      ]
     },
     {
-      "name": "Debug DCU (ST-Link)",
-      "cwd": "${workspaceFolder}",
-      "executable": "${workspaceFolder}/build/Debug/DCU/DCU.elf",
+      "name": "Debug DCU_Receiver",
+      "type": "stlinkgdbtarget",
       "request": "launch",
-      "type": "cortex-debug",
-      "servertype": "stlink",
-      "device": "STM32F446RE",
-      "runToEntryPoint": "main",
-      "preLaunchTask": "Build DCU"
+      "cwd": "${workspaceFolder}",
+      "deviceName": "STM32F446RET6",
+      "deviceCore": "Cortex-M4",
+      "logFile": "${workspaceFolder}/build/gdbClient_log.txt",
+      "preBuild": "",
+      "preLaunchTask": "Build DCU_Receiver",
+      "runEntry": "main",
+      "serverLogFile": "${workspaceFolder}/build/stlinkgdbserver_log.txt",
+      "imagesAndSymbols": [
+        {
+          "imageFileName": "${workspaceFolder}/build/Debug/DCU_Receiver/DCU_Receiver.elf"
+        }
+      ]
     },
     {
-      "name": "Debug LVPDB (ST-Link)",
-      "cwd": "${workspaceFolder}",
-      "executable": "${workspaceFolder}/build/Debug/LVPDB/LVPDB.elf",
+      "name": "Debug LVPDB",
+      "type": "stlinkgdbtarget",
       "request": "launch",
-      "type": "cortex-debug",
-      "servertype": "stlink",
-      "device": "STM32F446RE",
-      "runToEntryPoint": "main",
-      "preLaunchTask": "Build LVPDB"
+      "cwd": "${workspaceFolder}",
+      "deviceName": "STM32F446RET6",
+      "deviceCore": "Cortex-M4",
+      "logFile": "${workspaceFolder}/build/gdbClient_log.txt",
+      "preBuild": "",
+      "preLaunchTask": "Build LVPDB",
+      "runEntry": "main",
+      "serverLogFile": "${workspaceFolder}/build/stlinkgdbserver_log.txt",
+      "imagesAndSymbols": [
+        {
+          "imageFileName": "${workspaceFolder}/build/Debug/LVPDB/LVPDB.elf"
+        }
+      ]
     },
     {
-      "name": "Debug PCU (ST-Link)",
-      "cwd": "${workspaceFolder}",
-      "executable": "${workspaceFolder}/build/Debug/PCU/PCU.elf",
+      "name": "Debug PCU",
+      "type": "stlinkgdbtarget",
       "request": "launch",
-      "type": "cortex-debug",
-      "servertype": "stlink",
-      "device": "STM32F446RE",
-      "runToEntryPoint": "main",
-      "preLaunchTask": "Build PCU"
+      "cwd": "${workspaceFolder}",
+      "deviceName": "STM32F446RET6",
+      "deviceCore": "Cortex-M4",
+      "logFile": "${workspaceFolder}/build/gdbClient_log.txt",
+      "serverRtos": {
+        "enabled": false
+      },
+      "preBuild": "",
+      "preLaunchTask": "Build PCU",
+      "runEntry": "main",
+      "serverLogFile": "${workspaceFolder}/build/stlinkgdbserver_log.txt",
+      "imagesAndSymbols": [
+        {
+          "imageFileName": "${workspaceFolder}/build/Debug/PCU/PCU.elf"
+        }
+      ]
     },
     {
-      "name": "Debug Sensor_Nodes FRONT (ST-Link)",
-      "cwd": "${workspaceFolder}",
-      "executable": "${workspaceFolder}/build/Debug/Sensor_Nodes/Sensor_Nodes_FRONT.elf",
+      "name": "Debug Sensor_Nodes FRONT",
+      "type": "stlinkgdbtarget",
       "request": "launch",
-      "type": "cortex-debug",
-      "servertype": "stlink",
-      "device": "STM32F446RE",
-      "runToEntryPoint": "main",
-      "preLaunchTask": "Build Sensor_Nodes (FRONT)"
+      "cwd": "${workspaceFolder}",
+      "deviceName": "STM32F446RET6",
+      "deviceCore": "Cortex-M4",
+      "logFile": "${workspaceFolder}/build/gdbClient_log.txt",
+      "preBuild": "",
+      "preLaunchTask": "Build Sensor_Nodes (FRONT)",
+      "runEntry": "main",
+      "serverLogFile": "${workspaceFolder}/build/stlinkgdbserver_log.txt",
+      "imagesAndSymbols": [
+        {
+          "imageFileName": "${workspaceFolder}/build/Debug/Sensor_Nodes/Sensor_Nodes_FRONT.elf"
+        }
+      ]
     },
     {
-      "name": "Debug Sensor_Nodes REAR (ST-Link)",
-      "cwd": "${workspaceFolder}",
-      "executable": "${workspaceFolder}/build/Debug/Sensor_Nodes/Sensor_Nodes_REAR.elf",
+      "name": "Debug Sensor_Nodes REAR",
+      "type": "stlinkgdbtarget",
       "request": "launch",
-      "type": "cortex-debug",
-      "servertype": "stlink",
-      "device": "STM32F446RE",
-      "runToEntryPoint": "main",
-      "preLaunchTask": "Build Sensor_Nodes (REAR)"
+      "cwd": "${workspaceFolder}",
+      "deviceName": "STM32F446RET6",
+      "deviceCore": "Cortex-M4",
+      "logFile": "${workspaceFolder}/build/gdbClient_log.txt",
+      "preBuild": "",
+      "preLaunchTask": "Build Sensor_Nodes (REAR)",
+      "runEntry": "main",
+      "serverLogFile": "${workspaceFolder}/build/stlinkgdbserver_log.txt",
+      "imagesAndSymbols": [
+        {
+          "imageFileName": "${workspaceFolder}/build/Debug/Sensor_Nodes/Sensor_Nodes_REAR.elf"
+        }
+      ]
     },
     {
-      "name": "Debug UART_TEST (ST-Link)",
-      "cwd": "${workspaceFolder}",
-      "executable": "${workspaceFolder}/build/Debug/UART_TEST/UART_TEST.elf",
-      "request": "launch",
-      "type": "cortex-debug",
-      "servertype": "stlink",
-      "device": "STM32U575ZI",
-      "runToEntryPoint": "main",
-      "preLaunchTask": "Build UART_TEST"
-    },
-    {
-      "name": "Attach BMS (ST-Link)",
-      "cwd": "${workspaceFolder}",
-      "executable": "${workspaceFolder}/build/Debug/BMS/BMS.elf",
+      "name": "Attach BMS",
+      "type": "stlinkgdbtarget",
       "request": "attach",
-      "type": "cortex-debug",
-      "servertype": "stlink",
-      "device": "STM32F446RE"
+      "cwd": "${workspaceFolder}",
+      "deviceName": "STM32F446RET6",
+      "deviceCore": "Cortex-M4",
+      "logFile": "${workspaceFolder}/build/gdbClient_log.txt",
+      "imagesAndSymbols": [
+        {
+          "symbolFileName": "${workspaceFolder}/build/Debug/BMS/BMS.elf"
+        }
+      ]
     },
     {
-      "name": "Attach LVPDB (ST-Link)",
-      "cwd": "${workspaceFolder}",
-      "executable": "${workspaceFolder}/build/Debug/LVPDB/LVPDB.elf",
+      "name": "Attach LVPDB",
+      "type": "stlinkgdbtarget",
       "request": "attach",
-      "type": "cortex-debug",
-      "servertype": "stlink",
-      "device": "STM32F446RE"
-    },
-    {
-      "name": "Attach UART_TEST (ST-Link)",
       "cwd": "${workspaceFolder}",
-      "executable": "${workspaceFolder}/build/Debug/UART_TEST/UART_TEST.elf",
-      "request": "attach",
-      "type": "cortex-debug",
-      "servertype": "stlink",
-      "device": "STM32U575ZI"
+      "deviceName": "STM32F446RET6",
+      "deviceCore": "Cortex-M4",
+      "logFile": "${workspaceFolder}/build/gdbClient_log.txt",
+      "imagesAndSymbols": [
+        {
+          "symbolFileName": "${workspaceFolder}/build/Debug/LVPDB/LVPDB.elf"
+        }
+      ]
     }
   ]
 }

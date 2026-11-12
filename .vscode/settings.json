@@ -1,5 +1,7 @@
 {
     "cmake.cmakePath": "cube-cmake",
+    "cmake.configureOnOpen": true,
+    "cmake.sourceDirectory": "${workspaceFolder}",
     "cmake.preferredGenerators": [
         "Ninja"
     ],
@@ -21,29 +23,20 @@
     "stm32cube-ide-clangd.path": "cube",
     "stm32cube-ide-clangd.arguments": [
         "starm-clangd",
-        "--query-driver=${env:CUBE_BUNDLE_PATH}/gnu-tools-for-stm32/14.3.1+st.2/bin/arm-none-eabi-gcc",
-        "--query-driver=${env:CUBE_BUNDLE_PATH}/gnu-tools-for-stm32/14.3.1+st.2/bin/arm-none-eabi-g++",
+        "--query-driver=**/arm-none-eabi-gcc*,**/arm-none-eabi-g++*",
         "--compile-commands-dir=${workspaceFolder}/build/Debug"
-    ],
-    "clangd.arguments": [
-        "--query-driver=/opt/ST/STM32CubeCLT_*/GNU-tools-for-STM32/bin/arm-none-eabi-gcc",
-        "--query-driver=/opt/ST/STM32CubeCLT_*/GNU-tools-for-STM32/bin/arm-none-eabi-g++",
-        "--compile-commands-dir=${workspaceFolder}/build/Debug",
     ],
     "cmake.configureArgs": [
         "-DCMAKE_COMMAND=cube-cmake"
     ],
+    "C_Cpp.intelliSenseEngine": "disabled",
     "[c]": {
         "editor.defaultFormatter": "STMicroelectronics.stm32cube-ide-clangd",
         "editor.formatOnSave": true
     },
     "[cpp]": {
-        "editor.defaultFormatter": "ms-vscode.cpptools",
+        "editor.defaultFormatter": "STMicroelectronics.stm32cube-ide-clangd",
         "editor.formatOnSave": true
     },
-    "python.defaultInterpreterPath": "${workspaceFolder}/common/FEB_CAN_Library_SN4/.venv/bin/python",
-    "python.analysis.extraPaths": [
-        "${workspaceFolder}/common/FEB_CAN_Library_SN4/.venv/lib/python3.14/site-packages"
-    ],
-    "cmake.sourceDirectory": "/Users/sameelocal/FEB_FIRMWARE_SN5"
+    "python.defaultInterpreterPath": "${workspaceFolder}/common/FEB_CAN_Library_SN4/.venv/bin/python"
 }

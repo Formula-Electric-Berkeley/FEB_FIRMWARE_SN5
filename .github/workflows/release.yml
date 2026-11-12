@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [BMS, PCU, DASH, LVPDB, DART, DCU, DCU_Receiver, Sensor_Nodes_FRONT, Sensor_Nodes_REAR, UART, UART_TEST]
+        project: [BMS, PCU, DASH, LVPDB, DCU, DCU_Receiver, Sensor_Nodes_FRONT, Sensor_Nodes_REAR]
 
     name: Build ${{ matrix.project }}
 
@@ -107,11 +107,13 @@ jobs:
       - name: Organize artifacts by board
         run: |
           mkdir -p release-package
-          for board in BMS PCU DASH LVPDB DART DCU DCU_Receiver Sensor_Nodes_FRONT Sensor_Nodes_REAR UART UART_TEST; do
+          for board in BMS PCU DASH LVPDB DCU DCU_Receiver Sensor_Nodes_FRONT Sensor_Nodes_REAR; do
             mkdir -p "release-package/$board"
             find release-artifacts -name "$board-*" -type f \( -name "*.elf" -o -name "*.bin" -o -name "*.hex" \) -exec cp {} "release-package/$board/" \; 2>/dev/null || true
           done
           cp scripts/flash.sh release-package/
+          mkdir -p release-package/lib
+          cp scripts/lib/*.sh release-package/lib/
           chmod +x release-package/flash.sh
           echo "=== Release package structure ==="
           find release-package -type f | sort
@@ -132,7 +134,8 @@ jobs:
             ./flash.sh -f BMS/BMS-*.elf
 
           Requirements:
-            - STM32CubeCLT (provides STM32_Programmer_CLI)
+            - STM32Cube for VS Code extension ('cube' provides STM32CubeProgrammer),
+              or STM32_Programmer_CLI on PATH
             - ST-Link or compatible SWD programmer
 
           For more information, visit:
@@ -185,9 +188,6 @@ jobs:
             - PCU (Powertrain Control Unit)
             - DASH (Dashboard)
             - LVPDB (Low Voltage Power Distribution)
-            - DART
             - DCU (Data Control Unit)
             - Sensor_Nodes_FRONT (front sensor node variant)
             - Sensor_Nodes_REAR  (rear sensor node variant)
-            - UART (UART Communication Board)
-            - UART_TEST (UART/Console Test Board)

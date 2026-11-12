@@ -154,8 +154,7 @@ void version(Interaction &io, std::span<char *const>)
   t.end_row();
 
   t.cell("Version");
-  t.cell("%s (board) | %s (repo) | %s (common)", feb_build_info.version_string, feb_build_info.repo_version_string,
-         feb_build_info.common_version_string);
+  t.cell("%s", feb_build_info.version_string);
   t.end_row();
 
   t.cell("Commit");

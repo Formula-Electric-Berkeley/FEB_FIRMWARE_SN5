@@ -28,8 +28,8 @@
 #
 set -e
 
-# Same board list as flash.sh — keep these in sync if a board is added.
-BOARDS=("BMS" "DASH" "DART" "DCU" "DCU_Receiver" "LVPDB" "PCU" "Sensor_Nodes_FRONT" "Sensor_Nodes_REAR" "UART" "UART_TEST")
+source "$(cd "$(dirname "$0")" && pwd)/lib/boards.sh"
+BOARDS=("${FEB_BOARD_TARGETS[@]}")
 
 DEFAULT_BAUD=115200
 DEFAULT_SETTLE=2
@@ -86,9 +86,6 @@ show_setup_instructions() {
     echo "After installing, re-run this script." >&2
 }
 
-# Per-board hint shown before opening serial. Sourced from each board's
-# CLAUDE.md "Verifying after flash" section. Keep it short — full details
-# live in the per-board CLAUDE.md.
 expected_banner_for() {
     case "$1" in
         BMS)
@@ -98,10 +95,6 @@ expected_banner_for() {
         DASH)
             echo "Expect: minimal serial output (display/LVGL is the primary UI). UART is available but not the primary signal."
             echo "Smoke check: \`version\`, \`uptime\`. Real proof-of-life is the LCD coming up + CAN frames."
-            ;;
-        DART)
-            echo "Expect: silence (Cortex-M0, 32 KB Flash, no startup banner). Bespoke command parser, NOT feb_commands."
-            echo "Real proof-of-life is on CAN — look for tachometer frames. Flag the parser divergence if you touch this code."
             ;;
         DCU)
             echo "Expect: nothing (placeholder skeleton; Core/User/ is empty). USART2 is enabled in the .ioc but no app code drives it."
@@ -123,14 +116,6 @@ expected_banner_for() {
             echo "Expect: quiet by default (bare-metal polling). GPS/IMU/WSS data goes out on CAN, not UART."
             echo "Smoke check: type any text — if RX task is alive, it processes input. Real validation is CAN frames."
             ;;
-        UART)
-            echo "Expect within ~1s: 'UART Console Ready' banner with prompt. This is the reference board for the feb_io serial stack."
-            echo "Smoke check: \`help\` (lists all built-in commands), \`echo|hello world\` (round-trip), \`version\`, \`uptime\`."
-            ;;
-        UART_TEST)
-            echo "Expect: 'UART Test Before FreeRTOS' early, then full banner after the scheduler starts. STM32U5 (Cortex-M33) validation fixture."
-            echo "Smoke check: \`version\`, \`uptime\`, \`help\`. Confirms the serial stack works on the next-gen platform."
-            ;;
         *)
             echo "Unknown board — no boot expectations on file. Connect anyway and look for any output at $DEFAULT_BAUD baud."
             ;;
@@ -143,15 +128,12 @@ board_hint_tag() {
     case "$1" in
         BMS)                 echo "expects banner" ;;
         DASH)                echo "LCD primary" ;;
-        DART)                echo "silent / CAN-only" ;;
         DCU)                 echo "placeholder skeleton" ;;
         DCU_Receiver)        echo "LoRa receiver" ;;
         LVPDB)               echo "CAN primary" ;;
         PCU)                 echo "8-step boot trace" ;;
         Sensor_Nodes_FRONT)  echo "CAN primary" ;;
         Sensor_Nodes_REAR)   echo "CAN primary" ;;
-        UART)                echo "reference board" ;;
-        UART_TEST)           echo "STM32U5 fixture" ;;
         *)                   echo "" ;;
     esac
 }
@@ -441,7 +423,7 @@ Examples:
   ./scripts/serial.sh -p /dev/cu.usbmodem1234          # Open a specific port
   ./scripts/serial.sh -b PCU --read 3                  # Capture PCU's boot trace
   ./scripts/serial.sh -b BMS --exec "version,uptime"   # Round-trip BMS console
-  ./scripts/serial.sh --baud 9600 -b DART              # Override baud
+  ./scripts/serial.sh --baud 9600 -b PCU               # Override baud
   ./scripts/serial.sh --list                           # List candidate ports
 
 Boards with boot expectations on file:

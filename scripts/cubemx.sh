@@ -17,8 +17,8 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR/.."
 
-# Available boards
-BOARDS=("BMS" "DASH" "DART" "DCU" "DCU_Receiver" "LVPDB" "PCU" "Sensor_Nodes" "UART" "UART_TEST")
+source "$SCRIPT_DIR/lib/boards.sh"
+BOARDS=("${FEB_BOARD_DIRS[@]}")
 
 # Colors for output
 RED='\033[0;31m'

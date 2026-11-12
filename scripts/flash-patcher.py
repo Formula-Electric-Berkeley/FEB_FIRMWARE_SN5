@@ -60,7 +60,7 @@ assert STRUCT_SIZE == 128, f"struct size drifted: {STRUCT_SIZE}"
 
 SECTION_NAME = ".feb_flash_info"
 
-# Toolchain prefix - STM32CubeCLT / GCC ARM Embedded both ship these.
+# flash.sh puts the pinned gnu-tools-for-stm32 bundle on PATH before calling us.
 TOOL_PREFIX = os.environ.get("FEB_TOOLCHAIN_PREFIX", "arm-none-eabi-")
 
 
@@ -76,7 +76,7 @@ def _die(code: int, msg: str) -> None:
 def _find_tool(name: str) -> str:
     exe = shutil.which(TOOL_PREFIX + name)
     if not exe:
-        _die(2, f"'{TOOL_PREFIX}{name}' not on PATH - install STM32CubeCLT or GCC ARM Embedded")
+        _die(2, f"'{TOOL_PREFIX}{name}' not on PATH - run 'cube bundle install --project' or install GCC ARM Embedded")
     return exe
 
 

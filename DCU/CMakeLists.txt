@@ -143,7 +143,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_can feb_tps feb_rtos_utils stm32-hal-rfm95)
 
-# Generate per-build feb_build_info (commit hash, board version, timestamp) and
+# Generate per-build feb_build_info (CalVer version, commit hash, timestamp) and
 # compile it into this target. feb_console / feb_commands_system reference it
 # for `hello`, `version`, and CSV-protocol response framing.
 include(${CMAKE_SOURCE_DIR}/cmake/FEB_Version.cmake)
