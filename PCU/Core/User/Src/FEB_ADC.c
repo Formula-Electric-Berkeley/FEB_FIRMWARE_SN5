@@ -103,18 +103,16 @@ static uint32_t ev47_start_tick = 0;      /* EV.4.7 brake+throttle debounce */
 static bool brake_bypass_enabled = false; /* mirrors FEB_RMS bench brake bypass */
 
 /* DMA Buffers for continuous conversion - must match number of channels */
-static uint16_t adc1_dma_buffer[3 * ADC_DMA_BUFFER_SIZE];  /* 3 channels: PA0, PA1, PC4 */
-static uint16_t adc2_dma_buffer[3 * ADC2_DMA_BUFFER_SIZE]; /* 3 channels: PA4, PA6, PA7 */
-static uint16_t adc3_dma_buffer[4 * ADC_DMA_BUFFER_SIZE];  /* 4 channels: PC0, PC1, PC2, PC3 */
+static uint16_t adc1_dma_buffer[3 * ADC_DMA_BUFFER_SIZE]; /* 3 channels: PA0, PA1, PC4 */
+static uint16_t adc2_dma_buffer[ADC2_DMA_BUFFER_SIZE];    /* 1 channel: PA6 (Shutdown_In) */
+static uint16_t adc3_dma_buffer[4 * ADC_DMA_BUFFER_SIZE]; /* 4 channels: PC0, PC1, PC2, PC3 */
 
 /* Channel indices in DMA buffers */
 #define ADC1_CH0_BRAKE_PRESSURE2_IDX 0 /* PA0 - Channel 0 - Brake Pressure 2 (BP2) */
 #define ADC1_CH1_BRAKE_PRESSURE1_IDX 1 /* PA1 - Channel 1 - Brake Pressure 1 (BP1) */
 #define ADC1_CH14_BRAKE_INPUT_IDX 2    /* PC4 - Channel 14 */
 
-#define ADC2_CH4_CURRENT_SENSE_IDX 0 /* PA4 - Channel 4 */
-#define ADC2_CH6_SHUTDOWN_IN_IDX 1   /* PA6 - Channel 6 */
-#define ADC2_CH7_PRE_TIMING_IDX 2    /* PA7 - Channel 7 */
+#define ADC2_CH6_SHUTDOWN_IN_IDX 0 /* PA6 - Channel 6 */
 
 #define ADC3_CH10_BSPD_INDICATOR_IDX 0 /* PC0 - Channel 10 - BSPD Indicator */
 #define ADC3_CH11_BSPD_RESET_IDX 1     /* PC1 - Channel 11 - BSPD Reset */
@@ -285,7 +283,7 @@ ADC_StatusTypeDef FEB_ADC_Start(ADC_ModeTypeDef mode)
     return ADC_STATUS_ERROR;
   }
 
-  hal_status = HAL_ADC_Start_DMA(&hadc2, (uint32_t *)adc2_dma_buffer, 3 * ADC2_DMA_BUFFER_SIZE);
+  hal_status = HAL_ADC_Start_DMA(&hadc2, (uint32_t *)adc2_dma_buffer, ADC2_DMA_BUFFER_SIZE);
   if (hal_status != HAL_OK)
   {
     LOG_E(TAG_ADC, "Failed to start ADC2 DMA");
@@ -348,67 +346,55 @@ typedef struct
   uint16_t max_raw;
 } ADC_ChannelWindow_t;
 
-static ADC2_Accum_t adc2_accum[3] = {{0xFFFFu, 0, 0}, {0xFFFFu, 0, 0}, {0xFFFFu, 0, 0}};
-static ADC_ChannelWindow_t adc2_window[3];
+static ADC2_Accum_t adc2_accum = {0xFFFFu, 0, 0};
+static ADC_ChannelWindow_t adc2_window;
 static uint32_t adc2_window_ticks = 0;
 
 static void ADC2_AccumReset(ADC2_Accum_t *acc)
 {
-  for (uint32_t c = 0; c < 3; c++)
-  {
-    acc[c].min = 0xFFFFu;
-    acc[c].max = 0;
-    acc[c].count = 0;
-  }
+  acc->min = 0xFFFFu;
+  acc->max = 0;
+  acc->count = 0;
 }
 
 static void ADC2_AccumulateHalf(const uint16_t *half)
 {
-  ADC2_Accum_t local[3];
-  ADC2_AccumReset(local);
+  uint16_t local_min = 0xFFFFu;
+  uint16_t local_max = 0;
 
   for (uint32_t s = 0; s < ADC2_DMA_BUFFER_SIZE / 2; s++)
   {
-    for (uint32_t c = 0; c < 3; c++)
-    {
-      uint16_t v = half[s * 3 + c];
-      if (v < local[c].min)
-        local[c].min = v;
-      if (v > local[c].max)
-        local[c].max = v;
-    }
+    uint16_t v = half[s];
+    if (v < local_min)
+      local_min = v;
+    if (v > local_max)
+      local_max = v;
   }
 
   uint32_t primask = __get_PRIMASK();
   __disable_irq();
-  for (uint32_t c = 0; c < 3; c++)
-  {
-    if (local[c].min < adc2_accum[c].min)
-      adc2_accum[c].min = local[c].min;
-    if (local[c].max > adc2_accum[c].max)
-      adc2_accum[c].max = local[c].max;
-    adc2_accum[c].count += ADC2_DMA_BUFFER_SIZE / 2;
-  }
+  if (local_min < adc2_accum.min)
+    adc2_accum.min = local_min;
+  if (local_max > adc2_accum.max)
+    adc2_accum.max = local_max;
+  adc2_accum.count += ADC2_DMA_BUFFER_SIZE / 2;
   __set_PRIMASK(primask);
 }
 
 static void ADC2_CloseWindow(void)
 {
-  ADC2_Accum_t acc[3];
+  ADC2_Accum_t acc;
 
   uint32_t primask = __get_PRIMASK();
   __disable_irq();
-  memcpy(acc, adc2_accum, sizeof(acc));
-  ADC2_AccumReset(adc2_accum);
+  acc = adc2_accum;
+  ADC2_AccumReset(&adc2_accum);
   __set_PRIMASK(primask);
 
-  for (uint32_t c = 0; c < 3; c++)
-  {
-    if (acc[c].count == 0)
-      continue;
-    adc2_window[c].min_raw = acc[c].min;
-    adc2_window[c].max_raw = acc[c].max;
-  }
+  if (acc.count == 0)
+    return;
+  adc2_window.min_raw = acc.min;
+  adc2_window.max_raw = acc.max;
 }
 
 /* Boxcar-average the most-recent `samples` conversions for one channel by
@@ -555,14 +541,10 @@ uint16_t FEB_ADC_GetRawValue(ADC_HandleTypeDef *hadc, uint32_t channel)
   else if (hadc == &hadc2)
   {
     buffer_ptr = adc2_dma_buffer;
-    num_channels = 3;
+    num_channels = 1;
     depth = ADC2_DMA_BUFFER_SIZE;
-    if (channel == ADC_CHANNEL_4)
-      channel_idx = ADC2_CH4_CURRENT_SENSE_IDX;
-    else if (channel == ADC_CHANNEL_6)
+    if (channel == ADC_CHANNEL_6)
       channel_idx = ADC2_CH6_SHUTDOWN_IN_IDX;
-    else if (channel == ADC_CHANNEL_7)
-      channel_idx = ADC2_CH7_PRE_TIMING_IDX;
     else
       return 0;
   }
@@ -707,16 +689,14 @@ float FEB_ADC_GetBrakePressure2Voltage(void)
 
 void FEB_ADC_GetCurrentSenseMinMaxVoltage(float *min_v, float *max_v)
 {
-  ADC_ChannelWindow_t w = adc2_window[ADC2_CH4_CURRENT_SENSE_IDX];
-  *min_v = FEB_ADC_RawToVoltage(w.min_raw) * VOLTAGE_DIVIDER_RATIO_HECS;
-  *max_v = FEB_ADC_RawToVoltage(w.max_raw) * VOLTAGE_DIVIDER_RATIO_HECS;
+  *min_v = 0.0f;
+  *max_v = 0.0f;
 }
 
 void FEB_ADC_GetShutdownInMinMaxVoltage(float *min_v, float *max_v)
 {
-  ADC_ChannelWindow_t w = adc2_window[ADC2_CH6_SHUTDOWN_IN_IDX];
-  *min_v = FEB_ADC_RawToVoltage(w.min_raw) * VOLTAGE_DIVIDER_RATIO_SHUTDOWN;
-  *max_v = FEB_ADC_RawToVoltage(w.max_raw) * VOLTAGE_DIVIDER_RATIO_SHUTDOWN;
+  *min_v = FEB_ADC_RawToVoltage(adc2_window.min_raw) * VOLTAGE_DIVIDER_RATIO_SHUTDOWN;
+  *max_v = FEB_ADC_RawToVoltage(adc2_window.max_raw) * VOLTAGE_DIVIDER_RATIO_SHUTDOWN;
 }
 
 float FEB_ADC_GetBSPDIndicatorVoltage(void)
@@ -1742,7 +1722,7 @@ void FEB_ADC_ResetErrors(void)
 void FEB_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
   if (hadc->Instance == ADC2)
-    ADC2_AccumulateHalf(&adc2_dma_buffer[3 * ADC2_DMA_BUFFER_SIZE / 2]);
+    ADC2_AccumulateHalf(&adc2_dma_buffer[ADC2_DMA_BUFFER_SIZE / 2]);
 }
 
 void FEB_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
@@ -1755,6 +1735,14 @@ void FEB_ADC_ErrorCallback(ADC_HandleTypeDef *hadc)
 {
   adc_runtime.error_count++;
   adc_runtime.last_error_code = FAULT_ADC_TIMEOUT;
+
+  if (hadc->Instance == ADC2)
+  {
+    /* Clear Overrun and restart DMA continuous mode */
+    __HAL_ADC_CLEAR_FLAG(hadc, ADC_FLAG_OVR);
+    HAL_ADC_Stop_DMA(hadc);
+    HAL_ADC_Start_DMA(hadc, (uint32_t *)adc2_dma_buffer, ADC2_DMA_BUFFER_SIZE);
+  }
 }
 
 void FEB_ADC_LevelOutOfWindowCallback(ADC_HandleTypeDef *hadc)

@@ -459,6 +459,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
   FEB_ADC_ConvCpltCallback(hadc);
 }
 
+void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc)
+{
+  FEB_ADC_ErrorCallback(hadc);
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM1)

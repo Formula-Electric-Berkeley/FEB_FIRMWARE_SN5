@@ -91,7 +91,7 @@ extern "C"
 
 /* DMA Buffer Sizes */
 #define ADC_DMA_BUFFER_SIZE 16 /* Circular buffer depth (samples per channel) */
-#define ADC2_DMA_BUFFER_SIZE 278
+#define ADC2_DMA_BUFFER_SIZE 834
 #define ADC2_WINDOW_TICKS 10
 #define ADC_AVERAGING_SAMPLES 8 /* Number of samples for averaging */
 
