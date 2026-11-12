@@ -55,7 +55,7 @@ endif()
 
 # ── Generated CAN pack/unpack (from cantools) ────────────────────────
 file(GLOB CAN_LIB_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Definitions/gen/*.c"
 )
 list(APPEND ALL_SOURCES ${CAN_LIB_SOURCES})
 
@@ -100,7 +100,7 @@ endif()
 
 # Generated CAN pack/unpack includes
 list(APPEND BASE_INCLUDES
-    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Definitions/gen"
 )
 
 

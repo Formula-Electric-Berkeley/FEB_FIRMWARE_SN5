@@ -8,7 +8,7 @@ One README per library:
 
 - [FEB_Serial_Library](FEB_Serial_Library/README.md) — UART + Log + Console + Commands + String_Utils + Version, with the `feb_io` umbrella target
 - [FEB_CAN_Library](FEB_CAN_Library/README.md) — runtime CAN dispatch (`feb_can`)
-- [FEB_CAN_Library_SN4](FEB_CAN_Library_SN4/README.md) — CAN message definitions and code generator (git submodule)
+- [FEB_CAN_Definitions](FEB_CAN_Definitions/README.md) — CAN message definitions and code generator
 - [FEB_TPS_Library](FEB_TPS_Library/README.md) — TPS2482 power-monitor driver (`feb_tps`)
 - [FEB_Time_Library](FEB_Time_Library/README.md) — 64-bit microsecond monotonic clock (`feb_time`)
 - [FEB_RTOS_Utils](FEB_RTOS_Utils/README.md) — RTOS fail-fast helper macros (`feb_rtos_utils`)
@@ -165,7 +165,7 @@ common/
 │   ├── CMakeLists.txt
 │   └── README.md
 │
-├── FEB_CAN_Library_SN4/        # CAN message defs + generator (git submodule)
+├── FEB_CAN_Definitions/        # CAN message defs + generator
 │   ├── gen/                    # Generated feb_can.c / feb_can.h
 │   ├── msg_defs/
 │   ├── generate.py

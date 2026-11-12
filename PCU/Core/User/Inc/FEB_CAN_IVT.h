@@ -11,7 +11,7 @@
  * - 0x525: Temperature
  *
  * Frame IDs and byte layout live in the shared CAN library
- * (common/FEB_CAN_Library_SN4); decoding uses the generated FEB_CAN_IVT_*_FRAME_ID
+ * (common/FEB_CAN_Definitions); decoding uses the generated FEB_CAN_IVT_*_FRAME_ID
  * macros and feb_can_ivt_*_unpack() functions, like every other PCU CAN package.
  *
  * The PCU uses the IVT's measured pack voltage and current for RMS torque/power

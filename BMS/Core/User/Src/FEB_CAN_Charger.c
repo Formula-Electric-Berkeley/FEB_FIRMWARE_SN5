@@ -4,7 +4,7 @@
  * @author Formula Electric @ Berkeley
  *
  * Charger: Elcon / HK "TC" family, part HK-J-H650-12 GEN3 (170-650 VDC output).
- * DBC vendored at common/FEB_CAN_Library_SN4/elcon.dbc (upstream
+ * DBC vendored at common/FEB_CAN_Definitions/elcon.dbc (upstream
  * https://github.com/karlding/elcon-charger-dbc, message names prefixed
  * Charger_*) and fused into the generated CAN library, so the frames are packed
  * and unpacked through feb_can.h rather than by hand:

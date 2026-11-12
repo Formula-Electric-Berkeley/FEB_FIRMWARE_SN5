@@ -70,9 +70,9 @@ The flags gate both the sensor driver init (no I2C/UART traffic to a missing chi
 
 ### Adding a new sensor that needs its own FRONT/REAR CAN IDs
 
-1. Add `get_<sensor>_data_front` and `get_<sensor>_data_rear` functions to `common/FEB_CAN_Library_SN4/msg_defs/sensor_nodes_messages.py`.
-2. Register both frame IDs in `common/FEB_CAN_Library_SN4/generate.py`.
-3. Run `cd common/FEB_CAN_Library_SN4 && ./generate_can.sh` to refresh `gen/feb_can.{h,c}`.
+1. Add `get_<sensor>_data_front` and `get_<sensor>_data_rear` functions to `common/FEB_CAN_Definitions/msg_defs/sensor_nodes_messages.py`.
+2. Register both frame IDs in `common/FEB_CAN_Definitions/generate.py`.
+3. Run `cd common/FEB_CAN_Definitions && ./generate_can.sh` to refresh `gen/feb_can.{h,c}`.
 4. Add the alias block to `Core/User/Inc/FEB_SN_Config.h` (mirror the existing pattern for IMU/MAG/etc.).
 5. Implement the reporter `.c`/`.h` in `Core/User/`. Use `FEB_SN_<SENSOR>_*` aliases — never the underlying `feb_can_*_front/_rear` symbols.
 
@@ -85,7 +85,7 @@ From [`CMakeLists.txt`](CMakeLists.txt):
 - [`feb_tps`](../common/FEB_TPS_Library/README.md) — TPS2482 driver (single device)
 - `feb_version`
 
-CAN pack/unpack is compiled from [`common/FEB_CAN_Library_SN4/gen/feb_can.c`](../common/FEB_CAN_Library_SN4/README.md).
+CAN pack/unpack is compiled from [`common/FEB_CAN_Definitions/gen/feb_can.c`](../common/FEB_CAN_Definitions/README.md).
 
 ## Third-Party
 

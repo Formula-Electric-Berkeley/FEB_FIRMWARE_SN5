@@ -10,7 +10,7 @@ void FEB_CAN_Diagnostics_TransmitBrakeData(void)
 
   // Position + per-sensor pressure are sent as centi-percent (0-10000); status
   // flags ride in bytes 6-7. Layout/endianness are owned by the generated brake
-  // definition (common/FEB_CAN_Library_SN4) — pack through it, don't hand-roll.
+  // definition (common/FEB_CAN_Definitions) — pack through it, don't hand-roll.
   struct feb_can_brake_t msg = {0};
   msg.brake_position = (uint16_t)(Brake_Data.brake_position * 100.0f);
   msg.brake1_pct = (uint16_t)(Brake_Data.pressure1_percent * 100.0f);

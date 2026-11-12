@@ -23,7 +23,7 @@ Shared across boards, under `common/`. See [`common/README.md`](common/README.md
 |---|---|---|
 | `feb_io` | Umbrella: UART + Log + Console + Commands + Version + Time + String_Utils | [FEB_Serial_Library](common/FEB_Serial_Library/README.md) |
 | `feb_can` | FreeRTOS-safe CAN runtime (dispatcher) | [FEB_CAN_Library](common/FEB_CAN_Library/README.md) |
-| *(submodule)* | CAN message definitions + code generator | [FEB_CAN_Library_SN4](common/FEB_CAN_Library_SN4/README.md) |
+| *(compiled into each board)* | CAN message definitions + code generator | [FEB_CAN_Definitions](common/FEB_CAN_Definitions/README.md) |
 | `feb_tps` | TPS2482 power-monitor driver | [FEB_TPS_Library](common/FEB_TPS_Library/README.md) |
 | `feb_time` | 64-bit microsecond monotonic clock | [FEB_Time_Library](common/FEB_Time_Library/README.md) |
 | `feb_rtos_utils` | `REQUIRE_RTOS_HANDLE` fail-fast macro | [FEB_RTOS_Utils](common/FEB_RTOS_Utils/README.md) |
@@ -37,7 +37,7 @@ cmake/                           # Shared toolchain files
 common/                          # Shared libraries (see common/README.md)
   FEB_Serial_Library/            # feb_io umbrella + sub-libraries
   FEB_CAN_Library/               # feb_can runtime dispatcher
-  FEB_CAN_Library_SN4/           # CAN message defs (git submodule)
+  FEB_CAN_Definitions/           # CAN message defs + code generator
   FEB_TPS_Library/               # feb_tps
   FEB_Time_Library/              # feb_time
   FEB_RTOS_Utils/                # feb_rtos_utils
@@ -55,11 +55,7 @@ third-party/                     # Vendored external code (lwgps, etc.)
 ## Cloning the Repository
 
 ```bash
-# Clone with submodules (required for CAN library)
-git clone --recursive https://github.com/Formula-Electric-Berkeley/FEB_FIRMWARE_SN5.git
-
-# If already cloned without --recursive:
-git submodule update --init --recursive
+git clone https://github.com/Formula-Electric-Berkeley/FEB_FIRMWARE_SN5.git
 ```
 
 ## Getting Started
@@ -73,7 +69,6 @@ For first-time setup, run the setup script:
 
 This script:
 - Installs the toolchain versions pinned in `.settings/bundles.store.json` (via `cube`)
-- Initializes git submodules
 - Installs pre-commit hooks
 - Configures CMake
 - Runs an initial build to verify everything works
@@ -90,7 +85,7 @@ STM32CubeCLT is **not** required. The toolchain versions are pinned once, at the
 ### Optional
 
 - **STM32CubeMX** -- for modifying `.ioc` peripheral configurations
-- **Python 3** -- only needed to regenerate CAN message definitions; dependencies are managed automatically (see [CAN Library](#can-library))
+- **Python 3** -- only needed to regenerate CAN message definitions; dependencies are managed automatically (see [CAN Definitions](#can-definitions))
 - **clang-format** -- not installed by hand; `./scripts/format.sh` fetches the pinned 19.1.2 into `build/.tools/` (needs Python 3)
 
 ### Environment Setup
@@ -292,16 +287,16 @@ cube programmer --connect port=swd --download build/Debug/LVPDB/LVPDB.elf -hardR
 
 If you have the STM32 VSCode extension installed, use the **CubeProg: Flash project (SWD)** task (defined in `.vscode/tasks.json`).
 
-## CAN Library
+## CAN Definitions
 
-The CAN message library is a **git submodule** located at `common/FEB_CAN_Library_SN4/`. It provides auto-generated C pack/unpack functions from Python message definitions. The generated files are committed to the submodule, so you do not need to regenerate them to build.
+The CAN message definitions live in `common/FEB_CAN_Definitions/`. It provides auto-generated C pack/unpack functions from Python message definitions. The generated files in `gen/` are committed, so you do not need to regenerate them to build.
 
 ### Regenerating CAN Code
 
-After modifying Python message definitions in `common/FEB_CAN_Library_SN4/*_messages.py`:
+After modifying Python message definitions in `common/FEB_CAN_Definitions/msg_defs/*_messages.py`:
 
 ```bash
-cd common/FEB_CAN_Library_SN4
+cd common/FEB_CAN_Definitions
 ./generate_can.sh
 ```
 
@@ -316,15 +311,7 @@ The script automatically manages a Python virtual environment and installs the c
 | `./generate_can.sh --ids` | Show frame ID allocation map |
 | `./generate_can.sh --check` | CI mode: verify files are up to date |
 
-### Updating the Submodule
-
-If upstream CAN library changes:
-
-```bash
-git submodule update --remote common/FEB_CAN_Library_SN4
-```
-
-See `common/FEB_CAN_Library_SN4/README.md` for detailed documentation on adding new CAN messages.
+See `common/FEB_CAN_Definitions/README.md` for detailed documentation on adding new CAN messages.
 
 ## CI/CD
 
@@ -334,7 +321,7 @@ GitHub Actions runs on pushes and pull requests to `main`:
 |----------|---------|-------------|
 | **Build** (`build.yml`) | Push/PR to main | Matrix build of all 9 boards. Skips boards missing `CMakeLists.txt` or `Core/`. |
 | **Code Quality** (`quality.yml`) | Push/PR to main | `clang-format` on `Core/User/` files, `cppcheck` static analysis. |
-| **CAN Validation** (`can-validate.yml`) | Push/PR to main | Checks submodule is up-to-date with upstream, validates generated files match definitions. |
+| **CAN Validation** (`can-validate.yml`) | Push/PR to main | Validates that the committed generated CAN files match the definitions. |
 | **Firmware Size** (`size.yml`) | Push/PR to main | Tracks Flash/RAM usage per board. Warns at 90%, fails at 98%. |
 | **Security** (`security.yml`) | Push/PR to main, weekly | CodeQL security analysis + TruffleHog secret scanning. |
 | **Latest Release** (`latest-release.yml`) | Push to main | Auto-updates "latest" pre-release with current firmware binaries. |

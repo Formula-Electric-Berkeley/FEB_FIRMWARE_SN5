@@ -28,7 +28,7 @@ From [`CMakeLists.txt`](CMakeLists.txt):
 - [`feb_rtos_utils`](../common/FEB_RTOS_Utils/README.md) — `REQUIRE_RTOS_HANDLE` fail-fast check
 - `feb_version`, `feb_uart`, `feb_log`, `feb_console` — already in `feb_io`; listed here explicitly to keep intent visible in the build graph.
 
-CAN pack/unpack is included directly from [`common/FEB_CAN_Library_SN4/gen/`](../common/FEB_CAN_Library_SN4/README.md) and the runtime dispatcher from [`common/FEB_CAN_Library/Src/`](../common/FEB_CAN_Library/README.md) via `file(GLOB)` — BMS does not link the `feb_can` INTERFACE target.
+CAN pack/unpack is included directly from [`common/FEB_CAN_Definitions/gen/`](../common/FEB_CAN_Definitions/README.md) and the runtime dispatcher from [`common/FEB_CAN_Library/Src/`](../common/FEB_CAN_Library/README.md) via `file(GLOB)` — BMS does not link the `feb_can` INTERFACE target.
 
 ## Entry Point
 

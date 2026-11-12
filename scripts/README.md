@@ -23,7 +23,7 @@ Everyday tooling for the FEB_FIRMWARE_SN5 repo. All scripts are POSIX `bash` and
 ./scripts/setup.sh -h
 ```
 
-Steps: install pinned bundles via `cube` → submodule init → pre-commit install → CMake configure → initial build.
+Steps: install pinned bundles via `cube` → pre-commit install → CMake configure → initial build.
 
 Requires the `cube` CLI from the STM32Cube for VS Code extension (see the top-level [README.md](../README.md#environment-setup)). The script runs `cube bundle install --project` at the repo root and does **not** edit any shell profile. CI / non-TTY runs fall back to safe defaults for every prompt.
 
@@ -49,7 +49,6 @@ Requires the `cube` CLI from the STM32Cube for VS Code extension (see the top-le
 
 Validates toolchain, re-runs `cmake --preset Debug` if needed, and prints per-target Flash/RAM usage after the build. See the top-level [README.md](../README.md) for the CMake-direct equivalents.
 
-It also refuses to build when a submodule isn't checked out at the commit the branch pins. A stale `common/FEB_CAN_Library_SN4` builds against an old DBC, so boards disagree on frame layouts and BMS state numbers. Fix with `git submodule update --init --recursive`. While iterating on the CAN library before bumping its pin, `FEB_ALLOW_SUBMODULE_DRIFT=1` downgrades this to a warning; don't flash those builds to the car.
 
 ## `flash.sh` — Flash a Board
 

@@ -64,11 +64,11 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
     list(APPEND ALL_SOURCES ${FREERTOS_CORE} ${FREERTOS_CMSIS} ${FREERTOS_PORT} ${FREERTOS_HEAP})
 endif()
 
-# CAN library generated source (from common submodule) #H
-# list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can_db.c")
+# CAN definitions: generated pack/unpack source (common/FEB_CAN_Definitions) #H
+# list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Definitions/gen/feb_can_db.c")
 # ── SN5 CAN library sources ───────────────────────────────────────────
 file(GLOB CAN_LIB_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Definitions/gen/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.cpp"
 )
@@ -100,11 +100,11 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
     list(APPEND BASE_INCLUDES Core/User/Inc)
 endif()
 
-# Common CAN library (submodule) #H
+# CAN definitions (common/FEB_CAN_Definitions) #H
 set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library")
 list(APPEND BASE_INCLUDES
     "${CAN_LIB_DIR}/Inc"         # This should contain feb_can_lib.h
-    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen"  # For generated files
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Definitions/gen"  # For generated files
 )
 # set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library")
 # list(APPEND BASE_INCLUDES
