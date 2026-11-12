@@ -9,8 +9,8 @@
  * Exposes two structures that together identify a flashed firmware image:
  *
  *   feb_build_info   - baked in at compile time by cmake/FEB_Version.cmake
- *                      (per-board version, commit hash, branch, dirty flag,
- *                      build UTC timestamp, builder identity).
+ *                      (CalVer version from the commit, commit hash, branch,
+ *                      dirty flag, build UTC timestamp, builder identity).
  *
  *   feb_flash_info   - stamped into a reserved flash section by
  *                      scripts/flash-patcher.py just before programming
@@ -66,20 +66,18 @@ extern "C"
    * static literals in .rodata, guaranteed non-NULL by the generator. */
   typedef struct
   {
-    const char *board_name;     /**< e.g. "BMS" */
-    const char *version_string; /**< "MAJOR.MINOR.PATCH" for this board */
-    uint16_t version_major;
-    uint16_t version_minor;
-    uint16_t version_patch;
-    const char *repo_version_string;   /**< repo-wide VERSION */
-    const char *common_version_string; /**< common/VERSION */
-    const char *commit_short;          /**< 7-char git SHA */
-    const char *commit_full;           /**< 40-char git SHA */
-    const char *branch;                /**< git branch at build time */
-    bool dirty;                        /**< working tree had uncommitted changes */
-    const char *build_utc;             /**< ISO-8601 UTC */
-    const char *build_user;            /**< $USER at build time */
-    const char *build_host;            /**< hostname at build time */
+    const char *board_name; /**< e.g. "BMS" */
+    const char *version_string;
+    uint16_t version_year;
+    uint8_t version_month;
+    uint8_t version_day;
+    const char *commit_short; /**< 7-char git SHA */
+    const char *commit_full;  /**< 40-char git SHA */
+    const char *branch;       /**< git branch at build time */
+    bool dirty;               /**< working tree had uncommitted changes */
+    const char *build_utc;    /**< ISO-8601 UTC */
+    const char *build_user;   /**< $USER at build time */
+    const char *build_host;   /**< hostname at build time */
   } FEB_Build_Info_t;
 
   /* Each board's CMake-generated feb_build_info.c defines this symbol. */

@@ -15,7 +15,8 @@ set -e
 # Available boards. Sensor_Nodes ships in two variants (FRONT, REAR); pick
 # the right ELF for the physical node you're flashing. See
 # Sensor_Nodes/Core/User/Inc/FEB_SN_Config.h.
-BOARDS=("BMS" "DASH" "DART" "DCU" "DCU_Receiver" "LVPDB" "PCU" "Sensor_Nodes_FRONT" "Sensor_Nodes_REAR" "UART" "UART_TEST")
+source "$(cd "$(dirname "$0")" && pwd)/lib/boards.sh"
+BOARDS=("${FEB_BOARD_TARGETS[@]}")
 
 # Colors for output
 RED='\033[0;31m'
@@ -52,115 +53,40 @@ csv_escape() {
     printf '"%s"' "${field//\"/\"\"}"
 }
 
-# Check if STM32_Programmer_CLI is available
-check_prerequisites() {
-    if command -v STM32_Programmer_CLI &> /dev/null; then
-        return 0
-    fi
-
-    # Check common installation paths. Globs match version-suffixed installs
-    # (e.g., STM32CubeCLT_1.19.0). Most entries list both macOS/Linux style
-    # (no .exe) and Windows Git Bash style (.exe) so the same script handles all.
-    local common_globs=(
-        # macOS (STM32CubeProgrammer app bundle)
-        "/Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/MacOs/bin/STM32_Programmer_CLI"
-        # macOS (STM32CubeCLT install)
-        "/opt/ST/STM32CubeCLT"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
-        "/Applications/STMicroelectronics/STM32CubeCLT"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
-        # Linux
-        "/opt/st/stm32cubeclt"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
-        "/usr/local/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
-        # User-home install (any platform)
-        "$HOME/STM32CubeCLT"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI"
-        # Windows Git Bash
-        "/c/ST/STM32CubeCLT"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe"
-        "/c/Program Files/STMicroelectronics/STM32CubeCLT"*"/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe"
-    )
-
-    local path
-    for glob in "${common_globs[@]}"; do
-        # compgen -G expands the glob without IFS word-splitting, so paths
-        # containing spaces (e.g. "/c/Program Files/...") match correctly.
-        while IFS= read -r path; do
-            if [ -x "$path" ]; then
-                log_warn "Found STM32_Programmer_CLI at: $path"
-                log_warn "Add it to your PATH for convenience."
-                export PATH="$(dirname "$path"):$PATH"
-                return 0
-            fi
-        done < <(compgen -G "$glob" || true)
-    done
-
-    return 1
-}
-
-# Show setup instructions for installing STM32CubeCLT
-show_setup_instructions() {
-    log_header "STM32CubeCLT Setup Required"
-
-    echo -e "${BOLD}STM32_Programmer_CLI is not installed or not in PATH.${NC}"
-    echo ""
-    echo "To flash STM32 boards, you need to install STM32CubeCLT (Command Line Tools)."
-    echo ""
-
-    # Detect platform
-    case "$(uname -s)" in
-        Darwin*)
-            echo -e "${CYAN}macOS Installation:${NC}"
-            echo "  1. Download STM32CubeCLT from:"
-            echo "     https://www.st.com/en/development-tools/stm32cubeclt.html"
-            echo ""
-            echo "  2. Run the installer package (.pkg file)"
-            echo ""
-            echo "  3. Add to your PATH by adding this to ~/.zshrc or ~/.bash_profile:"
-            echo "     export PATH=\"/Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/MacOs/bin:\$PATH\""
-            echo ""
-            echo "  4. Restart your terminal or run: source ~/.zshrc"
-            ;;
-        Linux*)
-            echo -e "${CYAN}Linux Installation:${NC}"
-            echo "  1. Download STM32CubeCLT from:"
-            echo "     https://www.st.com/en/development-tools/stm32cubeclt.html"
-            echo ""
-            echo "  2. Extract and run the installer:"
-            echo "     chmod +x st-stm32cubeclt_*.sh"
-            echo "     sudo ./st-stm32cubeclt_*.sh"
-            echo ""
-            echo "  3. Add to your PATH by adding this to ~/.bashrc:"
-            echo "     export PATH=\"/opt/st/stm32cubeclt/STM32CubeProgrammer/bin:\$PATH\""
-            echo ""
-            echo "  4. Restart your terminal or run: source ~/.bashrc"
-            echo ""
-            echo "  Note: You may need to install udev rules for USB access:"
-            echo "     sudo cp /opt/st/stm32cubeclt/STM32CubeProgrammer/Drivers/rules/*.rules /etc/udev/rules.d/"
-            echo "     sudo udevadm control --reload-rules"
-            ;;
-        MINGW*|MSYS*|CYGWIN*)
-            echo -e "${CYAN}Windows Installation:${NC}"
-            echo "  1. Download STM32CubeCLT from:"
-            echo "     https://www.st.com/en/development-tools/stm32cubeclt.html"
-            echo ""
-            echo "  2. Run the installer (.exe file)"
-            echo ""
-            echo "  3. The installer should add STM32_Programmer_CLI to PATH automatically."
-            echo "     If not, add this to your system PATH:"
-            echo "     C:\\ST\\STM32CubeCLT\\STM32CubeProgrammer\\bin"
-            echo ""
-            echo "  4. Restart your terminal"
-            ;;
-        *)
-            echo "  Download STM32CubeCLT from:"
-            echo "  https://www.st.com/en/development-tools/stm32cubeclt.html"
-            ;;
-    esac
-
-    echo ""
-    echo -e "${YELLOW}After installation, run this script again.${NC}"
-}
-
 # Get the script's directory
 get_script_dir() {
     cd "$(dirname "$0")" && pwd
+}
+
+if [ -f "$(get_script_dir)/lib/cube-tools.sh" ]; then
+    source "$(get_script_dir)/lib/cube-tools.sh"
+fi
+
+check_prerequisites() {
+    # cmake brings the GNU toolchain that flash-patcher.py needs for objcopy.
+    if declare -F feb_use_cube_tools >/dev/null; then
+        feb_use_cube_tools "$(get_script_dir)" cmake || true
+        feb_use_cube_tools "$(get_script_dir)" programmer || true
+    fi
+    command -v STM32_Programmer_CLI &> /dev/null
+}
+
+show_setup_instructions() {
+    log_header "STM32CubeProgrammer Not Found"
+
+    echo "Flashing uses STM32_Programmer_CLI from the STM32Cube 'programmer' bundle."
+    echo ""
+    if declare -F feb_print_cube_install_hint >/dev/null; then
+        feb_print_cube_install_hint
+    else
+        echo "  Install the STM32Cube for Visual Studio Code extension, then run:"
+        echo "    cube bundle install programmer"
+    fi
+    echo ""
+    echo "  Alternatively, put STM32_Programmer_CLI from a standalone"
+    echo "  STM32CubeProgrammer install on your PATH."
+    echo ""
+    echo -e "${YELLOW}After installation, run this script again.${NC}"
 }
 
 # Get the build directory (for repo mode). Sensor_Nodes_FRONT/REAR build
@@ -571,7 +497,7 @@ show_help() {
     echo "    build/Debug/Sensor_Nodes/Sensor_Nodes_REAR.elf"
     echo ""
     echo "Prerequisites:"
-    echo "  - STM32CubeCLT (provides STM32_Programmer_CLI)"
+    echo "  - STM32Cube for VS Code extension ('cube' provides STM32_Programmer_CLI)"
     echo "  - SWD programmer connected (ST-Link, J-Link, etc.)"
 }
 

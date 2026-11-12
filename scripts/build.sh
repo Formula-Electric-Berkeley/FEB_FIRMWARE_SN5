@@ -17,11 +17,14 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR/.."
 
+source "$SCRIPT_DIR/lib/cube-tools.sh"
+
 # Available boards. Sensor_Nodes ships in two CMake targets — Sensor_Nodes_FRONT
 # and Sensor_Nodes_REAR — each a separately-buildable executable defined in
 # Sensor_Nodes/CMakeLists.txt. Both build into the shared build/Debug tree.
 # See Sensor_Nodes/Core/User/Inc/FEB_SN_Config.h for variant configuration.
-BOARDS=("BMS" "DASH" "DART" "DCU" "DCU_Receiver" "LVPDB" "PCU" "Sensor_Nodes_FRONT" "Sensor_Nodes_REAR" "UART" "UART_TEST")
+source "$SCRIPT_DIR/lib/boards.sh"
+BOARDS=("${FEB_BOARD_TARGETS[@]}")
 
 # Colors for output
 RED='\033[0;31m'
@@ -74,16 +77,21 @@ check_prerequisites() {
 
     local missing=false
 
-    # Check ARM GCC
+    if ! feb_use_cube_tools "$REPO_ROOT" cmake; then
+        if [ -n "$FEB_CUBE" ]; then
+            log_warn "cube could not resolve the pinned CMake bundle. run: cube bundle install --project"
+        else
+            log_warn "cube not found. falling back to tools on PATH"
+        fi
+    fi
+    echo -e "  Toolchain source: ${BOLD}${FEB_TOOLS_SOURCE}${NC}"
+
     if ! check_command "arm-none-eabi-gcc" "ARM GCC Toolchain" ""; then
         missing=true
-        show_arm_gcc_install_hint
     fi
 
-    # Check CMake
     if ! check_command "cmake" "CMake" ""; then
         missing=true
-        show_cmake_install_hint
     else
         # Check CMake version >= 3.22
         local cmake_version
@@ -97,10 +105,8 @@ check_prerequisites() {
         fi
     fi
 
-    # Check Ninja
     if ! check_command "ninja" "Ninja Build" ""; then
         missing=true
-        show_ninja_install_hint
     fi
 
     # Optional: Check clang-format
@@ -115,63 +121,13 @@ check_prerequisites() {
     echo ""
 
     if [ "$missing" = true ]; then
-        log_error "Missing prerequisites. Install the required tools and try again."
+        log_error "Missing prerequisites."
+        feb_print_cube_install_hint
         return 1
     fi
 
     log_info "All prerequisites satisfied"
     return 0
-}
-
-show_arm_gcc_install_hint() {
-    echo ""
-    case "$(uname -s)" in
-        Darwin*)
-            echo -e "    ${CYAN}macOS:${NC}"
-            echo "      brew install --cask gcc-arm-embedded"
-            echo "      OR download from: https://developer.arm.com/downloads/-/gnu-rm"
-            ;;
-        Linux*)
-            echo -e "    ${CYAN}Linux:${NC}"
-            echo "      sudo apt install gcc-arm-none-eabi"
-            echo "      OR download from: https://developer.arm.com/downloads/-/gnu-rm"
-            ;;
-        MINGW*|MSYS*|CYGWIN*)
-            echo -e "    ${CYAN}Windows:${NC}"
-            echo "      Download from: https://developer.arm.com/downloads/-/gnu-rm"
-            echo "      Add bin/ directory to PATH"
-            ;;
-    esac
-}
-
-show_cmake_install_hint() {
-    echo ""
-    case "$(uname -s)" in
-        Darwin*)
-            echo -e "    ${CYAN}macOS:${NC} brew install cmake"
-            ;;
-        Linux*)
-            echo -e "    ${CYAN}Linux:${NC} sudo apt install cmake"
-            ;;
-        MINGW*|MSYS*|CYGWIN*)
-            echo -e "    ${CYAN}Windows:${NC} Download from https://cmake.org/download/"
-            ;;
-    esac
-}
-
-show_ninja_install_hint() {
-    echo ""
-    case "$(uname -s)" in
-        Darwin*)
-            echo -e "    ${CYAN}macOS:${NC} brew install ninja"
-            ;;
-        Linux*)
-            echo -e "    ${CYAN}Linux:${NC} sudo apt install ninja-build"
-            ;;
-        MINGW*|MSYS*|CYGWIN*)
-            echo -e "    ${CYAN}Windows:${NC} Download from https://ninja-build.org/"
-            ;;
-    esac
 }
 
 # Check if a board name is valid
@@ -428,9 +384,9 @@ show_summary() {
             data=$(echo "$size_output" | awk '{print $2}')
             bss=$(echo "$size_output" | awk '{print $3}')
 
-            local flash_kb data_kb
-            flash_kb=$(echo "scale=1; ($text + $data) / 1024" | bc)
-            ram_kb=$(echo "scale=1; ($data + $bss) / 1024" | bc)
+            local flash_kb ram_kb
+            flash_kb=$(awk -v n="$((text + data))" 'BEGIN { printf "%.1f", n / 1024 }')
+            ram_kb=$(awk -v n="$((data + bss))" 'BEGIN { printf "%.1f", n / 1024 }')
 
             printf "%-22s ${GREEN}%-10s${NC} %-12s %-12s\n" "$board" "OK" "${flash_kb} KB" "${ram_kb} KB"
         else

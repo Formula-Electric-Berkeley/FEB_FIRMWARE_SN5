@@ -10,94 +10,78 @@
     },
     "tasks": [
         {
-            "type": "shell",
+            "type": "cmake",
             "label": "Build BMS",
-            "command": "cmake",
-            "args": ["--build", "build/Debug", "--target", "BMS"],
+            "command": "build",
+            "targets": ["BMS"],
+            "preset": "Debug",
             "group": "build",
-            "problemMatcher": "$gcc"
+            "problemMatcher": []
         },
         {
-            "type": "shell",
+            "type": "cmake",
             "label": "Build DASH",
-            "command": "cmake",
-            "args": ["--build", "build/Debug", "--target", "DASH"],
+            "command": "build",
+            "targets": ["DASH"],
+            "preset": "Debug",
             "group": "build",
-            "problemMatcher": "$gcc"
+            "problemMatcher": []
         },
         {
-            "type": "shell",
-            "label": "Build DART",
-            "command": "cmake",
-            "args": ["--build", "build/Debug", "--target", "DART"],
-            "group": "build",
-            "problemMatcher": "$gcc"
-        },
-        {
-            "type": "shell",
+            "type": "cmake",
             "label": "Build DCU",
-            "command": "cmake",
-            "args": ["--build", "build/Debug", "--target", "DCU"],
+            "command": "build",
+            "targets": ["DCU"],
+            "preset": "Debug",
             "group": "build",
-            "problemMatcher": "$gcc"
+            "problemMatcher": []
         },
         {
-            "type": "shell",
+            "type": "cmake",
             "label": "Build DCU_Receiver",
-            "command": "cmake",
-            "args": ["--build", "build/Debug", "--target", "DCU_Receiver"],
+            "command": "build",
+            "targets": ["DCU_Receiver"],
+            "preset": "Debug",
             "group": "build",
-            "problemMatcher": "$gcc"
+            "problemMatcher": []
         },
         {
-            "type": "shell",
+            "type": "cmake",
             "label": "Build LVPDB",
-            "command": "cmake",
-            "args": ["--build", "build/Debug", "--target", "LVPDB"],
+            "command": "build",
+            "targets": ["LVPDB"],
+            "preset": "Debug",
             "group": "build",
-            "problemMatcher": "$gcc"
+            "problemMatcher": []
         },
         {
-            "type": "shell",
+            "type": "cmake",
             "label": "Build PCU",
-            "command": "cmake",
-            "args": ["--build", "build/Debug", "--target", "PCU"],
+            "command": "build",
+            "targets": ["PCU"],
+            "preset": "Debug",
             "group": "build",
-            "problemMatcher": "$gcc"
+            "problemMatcher": []
         },
         {
-            "type": "shell",
+            "type": "cmake",
             "label": "Build Sensor_Nodes (FRONT)",
-            "command": "cmake",
-            "args": ["--build", "build/Debug", "--target", "Sensor_Nodes_FRONT"],
+            "command": "build",
+            "targets": ["Sensor_Nodes_FRONT"],
+            "preset": "Debug",
             "group": "build",
-            "problemMatcher": "$gcc",
+            "problemMatcher": [],
             "detail": "Builds build/Debug/Sensor_Nodes/Sensor_Nodes_FRONT.elf"
         },
         {
-            "type": "shell",
+            "type": "cmake",
             "label": "Build Sensor_Nodes (REAR)",
-            "command": "cmake",
-            "args": ["--build", "build/Debug", "--target", "Sensor_Nodes_REAR"],
+            "command": "build",
+            "targets": ["Sensor_Nodes_REAR"],
+            "preset": "Debug",
             "group": "build",
-            "problemMatcher": "$gcc",
+            "problemMatcher": [],
             "detail": "Builds build/Debug/Sensor_Nodes/Sensor_Nodes_REAR.elf"
-        },
-        {
-            "type": "shell",
-            "label": "Build UART",
-            "command": "cmake",
-            "args": ["--build", "build/Debug", "--target", "UART"],
-            "group": "build",
-            "problemMatcher": "$gcc"
-        },
-        {
-            "type": "shell",
-            "label": "Build UART_TEST",
-            "command": "cmake",
-            "args": ["--build", "build/Debug", "--target", "UART_TEST"],
-            "group": "build",
-            "problemMatcher": "$gcc"
         },
         {
             "type": "cmake",
@@ -109,15 +93,16 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "problemMatcher": "$gcc"
+            "problemMatcher": []
         },
         {
-            "type": "shell",
+            "type": "cmake",
             "label": "Build All",
-            "command": "cmake",
-            "args": ["--build", "build/Debug"],
+            "command": "build",
+            "targets": ["all"],
+            "preset": "Debug",
             "group": "build",
-            "problemMatcher": "$gcc"
+            "problemMatcher": []
         },
         {
             "type": "shell",
@@ -143,47 +128,11 @@
         {
             "type": "shell",
             "label": "CubeProg: List all available communication interfaces",
-            "command": "STM32_Programmer_CLI",
-            "args": ["--list"],
+            "command": "cube",
+            "args": ["programmer", "--list"],
             "options": {
                 "cwd": "${workspaceFolder}"
             },
-            "problemMatcher": []
-        },
-        {
-            "type": "shell",
-            "label": "Firmware: Bump Board Version",
-            "detail": "Bump <BOARD>/VERSION, commit, tag <BOARD>-v<X.Y.Z>, push",
-            "command": "bash",
-            "args": ["${workspaceFolder}/scripts/bump-version.sh", "${input:bumpBoard}", "${input:bumpType}"],
-            "options": { "cwd": "${workspaceFolder}" },
-            "problemMatcher": []
-        },
-        {
-            "type": "shell",
-            "label": "Firmware: Bump Repo Version",
-            "detail": "Bump top-level VERSION, commit, tag v<X.Y.Z>, push",
-            "command": "bash",
-            "args": ["${workspaceFolder}/scripts/bump-version.sh", "repo", "${input:bumpType}"],
-            "options": { "cwd": "${workspaceFolder}" },
-            "problemMatcher": []
-        },
-        {
-            "type": "shell",
-            "label": "Firmware: Bump All (Common Changed)",
-            "detail": "Bump every board + repo + common, tag each, push. Use when common/ changed.",
-            "command": "bash",
-            "args": ["${workspaceFolder}/scripts/bump-version.sh", "all", "${input:bumpType}", "--yes"],
-            "options": { "cwd": "${workspaceFolder}" },
-            "problemMatcher": []
-        },
-        {
-            "type": "shell",
-            "label": "Firmware: Bump Auto-Detect",
-            "detail": "Inspect staged/unstaged diff, bump affected boards (or all if common/ changed), push",
-            "command": "bash",
-            "args": ["${workspaceFolder}/scripts/bump-version.sh"],
-            "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": []
         }
     ],
@@ -192,20 +141,7 @@
             "id": "boardName",
             "type": "pickString",
             "description": "Select board to flash",
-            "options": ["BMS", "DASH", "DART", "DCU", "DCU_Receiver", "LVPDB", "PCU", "Sensor_Nodes_FRONT", "Sensor_Nodes_REAR", "UART", "UART_TEST"],
-        },
-        {
-            "id": "bumpBoard",
-            "type": "pickString",
-            "description": "Which board's firmware version to bump",
-            "options": ["BMS", "DASH", "DART", "DCU", "DCU_Receiver", "LVPDB", "PCU", "Sensor_Nodes", "UART", "UART_TEST"],
-        },
-        {
-            "id": "bumpType",
-            "type": "pickString",
-            "description": "Semantic version bump",
-            "options": ["patch", "minor", "major"],
-            "default": "patch"
+            "options": ["BMS", "DASH", "DCU", "DCU_Receiver", "LVPDB", "PCU", "Sensor_Nodes_FRONT", "Sensor_Nodes_REAR"],
         }
     ]
 }

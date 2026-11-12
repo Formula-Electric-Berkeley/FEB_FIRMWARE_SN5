@@ -235,8 +235,7 @@ static void cmd_version(int argc, char *argv[])
 
   FEB_Console_Printf("=== FEB Firmware ===\r\n");
   FEB_Console_Printf("  Board   : %s\r\n", feb_build_info.board_name);
-  FEB_Console_Printf("  Version : %s (board) | %s (repo) | %s (common)\r\n", feb_build_info.version_string,
-                     feb_build_info.repo_version_string, feb_build_info.common_version_string);
+  FEB_Console_Printf("  Version : %s\r\n", feb_build_info.version_string);
   FEB_Console_Printf("  Commit  : %s (%s)%s\r\n", feb_build_info.commit_short, feb_build_info.branch,
                      feb_build_info.dirty ? " [DIRTY]" : "");
   FEB_Console_Printf("  SHA     : %s\r\n", feb_build_info.commit_full);
@@ -445,12 +444,15 @@ static void cmd_version_csv(int argc, char *argv[])
    *   board_ver,repo_ver,common_ver,commit,branch,dirty,
    *   build_utc,build_user,build_host,flash_utc,flasher_user,flasher_host
    *
+   * board_ver, repo_ver and common_ver all carry the same CalVer version
+   * since the switch from per-board VERSION files; the columns stay so
+   * positional parsers keep working.
+   *
    * (board name is already in the outer csv prefix.) */
   FEB_Console_CsvEmit("version", "%s,%s,%s,%s,%s,%d,%s,%s,%s,%s,%s,%s", feb_build_info.version_string,
-                      feb_build_info.repo_version_string, feb_build_info.common_version_string,
-                      feb_build_info.commit_short, feb_build_info.branch, feb_build_info.dirty ? 1 : 0,
-                      feb_build_info.build_utc, feb_build_info.build_user, feb_build_info.build_host, flash_utc,
-                      flasher_user, flasher_host);
+                      feb_build_info.version_string, feb_build_info.version_string, feb_build_info.commit_short,
+                      feb_build_info.branch, feb_build_info.dirty ? 1 : 0, feb_build_info.build_utc,
+                      feb_build_info.build_user, feb_build_info.build_host, flash_utc, flasher_user, flasher_host);
 }
 
 static void cmd_uptime_csv(int argc, char *argv[])

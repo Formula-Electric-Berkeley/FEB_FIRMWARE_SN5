@@ -59,8 +59,6 @@ void Init_RTOS_Objects(void)
 - [BMS](../../BMS/README.md)
 - [DASH](../../DASH/README.md)
 - [PCU](../../PCU/README.md) *(via feb_io transitively; linked explicitly where FreeRTOS is in use)*
-- [UART](../../UART/README.md)
-- [UART_TEST](../../UART_TEST/README.md)
 
 ## See Also
 

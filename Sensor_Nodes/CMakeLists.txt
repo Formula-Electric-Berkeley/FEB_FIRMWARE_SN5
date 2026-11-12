@@ -188,8 +188,3 @@ endfunction()
 
 feb_define_sensor_node_variant(FRONT)
 feb_define_sensor_node_variant(REAR)
-
-# Convenience aggregate: `cmake --build . --target Sensor_Nodes` builds both.
-add_custom_target(${PROJECT_NAME}
-    DEPENDS ${PROJECT_NAME}_FRONT ${PROJECT_NAME}_REAR
-)

@@ -19,6 +19,8 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR/.."
 
+source "$SCRIPT_DIR/lib/cube-tools.sh"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -67,124 +69,39 @@ prompt_yes_no() {
     echo ""
 }
 
-# Pick the shell profile file to append exports to, based on $SHELL and platform.
-#   macOS + zsh -> ~/.zshrc
-#   macOS + bash -> ~/.bash_profile (creating it to source ~/.bashrc if missing)
-#   Linux + zsh -> ~/.zshrc
-#   Linux + bash -> ~/.bashrc
-#   Windows Git Bash -> ~/.bashrc (and ensure ~/.bash_profile sources it)
-detect_profile_path() {
-    local shell_name
-    shell_name="$(basename "${SHELL:-/bin/bash}")"
-
-    case "$(uname -s)" in
-        MINGW*|MSYS*|CYGWIN*)
-            # Ensure .bash_profile sources .bashrc for login shells.
-            if [ ! -f "$HOME/.bash_profile" ]; then
-                cat > "$HOME/.bash_profile" << 'PROFILE_EOF'
-# Load .bashrc if it exists
-if [ -f "$HOME/.bashrc" ]; then
-    source "$HOME/.bashrc"
-fi
-PROFILE_EOF
-            fi
-            echo "$HOME/.bashrc"
-            ;;
-        Darwin*)
-            if [ "$shell_name" = "zsh" ]; then
-                echo "$HOME/.zshrc"
-            else
-                # macOS bash reads .bash_profile for login shells.
-                if [ ! -f "$HOME/.bash_profile" ]; then
-                    cat > "$HOME/.bash_profile" << 'PROFILE_EOF'
-# Load .bashrc if it exists
-if [ -f "$HOME/.bashrc" ]; then
-    source "$HOME/.bashrc"
-fi
-PROFILE_EOF
-                fi
-                echo "$HOME/.bash_profile"
-            fi
-            ;;
-        *)
-            if [ "$shell_name" = "zsh" ]; then
-                echo "$HOME/.zshrc"
-            else
-                echo "$HOME/.bashrc"
-            fi
-            ;;
-    esac
-}
-
-# Pick the highest-versioned STM32CubeCLT install from the candidate globs.
-# Prints the chosen directory on stdout; exit 1 if nothing found.
-find_cubeclt_install() {
-    local candidates=("$@")
-    local -a matches=()
-    local c e
-    for c in "${candidates[@]}"; do
-        # compgen -G expands the glob without IFS word-splitting, so paths
-        # containing spaces (e.g. "/c/Program Files/...") match correctly.
-        while IFS= read -r e; do
-            [ -d "$e" ] && matches+=("${e%/}")
-        done < <(compgen -G "$c" || true)
-    done
-    [ "${#matches[@]}" -eq 0 ] && return 1
-    printf '%s\n' "${matches[@]}" | sort -V | tail -1
-}
-
 # Step 1: Check toolchain
 check_toolchain() {
     log_header "Step 1/5: Checking Toolchain"
 
+    if ! feb_find_cube; then
+        echo -e "  ${RED}✗${NC} cube: not found"
+        echo ""
+        feb_print_cube_install_hint
+        return 1
+    fi
+    echo -e "  ${GREEN}✓${NC} cube: $FEB_CUBE"
+
+    log_step "Installing bundles pinned in .settings/bundles.store.json..."
+    if ! (cd "$REPO_ROOT" && "$FEB_CUBE" bundle install --project --yes); then
+        log_error "cube bundle install failed"
+        return 1
+    fi
+
+    if ! feb_use_cube_tools "$REPO_ROOT" cmake programmer; then
+        log_error "cube could not resolve the pinned CMake/programmer bundles"
+        return 1
+    fi
+
     local all_good=true
-
-    # ARM GCC
-    if command_exists arm-none-eabi-gcc; then
-        local version
-        version=$(arm-none-eabi-gcc --version | head -1)
-        echo -e "  ${GREEN}✓${NC} ARM GCC: $version"
-    else
-        echo -e "  ${RED}✗${NC} ARM GCC: not found"
-        all_good=false
-    fi
-
-    # CMake
-    if command_exists cmake; then
-        local version
-        version=$(cmake --version | head -1)
-        echo -e "  ${GREEN}✓${NC} CMake: $version"
-    else
-        echo -e "  ${RED}✗${NC} CMake: not found"
-        all_good=false
-    fi
-
-    # Ninja
-    if command_exists ninja; then
-        local version
-        version=$(ninja --version)
-        echo -e "  ${GREEN}✓${NC} Ninja: $version"
-    else
-        echo -e "  ${RED}✗${NC} Ninja: not found"
-        all_good=false
-    fi
-
-    # Git
-    if command_exists git; then
-        local version
-        version=$(git --version)
-        echo -e "  ${GREEN}✓${NC} Git: $version"
-    else
-        echo -e "  ${RED}✗${NC} Git: not found"
-        all_good=false
-    fi
-
-    # Optional tools
-    if command_exists clang-format; then
-        echo -e "  ${GREEN}✓${NC} clang-format: $(clang-format --version | head -1)"
-    else
-        echo -e "  ${YELLOW}○${NC} clang-format: not found (optional)"
-    fi
+    local tool
+    for tool in arm-none-eabi-gcc cmake ninja git; do
+        if command_exists "$tool"; then
+            echo -e "  ${GREEN}✓${NC} $tool: $("$tool" --version | head -1)"
+        else
+            echo -e "  ${RED}✗${NC} $tool: not found"
+            all_good=false
+        fi
+    done
 
     if command_exists STM32_Programmer_CLI; then
         echo -e "  ${GREEN}✓${NC} STM32_Programmer_CLI: available"
@@ -192,182 +109,20 @@ check_toolchain() {
         echo -e "  ${YELLOW}○${NC} STM32_Programmer_CLI: not found (needed for flashing)"
     fi
 
+    if command_exists clang-format; then
+        echo -e "  ${GREEN}✓${NC} clang-format: $(clang-format --version | head -1)"
+    else
+        echo -e "  ${YELLOW}○${NC} clang-format: not found (optional)"
+    fi
+
     echo ""
 
     if [ "$all_good" = false ]; then
         log_error "Missing required tools."
-        echo ""
-
-        # Try to auto-configure PATH on platforms where we know where the tools land.
-        case "$(uname -s)" in
-            MINGW*|MSYS*|CYGWIN*)
-                if configure_windows_path; then
-                    echo ""
-                    log_info "Retrying tool detection..."
-                    echo ""
-                    check_toolchain
-                    return $?
-                fi
-                ;;
-            Darwin*)
-                if configure_macos_path; then
-                    echo ""
-                    log_info "Retrying tool detection..."
-                    echo ""
-                    check_toolchain
-                    return $?
-                fi
-                ;;
-        esac
-
-        show_install_instructions
         return 1
     fi
 
     log_info "All required tools are installed"
-}
-
-show_install_instructions() {
-    case "$(uname -s)" in
-        Darwin*)
-            echo -e "${BOLD}macOS Installation:${NC}"
-            echo ""
-            echo "  Option A (recommended) — STM32CubeCLT bundles everything:"
-            echo "    Download: https://www.st.com/en/development-tools/stm32cubeclt.html"
-            echo "    Default install: /opt/ST/STM32CubeCLT_<version>"
-            echo "    Re-run this script after install — it will auto-configure PATH."
-            echo ""
-            echo "  Option B — install tools individually via Homebrew:"
-            echo "    brew install cmake ninja"
-            echo "    brew install --cask gcc-arm-embedded    # ARM GCC toolchain"
-            echo "    brew install clang-format               # optional, for formatting"
-            echo "    # Flashing still needs STM32CubeProgrammer from STM32CubeCLT."
-            ;;
-        Linux*)
-            echo -e "${BOLD}Linux Installation:${NC}"
-            echo ""
-            echo "  # Required tools"
-            echo "  sudo apt update"
-            echo "  sudo apt install cmake ninja-build gcc-arm-none-eabi"
-            echo ""
-            echo "  # Optional tools"
-            echo "  sudo apt install clang-format"
-            echo ""
-            echo "  # For flashing (STM32CubeCLT)"
-            echo "  Download from: https://www.st.com/en/development-tools/stm32cubeclt.html"
-            ;;
-        MINGW*|MSYS*|CYGWIN*)
-            echo -e "${BOLD}Windows Installation:${NC}"
-            echo ""
-            echo "  Install STM32CubeCLT (bundles all required tools):"
-            echo "  https://www.st.com/en/development-tools/stm32cubeclt.html"
-            echo ""
-            echo "  Default install locations:"
-            echo "    C:\\ST\\STM32CubeCLT_<version>"
-            echo "    C:\\Program Files\\STMicroelectronics\\STM32CubeCLT_<version>"
-            echo ""
-            echo "  After installing, re-run this setup script to configure PATH."
-            ;;
-    esac
-}
-
-# Append STM32CubeCLT exports to the given profile file. Idempotent.
-_append_cubeclt_exports() {
-    local profile="$1"
-    local cubeclt_path="$2"
-
-    # Check if already configured
-    if grep -q "STM32CubeCLT" "$profile" 2>/dev/null; then
-        log_info "PATH already configured in $profile"
-        echo "  Try running: source $profile"
-        return 1
-    fi
-
-    echo ""
-    log_info "Found STM32CubeCLT at $cubeclt_path"
-    echo ""
-    echo "  The following will be added to $profile:"
-    echo ""
-    echo "    export PATH=\"$cubeclt_path/GNU-tools-for-STM32/bin:\$PATH\""
-    echo "    export PATH=\"$cubeclt_path/CMake/bin:\$PATH\""
-    echo "    export PATH=\"$cubeclt_path/Ninja/bin:\$PATH\""
-    echo "    export PATH=\"$cubeclt_path/STM32CubeProgrammer/bin:\$PATH\""
-    echo "    export CUBE_BUNDLE_PATH=\"$cubeclt_path\""
-    echo ""
-
-    prompt_yes_no "Add to $profile? [Y/n]" "Y"
-
-    if [[ $REPLY =~ ^[Nn]$ ]]; then
-        log_warn "Skipping PATH configuration. You'll need to configure manually."
-        return 1
-    fi
-
-    cat >> "$profile" << BASHRC_EOF
-
-# STM32CubeCLT tools (added by FEB setup script)
-export PATH="$cubeclt_path/GNU-tools-for-STM32/bin:\$PATH"
-export PATH="$cubeclt_path/CMake/bin:\$PATH"
-export PATH="$cubeclt_path/Ninja/bin:\$PATH"
-export PATH="$cubeclt_path/STM32CubeProgrammer/bin:\$PATH"
-export CUBE_BUNDLE_PATH="$cubeclt_path"
-BASHRC_EOF
-
-    log_info "PATH configuration added to $profile"
-    echo ""
-
-    # Apply to the current session so setup can continue
-    export PATH="$cubeclt_path/GNU-tools-for-STM32/bin:$PATH"
-    export PATH="$cubeclt_path/CMake/bin:$PATH"
-    export PATH="$cubeclt_path/Ninja/bin:$PATH"
-    export PATH="$cubeclt_path/STM32CubeProgrammer/bin:$PATH"
-    export CUBE_BUNDLE_PATH="$cubeclt_path"
-    log_info "PATH updated for current session"
-    return 0
-}
-
-# Configure PATH for Windows Git Bash. Globs for versioned installs.
-configure_windows_path() {
-    local cubeclt_path
-    cubeclt_path="$(find_cubeclt_install \
-        '/c/ST/STM32CubeCLT'*'/' \
-        '/c/ST/STM32CubeCLT/' \
-        '/c/Program Files/STMicroelectronics/STM32CubeCLT'*'/' \
-        '/c/Program Files/STMicroelectronics/STM32CubeCLT/' \
-    )" || true
-
-    if [ -z "$cubeclt_path" ]; then
-        log_warn "STM32CubeCLT not found. Searched:"
-        echo "    /c/ST/STM32CubeCLT[*]/"
-        echo "    /c/Program Files/STMicroelectronics/STM32CubeCLT[*]/"
-        echo "  Please install STM32CubeCLT first."
-        return 1
-    fi
-
-    _append_cubeclt_exports "$(detect_profile_path)" "$cubeclt_path"
-}
-
-# Configure PATH for macOS (symmetric to the Windows function).
-configure_macos_path() {
-    local cubeclt_path
-    cubeclt_path="$(find_cubeclt_install \
-        '/opt/ST/STM32CubeCLT'*'/' \
-        '/opt/ST/STM32CubeCLT/' \
-        '/Applications/STMicroelectronics/STM32CubeCLT'*'/' \
-        '/Applications/STMicroelectronics/STM32CubeCLT/' \
-        "$HOME/STM32CubeCLT"*'/' \
-        "$HOME/STM32CubeCLT/" \
-    )" || true
-
-    if [ -z "$cubeclt_path" ]; then
-        log_warn "STM32CubeCLT not found. Searched:"
-        echo "    /opt/ST/STM32CubeCLT[*]/"
-        echo "    /Applications/STMicroelectronics/STM32CubeCLT[*]/"
-        echo "    \$HOME/STM32CubeCLT[*]/"
-        echo "  Please install STM32CubeCLT first (see instructions above)."
-        return 1
-    fi
-
-    _append_cubeclt_exports "$(detect_profile_path)" "$cubeclt_path"
 }
 
 # Step 2: Initialize submodules
@@ -467,8 +222,8 @@ show_summary() {
     echo "  3. Format code before committing:"
     echo "     ./scripts/format.sh"
     echo ""
-    echo "  4. Create a release version:"
-    echo "     ./scripts/version.sh patch"
+    echo "  4. Publish a release (CalVer date tag):"
+    echo "     git tag v\$(date -u +%Y.%m.%d) && git push origin v\$(date -u +%Y.%m.%d)"
     echo ""
     echo -e "${BOLD}Documentation:${NC}"
     echo "  - README.md                    Repo overview, build, flash, CI"
@@ -493,16 +248,15 @@ Usage:
   ./scripts/setup.sh -h        Show this help
 
 Steps performed:
-  1. Check toolchain (ARM GCC, CMake, Ninja)
+  1. Install the toolchain bundles pinned in .settings/bundles.store.json
+     (CMake, Ninja, GNU tools for STM32, STM32CubeProgrammer) via 'cube'
   2. Initialize git submodules
   3. Install pre-commit hooks (if configured)
   4. Configure CMake
   5. Run initial build (optional with --quick)
 
 Prerequisites:
-  - ARM GCC toolchain (arm-none-eabi-gcc)
-  - CMake >= 3.22
-  - Ninja build system
+  - STM32Cube for Visual Studio Code extension (provides the 'cube' CLI)
   - Git
 EOF
 }

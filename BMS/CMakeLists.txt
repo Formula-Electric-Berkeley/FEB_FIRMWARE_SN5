@@ -133,7 +133,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     feb_rtos_utils
 )
 
-# Embed version + build provenance (reads VERSION + git, generates feb_build_info.c)
+# Embed CalVer version + build provenance from git (generates feb_build_info.c)
 include(${CMAKE_SOURCE_DIR}/cmake/FEB_Version.cmake)
 feb_apply_version(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR})
 

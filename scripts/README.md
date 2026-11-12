@@ -8,14 +8,11 @@ Everyday tooling for the FEB_FIRMWARE_SN5 repo. All scripts are POSIX `bash` and
 |---|---|---|
 | [`setup.sh`](setup.sh) | First-time dev environment setup | `./scripts/setup.sh` |
 | [`build.sh`](build.sh) | Build firmware (interactive / batch / release) | `./scripts/build.sh -b BMS` |
-| [`flash.sh`](flash.sh) | Flash an ELF/bin to a board via STM32_Programmer_CLI | `./scripts/flash.sh -b BMS` |
+| [`flash.sh`](flash.sh) | Flash an ELF/bin to a board via the pinned STM32CubeProgrammer bundle | `./scripts/flash.sh -b BMS` |
 | [`serial.sh`](serial.sh) | Open the board's USB-VCP serial console at 115200 (tio wrapper; one-shot `--exec`/`--read` modes for verification) | `./scripts/serial.sh -b BMS` |
 | [`format.sh`](format.sh) | Run `clang-format` across `Core/User/` | `./scripts/format.sh --check` |
 | [`setup-hooks.sh`](setup-hooks.sh) | Install / remove pre-commit hooks | `./scripts/setup-hooks.sh` |
 | [`cubemx.sh`](cubemx.sh) | Drive STM32CubeMX headlessly from a `.ioc` | `./scripts/cubemx.sh -g -b BMS` |
-| [`cubemx-sync.sh`](cubemx-sync.sh) | Track CubeMX-generated code with a checksum manifest | `./scripts/cubemx-sync.sh --check` |
-| [`version.sh`](version.sh) | Thin wrapper around `bump-version.sh` | `./scripts/version.sh patch` |
-| [`bump-version.sh`](bump-version.sh) | Per-board + repo-wide semver bump, commit, tag, push | `./scripts/bump-version.sh BMS minor` |
 | [`flash-patcher.py`](flash-patcher.py) | Stamp flash-time provenance into a `.feb_flash_info` ELF section | Invoked automatically by `flash.sh` |
 
 ## `setup.sh` — First-Time Dev Environment
@@ -26,16 +23,17 @@ Everyday tooling for the FEB_FIRMWARE_SN5 repo. All scripts are POSIX `bash` and
 ./scripts/setup.sh -h
 ```
 
-Steps: toolchain check → submodule init → pre-commit install → CMake configure → initial build.
+Steps: install pinned bundles via `cube` → submodule init → pre-commit install → CMake configure → initial build.
 
-**Cross-platform behavior:**
+Requires the `cube` CLI from the STM32Cube for VS Code extension (see the top-level [README.md](../README.md#environment-setup)). The script runs `cube bundle install --project` at the repo root and does **not** edit any shell profile. CI / non-TTY runs fall back to safe defaults for every prompt.
 
-- **macOS** — globs `/opt/ST/STM32CubeCLT*`, `/Applications/STMicroelectronics/STM32CubeCLT*`, and `$HOME/STM32CubeCLT*`. Picks the highest version via `sort -V`. Detects your shell (`zsh` vs `bash`) and writes the exports to `~/.zshrc` or `~/.bash_profile` accordingly.
-- **Windows Git Bash** — globs `/c/ST/STM32CubeCLT*` and `/c/Program Files/STMicroelectronics/STM32CubeCLT*`. Writes exports to `~/.bashrc` and creates `~/.bash_profile` to source it for login shells.
-- **Linux** — toolchain is expected on `PATH` (from `apt` or a manual install). The script prints install instructions but does not auto-configure profile files.
-- **CI / non-TTY** — all `read` prompts fall back to safe defaults when stdin is not a terminal, so `CI=1 ./scripts/setup.sh --quick < /dev/null` runs to completion.
+## Board list (`lib/boards.sh`)
 
-Re-running the script is safe — the `# STM32CubeCLT tools (added by FEB setup script)` marker in your profile is used as a write-guard.
+`build.sh`, `flash.sh`, `serial.sh`, `format.sh` and `cubemx.sh` read the board list from [`lib/boards.sh`](lib/boards.sh). Add a new board there: `FEB_BOARD_DIRS` lists source directories, `FEB_BOARD_TARGETS` lists the buildable/flashable CMake targets (Sensor_Nodes has FRONT and REAR variants).
+
+## Toolchain resolution (`lib/cube-tools.sh`)
+
+`build.sh`, `flash.sh` and `setup.sh` source [`lib/cube-tools.sh`](lib/cube-tools.sh). It finds `cube` (on PATH, in `~/.local/stm32cube/bin`, or inside the VS Code extension), asks `cube --resolve` for the PATH of the bundles pinned in `.settings/bundles.store.json`, and puts them first on PATH. The scripts then call `cmake`, `ninja`, `arm-none-eabi-*` and `STM32_Programmer_CLI` by name, so they use exactly the versions VS Code uses. Without `cube` (e.g. CI) they fall back to whatever is on PATH; `build.sh` prints which source it used. It also warns if `CUBE_BUNDLE_PATH` still points at an STM32CubeCLT folder.
 
 ## `build.sh` — Build Firmware
 
@@ -64,7 +62,7 @@ It also refuses to build when a submodule isn't checked out at the commit the br
 ./scripts/flash.sh -h
 ```
 
-Auto-discovers `STM32_Programmer_CLI` by globbing install locations for macOS (CubeProgrammer app bundle + CubeCLT), Linux (`/opt/st/stm32cubeclt*`), and Windows Git Bash (`/c/ST/STM32CubeCLT*/...`, `/c/Program Files/STMicroelectronics/STM32CubeCLT*/...`).
+Uses the pinned STM32CubeProgrammer bundle via `lib/cube-tools.sh`, falling back to `STM32_Programmer_CLI` on PATH (release zips ship `lib/cube-tools.sh` alongside `flash.sh`).
 
 Internally calls [`flash-patcher.py`](flash-patcher.py) to stamp the ELF's `.feb_flash_info` section with flash timestamp and flasher identity before programming.
 
@@ -76,7 +74,7 @@ Internally calls [`flash-patcher.py`](flash-patcher.py) to stamp the ELF's `.feb
 ./scripts/serial.sh -p /dev/cu.usbmodem1234          # Open a specific port directly
 ./scripts/serial.sh -b PCU --read 3                  # Capture 3s of output, print, exit
 ./scripts/serial.sh -b BMS --exec "version,uptime"   # Round-trip the console, exit
-./scripts/serial.sh --baud 9600 -b DART              # Override baud (default 115200)
+./scripts/serial.sh --baud 9600 -b PCU               # Override baud (default 115200)
 ./scripts/serial.sh --list                           # List candidate ports and exit
 ./scripts/serial.sh -h
 ```
@@ -91,7 +89,7 @@ Three modes:
 - **`--read <SECONDS>`** — captures everything that comes off the port for N seconds, prints the transcript to stdout, exits. Use this from a script or from Claude to verify a boot banner.
 - **`--exec "<cmd1,cmd2,...>"`** — sends each comma-separated command followed by CR/LF, waits `--settle` seconds (default 2), prints the captured transcript to stdout, exits. Diagnostics go to stderr so `transcript=$(./scripts/serial.sh -p ... --exec "version")` captures only the device's reply. Exit `0` on bytes received, `1` on silence — branch on it to detect a dead board.
 
-Auto-detects ports on macOS (`/dev/cu.usbmodem*`, `/dev/cu.usbserial*`, `/dev/cu.SLAB_USBtoUART*`) and Linux (`/dev/ttyACM*`, `/dev/ttyUSB*`). When invoked with `-b <BOARD>`, prints what to expect on serial for that board (banner timing, smoke-test commands, when to look at CAN instead of UART) — sourced from each board's `CLAUDE.md`.
+Auto-detects ports on macOS (`/dev/cu.usbmodem*`, `/dev/cu.usbserial*`, `/dev/cu.SLAB_USBtoUART*`) and Linux (`/dev/ttyACM*`, `/dev/ttyUSB*`). When invoked with `-b <BOARD>`, prints what to expect on serial for that board (banner timing, smoke-test commands, when to look at CAN instead of UART).
 
 ## `format.sh` — clang-format
 
@@ -100,7 +98,7 @@ Auto-detects ports on macOS (`/dev/cu.usbmodem*`, `/dev/cu.usbserial*`, `/dev/cu
 ./scripts/format.sh --check   # CI mode; exits 1 if any file would change
 ```
 
-Uses the repo's top-level `.clang-format` (LLVM base, 2-space indent, 120 columns, Allman braces). Finds `clang-format` on PATH, then falls back to common Homebrew (`/opt/homebrew/opt/llvm@<ver>/bin`, `/usr/local/opt/llvm@<ver>/bin`) and Windows (`/c/Program Files/LLVM/bin/clang-format.exe`) locations.
+Uses the repo's top-level `.clang-format` (LLVM base, 2-space indent, 120 columns, Allman braces) with clang-format **19.1.2**, the same version as the `st-arm-clangd` bundle VS Code formats with. Uses `clang-format` from PATH only if it is exactly that version; otherwise installs `clang-format==19.1.2` from PyPI into `build/.tools/` (requires `python3`). CI relies on the same bootstrap.
 
 ## `setup-hooks.sh` — Pre-commit Hooks
 
@@ -129,46 +127,6 @@ Installs `pre-commit` via (in order) Homebrew → `pipx` → `pip --user`. Then 
 Inspection subcommands (`-i`, `--show-pins`, `--show-peripherals`, `--list-boards`) parse the `.ioc` directly and work without STM32CubeMX installed. Code generation and migration require STM32CubeMX.
 
 On Windows Git Bash, POSIX paths (`/c/...`) are converted to native (`C:\...`) via `cygpath -w` (with a `sed` fallback) before being passed into CubeMX scripts, since STM32CubeMX.exe is a native Windows binary.
-
-## `cubemx-sync.sh` — CubeMX Sync Validation
-
-```bash
-./scripts/cubemx-sync.sh --status           # Show sync status per board
-./scripts/cubemx-sync.sh --update           # Update manifest (all boards)
-./scripts/cubemx-sync.sh --update -b BMS    # Update manifest (one board)
-./scripts/cubemx-sync.sh --validate         # CI: verify manifest matches files
-./scripts/cubemx-sync.sh --check            # Pre-commit: same, but scoped to the current commit
-```
-
-Tracks a checksum manifest so CI can detect "I changed the `.ioc` but forgot to regenerate" without having STM32CubeMX available.
-
-## `version.sh` and `bump-version.sh` — Release Tags
-
-`version.sh` is a thin wrapper around `bump-version.sh` for the common case of bumping the repo-wide version:
-
-```bash
-./scripts/version.sh              # bump repo patch
-./scripts/version.sh patch        # same
-./scripts/version.sh minor
-./scripts/version.sh major
-./scripts/version.sh 2.5.0        # set explicit version
-```
-
-`bump-version.sh` supports per-board tagging, mixed-target bumps, and release automation:
-
-```bash
-./scripts/bump-version.sh                  # auto-detect target from diff
-./scripts/bump-version.sh BMS              # bump BMS patch
-./scripts/bump-version.sh BMS minor
-./scripts/bump-version.sh BMS 2.5.0
-./scripts/bump-version.sh repo             # repo-wide bump
-./scripts/bump-version.sh all              # every board + repo
-./scripts/bump-version.sh common
-```
-
-Flags: `--no-push`, `--allow-dirty`, `--yes`. Tag shapes: `<BOARD>-v<MAJOR>.<MINOR>.<PATCH>` for boards, `v<MAJOR>.<MINOR>.<PATCH>` repo-wide.
-
-Pushing a tag triggers the [release workflow](../.github/workflows/release.yml) which builds Release binaries and uploads them to GitHub Releases.
 
 ## `flash-patcher.py` — Flash-Time Provenance
 

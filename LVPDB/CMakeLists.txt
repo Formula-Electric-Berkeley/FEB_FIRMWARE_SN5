@@ -104,7 +104,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_version feb_can feb_tps)
 
-# Embed version + build provenance (reads VERSION + git, generates feb_build_info.c)
+# Embed CalVer version + build provenance from git (generates feb_build_info.c)
 include(${CMAKE_SOURCE_DIR}/cmake/FEB_Version.cmake)
 feb_apply_version(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR})
 

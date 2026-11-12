@@ -41,7 +41,6 @@ extern osMessageQueueId_t uartRxQueueHandle;
 #define CP_INDEX 3;
 #define RF_INDEX 4;
 
-
 namespace
 {
 volatile bool setup_complete = false;

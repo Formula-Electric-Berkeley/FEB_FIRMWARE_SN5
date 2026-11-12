@@ -67,8 +67,8 @@ void LVPDB_CAN_ApplyRxState(void)
 
   // Rail indices: LV, SH, AF1_AF2, CP, RF
   LVPDB_TPS_SetRail(AF1_AF2_INDEX, dash_fresh && dash_state.switch1); // AF1_AF2
-  LVPDB_TPS_SetRail(CP_INDEX, dash_fresh && dash_state.switch2); // CP
-  LVPDB_TPS_SetRail(RF_INDEX, dash_fresh && dash_state.switch2); //RF
+  LVPDB_TPS_SetRail(CP_INDEX, dash_fresh && dash_state.switch2);      // CP
+  LVPDB_TPS_SetRail(RF_INDEX, dash_fresh && dash_state.switch2);      // RF
 
   /* brake_position is centi-percent (0-10000); compare whole percent (0-100). */
   bool brake_on = fc::rx<fm::Brake>.fresh() && (fc::rx<fm::Brake>.v().brake_position > 1000u);

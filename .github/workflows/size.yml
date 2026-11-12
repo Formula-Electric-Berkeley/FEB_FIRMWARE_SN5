@@ -21,8 +21,6 @@ jobs:
             flash_limit: 2097152
           - project: LVPDB
             flash_limit: 524288
-          - project: DART
-            flash_limit: 32768
           - project: DCU
             flash_limit: 524288
           - project: DCU_Receiver
@@ -31,10 +29,6 @@ jobs:
             flash_limit: 524288
           - project: Sensor_Nodes_REAR
             flash_limit: 524288
-          - project: UART
-            flash_limit: 524288
-          - project: UART_TEST
-            flash_limit: 2097152
 
     name: Size ${{ matrix.project }}
 

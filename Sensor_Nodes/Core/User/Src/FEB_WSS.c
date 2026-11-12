@@ -156,7 +156,7 @@ static void compute_wheel_mph_x100(volatile WheelState *w, uint16_t *mph_x100_ou
     net_edges += dir_snapshot[i];
   }
 
-  const int8_t sign = (net_edges >= 0) ? (int8_t) + 1 : (int8_t)-1;
+  const int8_t sign = (net_edges >= 0) ? (int8_t)+1 : (int8_t)-1;
   const uint32_t abs_edges = (uint32_t)((net_edges >= 0) ? net_edges : -net_edges);
 
   // v_mps      = abs_edges * CIRC_UM / (EDGES_PER_REV * period_us)   [um/us = m/s]

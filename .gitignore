@@ -40,6 +40,7 @@ agents.md
 
 # IDE specific files  
 # .vscode/ - Allow VSCode configuration for team debugging setup
+**/.vscode/c_cpp_properties.json
 .idea/
 *.swp
 *.swo

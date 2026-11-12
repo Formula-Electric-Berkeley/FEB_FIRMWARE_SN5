@@ -46,7 +46,7 @@ Or directly via CMake:
 cmake --preset Debug -S .
 cmake --build build/Debug --target Sensor_Nodes_FRONT
 cmake --build build/Debug --target Sensor_Nodes_REAR
-cmake --build build/Debug --target Sensor_Nodes        # builds both via aggregate target
+cmake --build build/Debug --target Sensor_Nodes_FRONT Sensor_Nodes_REAR   # both
 ```
 
 Both ELFs land in the same build directory; no per-variant build tree, no CMake reconfigure churn.
@@ -93,7 +93,7 @@ CAN pack/unpack is compiled from [`common/FEB_CAN_Library_SN4/gen/feb_can.c`](..
 
 ## Entry Point
 
-`Core/User/Src/FEB_main.c` (lowercase `main`, same as DART). User modules include `FEB_IMU.c`, `FEB_Magnetometer.c`, `FEB_GPS.c`, `FEB_WSS.c`, and `FEB_CAN_IMU.c`. The variant config header is `Core/User/Inc/FEB_SN_Config.h`.
+`Core/User/Src/FEB_main.c` (lowercase `main`). User modules include `FEB_IMU.c`, `FEB_Magnetometer.c`, `FEB_GPS.c`, `FEB_WSS.c`, and `FEB_CAN_IMU.c`. The variant config header is `Core/User/Inc/FEB_SN_Config.h`.
 
 ## Notes
 
