@@ -31,7 +31,7 @@ From [`CMakeLists.txt`](CMakeLists.txt):
 - [`feb_rtos_utils`](../common/FEB_RTOS_Utils/README.md) — `REQUIRE_RTOS_HANDLE`
 - `feb_version`
 
-CAN pack/unpack is compiled from [`common/FEB_CAN_Library_SN4/gen/`](../common/FEB_CAN_Library_SN4/README.md) and the runtime dispatcher from [`common/FEB_CAN_Library/Src/`](../common/FEB_CAN_Library/README.md) via `file(GLOB)`; DASH does not link the `feb_can` INTERFACE target.
+CAN pack/unpack is compiled from [`common/FEB_CAN_Definitions/gen/`](../common/FEB_CAN_Definitions/README.md) and the runtime dispatcher from [`common/FEB_CAN_Library/Src/`](../common/FEB_CAN_Library/README.md) via `file(GLOB)`; DASH does not link the `feb_can` INTERFACE target.
 
 ## Third-Party Drivers
 

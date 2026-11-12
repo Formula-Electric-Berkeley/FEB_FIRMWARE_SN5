@@ -58,7 +58,7 @@ static void voltage_channel_received(int channel, uint32_t rx_tick)
  * @brief IVT CAN RX callback
  *
  * The IVT-S frames are defined in the shared CAN library
- * (common/FEB_CAN_Library_SN4, message defs IVTCurrent / IVTVoltage1-3 /
+ * (common/FEB_CAN_Definitions, message defs IVTCurrent / IVTVoltage1-3 /
  * IVTTemperature). Decoding is delegated to the generated unpack functions;
  * the raw int32 value is then scaled into engineering units below.
  */

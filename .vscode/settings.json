@@ -38,5 +38,5 @@
         "editor.defaultFormatter": "STMicroelectronics.stm32cube-ide-clangd",
         "editor.formatOnSave": true
     },
-    "python.defaultInterpreterPath": "${workspaceFolder}/common/FEB_CAN_Library_SN4/.venv/bin/python"
+    "python.defaultInterpreterPath": "${workspaceFolder}/common/FEB_CAN_Definitions/.venv/bin/python"
 }

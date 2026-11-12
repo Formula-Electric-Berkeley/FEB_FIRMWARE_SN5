@@ -2,7 +2,7 @@
 
 Runtime CAN communication library with FreeRTOS-safe TX/RX queues, registration-based message handling, and automatic periodic transmission.
 
-> **Message definitions vs. runtime:** This library is the **runtime** handler. The **message definitions** (IDs, layouts, pack/unpack generators) live in the [`FEB_CAN_Library_SN4`](../FEB_CAN_Library_SN4/README.md) submodule. Boards typically compile both: generated `gen/feb_can.c` for pack/unpack, plus `feb_can` for dispatch.
+> **Message definitions vs. runtime:** This library is the **runtime** handler. The **message definitions** (IDs, layouts, pack/unpack generators) live in [`FEB_CAN_Definitions`](../FEB_CAN_Definitions/README.md). Boards typically compile both: generated `gen/feb_can.c` for pack/unpack, plus `feb_can` for dispatch.
 
 ## Features
 
@@ -11,7 +11,7 @@ Runtime CAN communication library with FreeRTOS-safe TX/RX queues, registration-
 - **RX callbacks** - Register handlers for specific CAN IDs with flexible filtering
 - **Filter types** - Exact match, mask-based, or wildcard (accept all)
 - **FreeRTOS-safe** - Queue-based TX/RX for multi-task environments
-- **Pack/unpack integration** - Works with generated `FEB_CAN_Library_SN4` message structs
+- **Pack/unpack integration** - Works with generated `FEB_CAN_Definitions` message structs
 
 ## Integration
 
@@ -120,7 +120,7 @@ FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, 0x100, FEB_CAN_ID_STD, data, sizeof(data));
 Register a message for manual or periodic transmission:
 
 ```c
-#include "FEB_CAN_Library_SN4/gen/feb_can.h"  // For message structs
+#include "FEB_CAN_Definitions/gen/feb_can.h"  // For message structs
 
 // Data struct (must have static lifetime for periodic TX)
 static struct feb_can_lvpdb_heartbeat_t heartbeat_data = {0};
@@ -166,7 +166,7 @@ FEB_CAN_TX_SendFromISR(FEB_CAN_INSTANCE_1, 0x100, FEB_CAN_ID_STD, data, len);
 ### Register RX Callback
 
 ```c
-#include "FEB_CAN_Library_SN4/gen/feb_can.h"
+#include "FEB_CAN_Definitions/gen/feb_can.h"
 
 // Callback function
 void on_bms_state(FEB_CAN_Instance_t instance, uint32_t can_id, FEB_CAN_ID_Type_t id_type,
@@ -314,11 +314,11 @@ Override in your board's config before including headers:
 
 ## Using with Pack/Unpack Library
 
-This library is designed to work with the generated pack/unpack functions from `FEB_CAN_Library_SN4`:
+This library is designed to work with the generated pack/unpack functions from `FEB_CAN_Definitions`:
 
 ```c
 #include "feb_can_lib.h"
-#include "FEB_CAN_Library_SN4/gen/feb_can.h"
+#include "FEB_CAN_Definitions/gen/feb_can.h"
 
 // TX: Pack struct and send
 struct feb_can_lvpdb_flags_bus_voltage_lv_current_t tx_msg = {
@@ -400,4 +400,4 @@ void on_rx(FEB_CAN_Instance_t inst, uint32_t id, FEB_CAN_ID_Type_t type,
 ## See Also
 
 - [`common/README.md`](../README.md) — library index
-- [`FEB_CAN_Library_SN4/`](../FEB_CAN_Library_SN4/README.md) — message definitions and code generator
+- [`FEB_CAN_Definitions/`](../FEB_CAN_Definitions/README.md) — message definitions and code generator

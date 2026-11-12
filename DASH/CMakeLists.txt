@@ -52,13 +52,13 @@ file(GLOB_RECURSE LVGL_HAL_SOURCES Drivers/hal_stm_lvgl/*.c)
 set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES} ${LVGL_SOURCES} ${LVGL_HAL_SOURCES} ${SQUARELINE_SOURCES})
 
 file(GLOB CAN_LIB_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Definitions/gen/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library/Src/*.cpp"
 )
 
-# CAN library generated source (from common submodule)
-list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can_db.c" ${CAN_LIB_SOURCES})
+# CAN definitions: generated pack/unpack source (common/FEB_CAN_Definitions)
+list(APPEND ALL_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Definitions/gen/feb_can_db.c" ${CAN_LIB_SOURCES})
 
 list(APPEND ALL_SOURCES
 
@@ -111,10 +111,10 @@ set(BASE_INCLUDES
 #     list(APPEND BASE_INCLUDES Core/User/Inc)
 # endif()
 
-# Common CAN library (submodule)
-set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4")
+# CAN definitions (common/FEB_CAN_Definitions)
+set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Definitions")
 list(APPEND BASE_INCLUDES
-    "${CAN_LIB_DIR}/.."          # resolves #include "FEB_CAN_Library_SN4/gen/feb_can_db.h"
+    "${CAN_LIB_DIR}/.."          # resolves #include "FEB_CAN_Definitions/gen/feb_can_db.h"
     "${CAN_LIB_DIR}/gen"         # resolves #include "feb_can.h" directly
 )
 
@@ -141,7 +141,7 @@ endif()
 set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library")
 list(APPEND BASE_INCLUDES
     "${CAN_LIB_DIR}/Inc"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Definitions/gen"
 )
 
 # Auto-discover Core/User/Inc if it exists

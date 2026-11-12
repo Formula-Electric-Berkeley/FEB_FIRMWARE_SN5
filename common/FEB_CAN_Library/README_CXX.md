@@ -203,7 +203,7 @@ nothing on a board that uses the RTOS.
 message definition:
 
 ```
-cd common/FEB_CAN_Library_SN4 && ./generate_can.sh
+cd common/FEB_CAN_Definitions && ./generate_can.sh
 ```
 
 `--check` verifies the committed output is current, and `--validate` runs the

@@ -28,7 +28,7 @@ From [`CMakeLists.txt`](CMakeLists.txt):
 - [`feb_tps`](../common/FEB_TPS_Library/README.md) — TPS2482 driver (single device)
 - `feb_version`
 
-CAN pack/unpack is compiled from [`common/FEB_CAN_Library_SN4/gen/feb_can.c`](../common/FEB_CAN_Library_SN4/README.md).
+CAN pack/unpack is compiled from [`common/FEB_CAN_Definitions/gen/feb_can.c`](../common/FEB_CAN_Definitions/README.md).
 
 ## Entry Point
 

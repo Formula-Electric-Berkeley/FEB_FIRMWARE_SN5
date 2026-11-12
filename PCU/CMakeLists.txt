@@ -39,8 +39,8 @@ file(GLOB STARTUP_ASM "startup_*.s")
 file(GLOB HAL_SOURCES "Drivers/STM32F4xx_HAL_Driver/Src/*.c")
 list(FILTER HAL_SOURCES EXCLUDE REGEX "_template\\.c$")
 
-# CAN library generated source (from common submodule)
-set(CAN_GEN_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4/gen/feb_can_db.c")
+# CAN definitions: generated pack/unpack source (common/FEB_CAN_Definitions)
+set(CAN_GEN_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Definitions/gen/feb_can_db.c")
 
 # Combine base sources
 set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES} ${CAN_GEN_SOURCE})
@@ -62,10 +62,10 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
     list(APPEND BASE_INCLUDES Core/User/Inc)
 endif()
 
-# Common CAN library includes (submodule)
-set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Library_SN4")
+# CAN definitions includes (common/FEB_CAN_Definitions)
+set(CAN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common/FEB_CAN_Definitions")
 list(APPEND BASE_INCLUDES
-    "${CAN_LIB_DIR}/.."     # resolves #include "FEB_CAN_Library_SN4/gen/feb_can_db.h"
+    "${CAN_LIB_DIR}/.."     # resolves #include "FEB_CAN_Definitions/gen/feb_can_db.h"
     "${CAN_LIB_DIR}/gen"    # resolves #include "feb_can.h" directly
 )
 

@@ -4,7 +4,6 @@
 #
 # Sets up the development environment for new developers:
 # - Verifies/guides toolchain installation
-# - Initializes git submodules
 # - Installs pre-commit hooks (if available)
 # - Configures CMake
 # - Runs initial build to verify everything works
@@ -71,7 +70,7 @@ prompt_yes_no() {
 
 # Step 1: Check toolchain
 check_toolchain() {
-    log_header "Step 1/5: Checking Toolchain"
+    log_header "Step 1/4: Checking Toolchain"
 
     if ! feb_find_cube; then
         echo -e "  ${RED}✗${NC} cube: not found"
@@ -125,29 +124,9 @@ check_toolchain() {
     log_info "All required tools are installed"
 }
 
-# Step 2: Initialize submodules
-init_submodules() {
-    log_header "Step 2/5: Initializing Git Submodules"
-
-    cd "$REPO_ROOT"
-
-    if [ -f ".gitmodules" ]; then
-        log_step "Updating submodules..."
-        git submodule update --init --recursive
-
-        # Show submodule status
-        echo ""
-        git submodule status
-        echo ""
-        log_info "Submodules initialized"
-    else
-        log_info "No submodules found"
-    fi
-}
-
-# Step 3: Install pre-commit hooks
+# Step 2: Install pre-commit hooks
 install_hooks() {
-    log_header "Step 3/5: Setting Up Pre-commit Hooks"
+    log_header "Step 2/4: Setting Up Pre-commit Hooks"
 
     cd "$REPO_ROOT"
 
@@ -170,9 +149,9 @@ install_hooks() {
     fi
 }
 
-# Step 4: Configure CMake
+# Step 3: Configure CMake
 configure_cmake() {
-    log_header "Step 4/5: Configuring CMake"
+    log_header "Step 3/4: Configuring CMake"
 
     cd "$REPO_ROOT"
 
@@ -190,9 +169,9 @@ configure_cmake() {
     log_info "CMake configured successfully"
 }
 
-# Step 5: Initial build
+# Step 4: Initial build
 initial_build() {
-    log_header "Step 5/5: Initial Build"
+    log_header "Step 4/4: Initial Build"
 
     cd "$REPO_ROOT"
 
@@ -250,10 +229,9 @@ Usage:
 Steps performed:
   1. Install the toolchain bundles pinned in .settings/bundles.store.json
      (CMake, Ninja, GNU tools for STM32, STM32CubeProgrammer) via 'cube'
-  2. Initialize git submodules
-  3. Install pre-commit hooks (if configured)
-  4. Configure CMake
-  5. Run initial build (optional with --quick)
+  2. Install pre-commit hooks (if configured)
+  3. Configure CMake
+  4. Run initial build (optional with --quick)
 
 Prerequisites:
   - STM32Cube for Visual Studio Code extension (provides the 'cube' CLI)
@@ -294,14 +272,13 @@ main() {
         exit 1
     fi
 
-    init_submodules
     install_hooks
     configure_cmake
 
     if [ "$quick" = false ]; then
         initial_build
     else
-        log_header "Step 5/5: Initial Build"
+        log_header "Step 4/4: Initial Build"
         log_info "Skipped (--quick mode)"
     fi
 

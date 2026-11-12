@@ -14,7 +14,7 @@
  * - 0x525: Temperature
  *
  * The frame IDs and byte layout live in the shared CAN library
- * (common/FEB_CAN_Library_SN4, message defs IVTCurrent / IVTVoltage1-3 /
+ * (common/FEB_CAN_Definitions, message defs IVTCurrent / IVTVoltage1-3 /
  * IVTTemperature) and are consumed here via the generated FEB_CAN_IVT_*_FRAME_ID
  * macros and feb_can_ivt_*_unpack() functions from feb_can.h.
  *

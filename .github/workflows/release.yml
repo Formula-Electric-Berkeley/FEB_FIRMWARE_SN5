@@ -18,8 +18,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          submodules: recursive
 
       # Sensor_Nodes_FRONT / Sensor_Nodes_REAR are CMake targets defined in
       # Sensor_Nodes/CMakeLists.txt; they share the Sensor_Nodes/ source dir.
