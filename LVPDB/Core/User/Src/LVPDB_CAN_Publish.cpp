@@ -46,7 +46,6 @@ bool fill_lv_sh_af1_af2_cp_currents(feb_can_lvpdb_lv_sh_af1_af2_cp_currents_t &m
   m.sh_current = (uint16_t)tps2482_current[1];
   m.af1_af2_current = (uint16_t)tps2482_current[2];
   m.cp_current = (uint16_t)tps2482_current[3];
-  m.rf_current = (uint16_t)tps2482_current[4];
   osMutexRelease(tpsDataMutexHandle);
   return true;
 }

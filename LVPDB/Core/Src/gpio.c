@@ -52,7 +52,7 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, CP_RF_EN_Pin|AF1_AF2_EN_Pin|SM_EN_Pin|BM_L_EN_Pin
+  HAL_GPIO_WritePin(GPIOC, CP_EN_Pin|RF_EN_Pin|AF1_AF2_EN_Pin|SM_EN_Pin|BM_L_EN_Pin
                           |A0_Pin|A1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
@@ -65,20 +65,20 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(SH_EN_GPIO_Port, SH_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : SH_PG_Pin CP_RF_PG_Pin AF1_AF2_PG_Pin SM_PG_Pin */
-  GPIO_InitStruct.Pin = SH_PG_Pin|CP_RF_PG_Pin|AF1_AF2_PG_Pin|SM_PG_Pin;
+  GPIO_InitStruct.Pin = SH_PG_Pin|CP_PG_Pin|RF_PG_Pin|AF1_AF2_PG_Pin|SM_PG_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : SH_Alert_Pin CP_RF_Alert_Pin SM_Alert_Pin */
-  GPIO_InitStruct.Pin = SH_Alert_Pin|CP_RF_Alert_Pin|SM_Alert_Pin;
+  GPIO_InitStruct.Pin = SH_Alert_Pin|CP_Alert_Pin|RF_Alert_Pin|SM_Alert_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : CP_RF_EN_Pin AF1_AF2_EN_Pin SM_EN_Pin BM_L_EN_Pin
                            A0_Pin A1_Pin */
-  GPIO_InitStruct.Pin = CP_RF_EN_Pin|AF1_AF2_EN_Pin|SM_EN_Pin|BM_L_EN_Pin
+  GPIO_InitStruct.Pin = CP_EN_Pin|RF_EN_Pin|AF1_AF2_EN_Pin|SM_EN_Pin|BM_L_EN_Pin
                           |A0_Pin|A1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;

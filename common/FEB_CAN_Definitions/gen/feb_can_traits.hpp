@@ -129,14 +129,14 @@ struct LvpdbLv24vBusAnd12vBusVoltages
 
 struct LvpdbLvShLtBmLCurrents
 {
-  using Data = feb_can_lvpdb_lv_sh_lt_bm_l_currents_t;
+  using Data = feb_can_lvpdb_lv_sh_af1_af2_cp_currents_t;
   static constexpr std::uint32_t kFrameId = 0x17u;
   static constexpr std::uint8_t kLength = 8u;
   static constexpr bool kExtended = false;
   static constexpr std::uint32_t kCycleMs = 100u;
   static constexpr Node kSender = Node::kLvpdb;
-  static constexpr auto kPack = &feb_can_lvpdb_lv_sh_lt_bm_l_currents_pack;
-  static constexpr auto kUnpack = &feb_can_lvpdb_lv_sh_lt_bm_l_currents_unpack;
+  static constexpr auto kPack = &feb_can_lvpdb_lv_sh_af1_af2_cp_currents_pack;
+  static constexpr auto kUnpack = &feb_can_lvpdb_lv_sh_af1_af2_cp_currents_unpack;
 };
 
 struct LvpdbRfCurrents

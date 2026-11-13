@@ -52,7 +52,7 @@ extern "C" {
 #define FEB_CAN_RES_STATE_FRAME_ID (0x0bu)
 #define FEB_CAN_DASH_STATE_FRAME_ID (0x10u)
 #define FEB_CAN_LVPDB_LV_24V_BUS_AND_12V_BUS_VOLTAGES_FRAME_ID (0x16u)
-#define FEB_CAN_LVPDB_LV_SH_LT_BM_L_CURRENTS_FRAME_ID (0x17u)
+#define FEB_CAN_LVPDB_LV_SH_AF1_AF2_CP_CURRENTS_FRAME_ID (0x17u)
 #define FEB_CAN_LVPDB_RF_CURRENTS_FRAME_ID (0x18u)
 #define FEB_CAN_LINPOT_FRONT_FRAME_ID (0x1eu)
 #define FEB_CAN_LINPOT_REAR_FRAME_ID (0x1fu)
@@ -156,7 +156,7 @@ extern "C" {
 #define FEB_CAN_RES_STATE_LENGTH (2u)
 #define FEB_CAN_DASH_STATE_LENGTH (2u)
 #define FEB_CAN_LVPDB_LV_24V_BUS_AND_12V_BUS_VOLTAGES_LENGTH (4u)
-#define FEB_CAN_LVPDB_LV_SH_LT_BM_L_CURRENTS_LENGTH (8u)
+#define FEB_CAN_LVPDB_LV_SH_AF1_AF2_CP_CURRENTS_LENGTH (8u)
 #define FEB_CAN_LVPDB_RF_CURRENTS_LENGTH (8u)
 #define FEB_CAN_LINPOT_FRONT_LENGTH (4u)
 #define FEB_CAN_LINPOT_REAR_LENGTH (4u)
@@ -260,7 +260,7 @@ extern "C" {
 #define FEB_CAN_RES_STATE_IS_EXTENDED (0)
 #define FEB_CAN_DASH_STATE_IS_EXTENDED (0)
 #define FEB_CAN_LVPDB_LV_24V_BUS_AND_12V_BUS_VOLTAGES_IS_EXTENDED (0)
-#define FEB_CAN_LVPDB_LV_SH_LT_BM_L_CURRENTS_IS_EXTENDED (0)
+#define FEB_CAN_LVPDB_LV_SH_AF1_AF2_CP_CURRENTS_IS_EXTENDED (0)
 #define FEB_CAN_LVPDB_RF_CURRENTS_IS_EXTENDED (0)
 #define FEB_CAN_LINPOT_FRONT_IS_EXTENDED (0)
 #define FEB_CAN_LINPOT_REAR_IS_EXTENDED (0)
@@ -364,7 +364,7 @@ extern "C" {
 #define FEB_CAN_RES_STATE_CYCLE_TIME_MS (100u)
 #define FEB_CAN_DASH_STATE_CYCLE_TIME_MS (100u)
 #define FEB_CAN_LVPDB_LV_24V_BUS_AND_12V_BUS_VOLTAGES_CYCLE_TIME_MS (100u)
-#define FEB_CAN_LVPDB_LV_SH_LT_BM_L_CURRENTS_CYCLE_TIME_MS (100u)
+#define FEB_CAN_LVPDB_LV_SH_AF1_AF2_CP_CURRENTS_CYCLE_TIME_MS (100u)
 #define FEB_CAN_LVPDB_RF_CURRENTS_CYCLE_TIME_MS (100u)
 #define FEB_CAN_LINPOT_FRONT_CYCLE_TIME_MS (20u)
 #define FEB_CAN_LINPOT_REAR_CYCLE_TIME_MS (20u)
@@ -532,7 +532,7 @@ extern "C" {
 #define FEB_CAN_RES_STATE_NAME "res_state"
 #define FEB_CAN_DASH_STATE_NAME "dash_state"
 #define FEB_CAN_LVPDB_LV_24V_BUS_AND_12V_BUS_VOLTAGES_NAME "lvpdb_lv_24v_bus_and_12v_bus_voltages"
-#define FEB_CAN_LVPDB_LV_SH_LT_BM_L_CURRENTS_NAME "lvpdb_lv_sh_lt_bm_l_currents"
+#define FEB_CAN_LVPDB_LV_SH_AF1_AF2_CP_CURRENTS_NAME "lvpdb_lv_sh_lt_bm_l_currents"
 #define FEB_CAN_LVPDB_RF_CURRENTS_NAME "lvpdb_rf_currents"
 #define FEB_CAN_LINPOT_FRONT_NAME "linpot_front"
 #define FEB_CAN_LINPOT_REAR_NAME "linpot_rear"
@@ -665,10 +665,10 @@ extern "C" {
 #define FEB_CAN_DASH_STATE_READY_TO_DRIVE_NAME "ready_to_drive"
 #define FEB_CAN_LVPDB_LV_24V_BUS_AND_12V_BUS_VOLTAGES_LV_24V_VOLTAGE_NAME "lv_24v_voltage"
 #define FEB_CAN_LVPDB_LV_24V_BUS_AND_12V_BUS_VOLTAGES_LV_12V_VOLTAGE_NAME "lv_12v_voltage"
-#define FEB_CAN_LVPDB_LV_SH_LT_BM_L_CURRENTS_LV_CURRENT_NAME "lv_current"
-#define FEB_CAN_LVPDB_LV_SH_LT_BM_L_CURRENTS_SH_CURRENT_NAME "sh_current"
-#define FEB_CAN_LVPDB_LV_SH_LT_BM_L_CURRENTS_AF1_AF2_CURRENT_NAME "af1_af2_current"
-#define FEB_CAN_LVPDB_LV_SH_LT_BM_L_CURRENTS_CP_CURRENT_NAME "cp_current"
+#define FEB_CAN_LVPDB_LV_SH_AF1_AF2_CP_CURRENTS_LV_CURRENT_NAME "lv_current"
+#define FEB_CAN_LVPDB_LV_SH_AF1_AF2_CP_CURRENTS_SH_CURRENT_NAME "sh_current"
+#define FEB_CAN_LVPDB_LV_SH_AF1_AF2_CP_CURRENTS_AF1_AF2_CURRENT_NAME "af1_af2_current"
+#define FEB_CAN_LVPDB_LV_SH_AF1_AF2_CP_CURRENTS_CP_CURRENT_NAME "cp_current"
 #define FEB_CAN_LVPDB_RF_CURRENTS_RF_CURRENT_NAME "rf_current"
 #define FEB_CAN_LINPOT_FRONT_LINPOT_LEFT_NAME "linpot_left"
 #define FEB_CAN_LINPOT_FRONT_LINPOT_RIGHT_NAME "linpot_right"
@@ -2228,7 +2228,7 @@ struct feb_can_lvpdb_lv_24v_bus_and_12v_bus_voltages_t {
  *
  * All signal values are as on the CAN bus.
  */
-struct feb_can_lvpdb_lv_sh_lt_bm_l_currents_t {
+struct feb_can_lvpdb_lv_sh_af1_af2_cp_currents_t {
     /**
      * Range: -
      * Scale: 1
@@ -13177,9 +13177,9 @@ bool feb_can_lvpdb_lv_24v_bus_and_12v_bus_voltages_lv_12v_voltage_is_in_range(ui
  *
  * @return Size of packed data, or negative error code.
  */
-int feb_can_lvpdb_lv_sh_lt_bm_l_currents_pack(
+int feb_can_lvpdb_lv_sh_af1_af2_cp_currents_pack(
     uint8_t *dst_p,
-    const struct feb_can_lvpdb_lv_sh_lt_bm_l_currents_t *src_p,
+    const struct feb_can_lvpdb_lv_sh_af1_af2_cp_currents_t *src_p,
     size_t size);
 
 /**
@@ -13191,8 +13191,8 @@ int feb_can_lvpdb_lv_sh_lt_bm_l_currents_pack(
  *
  * @return zero(0) or negative error code.
  */
-int feb_can_lvpdb_lv_sh_lt_bm_l_currents_unpack(
-    struct feb_can_lvpdb_lv_sh_lt_bm_l_currents_t *dst_p,
+int feb_can_lvpdb_lv_sh_af1_af2_cp_currents_unpack(
+    struct feb_can_lvpdb_lv_sh_af1_af2_cp_currents_t *dst_p,
     const uint8_t *src_p,
     size_t size);
 
@@ -13203,7 +13203,7 @@ int feb_can_lvpdb_lv_sh_lt_bm_l_currents_unpack(
  *
  * @return zero(0) on success or (-1) in case of nullptr argument.
  */
-int feb_can_lvpdb_lv_sh_lt_bm_l_currents_init(struct feb_can_lvpdb_lv_sh_lt_bm_l_currents_t *msg_p);
+int feb_can_lvpdb_lv_sh_af1_af2_cp_currents_init(struct feb_can_lvpdb_lv_sh_af1_af2_cp_currents_t *msg_p);
 
 /**
  * Encode given signal by applying scaling and offset.
@@ -13212,7 +13212,7 @@ int feb_can_lvpdb_lv_sh_lt_bm_l_currents_init(struct feb_can_lvpdb_lv_sh_lt_bm_l
  *
  * @return Encoded signal.
  */
-uint16_t feb_can_lvpdb_lv_sh_lt_bm_l_currents_lv_current_encode(double value);
+uint16_t feb_can_lvpdb_lv_sh_af1_af2_cp_currents_lv_current_encode(double value);
 
 /**
  * Decode given signal by applying scaling and offset.
@@ -13221,7 +13221,7 @@ uint16_t feb_can_lvpdb_lv_sh_lt_bm_l_currents_lv_current_encode(double value);
  *
  * @return Decoded signal.
  */
-double feb_can_lvpdb_lv_sh_lt_bm_l_currents_lv_current_decode(uint16_t value);
+double feb_can_lvpdb_lv_sh_af1_af2_cp_currents_lv_current_decode(uint16_t value);
 
 /**
  * Check that given signal is in allowed range.
@@ -13230,7 +13230,7 @@ double feb_can_lvpdb_lv_sh_lt_bm_l_currents_lv_current_decode(uint16_t value);
  *
  * @return true if in range, false otherwise.
  */
-bool feb_can_lvpdb_lv_sh_lt_bm_l_currents_lv_current_is_in_range(uint16_t value);
+bool feb_can_lvpdb_lv_sh_af1_af2_cp_currents_lv_current_is_in_range(uint16_t value);
 
 /**
  * Encode given signal by applying scaling and offset.
@@ -13239,7 +13239,7 @@ bool feb_can_lvpdb_lv_sh_lt_bm_l_currents_lv_current_is_in_range(uint16_t value)
  *
  * @return Encoded signal.
  */
-uint16_t feb_can_lvpdb_lv_sh_lt_bm_l_currents_sh_current_encode(double value);
+uint16_t feb_can_lvpdb_lv_sh_af1_af2_cp_currents_sh_current_encode(double value);
 
 /**
  * Decode given signal by applying scaling and offset.
@@ -13248,7 +13248,7 @@ uint16_t feb_can_lvpdb_lv_sh_lt_bm_l_currents_sh_current_encode(double value);
  *
  * @return Decoded signal.
  */
-double feb_can_lvpdb_lv_sh_lt_bm_l_currents_sh_current_decode(uint16_t value);
+double feb_can_lvpdb_lv_sh_af1_af2_cp_currents_sh_current_decode(uint16_t value);
 
 /**
  * Check that given signal is in allowed range.
@@ -13257,7 +13257,7 @@ double feb_can_lvpdb_lv_sh_lt_bm_l_currents_sh_current_decode(uint16_t value);
  *
  * @return true if in range, false otherwise.
  */
-bool feb_can_lvpdb_lv_sh_lt_bm_l_currents_sh_current_is_in_range(uint16_t value);
+bool feb_can_lvpdb_lv_sh_af1_af2_cp_currents_sh_current_is_in_range(uint16_t value);
 
 /**
  * Encode given signal by applying scaling and offset.
@@ -13266,7 +13266,7 @@ bool feb_can_lvpdb_lv_sh_lt_bm_l_currents_sh_current_is_in_range(uint16_t value)
  *
  * @return Encoded signal.
  */
-uint16_t feb_can_lvpdb_lv_sh_lt_bm_l_currents_af1_af2_current_encode(double value);
+uint16_t feb_can_lvpdb_lv_sh_af1_af2_cp_currents_af1_af2_current_encode(double value);
 
 /**
  * Decode given signal by applying scaling and offset.
@@ -13275,7 +13275,7 @@ uint16_t feb_can_lvpdb_lv_sh_lt_bm_l_currents_af1_af2_current_encode(double valu
  *
  * @return Decoded signal.
  */
-double feb_can_lvpdb_lv_sh_lt_bm_l_currents_af1_af2_current_decode(uint16_t value);
+double feb_can_lvpdb_lv_sh_af1_af2_cp_currents_af1_af2_current_decode(uint16_t value);
 
 /**
  * Check that given signal is in allowed range.
@@ -13284,7 +13284,7 @@ double feb_can_lvpdb_lv_sh_lt_bm_l_currents_af1_af2_current_decode(uint16_t valu
  *
  * @return true if in range, false otherwise.
  */
-bool feb_can_lvpdb_lv_sh_lt_bm_l_currents_af1_af2_current_is_in_range(uint16_t value);
+bool feb_can_lvpdb_lv_sh_af1_af2_cp_currents_af1_af2_current_is_in_range(uint16_t value);
 
 /**
  * Encode given signal by applying scaling and offset.
@@ -13293,7 +13293,7 @@ bool feb_can_lvpdb_lv_sh_lt_bm_l_currents_af1_af2_current_is_in_range(uint16_t v
  *
  * @return Encoded signal.
  */
-uint16_t feb_can_lvpdb_lv_sh_lt_bm_l_currents_cp_current_encode(double value);
+uint16_t feb_can_lvpdb_lv_sh_af1_af2_cp_currents_cp_current_encode(double value);
 
 /**
  * Decode given signal by applying scaling and offset.
@@ -13302,7 +13302,7 @@ uint16_t feb_can_lvpdb_lv_sh_lt_bm_l_currents_cp_current_encode(double value);
  *
  * @return Decoded signal.
  */
-double feb_can_lvpdb_lv_sh_lt_bm_l_currents_cp_current_decode(uint16_t value);
+double feb_can_lvpdb_lv_sh_af1_af2_cp_currents_cp_current_decode(uint16_t value);
 
 /**
  * Check that given signal is in allowed range.
@@ -13311,7 +13311,7 @@ double feb_can_lvpdb_lv_sh_lt_bm_l_currents_cp_current_decode(uint16_t value);
  *
  * @return true if in range, false otherwise.
  */
-bool feb_can_lvpdb_lv_sh_lt_bm_l_currents_cp_current_is_in_range(uint16_t value);
+bool feb_can_lvpdb_lv_sh_af1_af2_cp_currents_cp_current_is_in_range(uint16_t value);
 
 /**
  * Pack message lvpdb_rf_currents.
@@ -49765,7 +49765,7 @@ typedef struct { FEB_CAN_DB_Meta_t meta; struct feb_can_bspd_state_t data; } FEB
 typedef struct { FEB_CAN_DB_Meta_t meta; struct feb_can_res_state_t data; } FEB_CAN_DB_res_state_t;
 typedef struct { FEB_CAN_DB_Meta_t meta; struct feb_can_dash_state_t data; } FEB_CAN_DB_dash_state_t;
 typedef struct { FEB_CAN_DB_Meta_t meta; struct feb_can_lvpdb_lv_24v_bus_and_12v_bus_voltages_t data; } FEB_CAN_DB_lvpdb_lv_24v_bus_and_12v_bus_voltages_t;
-typedef struct { FEB_CAN_DB_Meta_t meta; struct feb_can_lvpdb_lv_sh_lt_bm_l_currents_t data; } FEB_CAN_DB_lvpdb_lv_sh_lt_bm_l_currents_t;
+typedef struct { FEB_CAN_DB_Meta_t meta; struct feb_can_lvpdb_lv_sh_af1_af2_cp_currents_t data; } FEB_CAN_DB_lvpdb_lv_sh_lt_bm_l_currents_t;
 typedef struct { FEB_CAN_DB_Meta_t meta; struct feb_can_lvpdb_rf_currents_t data; } FEB_CAN_DB_lvpdb_rf_currents_t;
 typedef struct { FEB_CAN_DB_Meta_t meta; struct feb_can_linpot_front_t data; } FEB_CAN_DB_linpot_front_t;
 typedef struct { FEB_CAN_DB_Meta_t meta; struct feb_can_linpot_rear_t data; } FEB_CAN_DB_linpot_rear_t;

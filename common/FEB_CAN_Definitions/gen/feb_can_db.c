@@ -1117,9 +1117,9 @@ bool feb_can_lvpdb_lv_24v_bus_and_12v_bus_voltages_lv_12v_voltage_is_in_range(ui
     return (true);
 }
 
-int feb_can_lvpdb_lv_sh_lt_bm_l_currents_pack(
+int feb_can_lvpdb_lv_sh_af1_af2_cp_currents_pack(
     uint8_t *dst_p,
-    const struct feb_can_lvpdb_lv_sh_lt_bm_l_currents_t *src_p,
+    const struct feb_can_lvpdb_lv_sh_af1_af2_cp_currents_t *src_p,
     size_t size)
 {
     if (size < 8u) {
@@ -1140,8 +1140,8 @@ int feb_can_lvpdb_lv_sh_lt_bm_l_currents_pack(
     return (8);
 }
 
-int feb_can_lvpdb_lv_sh_lt_bm_l_currents_unpack(
-    struct feb_can_lvpdb_lv_sh_lt_bm_l_currents_t *dst_p,
+int feb_can_lvpdb_lv_sh_af1_af2_cp_currents_unpack(
+    struct feb_can_lvpdb_lv_sh_af1_af2_cp_currents_t *dst_p,
     const uint8_t *src_p,
     size_t size)
 {
@@ -1161,77 +1161,77 @@ int feb_can_lvpdb_lv_sh_lt_bm_l_currents_unpack(
     return (0);
 }
 
-int feb_can_lvpdb_lv_sh_lt_bm_l_currents_init(struct feb_can_lvpdb_lv_sh_lt_bm_l_currents_t *msg_p)
+int feb_can_lvpdb_lv_sh_af1_af2_cp_currents_init(struct feb_can_lvpdb_lv_sh_af1_af2_cp_currents_t *msg_p)
 {
     if (msg_p == NULL) return -1;
 
-    memset(msg_p, 0, sizeof(struct feb_can_lvpdb_lv_sh_lt_bm_l_currents_t));
+    memset(msg_p, 0, sizeof(struct feb_can_lvpdb_lv_sh_af1_af2_cp_currents_t));
 
     return 0;
 }
 
-uint16_t feb_can_lvpdb_lv_sh_lt_bm_l_currents_lv_current_encode(double value)
+uint16_t feb_can_lvpdb_lv_sh_af1_af2_cp_currents_lv_current_encode(double value)
 {
     return (uint16_t)(value);
 }
 
-double feb_can_lvpdb_lv_sh_lt_bm_l_currents_lv_current_decode(uint16_t value)
+double feb_can_lvpdb_lv_sh_af1_af2_cp_currents_lv_current_decode(uint16_t value)
 {
     return ((double)value);
 }
 
-bool feb_can_lvpdb_lv_sh_lt_bm_l_currents_lv_current_is_in_range(uint16_t value)
+bool feb_can_lvpdb_lv_sh_af1_af2_cp_currents_lv_current_is_in_range(uint16_t value)
 {
     (void)value;
 
     return (true);
 }
 
-uint16_t feb_can_lvpdb_lv_sh_lt_bm_l_currents_sh_current_encode(double value)
+uint16_t feb_can_lvpdb_lv_sh_af1_af2_cp_currents_sh_current_encode(double value)
 {
     return (uint16_t)(value);
 }
 
-double feb_can_lvpdb_lv_sh_lt_bm_l_currents_sh_current_decode(uint16_t value)
+double feb_can_lvpdb_lv_sh_af1_af2_cp_currents_sh_current_decode(uint16_t value)
 {
     return ((double)value);
 }
 
-bool feb_can_lvpdb_lv_sh_lt_bm_l_currents_sh_current_is_in_range(uint16_t value)
+bool feb_can_lvpdb_lv_sh_af1_af2_cp_currents_sh_current_is_in_range(uint16_t value)
 {
     (void)value;
 
     return (true);
 }
 
-uint16_t feb_can_lvpdb_lv_sh_lt_bm_l_currents_af1_af2_current_encode(double value)
+uint16_t feb_can_lvpdb_lv_sh_af1_af2_cp_currents_af1_af2_current_encode(double value)
 {
     return (uint16_t)(value);
 }
 
-double feb_can_lvpdb_lv_sh_lt_bm_l_currents_af1_af2_current_decode(uint16_t value)
+double feb_can_lvpdb_lv_sh_af1_af2_cp_currents_af1_af2_current_decode(uint16_t value)
 {
     return ((double)value);
 }
 
-bool feb_can_lvpdb_lv_sh_lt_bm_l_currents_af1_af2_current_is_in_range(uint16_t value)
+bool feb_can_lvpdb_lv_sh_af1_af2_cp_currents_af1_af2_current_is_in_range(uint16_t value)
 {
     (void)value;
 
     return (true);
 }
 
-uint16_t feb_can_lvpdb_lv_sh_lt_bm_l_currents_cp_current_encode(double value)
+uint16_t feb_can_lvpdb_lv_sh_af1_af2_cp_currents_cp_current_encode(double value)
 {
     return (uint16_t)(value);
 }
 
-double feb_can_lvpdb_lv_sh_lt_bm_l_currents_cp_current_decode(uint16_t value)
+double feb_can_lvpdb_lv_sh_af1_af2_cp_currents_cp_current_decode(uint16_t value)
 {
     return ((double)value);
 }
 
-bool feb_can_lvpdb_lv_sh_lt_bm_l_currents_cp_current_is_in_range(uint16_t value)
+bool feb_can_lvpdb_lv_sh_af1_af2_cp_currents_cp_current_is_in_range(uint16_t value)
 {
     (void)value;
 
@@ -33596,8 +33596,8 @@ int FEB_CAN_DB_Update(uint32_t frame_id, const uint8_t *data, uint8_t dlc, uint3
         feb_can_db.lvpdb_lv_24v_bus_and_12v_bus_voltages.meta.last_rx_ms = now_ms;
         feb_can_db.lvpdb_lv_24v_bus_and_12v_bus_voltages.meta.rx_count++;
         return 0;
-    case FEB_CAN_LVPDB_LV_SH_LT_BM_L_CURRENTS_FRAME_ID:
-        if (feb_can_lvpdb_lv_sh_lt_bm_l_currents_unpack(&feb_can_db.lvpdb_lv_sh_lt_bm_l_currents.data, data, dlc) < 0) return -2;
+    case FEB_CAN_LVPDB_LV_SH_AF1_AF2_CP_CURRENTS_FRAME_ID:
+        if (feb_can_lvpdb_lv_sh_af1_af2_cp_currents_unpack(&feb_can_db.lvpdb_lv_sh_lt_bm_l_currents.data, data, dlc) < 0) return -2;
         feb_can_db.lvpdb_lv_sh_lt_bm_l_currents.meta.present = true;
         feb_can_db.lvpdb_lv_sh_lt_bm_l_currents.meta.last_rx_ms = now_ms;
         feb_can_db.lvpdb_lv_sh_lt_bm_l_currents.meta.rx_count++;
