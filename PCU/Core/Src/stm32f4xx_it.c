@@ -23,7 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "feb_uart.h"
-#include "FEB_Main.h"
+#include "PCU_Main.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -447,13 +447,5 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
   FEB_UART_RxEventCallback(huart, Size);
-}
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  if (htim->Instance == TIM1)
-  {
-    FEB_1ms_Callback();
-  }
 }
 /* USER CODE END 1 */

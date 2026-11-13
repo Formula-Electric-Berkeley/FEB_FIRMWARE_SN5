@@ -28,7 +28,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "FEB_Main.h"
+#include "PCU_Main.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -103,7 +103,7 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-  FEB_Main_Setup();
+  PCU_Main_Setup();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -111,7 +111,7 @@ int main(void)
   while (1)
   {
 
-    FEB_Main_Loop();
+    PCU_Main_Loop();
 
     /* USER CODE END WHILE */
 

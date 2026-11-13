@@ -65,10 +65,6 @@ void Error_Handler(void);
 #define Acceleration_Pedal_2_GPIO_Port GPIOC
 #define Acceleration_Pedal_1_Pin GPIO_PIN_3
 #define Acceleration_Pedal_1_GPIO_Port GPIOC
-#define Brake_Pressure_2_Pin GPIO_PIN_0
-#define Brake_Pressure_2_GPIO_Port GPIOA
-#define Brake_Pressure_1_Pin GPIO_PIN_1
-#define Brake_Pressure_1_GPIO_Port GPIOA
 #define Current_Sense_Pin GPIO_PIN_4
 #define Current_Sense_GPIO_Port GPIOA
 #define Shutdown_In_Pin GPIO_PIN_6

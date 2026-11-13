@@ -1,4 +1,12 @@
-#include "FEB_CAN.hpp"
+/**
+ ******************************************************************************
+ * @file           : PCU_CAN.cpp
+ * @brief          : PCU CAN bring-up and the RX / TX tasks
+ * @author         : Formula Electric @ Berkeley
+ ******************************************************************************
+ */
+
+#include "PCU_CAN.hpp"
 #include "feb_bms_state.h"
 #include "feb_can_subscriber.hpp"
 #include "main.h"

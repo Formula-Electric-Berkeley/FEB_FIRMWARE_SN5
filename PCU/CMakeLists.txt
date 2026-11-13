@@ -59,7 +59,10 @@ set(BASE_INCLUDES
 
 # Auto-discover Core/User/Inc if it exists
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Core/User/Inc")
-    list(APPEND BASE_INCLUDES Core/User/Inc)
+    list(APPEND BASE_INCLUDES
+        Core/User/Inc
+        Core/User/Inc/Config
+    )
 endif()
 
 # CAN definitions includes (common/FEB_CAN_Definitions)
@@ -77,7 +80,18 @@ add_executable(${PROJECT_NAME} ${ALL_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${BASE_INCLUDES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE m feb_io feb_version feb_can feb_tps)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    m
+    feb_string_utils
+    feb_time
+    feb_uart
+    feb_log
+    feb_version
+    feb_console_2
+    feb_commands_2
+    feb_can
+    feb_tps
+)
 
 # Embed CalVer version + build provenance from git (generates feb_build_info.c)
 include(${CMAKE_SOURCE_DIR}/cmake/FEB_Version.cmake)
