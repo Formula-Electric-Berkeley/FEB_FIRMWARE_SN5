@@ -35,12 +35,6 @@ extern osMutexId_t uartTxMutexHandle;
 extern osMessageQueueId_t uartRxQueueHandle;
 #endif
 
-#define LV_INDEX 0;
-#define SH_INDEX 1;
-#define AF1_AF2_INDEX 2;
-#define CP_INDEX 3;
-#define RF_INDEX 4;
-
 namespace
 {
 volatile bool setup_complete = false;
@@ -130,6 +124,4 @@ void LVPDB_Init(void)
   LOG_I(TAG_MAIN, "Type 'help' for available commands");
 
   setup_complete = true;
-
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 }

@@ -19,6 +19,12 @@ extern "C"
 
 #define FEB_BREAK_THRESHOLD (uint8_t)20
 
+#define LV_INDEX (uint8_t)0
+#define SH_INDEX (uint8_t)1
+#define AF1_AF2_INDEX (uint8_t)2
+#define CP_INDEX (uint8_t)3
+#define RF_INDEX (uint8_t)4
+
 #define SLEEP_TIME 10
 
   void LVPDB_Init(void);
