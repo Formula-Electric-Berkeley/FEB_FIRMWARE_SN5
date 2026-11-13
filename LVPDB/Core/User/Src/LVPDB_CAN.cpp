@@ -11,7 +11,7 @@
 #include "LVPDB_TPS.h"
 #include "cmsis_os2.h"
 #include "feb_can_subscriber.hpp"
-#include "main.hpp"
+#include "main.h"
 #include "LVPDB_Main.cpp"
 
 namespace fc = feb::can;

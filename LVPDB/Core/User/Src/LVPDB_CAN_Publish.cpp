@@ -51,7 +51,7 @@ bool fill_lv_sh_af1_af2_cp_currents(feb_can_lvpdb_lv_sh_af1_af2_cp_currents_t &m
   return true;
 }
 
-bool fill_rf_current(feb_can_lvpdb_rf_current_t &m)
+bool fill_rf_current(feb_can_lvpdb_rf_currents_t &m)
 {
   if (!LVPDB_TPS_IsInitialized())
   {
@@ -90,7 +90,7 @@ bool fill_heartbeat(feb_can_lvpdb_heartbeat_t &m)
 
 fc::Publisher<fm::LvpdbLv24vBusAnd12vBusVoltages> voltages_tx{fill_voltages, 99};
 fc::Publisher<fm::LvpdbLvShLtBmLCurrents> lv_sh_af1_af2_cp_currents_tx{fill_lv_sh_af1_af2_cp_currents, 99};
-fc::Publisher<fm::LvpdbSmAf1Af2CpRfCurrents> rf_current_tx{fill_rf_current, 99};
+fc::Publisher<fm::LvpdbRfCurrents> rf_current_tx{fill_rf_current, 99};
 
 fc::Publisher<fm::LvpdbHeartbeat> heartbeat_tx{fill_heartbeat, 67};
 
