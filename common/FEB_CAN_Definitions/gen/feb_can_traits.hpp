@@ -7,7 +7,7 @@
 
 #include "feb_can_db.h"
 
-#include <cstdint>
+#include <stdint.h>
 
 namespace feb::can
 {

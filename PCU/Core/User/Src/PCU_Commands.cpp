@@ -6,7 +6,7 @@
  ******************************************************************************
  */
 
-#include "PCU_Commands.hpp"
+#include "PCU_Commands.h"
 #include "PCU_ADC.hpp"
 #include "main.h"
 #include "usart.h"
@@ -16,7 +16,7 @@
 #include "feb_commands_2.hpp"
 #include "feb_console_2.hpp"
 #include <array>
-#include <cstdint>
+#include <stdint.h>
 
 using namespace feb::console;
 

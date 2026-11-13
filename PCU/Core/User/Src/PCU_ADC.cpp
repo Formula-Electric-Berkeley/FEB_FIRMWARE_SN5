@@ -9,8 +9,8 @@
 #include "main.h"
 #include "adc.h"
 #include "tim.h"
-#include <cstdint>
-#include <cmath>
+#include <stdint.h>
+#include <math.h>
 #include <algorithm>
 #include "PCU_ADC.hpp"
 

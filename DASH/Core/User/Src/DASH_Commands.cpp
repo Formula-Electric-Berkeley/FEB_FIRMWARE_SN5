@@ -17,7 +17,7 @@
 #include "feb_console_2.hpp"
 #include "i2c.h"
 
-#include <cstdint>
+#include <stdint.h>
 
 namespace fc = feb::can;
 namespace fm = feb::can::msg;

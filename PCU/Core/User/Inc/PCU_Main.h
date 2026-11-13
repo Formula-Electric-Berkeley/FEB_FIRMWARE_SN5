@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @file           : FEB_Main.h
- * @brief          : DASH Application Header
+ * @brief          : PCU Application Header
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  */

@@ -9,7 +9,7 @@
 #ifndef FEB_CAN_SCHEDULER_HPP
 #define FEB_CAN_SCHEDULER_HPP
 
-#include <cstdint>
+#include <stdint.h>
 
 namespace feb::can
 {

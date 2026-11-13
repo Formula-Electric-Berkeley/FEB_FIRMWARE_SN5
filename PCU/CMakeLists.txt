@@ -51,11 +51,11 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FreeRTOS")
     file(GLOB FREERTOS_CMSIS "Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/*.c")
     file(GLOB FREERTOS_PORT  "Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/*.c")
     file(GLOB FREERTOS_HEAP  "Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c")
-    list(APPEND ALL_SOURCES ${FREERTOS_CORE} ${FREERTOS_CMSIS} ${FREERTOS_PORT} ${FREERTOS_HEAP})
+    list(APPEND FREERTOS_SOURCES ${FREERTOS_CORE} ${FREERTOS_CMSIS} ${FREERTOS_PORT} ${FREERTOS_HEAP})
 endif()
 
 # Combine base sources
-set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES} ${CAN_GEN_SOURCE})
+set(ALL_SOURCES ${CORE_SOURCES} ${STARTUP_ASM} ${HAL_SOURCES} ${CAN_GEN_SOURCE} ${FREERTOS_SOURCES})
 
 # ══════════════════════════════════════════════════════════════════════
 #  INCLUDE DIRECTORIES
@@ -113,13 +113,14 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     m
     feb_string_utils
     feb_time
-    feb_uart
-    feb_log
+    feb_io
     feb_version
-    feb_console_2
-    feb_commands_2
     feb_can
     feb_tps
+    feb_log
+    feb_console_2
+    feb_commands_2
+    feb_rtos_utils
 )
 
 # Embed CalVer version + build provenance from git (generates feb_build_info.c)

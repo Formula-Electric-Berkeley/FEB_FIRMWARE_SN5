@@ -5,7 +5,7 @@
 #include "src/draw/lv_draw_rect.h"
 #include "src/font/lv_font.h"
 #include "src/misc/lv_area.h"
-#include <cstdint>
+#include <stdint.h>
 #include <math.h>
 #include "DASH_UI_WSS.h"
 #include "DASH_IO.h"

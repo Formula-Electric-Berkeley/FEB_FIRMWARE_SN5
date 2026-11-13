@@ -23,25 +23,25 @@ extern "C"
 
     for (;;)
     {
-      uint32_t now = HAL_GetTick(); // gets the time in ms since boot
-      if ((now - last_sample_ms) < PCU_SAMPLE_PERIOD_MS)
-      {
-        return;
-      }
-      last_sample_ms = now;
+      // uint32_t now = HAL_GetTick(); // gets the time in ms since boot
+      // if ((now - last_sample_ms) < PCU_SAMPLE_PERIOD_MS)
+      // {
+      //   return;
+      // }
+      // last_sample_ms = now;
 
-      bool apps_plausible = validate_torque(apps1, apps2) && apps1.in_range() && apps2.in_range();
-      if (apps_plausible)
-      {
-        last_plausible_ms = now;
-      }
-      apps_fault = (now - last_plausible_ms) > APPS_IMPLAUSIBILITY_TIME_MS;
+      // bool apps_plausible = validate_torque(apps1, apps2) && apps1.in_range() && apps2.in_range();
+      // if (apps_plausible)
+      // {
+      //   last_plausible_ms = now;
+      // }
+      // apps_fault = (now - last_plausible_ms) > APPS_IMPLAUSIBILITY_TIME_MS;
 
-      torque_command = 0;
-      if (PCU_CAN_IsR2D() && !apps_fault)
-      {
-        torque_command = apps1.get_torque();
-      }
+      // torque_command = 0;
+      // if (PCU_CAN_IsR2D() && !apps_fault)
+      // {
+      //   torque_command = apps1.get_torque();
+      // }
 
       osDelay(1);
     }
@@ -60,7 +60,7 @@ extern "C"
 
       if (FEB_UART_QueueReceiveLine(FEB_UART_INSTANCE_1, line_buf, sizeof(line_buf), &line_len, 10))
       {
-        DASH_Console_ProcessLine(line_buf, line_len);
+        PCU_Console_ProcessLine(line_buf, line_len);
       }
     }
   }
@@ -68,13 +68,13 @@ extern "C"
   void StartCanRxTask(void *argument)
   {
     (void)argument;
-    fc::RunRxTask(&DASH_CAN_Init);
+    fc::RunRxTask(&PCU_CAN_Init);
   }
 
   void StartCanPubTask(void *argument)
   {
     (void)argument;
-    fc::RunPubTask(&DASH_CAN_IsReady);
+    fc::RunPubTask(&PCU_CAN_IsReady);
   }
 
   void StartCanTxTask(void *argument)
