@@ -12,7 +12,7 @@
 #include "feb_log.h"
 #include "main.h"
 
-extern CAN_HandleTypeDef hcan2;
+extern CAN_HandleTypeDef hcan1;
 
 extern osMessageQueueId_t canTxQueueHandle;
 extern osMessageQueueId_t canRxQueueHandle;
@@ -33,8 +33,8 @@ bool PCU_CAN_IsReady()
 void PCU_CAN_Init()
 {
   const FEB_CAN_Config_t cfg = {
-      .hcan1 = nullptr,
-      .hcan2 = &hcan2,
+      .hcan1 = &hcan1,
+      .hcan2 = nullptr,
       .get_tick_ms = HAL_GetTick,
 #if FEB_CAN_USE_FREERTOS
       .tx_queue = canTxQueueHandle,

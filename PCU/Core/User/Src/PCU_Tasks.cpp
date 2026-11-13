@@ -6,6 +6,7 @@
  ******************************************************************************
  */
 
+#include "PCU_ADC.hpp"
 #include "PCU_CAN.h"
 #include "PCU_Commands.h"
 
@@ -20,6 +21,8 @@ extern "C"
   void StartPCUTask(void *argument)
   {
     (void)argument;
+
+    PCU_ADC_Init();
 
     for (;;)
     {

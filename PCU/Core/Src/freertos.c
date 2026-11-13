@@ -20,7 +20,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "FreeRTOS.h"
-#include "feb_uart.h"
 #include "task.h"
 #include "main.h"
 #include "cmsis_os.h"
@@ -225,7 +224,7 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_EVENTS */
   PCU_Init();
   /* USER CODE END RTOS_EVENTS */
-  
+
 }
 
 /* USER CODE BEGIN Header_StartPCUTask */
