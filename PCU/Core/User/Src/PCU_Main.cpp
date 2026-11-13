@@ -10,7 +10,7 @@
 #include "PCU_Main.h"
 #include "PCU_CAN.hpp"
 #include "PCU_ADC.hpp"
-#include "PCU_UART.hpp"
+#include "PCU_Commands.hpp"
 #include <cstdint>
 
 static uint32_t last_sample_ms = 0;
@@ -37,7 +37,7 @@ void PCU_Main_Loop(void)
 {
   PCU_UART_Process();
 
-  uint32_t now = HAL_GetTick();
+  uint32_t now = HAL_GetTick(); // gets the time in ms since boot
   if ((now - last_sample_ms) < PCU_SAMPLE_PERIOD_MS)
   {
     return;

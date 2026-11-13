@@ -29,13 +29,9 @@ void PCU_ADC_Init()
   HAL_TIM_Base_Start(&htim2);
 }
 
-""
-    "
-    APPS Sensor Class +
-    Methods ""
-            "
+/* APPS Sensor Class + Methods */
 
-    APPS_Sensor::APPS_Sensor(uint8_t id, uint16_t min, uint16_t max)
+APPS_Sensor::APPS_Sensor(uint8_t id, uint16_t min, uint16_t max)
 {
   apps_id = id;
   min_raw = min;
@@ -56,7 +52,10 @@ float APPS_Sensor::get_percentage()
 {
   // My reasoning for these checks is that the sensors
   // are suceptible to noise so its possible for the
-  //
+  // calc to be sligtly less than 0 percent or slighlty more, yet
+  // doesn't make sense when we multiply by max torque.  we don't want
+  // something slightly higher than max torque.
+
   float percent = (float(getRaw()) - float(min_raw)) / (float(max_raw) - float(min_raw));
   if (percent < 0.0f)
   {
@@ -88,13 +87,9 @@ bool validate_torque(APPS_Sensor &sensor1, APPS_Sensor &sensor2)
   return std::abs(sensor1.get_percentage() - sensor2.get_percentage()) <= APPS_IMPLAUSIBILITY_PCT;
 }
 
-""
-    "
-    Brakes Sensor Class +
-    Methods ""
-            "
+/* Brakes Sensor Class + Methods */
 
-    Brake_Sensor::Brake_Sensor(uint8_t id, uint16_t min, uint16_t max)
+Brake_Sensor::Brake_Sensor(uint8_t id, uint16_t min, uint16_t max)
 {
   brake_id = id;
   min_raw = min;
