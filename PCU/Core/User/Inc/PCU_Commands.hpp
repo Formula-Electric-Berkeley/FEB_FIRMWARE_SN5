@@ -1,4 +1,25 @@
-#pragma once
+/**
+ ******************************************************************************
+ * @file           : DASH_Commands.h
+ * @brief          : Console commands for DASH
+ * @author         : Formula Electric @ Berkeley
+ ******************************************************************************
+ */
 
-void PCU_UART_Init();
-void PCU_UART_Process();
+#ifndef PCU_COMMANDS_H
+#define PCU_COMMANDS_H
+
+#include <stddef.h>
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+  void PCU_Console_ProcessLine(const char *line, size_t len);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* DASH_COMMANDS_H */

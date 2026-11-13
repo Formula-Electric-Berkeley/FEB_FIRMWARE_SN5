@@ -74,7 +74,7 @@ static_assert(params_fit(kAll), "a command declares more params than kMaxParams"
 inline constexpr Console kConsole{FEB_UART_INSTANCE_1, kAll};
 } // namespace pcu
 
-static void PCU_Console_ProcessLine(const char *line, size_t len)
+extern "C" void PCU_Console_ProcessLine(const char *line, size_t len)
 {
   pcu::kConsole.process_line(line, len);
 }

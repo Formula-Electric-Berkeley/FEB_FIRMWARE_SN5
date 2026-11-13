@@ -1,37 +1,59 @@
 /**
  ******************************************************************************
- * @file           : PCU_CAN.cpp
- * @brief          : PCU CAN bring-up and the RX / TX tasks
+ * @file           : DASH_CAN.cpp
+ * @brief          : DASH CAN bring-up and the RX / TX tasks
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  */
 
-#include "PCU_CAN.hpp"
-#include "feb_bms_state.h"
+#include "PCU_CAN.h"
+#include "cmsis_os2.h"
 #include "feb_can_subscriber.hpp"
+#include "feb_log.h"
 #include "main.h"
 
-extern CAN_HandleTypeDef hcan1;
-namespace fc = feb::can;
-namespace fm = feb::can::msg;
+extern CAN_HandleTypeDef hcan2;
+
+extern osMessageQueueId_t canTxQueueHandle;
+extern osMessageQueueId_t canRxQueueHandle;
+extern osMutexId_t canTxMutexHandle;
+extern osMutexId_t canRxMutexHandle;
+extern osSemaphoreId_t canTxMailboxSemHandle;
+
+namespace
+{
+volatile bool can_ready = false;
+}
+
+bool PCU_CAN_IsReady()
+{
+  return can_ready;
+}
 
 void PCU_CAN_Init()
 {
   const FEB_CAN_Config_t cfg = {
-      .hcan1 = &hcan1,
-      .hcan2 = nullptr,
+      .hcan1 = nullptr,
+      .hcan2 = &hcan2,
       .get_tick_ms = HAL_GetTick,
+#if FEB_CAN_USE_FREERTOS
+      .tx_queue = canTxQueueHandle,
+      .rx_queue = canRxQueueHandle,
+      .tx_mutex = canTxMutexHandle,
+      .rx_mutex = canRxMutexHandle,
+      .tx_mailbox_sem = canTxMailboxSemHandle,
+#endif
   };
 
   if (FEB_CAN_Init(&cfg) != FEB_CAN_OK)
   {
-    Error_Handler();
+    LOG_E("[CAN]", "init failed");
+    for (;;)
+    {
+    }
   }
-  fc::RxRegistry::attach_all();
-}
 
-bool PCU_CAN_IsR2D()
-{
-  const auto &bms = fc::rx<fm::BmsState>;
-  return bms.fresh() && bms.v().bms_state == BMS_STATE_DRIVE;
+  feb::can::RxRegistry::attach_all();
+
+  can_ready = true;
 }

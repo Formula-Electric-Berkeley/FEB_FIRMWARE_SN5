@@ -1,59 +1,82 @@
 /**
  ******************************************************************************
- * @file           : PCU_Main.cpp
- * @brief          : PCU Main Loop
+ * @file           : FEB_Main.c
+ * @brief          : DASH Application - Console and Communication
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  */
 
-#include "main.h"
 #include "PCU_Main.h"
-#include "PCU_CAN.hpp"
-#include "PCU_ADC.hpp"
-#include "PCU_Commands.hpp"
-#include <cstdint>
+#include "PCU_CAN.h"
 
-static uint32_t last_sample_ms = 0;
-static uint32_t last_plausible_ms = 0;
-static bool apps_fault = false;
-static uint16_t torque_command = 0;
+#include "main.h"
+#include "feb_uart.h"
+#include "feb_log.h"
+#include "feb_time.h"
+#include "cmsis_os2.h"
 
-/*
-  Implausiblility:  sensors disagree by >10% pedal travel
-                    >100 ms → motor controller cuts motor power
+/* External HAL handles from CubeMX-generated code */
+extern UART_HandleTypeDef huart3;
+extern DMA_HandleTypeDef hdma_usart3_rx;
+extern DMA_HandleTypeDef hdma_usart3_tx;
 
-  PCU Specifics:    Brakes on + APPS >25% → cut motor power
-                    Stays cut until APPS <5%, with or without brakes
-*/
+/* UART buffers */
+static uint8_t uart_tx_buf[512];
+static uint8_t uart_rx_buf[256];
 
-void PCU_Main_Setup(void)
+/* External FreeRTOS handles from .ioc-generated code */
+extern osMutexId_t logMutexHandle;
+extern osMutexId_t uartTxMutexHandle;
+extern osMessageQueueId_t uartRxQueueHandle;
+
+/* ============================================================================
+ * Application Entry Points
+ * ============================================================================ */
+
+void PCU_Init(void)
 {
-  PCU_UART_Init();
-  PCU_CAN_Init();
-  PCU_ADC_Init();
-}
+  /* Initialize UART library with DMA */
+  FEB_UART_Config_t cfg = {
+      .huart = &huart3,
+      .hdma_tx = &hdma_usart3_tx,
+      .hdma_rx = &hdma_usart3_rx,
+      .tx_buffer = uart_tx_buf,
+      .tx_buffer_size = sizeof(uart_tx_buf),
+      .rx_buffer = uart_rx_buf,
+      .rx_buffer_size = sizeof(uart_rx_buf),
+      .get_tick_ms = HAL_GetTick,
+      .tx_mutex = uartTxMutexHandle,
+      .enable_rx_queue = true,
+      .rx_queue = uartRxQueueHandle,
+  };
 
-void PCU_Main_Loop(void)
-{
-  PCU_UART_Process();
-
-  uint32_t now = HAL_GetTick(); // gets the time in ms since boot
-  if ((now - last_sample_ms) < PCU_SAMPLE_PERIOD_MS)
+  if (FEB_UART_Init(FEB_UART_INSTANCE_1, &cfg) != 0)
   {
-    return;
+    HAL_UART_Transmit(&huart3, (uint8_t *)"UART Init Failed\r\n", 18, 100);
+    while (1)
+    {
+    }
   }
-  last_sample_ms = now;
 
-  bool apps_plausible = validate_torque(apps1, apps2) && apps1.in_range() && apps2.in_range();
-  if (apps_plausible)
-  {
-    last_plausible_ms = now;
-  }
-  apps_fault = (now - last_plausible_ms) > APPS_IMPLAUSIBILITY_TIME_MS;
+  /* Initialize logging system */
+  FEB_Log_Config_t log_cfg = {
+      .uart_instance = FEB_UART_INSTANCE_1,
+      .level = FEB_LOG_DEBUG,
+      .colors = true,
+      .timestamps = true,
+      .get_tick_ms = HAL_GetTick,
+      .mutex = logMutexHandle,
+  };
+  FEB_Log_Init(&log_cfg);
 
-  torque_command = 0;
-  if (PCU_CAN_IsR2D() && !apps_fault)
-  {
-    torque_command = apps1.get_torque();
-  }
+  FEB_Time_Init();
+
+  /* Startup banner */
+  static const char banner[] = "\r\n"
+                               "========================================\r\n"
+                               "           DASH Console Ready\r\n"
+                               "========================================\r\n"
+                               "Type 'help' for available commands\r\n"
+                               "\r\n";
+  FEB_UART_Write(FEB_UART_INSTANCE_1, (const uint8_t *)banner, sizeof(banner) - 1);
 }
