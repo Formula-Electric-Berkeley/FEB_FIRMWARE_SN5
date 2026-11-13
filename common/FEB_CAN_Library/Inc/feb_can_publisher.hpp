@@ -15,7 +15,7 @@
 #include "feb_can_traits.hpp"
 
 #include <cstddef>
-#include <stdint.h>
+#include <cstdint>
 #include <type_traits>
 
 namespace feb::can

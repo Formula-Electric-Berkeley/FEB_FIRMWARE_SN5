@@ -16,9 +16,9 @@
 #include "cmsis_os2.h"
 
 /* External HAL handles from CubeMX-generated code */
-extern UART_HandleTypeDef huart3;
-extern DMA_HandleTypeDef hdma_usart3_rx;
-extern DMA_HandleTypeDef hdma_usart3_tx;
+extern UART_HandleTypeDef huart2;
+extern DMA_HandleTypeDef hdma_usart2_rx;
+extern DMA_HandleTypeDef hdma_usart2_tx;
 
 /* UART buffers */
 static uint8_t uart_tx_buf[512];
@@ -37,9 +37,9 @@ void PCU_Init(void)
 {
   /* Initialize UART library with DMA */
   FEB_UART_Config_t cfg = {
-      .huart = &huart3,
-      .hdma_tx = &hdma_usart3_tx,
-      .hdma_rx = &hdma_usart3_rx,
+      .huart = &huart2,
+      .hdma_tx = &hdma_usart2_tx,
+      .hdma_rx = &hdma_usart2_rx,
       .tx_buffer = uart_tx_buf,
       .tx_buffer_size = sizeof(uart_tx_buf),
       .rx_buffer = uart_rx_buf,
@@ -52,7 +52,7 @@ void PCU_Init(void)
 
   if (FEB_UART_Init(FEB_UART_INSTANCE_1, &cfg) != 0)
   {
-    HAL_UART_Transmit(&huart3, (uint8_t *)"UART Init Failed\r\n", 18, 100);
+    HAL_UART_Transmit(&huart2, (uint8_t *)"UART Init Failed\r\n", 18, 100);
     while (1)
     {
     }

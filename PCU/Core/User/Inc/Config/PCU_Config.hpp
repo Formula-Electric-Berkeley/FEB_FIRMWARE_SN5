@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 
 // Constants Needed
 constexpr uint16_t MAX_TORQUE = 225;

@@ -14,7 +14,7 @@
 #include "feb_can_lib.h"
 #include "feb_can_scheduler.hpp"
 
-#include <stdint.h>
+#include <cstdint>
 
 namespace feb::can
 {

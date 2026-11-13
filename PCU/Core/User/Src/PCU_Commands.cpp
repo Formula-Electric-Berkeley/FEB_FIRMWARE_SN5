@@ -16,7 +16,7 @@
 #include "feb_commands_2.hpp"
 #include "feb_console_2.hpp"
 #include <array>
-#include <stdint.h>
+#include <cstdint>
 
 using namespace feb::console;
 

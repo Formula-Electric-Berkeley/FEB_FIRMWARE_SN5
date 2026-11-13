@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 #include "PCU_Config.hpp"
 
 // Indices of Channels

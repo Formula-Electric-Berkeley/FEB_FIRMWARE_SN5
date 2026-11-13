@@ -9,7 +9,7 @@
 #include "main.h"
 #include "adc.h"
 #include "tim.h"
-#include <stdint.h>
+#include <cstdint>
 #include <math.h>
 #include <algorithm>
 #include "PCU_ADC.hpp"

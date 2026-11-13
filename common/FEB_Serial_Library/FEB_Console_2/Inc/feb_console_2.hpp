@@ -14,7 +14,7 @@
 #include <array>
 #include <climits>
 #include <cstddef>
-#include <stdint.h>
+#include <cstdint>
 #include <span>
 
 namespace feb::console

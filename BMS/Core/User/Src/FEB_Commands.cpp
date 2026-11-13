@@ -27,7 +27,7 @@
 #include "task.h"
 
 #include <cmath>
-#include <stdint.h>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
