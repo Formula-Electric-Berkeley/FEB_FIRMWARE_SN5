@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @file           : FEB_Main.c
- * @brief          : DASH Application - Console and Communication
+ * @brief          : PCU Application - Console and Communication
  * @author         : Formula Electric @ Berkeley
  ******************************************************************************
  */

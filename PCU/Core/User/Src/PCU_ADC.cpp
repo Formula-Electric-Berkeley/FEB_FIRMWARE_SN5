@@ -19,7 +19,7 @@ extern TIM_HandleTypeDef htim2;
 
 volatile uint16_t adc_buf[ADC_NUM_CHANNELS];
 
-// populate our buffer array with the data coming into the stm32 pin
+// Populate our buffer array with the data coming into the stm32 pin
 void PCU_ADC_Init()
 {
   if (HAL_ADC_Start_DMA(&hadc3, (uint32_t *)adc_buf, ADC_NUM_CHANNELS) != HAL_OK)
@@ -88,7 +88,6 @@ bool validate_torque(APPS_Sensor &sensor1, APPS_Sensor &sensor2)
 }
 
 /* Brakes Sensor Class + Methods */
-
 Brake_Sensor::Brake_Sensor(uint8_t id, uint16_t min, uint16_t max)
 {
   brake_id = id;
