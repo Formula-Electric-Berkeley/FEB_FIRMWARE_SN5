@@ -5,6 +5,7 @@
 
 #include "FEB_CAN_State.h"
 #include "FEB_ADBMS6830B.h"
+#include "FEB_ADC.h"
 #include "FEB_CAN_DASH.h"
 #include "FEB_Const.h"
 #include "FEB_SM.h"
@@ -197,6 +198,24 @@ static void send_next_cell_data(void)
   }
 }
 
+static void send_bms_adc(void)
+{
+  float min_v = 0.0f, max_v = 0.0f;
+  FEB_ADC_GetShutdownNoiseVoltage(&min_v, &max_v);
+  float pk_pk_v = max_v - min_v;
+  float latest_v = FEB_ADC_GetShutdownVoltage();
+
+  struct feb_can_bms_adc_t msg = {
+      .shutdown_min = (uint16_t)lroundf(min_v * 1000.0f),
+      .shutdown_max = (uint16_t)lroundf(max_v * 1000.0f),
+      .shutdown_peak_to_peak = (uint16_t)lroundf(pk_pk_v * 1000.0f),
+      .shutdown_voltage = (uint16_t)lroundf(latest_v * 1000.0f),
+  };
+  uint8_t tx_data[FEB_CAN_BMS_ADC_LENGTH];
+  feb_can_bms_adc_pack(tx_data, &msg, sizeof(tx_data));
+  FEB_CAN_TX_Send(FEB_CAN_INSTANCE_1, FEB_CAN_BMS_ADC_FRAME_ID, FEB_CAN_ID_STD, tx_data, sizeof(tx_data));
+}
+
 void FEB_CAN_State_Init(void)
 {
   current_state = BMS_STATE_BOOT;
@@ -251,6 +270,13 @@ void FEB_CAN_State_Tick(void)
   {
     cell_data_divider = 0;
     send_next_cell_data();
+  }
+
+  static uint8_t adc_divider = 5;
+  if (++adc_divider >= 10)
+  {
+    adc_divider = 0;
+    send_bms_adc();
   }
 }
 
