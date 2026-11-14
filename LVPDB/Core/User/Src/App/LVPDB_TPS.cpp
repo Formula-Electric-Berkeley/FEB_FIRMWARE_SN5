@@ -56,9 +56,9 @@ const struct
     {LV_ADDR, LV_FUSE_MAX, nullptr, 0, LV_PG_GPIO_Port, LV_PG_Pin, "LV"},
     // SH - Shutdown Source
     {SH_ADDR, SH_FUSE_MAX, SH_EN_GPIO_Port, SH_EN_Pin, SH_PG_GPIO_Port, SH_PG_Pin, "SH"},
-    // AF1_AF2 - Accumulator Fans
-    {AF1_AF2_ADDR, AF1_AF2_FUSE_MAX, AF1_AF2_EN_GPIO_Port, AF1_AF2_EN_Pin, AF1_AF2_PG_GPIO_Port, AF1_AF2_PG_Pin,
-     "AF1_AF2"},
+    // AF1 - Accumulator Fans
+    {AF1_ADDR, AF1_FUSE_MAX, AF1_EN_GPIO_Port, AF1_EN_Pin, AF1_PG_GPIO_Port, AF1_PG_Pin,
+     "AF1"},
     // CP - Coolant Pump
     {CP_ADDR, CP_FUSE_MAX, CP_EN_GPIO_Port, CP_EN_Pin, CP_PG_GPIO_Port, CP_PG_Pin, "CP"},
     // RF - Radiator Fans
@@ -265,7 +265,7 @@ void tps_variable_conversion(void)
   // Convert current with per-device current LSB values
   tps2482_current[0] = FLOAT_TO_INT16_T(tps2482_current_raw[0] * LV_CURRENT_LSB);
   tps2482_current[1] = FLOAT_TO_INT16_T(tps2482_current_raw[1] * SH_CURRENT_LSB);
-  tps2482_current[2] = FLOAT_TO_INT16_T(tps2482_current_raw[2] * AF1_AF2_CURRENT_LSB);
+  tps2482_current[2] = FLOAT_TO_INT16_T(tps2482_current_raw[2] * AF1_CURRENT_LSB);
   tps2482_current[3] = FLOAT_TO_INT16_T(tps2482_current_raw[3] * CP_CURRENT_LSB);
   tps2482_current[4] = FLOAT_TO_INT16_T(tps2482_current_raw[4] * RF_CURRENT_LSB);
 

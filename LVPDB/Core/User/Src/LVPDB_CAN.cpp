@@ -12,10 +12,15 @@
 #include "cmsis_os2.h"
 #include "feb_can_subscriber.hpp"
 #include "main.h"
-#include "LVPDB_Main.cpp"
 
 namespace fc = feb::can;
 namespace fm = feb::can::msg;
+
+#define LV_INDEX (uint8_t)0
+#define SH_INDEX (uint8_t)1
+#define AF1_AF2_INDEX (uint8_t)2
+#define CP_INDEX (uint8_t)3
+#define RF_INDEX (uint8_t)4
 
 extern CAN_HandleTypeDef hcan1;
 

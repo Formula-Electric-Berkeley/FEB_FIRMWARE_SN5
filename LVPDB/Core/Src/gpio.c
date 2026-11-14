@@ -52,83 +52,60 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, CP_EN_Pin|RF_EN_Pin|AF1_AF2_EN_Pin|SM_EN_Pin|BM_L_EN_Pin
-                          |A0_Pin|A1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, CP_Alert_Pin|AF1_EN_Pin|RF_PG_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, BL_Switch_Pin|LT_EN_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(RF_Alert_GPIO_Port, RF_Alert_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(A2_GPIO_Port, A2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(RF_EN_GPIO_Port, RF_EN_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(SH_EN_GPIO_Port, SH_EN_Pin, GPIO_PIN_RESET);
+  /*Configure GPIO pins : CP_PG_Pin SH_EN_Pin */
+  GPIO_InitStruct.Pin = CP_PG_Pin|SH_EN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : SH_PG_Pin CP_RF_PG_Pin AF1_AF2_PG_Pin SM_PG_Pin */
-  GPIO_InitStruct.Pin = SH_PG_Pin|CP_PG_Pin|RF_PG_Pin|AF1_AF2_PG_Pin|SM_PG_Pin;
+  /*Configure GPIO pins : CP_Alert_Pin AF1_EN_Pin RF_PG_Pin */
+  GPIO_InitStruct.Pin = CP_Alert_Pin|AF1_EN_Pin|RF_PG_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : CP_EN_Pin */
+  GPIO_InitStruct.Pin = CP_EN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+  HAL_GPIO_Init(CP_EN_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : SH_Alert_Pin CP_RF_Alert_Pin SM_Alert_Pin */
-  GPIO_InitStruct.Pin = SH_Alert_Pin|CP_Alert_Pin|RF_Alert_Pin|SM_Alert_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : CP_RF_EN_Pin AF1_AF2_EN_Pin SM_EN_Pin BM_L_EN_Pin
-                           A0_Pin A1_Pin */
-  GPIO_InitStruct.Pin = CP_EN_Pin|RF_EN_Pin|AF1_AF2_EN_Pin|SM_EN_Pin|BM_L_EN_Pin
-                          |A0_Pin|A1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : BL_Switch_Pin LT_EN_Pin */
-  GPIO_InitStruct.Pin = BL_Switch_Pin|LT_EN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : LT_Alert_Pin AF1_AF2_Alert_Pin BM_L_Alert_Pin */
-  GPIO_InitStruct.Pin = LT_Alert_Pin|AF1_AF2_Alert_Pin|BM_L_Alert_Pin;
+  /*Configure GPIO pins : SH_Alert_Pin SH_PG_Pin RF_PWM_Pin CP_PWM_Pin
+                           AF1_Alert_Pin BL_Switch_Pin */
+  GPIO_InitStruct.Pin = SH_Alert_Pin|SH_PG_Pin|RF_PWM_Pin|CP_PWM_Pin
+                          |AF1_Alert_Pin|BL_Switch_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LT_PG_Pin BM_L_PG_Pin */
-  GPIO_InitStruct.Pin = LT_PG_Pin|BM_L_PG_Pin;
+  /*Configure GPIO pin : AF1_PG_Pin */
+  GPIO_InitStruct.Pin = AF1_PG_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(AF1_PG_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : DSMS_ON_Pin */
-  GPIO_InitStruct.Pin = DSMS_ON_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(DSMS_ON_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : IS_Vout_Pin */
-  GPIO_InitStruct.Pin = IS_Vout_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(IS_Vout_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : A2_Pin */
-  GPIO_InitStruct.Pin = A2_Pin;
+  /*Configure GPIO pin : RF_Alert_Pin */
+  GPIO_InitStruct.Pin = RF_Alert_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(A2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(RF_Alert_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : SH_EN_Pin */
-  GPIO_InitStruct.Pin = SH_EN_Pin;
+  /*Configure GPIO pin : RF_EN_Pin */
+  GPIO_InitStruct.Pin = RF_EN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(SH_EN_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(RF_EN_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LV_PG_Pin */
   GPIO_InitStruct.Pin = LV_PG_Pin;
