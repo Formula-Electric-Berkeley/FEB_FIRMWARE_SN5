@@ -103,7 +103,8 @@ void Error_Handler(void);
 #define ALERT_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-
+#define SHUTDOWN_NOISE_Pin GPIO_PIN_1
+#define SHUTDOWN_NOISE_GPIO_Port GPIOA
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

@@ -16,6 +16,7 @@
 #include "FEB_CAN_PingPong.h"
 #include "FEB_CAN_Charger.h"
 #include "FEB_SM.h"
+#include "FEB_ADC.h"
 #include "FEB_Const.h"
 #include "feb_time.h"
 #include "cmsis_os2.h"
@@ -95,6 +96,10 @@ void FEB_Init(void)
 
   /* Initialize state machine (sets relays to safe state, transitions to LV_POWER) */
   FEB_SM_Init();
+
+  /* Initialize and start ADC oscilloscope on PA1 */
+  FEB_ADC_Init();
+  FEB_ADC_Start();
 
   /* Log after all subsystems initialized */
   LOG_I(TAG_MAIN, "BMS initialization complete");
@@ -183,6 +188,9 @@ void StartSMTask(void *argument)
   {
     /* Wait for notification from ISR (1ms tick) */
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+    /* ADC oscilloscope 10ms window advance */
+    FEB_ADC_Tick();
 
     /* State machine processing */
     FEB_SM_Process();

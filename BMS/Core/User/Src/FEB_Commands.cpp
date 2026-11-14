@@ -15,6 +15,7 @@
 #include "FEB_CAN_PingPong.h"
 #include "FEB_CAN_State.h"
 #include "FEB_Const.h"
+#include "FEB_ADC.h"
 #include "FEB_HW_Relay.h"
 #include "FEB_SM.h"
 #include "feb_commands_2.hpp"
@@ -533,6 +534,10 @@ void cmd_bms_gpio(Interaction &io, std::span<char *const>)
   t.row("AIR- sense", "%s", FEB_HW_AIR_Minus_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
   t.row("Precharge sense", "%s", FEB_HW_Precharge_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
   t.row("Shutdown loop", "%s", FEB_HW_Shutdown_Sense() == FEB_RELAY_STATE_CLOSE ? "CLOSED" : "OPEN");
+  float shdn_min = 0.0f, shdn_max = 0.0f;
+  FEB_ADC_GetShutdownNoiseVoltage(&shdn_min, &shdn_max);
+  t.row("Shutdown PA1", "%.2f-%.2f V (%.0f mVpp)", (double)shdn_min, (double)shdn_max,
+        (double)((shdn_max - shdn_min) * 1000.0f));
   t.row("IMD status", "%s",
         FEB_HW_IMD_Sense() == FEB_RELAY_STATE_CLOSE ? "OK (armed)"
                                                     : (FEB_SM_IMD_Armed() ? "FAULT" : "LOW (not armed)"));
